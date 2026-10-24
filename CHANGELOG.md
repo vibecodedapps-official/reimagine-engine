@@ -2,11 +2,6 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
-## Unreleased
-
-- Design documents for 0.1.0 under `docs/`: requirements, architecture, build plan, decisions, acceptance.
-- Design documents for the `primer` plugin under `docs/`, which replaces `repo-docs` from its release: requirements 237 to 268, decisions 73 to 89, milestones M10 to M19, acceptance items 27 to 36.
-
 ## loop 0.1.5 - 2026-10-24
 
 - "primary <path>" in the request names the primary checkout, a git toplevel or a linked worktree, in place of the session's repository; every primary command then runs as `git -C <checkout> ...` or `cd <checkout> && ...`, and a linked worktree's record lives under its main checkout. A path that is neither ends the run `blocked`. Before, a branch checked out in another worktree could only be reached by starting the run inside it, which a subagent cannot do.

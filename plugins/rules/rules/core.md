@@ -16,8 +16,8 @@ Any instruction file can add an ask-first rule; none removes one.
   what it blocks, and what would overturn it. Never a bare label. Put open decisions in
   one numbered message so one reply can answer them all; one at a time only when a
   later one depends on an earlier answer.
-- When the request itself is wrong, that is the first decision to raise: the evidence,
-  and what you would do instead.
+- When the request itself is wrong, say so first, with the evidence and what you would do
+  instead, then do that; ask-first rules still hold.
 - When a request reads two ways, pick the likelier and say so. Ask-first and stop
   rules still hold.
 - A review is read-only unless I ask for changes.
@@ -39,11 +39,10 @@ Any instruction file can add an ask-first rule; none removes one.
 
 ## Code
 
-- Make the smallest change that is correct and stays correct as the code grows. Follow
-  the code's existing patterns and helpers, and change every place the behavior lives.
-  Where a project's instruction file and its code disagree, follow the code and say where
-  they differ. A need only imagined gets no option, abstraction, or fallback. Say why for
-  any extra.
+- Make the simplest change that is correct and stays correct as the code grows: in the
+  code's own patterns and helpers, at every place the behavior lives, with nothing built
+  for a need only imagined. Where a project's instruction file and its code disagree,
+  follow the code and say where they differ. Say why for any extra.
 - A code comment only where the code itself is unclear, and brief. Ticket numbers and
   change history go in the commit message, not the code.
 - Commits: `type(scope): subject`, lowercase. The body says why.

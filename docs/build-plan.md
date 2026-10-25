@@ -425,6 +425,48 @@ Check:
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
 
+## House-rule edit twelve: M31
+
+Added 2026-10-25. The amended R232, decision 115. Built after M30. Depends on nothing; touches `plugins/rules/` and `tests/rules/` only.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M31 | house-rule edit twelve | the reworded Code item, the test assertion and the moved digest literals and digest probe; rules 0.1.9 | - |
+
+### M31: house-rule edit twelve
+
+Work items, in this order; M32 below ships in the same pull request and release:
+
+1. The design documents: the amended R232 in `docs/requirements.md`, decision 115 in `docs/decisions.md`, and this section. Commit: `docs(design): specify house-rule edit twelve`.
+2. `node tools/release.mjs rules 0.1.9`, and the version literals of `tests/rules/rules.test.mjs` to 0.1.9 in the same commit. Commit: `release(rules): 0.1.9`.
+3. `plugins/rules/rules/core.md`: the Code item of decision 115. `tests/rules/rules.test.mjs`: the R232 assertion moved to the new text, the digest probe that matches the item's first words, and the shipped digest literals for `core` and `core,windows` moved by running the script once and pasting the observed values (decision 11); the rule count and adopt line numbers do not move. Commit: `feat(rules): ask for the simplest change, as one instruction with three qualities`.
+4. After the push: the `## rules 0.1.9 - <date>` heading in `CHANGELOG.md`, commit `docs(changelog): add the rules 0.1.9 heading`, pushed, then `claude plugin tag --push plugins/rules`; the acceptance record, commit `docs(acceptance): record the house-rule edit twelve milestone`.
+
+Check:
+
+- `npm run test:rules` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+- Acceptance items 4 and 22 rerun: the staleness notice on a profile holding the 0.1.8 block; the tag rule at `rules--v0.1.9`.
+
+## House-rule edit thirteen: M32
+
+Added 2026-10-25. The amended R234, decision 116. Built with M31, same branch, release and pull request; touches `plugins/rules/` and `tests/rules/` only.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M32 | house-rule edit thirteen | the reworded wrong-request item, the test assertion and the moved digest literals | M31 |
+
+### M32: house-rule edit thirteen
+
+Work items, in this order:
+
+1. The design documents: the amended R234 in `docs/requirements.md`, decision 116 in `docs/decisions.md`, and this section. Commit: `docs(design): specify house-rule edit thirteen`.
+2. `plugins/rules/rules/core.md`: the Working item of decision 116. `tests/rules/rules.test.mjs`: the R234 assertion moved to the new text and the shipped digest literals moved by running the script once and pasting the observed values (decision 11). No version bump: 0.1.9 is above `rules--v0.1.8` and untagged. Commit: `feat(rules): say a wrong request first, then do the alternative`.
+3. The push, heading, tag and acceptance record are M31's item 4.
+
+Check:
+
+- `npm run test:rules` on the commit of item 2; `npm test` and lint with the deny tokens before the push, with M31.
+
 ## House-rule edit eleven: M30
 
 Added 2026-10-25. The amended R232 and the new R284, decision 114. Built after M29. Depends on nothing; touches `plugins/rules/` and `tests/rules/` only.

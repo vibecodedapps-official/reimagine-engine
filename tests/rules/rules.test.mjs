@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = '57d69ede3a5dfb13';
+const SHIPPED_CORE_DIGEST = 'fb0fb8a2c0481c0c';
 
 test('R25: the block version is the version in the manifest of the plugin root, and the shipped manifest is 0.1.9', () => {
   assert.equal(pluginVersion(), '0.1.9');
@@ -39,8 +39,8 @@ test('R25: the block version is the version in the manifest of the plugin root, 
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, '57d69ede3a5dfb13');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'cf5500ca6fd6467a');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, 'fb0fb8a2c0481c0c');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'f552b6abdac0700a');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -76,9 +76,10 @@ test('R233: the decision item names the shared assumption and what would overtur
   assert.equal(items.some((n) => n.startsWith('Raise a decision in full on first mention: the question in one sentence, what each option does')), false);
 });
 
-test('R234: core.md holds the item that raises a wrong request as the first decision', () => {
+test('R234: core.md holds the item that says a wrong request first, then does the alternative', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('When the request itself is wrong, that is the first decision to raise: the evidence, and what you would do instead.'));
+  assert.ok(items.includes('When the request itself is wrong, say so first, with the evidence and what you would do instead, then do that; ask-first rules still hold.'));
+  assert.equal(items.some((n) => n.includes('the first decision to raise')), false);
 });
 
 test('R235 retired: core.md no longer asks to name the steps the permission mode is likely to deny before starting', () => {

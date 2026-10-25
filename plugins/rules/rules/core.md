@@ -16,8 +16,8 @@ Any instruction file can add an ask-first rule; none removes one.
   what it blocks, and what would overturn it. Never a bare label. Put open decisions in
   one numbered message so one reply can answer them all; one at a time only when a
   later one depends on an earlier answer.
-- When the request itself is wrong, that is the first decision to raise: the evidence,
-  and what you would do instead.
+- When the request itself is wrong, say so first, with the evidence and what you would do
+  instead, then do that; ask-first rules still hold.
 - When a request reads two ways, pick the likelier and say so. Ask-first and stop
   rules still hold.
 - A review is read-only unless I ask for changes.

@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = '66d51e2c441e0acc';
+const SHIPPED_CORE_DIGEST = '018cff3e37881c5d';
 
 test('R25: the block version is the version in the manifest of the plugin root, and the shipped manifest is 0.1.7', () => {
   assert.equal(pluginVersion(), '0.1.7');
@@ -39,8 +39,8 @@ test('R25: the block version is the version in the manifest of the plugin root, 
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, '66d51e2c441e0acc');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'c686982e6f6149bb');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, '018cff3e37881c5d');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'b13d3897b20043a0');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -61,15 +61,17 @@ test('R20: core.md holds the item that asks for one report, with no progress not
   assert.ok(items.includes('Report once, when the task is done or when the next step turns on my answer; no progress notes unless I ask for them.'));
 });
 
-test('R232: the first Code item asks for the smallest change that stays correct as the code grows', () => {
+test('R232: the first Code item asks for the smallest change that stays correct as the code grows, without the design sentence', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Make the smallest change that is correct and stays correct as the code grows. Follow the code\'s existing patterns and helpers, and change every place the behavior lives. Where a next change is known, choose the shape it fits into without building it. A need only imagined gets no option, abstraction, or fallback. Say why for any extra.'));
+  assert.ok(items.includes('Make the smallest change that is correct and stays correct as the code grows. Follow the code\'s existing patterns and helpers, and change every place the behavior lives. A need only imagined gets no option, abstraction, or fallback. Say why for any extra.'));
+  assert.equal(items.some((n) => n.includes('Where a next change is known')), false);
   assert.equal(items.some((n) => n.startsWith('Make the smallest correct change.')), false);
 });
 
-test('R233: the decision item names the shared assumption and what would overturn the recommendation', () => {
+test('R233: the decision item names the shared assumption and what would overturn the recommendation, not whether it was checked', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Raise a decision in full on first mention: the question in one sentence, the assumption every option shares and whether you checked it, what each option does, the recommendation first, what it blocks, and what would overturn it. Never a bare label. Put open decisions in one numbered message so one reply can answer them all; one at a time only when a later one depends on an earlier answer.'));
+  assert.ok(items.includes('Raise a decision in full on first mention: the question in one sentence, the assumption every option shares, what each option does, the recommendation first, what it blocks, and what would overturn it. Never a bare label. Put open decisions in one numbered message so one reply can answer them all; one at a time only when a later one depends on an earlier answer.'));
+  assert.equal(items.some((n) => n.includes('whether you checked it')), false);
   assert.equal(items.some((n) => n.startsWith('Raise a decision in full on first mention: the question in one sentence, what each option does')), false);
 });
 
@@ -78,24 +80,27 @@ test('R234: core.md holds the item that raises a wrong request as the first deci
   assert.ok(items.includes('When the request itself is wrong, that is the first decision to raise: the evidence, and what you would do instead.'));
 });
 
-test('R235: core.md holds the ask-first item that names the steps the permission mode is likely to deny', () => {
+test('R235 retired: core.md no longer asks to name the steps the permission mode is likely to deny before starting', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Before starting, name the steps the permission mode is likely to deny.'));
+  assert.equal(items.includes('Before starting, name the steps the permission mode is likely to deny.'), false);
 });
 
-test('R236: core.md holds the ask-first item that treats a denied call as a question, never routed around', () => {
+test('R236: core.md holds the ask-first item that treats a denied call as a question, never routed around, without the retry sentence', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('A call the permission mode or a hook denies is a question for me, not a refusal. Never route around it with another command, a script, or a subagent. Report it in full and wait: the exact call, what it is for, and any later call the task needs that is likely to be denied too. On retry, reissue the same calls and nothing else. A denial from me is final.'));
+  assert.ok(items.includes('A call the permission mode or a hook denies is a question for me, not a refusal. Never route around it with another command, a script, or a subagent. Report it in full and wait: the exact call, what it is for, and any later call the task needs that is likely to be denied too. A denial from me is final.'));
+  assert.equal(items.some((n) => n.includes('On retry, reissue the same calls')), false);
 });
 
-test('R269: core.md holds the item that judges findings rather than counting them', () => {
+test('R269: core.md holds the item that judges findings rather than counting them, inside the request or not', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Finding issues or proposing changes is judgment, not a count. Recommend the few that affect correctness or risk, or cost more to leave than to fix, each with its evidence and the two costs; keep the rest as notes, apart and counted.'));
+  assert.ok(items.includes('Finding issues or proposing changes is judgment, not a count. Recommend what affects correctness or risk, or costs more to leave than to fix, inside the request or not, each with its evidence and the two costs; the rest are notes.'));
+  assert.equal(items.some((n) => n.includes('apart and counted')), false);
 });
 
-test('R280: core.md holds the Done item that describes an edit from the diff, not from the plan', () => {
+test('R280 retired: core.md no longer holds the Done item that describes an edit from the diff', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Describe an edit from the diff, not from the plan: re-read the hunk and name only what is in it. A change that was planned and turned out unnecessary is reported as not needed, never as made.'));
+  assert.equal(items.some((n) => n.startsWith('Describe an edit from the diff')), false);
+  assert.ok(items.some((n) => n.startsWith('Keep whatever describes the work accurate.')));
 });
 
 test('R36: render joins the parts with one empty line, windows before core, in the line ending given', () => {
@@ -965,12 +970,12 @@ test('R35, R34: the plan names what each import holds, and the units of a file a
   put(s.claude, '# Mine\n\n@toolkit/a.md\n@b.md\n@half.md\n@missing.md\n');
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 10), [`target: ${s.claude}`, 'state: absent', 'options: core',
-    'note: line 3: @toolkit/a.md imports a file that holds 37 of 37 rules; it is left as it is',
+    'note: line 3: @toolkit/a.md imports a file that holds 35 of 35 rules; it is left as it is',
     'note: line 4: @b.md imports a file that holds none of the rules; it is left as it is',
-    'note: line 5: @half.md imports a file that holds at least 2 of 37 rules; 1 import could not be read; it is left as it is',
+    'note: line 5: @half.md imports a file that holds at least 2 of 35 rules; 1 import could not be read; it is left as it is',
     'note: line 6: @missing.md imports a file that cannot be read; it is left as it is',
     'change: ready', 'recommend: decline',
-    'note: 37 of 37 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
+    'note: 35 of 35 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
   assert.equal(out.some((l) => l.includes('already present outside the block')), false);
   assert.deepEqual(s.run('status').filter((l) => l.includes('note')), []);
 }));
@@ -980,7 +985,7 @@ test('R34: the overlap note and the recommendation for a hand copy, and adopt th
   put(s.claude, copy);
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 7), [`target: ${s.claude}`, 'state: absent', 'options: core',
-    'note: 37 of 37 rules already present outside the block; applying duplicates them', 'change: ready', 'recommend: adopt',
+    'note: 35 of 35 rules already present outside the block; applying duplicates them', 'change: ready', 'recommend: adopt',
     'note: /rules --adopt moves those lines into the block']);
   const adopted = s.run('plan', ['--adopt', '--options', 'core']);
   assert.deepEqual(adopted.slice(0, 5), [`target: ${s.claude}`, 'state: absent', 'options: core', 'change: ready', 'recommend: apply']);
@@ -1078,8 +1083,8 @@ test('R35: a house-rules marker line is a hard boundary for units, so a managed 
   const [row] = scan(s, '@managed.md\n');
   assert.equal(row.missed, 0);
   const p = plan('mine\n', { texts: SHIPPED, imported: [{ ref: '1: @managed.md', units: new Set(row.units), missed: 0, unreadable: false }] });
-  assert.equal(p.overlap.k, 37);
-  assert.equal(p.overlap.total, 37);
+  assert.equal(p.overlap.k, 35);
+  assert.equal(p.overlap.total, 35);
   assert.deepEqual(kinds(`- user\n${END}\n- next\n`), ['item:user', 'item:next']);
   assert.deepEqual(kinds(`- user\n${begin('core', 'none', 'cb477dddc15de845')}\nafter\n`), ['item:user', 'para:after']);
 }));
@@ -1122,7 +1127,7 @@ test('R33: only a plain shape may match a rule, so indented code, tabs, and deep
     assert.equal(p.after, plan(text, { texts: only }).after, name);
   }
   assert.equal(plan(`- ${rule}\n`, { texts: only, adopt: true }).after, `${begin('core', 'none', '6f5144b9eecde4b6', '9.9.9')}\n- ${rule}\n${END}\n`);
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 37);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 35);
 });
 
 test('R33: adopt keeps text that only looks like a rule because the parser flattened a construct around it', () => {
@@ -1217,7 +1222,7 @@ test('R33: indented text is never a rule, since it may belong to a container', (
   for (const [name, text] of Object.entries(cases)) {
     assert.equal(plan(text, { texts: only, adopt: true }).after, plan(text, { texts: only }).after, name);
   }
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 37);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 35);
   assert.equal(plan(`mine\n\n${SHIPPED['core.md'].replace(/^/gm, '  ')}`, { texts: SHIPPED }).overlap.n, 0);
 });
 
@@ -1239,8 +1244,8 @@ test('R33: a unit followed by anything but a blank line, the end, a heading, or 
   }
   // The shipped texts still match in full, alone and with the Windows paragraph.
   const all = render(['windows', 'core'], SHIPPED);
-  assert.equal(plan(`mine\n\n${all}`, { texts: SHIPPED, platform: 'win32', options: ['core', 'windows'] }).overlap.n, 38);
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 37);
+  assert.equal(plan(`mine\n\n${all}`, { texts: SHIPPED, platform: 'win32', options: ['core', 'windows'] }).overlap.n, 36);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 35);
 });
 
 test('R33: a file that holds Markdown adopt does not handle is left alone, and plan recommends decline for it', () => {
@@ -1352,12 +1357,12 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n${ruleLines(1)}\n\nUse a | b\n`);
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
-    'note: 1 of 37 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 107 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: 1 of 35 rules are also present outside the block, duplicating it',
+    'note: adopt leaves this file alone because line 101 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
-    'note: 1 of 37 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 107 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: 1 of 35 rules are also present outside the block, duplicating it',
+    'note: adopt leaves this file alone because line 101 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1376,7 +1381,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 105: @shared.md imports a file that holds 37 of 37 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 99: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));
@@ -1395,7 +1400,7 @@ test('R34: decline only when the rules already present cover every rule, else ap
   put(join(s.claudeDir, 'shared.md'), core);
   const all = s.run('plan');
   assert.ok(all.includes('recommend: decline'));
-  assert.ok(all.includes('note: 37 of 37 rules come from imports; applying duplicates them; declining leaves this file unchanged'));
+  assert.ok(all.includes('note: 35 of 35 rules come from imports; applying duplicates them; declining leaves this file unchanged'));
 }));
 
 test('R35: a backslash escapes only an opening backtick; a closing run pairs and spans hide what they hold', () => {
@@ -1476,10 +1481,10 @@ test('R34: with nothing to change, a copy beside the block is called a duplicate
   const installed = readFileSync(s.claude, 'latin1');
   put(s.claude, `${installed}\n${SHIPPED['core.md']}`);
   const keep = (out) => out.filter((l) => /^(state|note|change)/.test(l));
-  assert.deepEqual(keep(s.run('plan')), ['state: current', 'note: 37 of 37 rules are also present outside the block, duplicating it',
+  assert.deepEqual(keep(s.run('plan')), ['state: current', 'note: 35 of 35 rules are also present outside the block, duplicating it',
     'note: /rules --adopt moves those lines into the block', 'change: none']);
   put(s.claude, `${installed}\n${SHIPPED['core.md']}\nUse a | b\n`);
-  assert.deepEqual(keep(s.run('plan')).slice(0, 2), ['state: current', 'note: 37 of 37 rules are also present outside the block, duplicating it']);
+  assert.deepEqual(keep(s.run('plan')).slice(0, 2), ['state: current', 'note: 35 of 35 rules are also present outside the block, duplicating it']);
   assert.equal(keep(s.run('plan')).some((l) => l.includes('--adopt moves')), false);
 }));
 

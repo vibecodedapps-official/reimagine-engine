@@ -439,7 +439,7 @@ Work items, in this order:
 
 1. The design documents: the amended R20 in `docs/requirements.md`, decision 117 in `docs/decisions.md`, the quoted item in `docs/architecture.md`, and this section. Commit: `docs(design): specify house-rule edit fourteen`.
 2. `node tools/release.mjs rules 0.1.10`, and the version literals of `tests/rules/rules.test.mjs` to 0.1.10 in the same commit. Commit: `release(rules): 0.1.10`.
-3. `plugins/rules/rules/core.md`: the Working item of decision 117. `tests/rules/rules.test.mjs`: the R20 assertion moved to the new text with an assertion that the dropped clause is absent, and the shipped digest literals for `core` and `core,windows` moved by running the script once and pasting the observed values (decision 11); the rule count does not move. Commit: `feat(rules): report once, without the progress-notes clause`.
+3. `plugins/rules/rules/core.md`: the Working item of decision 117. `tests/rules/rules.test.mjs`: the R20 assertion moved to the new text with an assertion that the dropped clause is absent, and the shipped digest literals for `core` and `core,windows` moved by running the script once and pasting the observed values (decision 11); the rule count does not move, and the adopt and import line-number literals move up by one with the shorter block. Commit: `feat(rules): report once, without the progress-notes clause`.
 4. After the push: the `## rules 0.1.10 - <date>` heading in `CHANGELOG.md`, commit `docs(changelog): add the rules 0.1.10 heading`, pushed, then `claude plugin tag --push plugins/rules`; the acceptance record, commit `docs(acceptance): record the house-rule edit fourteen milestone`.
 
 Check:

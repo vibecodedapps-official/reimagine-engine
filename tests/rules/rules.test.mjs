@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = 'fb0fb8a2c0481c0c';
+const SHIPPED_CORE_DIGEST = '8075d6e6a19896be';
 
 test('R25: the block version is the version in the manifest of the plugin root, and the shipped manifest is 0.1.10', () => {
   assert.equal(pluginVersion(), '0.1.10');
@@ -39,8 +39,8 @@ test('R25: the block version is the version in the manifest of the plugin root, 
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, 'fb0fb8a2c0481c0c');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'f552b6abdac0700a');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, '8075d6e6a19896be');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'c95c97db7ef8098e');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -56,9 +56,10 @@ test('R19: core.md holds the item that sends a question to a tool, integration o
   assert.ok(items.includes('When a tool, integration, or file in the session can answer a question, use it before asking me.'));
 });
 
-test('R20: core.md holds the item that asks for one report, with no progress notes', () => {
+test('R20: core.md holds the item that asks for one report, without the progress-notes clause', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Report once, when the task is done or when the next step turns on my answer; no progress notes unless I ask for them.'));
+  assert.ok(items.includes('Report once, when the task is done or when the next step turns on my answer.'));
+  assert.equal(items.some((n) => n.includes('no progress notes')), false);
 });
 
 test('R232: the first Code item asks for the simplest change as one instruction with three qualities, and follows the code over a stale instruction file', () => {
@@ -1366,11 +1367,11 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
     'note: 1 of 35 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 102 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 101 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
     'note: 1 of 35 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 102 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 101 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1389,7 +1390,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 100: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 99: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));

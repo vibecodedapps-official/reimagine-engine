@@ -34,8 +34,7 @@ Any instruction file can add an ask-first rule; none removes one.
 - Before opening an issue or starting a fix, search for an issue or PR that covers it.
 - When a tool, integration, or file in the session can answer a question, use it before
   asking me.
-- Report once, when the task is done or when the next step turns on my answer; no
-  progress notes unless I ask for them.
+- Report once, when the task is done or when the next step turns on my answer.
 
 ## Code
 

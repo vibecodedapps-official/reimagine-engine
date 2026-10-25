@@ -425,6 +425,28 @@ Check:
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
 
+## House-rule edit fourteen: M33
+
+Added 2026-10-25. The amended R20, decision 117. Built after M31 and M32. Depends on nothing; touches `plugins/rules/` and `tests/rules/` only.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M33 | house-rule edit fourteen | the shortened report-once item, the test assertion and the moved digest literals; rules 0.1.10 | - |
+
+### M33: house-rule edit fourteen
+
+Work items, in this order:
+
+1. The design documents: the amended R20 in `docs/requirements.md`, decision 117 in `docs/decisions.md`, the quoted item in `docs/architecture.md`, and this section. Commit: `docs(design): specify house-rule edit fourteen`.
+2. `node tools/release.mjs rules 0.1.10`, and the version literals of `tests/rules/rules.test.mjs` to 0.1.10 in the same commit. Commit: `release(rules): 0.1.10`.
+3. `plugins/rules/rules/core.md`: the Working item of decision 117. `tests/rules/rules.test.mjs`: the R20 assertion moved to the new text with an assertion that the dropped clause is absent, and the shipped digest literals for `core` and `core,windows` moved by running the script once and pasting the observed values (decision 11); the rule count does not move, and the adopt and import line-number literals move up by one with the shorter block. Commit: `feat(rules): report once, without the progress-notes clause`.
+4. After the push: the `## rules 0.1.10 - <date>` heading in `CHANGELOG.md`, commit `docs(changelog): add the rules 0.1.10 heading`, pushed, then `claude plugin tag --push plugins/rules`; the acceptance record, commit `docs(acceptance): record the house-rule edit fourteen milestone`.
+
+Check:
+
+- `npm run test:rules` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+- Acceptance items 4 and 22 rerun: the staleness notice on a profile holding the 0.1.9 block; the tag rule at `rules--v0.1.10`.
+
 ## House-rule edit twelve: M31
 
 Added 2026-10-25. The amended R232, decision 115. Built after M30. Depends on nothing; touches `plugins/rules/` and `tests/rules/` only.

@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.9 - 2026-10-25
+
+- The first Code item asks for the simplest change that is correct and stays correct as the code grows, as one instruction with three qualities: in the code's own patterns and helpers, at every place the behavior lives, with nothing built for a need only imagined. "Smallest" had let a bespoke patch beside an existing helper count as small; the list "no option, abstraction, or fallback" goes and its principle stays. The instruction-file sentence and "Say why for any extra" are unchanged.
+- The Working item on a wrong request says so first, with the evidence and the alternative, then does the alternative; calling it "the first decision to raise" had ended the turn with nothing done. The rule count stays 35; the block updates through /rules.
+
 ## rules 0.1.8 - 2026-10-25
 
 - The first Code item gains one sentence: where a project's instruction file and its code disagree, follow the code and say where they differ. A controlled study found the model noticing such a conflict and following the stale file anyway in 79 of 80 runs, and a one-sentence rule moving the choices that follow the code from 4.2% to 91.4%; the sentence is scoped to a project's file so the house rules keep their own precedence.

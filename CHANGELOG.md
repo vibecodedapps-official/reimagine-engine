@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.8 - 2026-10-25
+
+- The first Code item gains one sentence: where a project's instruction file and its code disagree, follow the code and say where they differ. A controlled study found the model noticing such a conflict and following the stale file anyway in 79 of 80 runs, and a one-sentence rule moving the choices that follow the code from 4.2% to 91.4%; the sentence is scoped to a project's file so the house rules keep their own precedence.
+- The Done item on tests reads "Don't weaken, skip or delete a test to make checks pass"; deleting a test had passed through the gap. The rule count stays 35; the block updates through /rules.
+
 ## rules 0.1.7 - 2026-10-24
 
 - The house rules keep their principles and drop the sentences with no failure behind them: the design sentence of the first Code item; "and whether you checked it" from the decision item; "On retry, reissue the same calls and nothing else"; the item that named the steps the permission mode is likely to deny before starting; and the Done item that described an edit from the diff, which "Keep whatever describes the work accurate" covers. A finding outside the request is now weighed by the same test as one inside it, "inside the request or not", and the findings item loses "the few" and "apart and counted"; a finding the owner wanted had been framed as unimportant because it lay outside the request. 37 rules become 35; the block updates through /rules.

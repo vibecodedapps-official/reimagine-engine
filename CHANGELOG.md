@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.10 - 2026-10-25
+
+- The Working item that asks for one report ends after "when the next step turns on my answer"; the clause "no progress notes unless I ask for them" goes. It restated the bound the first clause already sets, and the owner read it as pushing replies toward under-reporting. The rule count stays 35; the block updates through /rules.
+
 ## rules 0.1.9 - 2026-10-25
 
 - The first Code item asks for the simplest change that is correct and stays correct as the code grows, as one instruction with three qualities: in the code's own patterns and helpers, at every place the behavior lives, with nothing built for a need only imagined. "Smallest" had let a bespoke patch beside an existing helper count as small; the list "no option, abstraction, or fallback" goes and its principle stays. The instruction-file sentence and "Say why for any extra" are unchanged.

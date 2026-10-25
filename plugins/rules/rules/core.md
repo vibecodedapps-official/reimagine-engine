@@ -39,11 +39,10 @@ Any instruction file can add an ask-first rule; none removes one.
 
 ## Code
 
-- Make the smallest change that is correct and stays correct as the code grows. Follow
-  the code's existing patterns and helpers, and change every place the behavior lives.
-  Where a project's instruction file and its code disagree, follow the code and say where
-  they differ. A need only imagined gets no option, abstraction, or fallback. Say why for
-  any extra.
+- Make the simplest change that is correct and stays correct as the code grows: in the
+  code's own patterns and helpers, at every place the behavior lives, with nothing built
+  for a need only imagined. Where a project's instruction file and its code disagree,
+  follow the code and say where they differ. Say why for any extra.
 - A code comment only where the code itself is unclear, and brief. Ticket numbers and
   change history go in the commit message, not the code.
 - Commits: `type(scope): subject`, lowercase. The body says why.

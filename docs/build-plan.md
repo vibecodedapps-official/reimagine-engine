@@ -425,6 +425,28 @@ Check:
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
 
+## House-rule edit eleven: M30
+
+Added 2026-10-25. The amended R232 and the new R284, decision 114. Built after M29. Depends on nothing; touches `plugins/rules/` and `tests/rules/` only.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M30 | house-rule edit eleven | the sentence in the Code item and the word in the Done item, the test assertions and the moved digest literals; rules 0.1.8 | - |
+
+### M30: house-rule edit eleven
+
+Work items, in this order:
+
+1. The design documents: the amended R232 and the new R284 in `docs/requirements.md`, decision 114 in `docs/decisions.md`, and this section. Commit: `docs(design): specify house-rule edit eleven`.
+2. `node tools/release.mjs rules 0.1.8`, and the version literals of `tests/rules/rules.test.mjs` to 0.1.8 in the same commit. Commit: `release(rules): 0.1.8`.
+3. `plugins/rules/rules/core.md`: the two edits of decision 114. `tests/rules/rules.test.mjs`: the R232 assertion moved to the new text, an `items.includes` assertion for R284, and the shipped digest literals for `core` and `core,windows` moved by running the script once and pasting the observed values (decision 11); the rule count and adopt line numbers do not move. Commit: `feat(rules): follow the code over a stale instruction file, and never delete a test to pass`.
+4. After the push: the `## rules 0.1.8 - <date>` heading in `CHANGELOG.md`, commit `docs(changelog): add the rules 0.1.8 heading`, pushed, then `claude plugin tag --push plugins/rules`; the acceptance record, commit `docs(acceptance): record the house-rule edit eleven milestone`.
+
+Check:
+
+- `npm run test:rules` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+- Acceptance items 4 and 22 rerun: the staleness notice on a profile holding the 0.1.7 block; the tag rule at `rules--v0.1.8`.
+
 ## House-rule edit ten and Concise Plain 4.7: M29
 
 Added 2026-10-24. The amended R232, R233, R236, R269 and R43, the retired R235 and R280, decision 113. Built after M26 to M28. Depends on nothing; touches `plugins/rules/`, `tests/rules/`, `tools/lint.mjs` and `tests/lint/` only.

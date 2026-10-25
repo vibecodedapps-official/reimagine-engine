@@ -41,7 +41,9 @@ Any instruction file can add an ask-first rule; none removes one.
 
 - Make the smallest change that is correct and stays correct as the code grows. Follow
   the code's existing patterns and helpers, and change every place the behavior lives.
-  A need only imagined gets no option, abstraction, or fallback. Say why for any extra.
+  Where a project's instruction file and its code disagree, follow the code and say where
+  they differ. A need only imagined gets no option, abstraction, or fallback. Say why for
+  any extra.
 - A code comment only where the code itself is unclear, and brief. Ticket numbers and
   change history go in the commit message, not the code.
 - Commits: `type(scope): subject`, lowercase. The body says why.
@@ -65,7 +67,7 @@ Any instruction file can add an ask-first rule; none removes one.
 - A behavior change gets a test if the repo has a suite, else one check that fails if
   the logic breaks.
 - A check that failed before you started is not yours to fix. Say so, with the run that
-  shows it. Don't weaken or skip a test to make checks pass.
+  shows it. Don't weaken, skip or delete a test to make checks pass.
 - Stay inside the request. A bug's cause is inside it, wherever it lives. Report
   anything else you notice, with evidence.
 - Keep whatever describes the work accurate. Name any check you didn't run. A claim

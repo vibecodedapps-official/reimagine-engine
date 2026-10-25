@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = '018cff3e37881c5d';
+const SHIPPED_CORE_DIGEST = '214a5bb4d7ef8c41';
 
 test('R25: the block version is the version in the manifest of the plugin root, and the shipped manifest is 0.1.8', () => {
   assert.equal(pluginVersion(), '0.1.8');
@@ -39,8 +39,8 @@ test('R25: the block version is the version in the manifest of the plugin root, 
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, '018cff3e37881c5d');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'b13d3897b20043a0');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, '214a5bb4d7ef8c41');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '2e5b4e59c049a8b2');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -61,9 +61,9 @@ test('R20: core.md holds the item that asks for one report, with no progress not
   assert.ok(items.includes('Report once, when the task is done or when the next step turns on my answer; no progress notes unless I ask for them.'));
 });
 
-test('R232: the first Code item asks for the smallest change that stays correct as the code grows, without the design sentence', () => {
+test('R232: the first Code item asks for the smallest change that stays correct as the code grows and follows the code over a stale instruction file', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Make the smallest change that is correct and stays correct as the code grows. Follow the code\'s existing patterns and helpers, and change every place the behavior lives. A need only imagined gets no option, abstraction, or fallback. Say why for any extra.'));
+  assert.ok(items.includes('Make the smallest change that is correct and stays correct as the code grows. Follow the code\'s existing patterns and helpers, and change every place the behavior lives. Where a project\'s instruction file and its code disagree, follow the code and say where they differ. A need only imagined gets no option, abstraction, or fallback. Say why for any extra.'));
   assert.equal(items.some((n) => n.includes('Where a next change is known')), false);
   assert.equal(items.some((n) => n.startsWith('Make the smallest correct change.')), false);
 });
@@ -101,6 +101,12 @@ test('R280 retired: core.md no longer holds the Done item that describes an edit
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
   assert.equal(items.some((n) => n.startsWith('Describe an edit from the diff')), false);
   assert.ok(items.some((n) => n.startsWith('Keep whatever describes the work accurate.')));
+});
+
+test('R284: the Done item forbids deleting a test to make checks pass, as well as weakening or skipping one', () => {
+  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
+  assert.ok(items.includes('A check that failed before you started is not yours to fix. Say so, with the run that shows it. Don\'t weaken, skip or delete a test to make checks pass.'));
+  assert.equal(items.some((n) => n.endsWith('Don\'t weaken or skip a test to make checks pass.')), false);
 });
 
 test('R36: render joins the parts with one empty line, windows before core, in the line ending given', () => {
@@ -1358,11 +1364,11 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
     'note: 1 of 35 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 101 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 103 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
     'note: 1 of 35 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 101 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 103 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1381,7 +1387,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 99: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 101: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));

@@ -425,6 +425,29 @@ Check:
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
 
+## House-rule edit ten and Concise Plain 4.7: M29
+
+Added 2026-10-24. The amended R232, R233, R236, R269 and R43, the retired R235 and R280, decision 113. Built after M26 to M28. Depends on nothing; touches `plugins/rules/`, `tests/rules/`, `tools/lint.mjs` and `tests/lint/` only.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M29 | house-rule edit ten and Concise Plain 4.7 | the five trimmed items and the two dropped ones, the test assertions and the moved digest literals and rule count; the style sentence, the chat block lines and the lint literal at 4.7; rules 0.1.7 | - |
+
+### M29: house-rule edit ten and Concise Plain 4.7
+
+Work items, in this order:
+
+1. The design documents: the amended and retired rows in `docs/requirements.md`, decision 113 in `docs/decisions.md`, and this section. Commit: `docs(design): specify house-rule edit ten and concise plain 4.7`.
+2. `node tools/release.mjs rules 0.1.7`, and the version literals of `tests/rules/rules.test.mjs` to 0.1.7 in the same commit, so the rules tests pass at every commit. Commit: `release(rules): 0.1.7`.
+3. `plugins/rules/rules/core.md`: the edits of decision 113. `tests/rules/rules.test.mjs`: the `items.includes` assertions moved to the new texts, an absence assertion for each dropped item and sentence, and the shipped digest literals for `core` and `core,windows`, the rule count and the adopt line numbers, moved by running the script once and pasting the observed values (decision 11), in the same commit. Commit: `feat(rules): keep the principles, drop the sentences with no failure behind them`.
+4. `plugins/rules/output-styles/concise-plain.md`: the Drafts sentence of decision 113, the description ending in `v4.7.`; `plugins/rules/chat/instructions.md`: the findings line and the Drafts line inside the fenced block and the header line at `Concise Plain v4.7`, the list of deliberate differences unchanged; `tools/lint.mjs` and `tests/lint/lint.test.mjs`: the `v4.6` literals become `v4.7`. Commit: `feat(rules): concise plain 4.7, name the source instead of restating it`.
+5. After the push: the `## rules 0.1.7 - <date>` heading in `CHANGELOG.md`, one bullet per change, commit `docs(changelog): add the rules 0.1.7 heading`, pushed, then `claude plugin tag --push plugins/rules`; the acceptance record, commit `docs(acceptance): record the house-rule edit ten milestone`.
+
+Check:
+
+- `npm run test:rules` and `npm run test:lint` on each commit of items 2 to 4, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+- Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.6 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.7`; each recorded with date, machine, versions and permission mode.
+
 ## Field feedback 2026-10-23: M27 and M28
 
 Added 2026-10-24. Requirements R281 to R283 and the amended R6, R50, R56, R76, R77, R81, R88, R116, R125, R139, R159, R184 and R193; decision 112; acceptance item 45. Eight findings from field runs of loop 0.1.4 and audit 0.1.6, verified against the shipped texts on 2026-10-24; one was dropped and the record helper of decision 31 stays deferred (decision 112). Two sub-milestones under one heading, since the plugins release separately: M27 touches `plugins/loop/` and `tests/loop/`, M28 `plugins/audit/`, `tests/audit/` and `tools/lint.mjs`. Neither bumps a version: the manifests already carry loop 0.1.5 and audit 0.1.7 from the rename commit (decision 110), above `loop--v0.1.4` and `audit--v0.1.6`. Each commit runs the area scripts that cover what it touched, each as its own command with its exit code read; `npm test` and lint with the deny tokens run once before the push.

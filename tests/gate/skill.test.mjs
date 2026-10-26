@@ -329,3 +329,7 @@ test('R317: report.md holds the report header line for line and its seven sectio
     '## Findings', '## Checks', '## Commits and pushes', '## Open findings', '## Blocked or stopped', '## Comment', '## Log',
   ]);
 });
+
+test('R317: Step 4 prints the written report whole as the last text, with nothing after it', () => {
+  holds('steps/4-publish.md', 'print the whole text of the report, unchanged, as the last text of this target', 'Nothing follows it: no summary, note or offer.');
+});

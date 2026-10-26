@@ -84,7 +84,7 @@ Commits:
 
 ## 4.5 The report
 
-Read `report.md` and write the report from the record. It is printed as the run's last text.
+Read `report.md` and write the report from the record to `<record>/report.md`; with no record (4.2), it is printed only. Then print the whole text of the report, unchanged, as the last text of this target. Nothing follows it: no summary, note or offer. A headless caller sees only the last message, so the report has to be it.
 
 ## 4.6 Next
 

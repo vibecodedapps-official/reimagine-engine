@@ -427,11 +427,11 @@ Check:
 
 ## The gate comment's home directory: M40
 
-Added 2026-10-26. The amended R314, decision 135. Built after M39. Depends on nothing; touches `plugins/gate/` and `tests/gate/` only, with the catalog and the changelog.
+Added 2026-10-26. The amended R314, decision 135, and R11 with decision 8 for the gate's commit step. Built after M39. Depends on nothing; touches `plugins/gate/` and `tests/gate/` only, with the catalog and the changelog.
 
 | # | Milestone | Adds | Depends on |
 |---|---|---|---|
-| M40 | the gate comment's home directory | the `~` rule for quoted text in Step 4 and its test; gate 0.1.1 | M39 |
+| M40 | the gate comment's home directory | the `~` rule for quoted text in Step 4, no attribution trailer in Step 2's commit, and their tests; gate 0.1.1 | M39 |
 
 ### M40: the gate comment's home directory
 
@@ -440,12 +440,13 @@ Work items, in this order:
 1. The design documents: the amended R314 in `docs/requirements.md`, decision 135 in `docs/decisions.md`, the comment line in `docs/architecture.md`, and this section. Commit: `docs(design): specify the gate comment's home directory`.
 2. `node tools/release.mjs gate 0.1.1`, and the catalog `metadata.version` raised by one. Commit: `release(gate): 0.1.1`.
 3. `plugins/gate/skills/gate/steps/4-publish.md`: the rule of decision 135 in 4.4, item 3; `tests/gate/skill.test.mjs`: an assertion that it is there. Commit: `fix(gate): write the home directory as ~ in quoted comment text`.
-4. Acceptance item 51, run with the owner, and the acceptance record. Commit: `docs(acceptance): record the gate comment milestone`.
-5. After the push: the `## gate 0.1.1 - <date>` heading in `CHANGELOG.md`, commit `docs(changelog): add the gate 0.1.1 heading`, pushed, then `claude plugin tag --push plugins/gate` after a yes. Items 21 and 22 at the tag are recorded with the next change, as loop 0.1.6's were.
+4. `plugins/gate/skills/gate/steps/2-fix.md`: "Type no attribution trailer" in The commit, item 1, as the loop's publish step has it (R11, decision 8): the step did not say it, and of six runs on profiles that set no attribution, three left the host's trailer out, citing the gate's commit rule, and three kept it, two of them citing the session's attribution instruction; `tests/gate/skill.test.mjs`: an assertion that it is there. Commit: `fix(gate): type no attribution trailer in the fix commit`.
+5. Acceptance item 51, run with the owner, and the acceptance record. Commit: `docs(acceptance): record the gate comment milestone`.
+6. After the push: the `## gate 0.1.1 - <date>` heading in `CHANGELOG.md`, commit `docs(changelog): add the gate 0.1.1 heading`, pushed, then `claude plugin tag --push plugins/gate` after a yes. Items 21 and 22 at the tag are recorded with the next change, as loop 0.1.6's were.
 
 Check:
 
-- `npm run test:gate` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+- `npm run test:gate` on each commit of items 2 to 4, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance item 51; items 21 and 22 at the tag. Item 50 is not rerun: its template is unchanged, and no run can be made to quote a home path.
 
 ## The gate plugin and the loop's step 5: M34 to M39

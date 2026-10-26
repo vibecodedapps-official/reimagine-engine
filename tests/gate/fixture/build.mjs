@@ -57,9 +57,13 @@ test('mean divides the sum by the count', () => {
 `;
 
 const PERCENTILE = `
+// The nearest-rank percentile of finite numbers, p a whole percent from 1 to 100.
 export function percentile(values, p) {
+  if (values.length === 0) throw new RangeError('percentile of no values');
+  if (!values.every(Number.isFinite)) throw new TypeError('percentile of a value that is not a finite number');
+  if (!Number.isInteger(p) || p < 1 || p > 100) throw new RangeError('p must be a whole number from 1 to 100');
   const sorted = [...values].sort((a, b) => a - b);
-  const rank = Math.ceil((p / 100) * sorted.length);
+  const rank = Math.ceil((p * sorted.length) / 100);
   return sorted[rank];
 }
 `;
@@ -67,6 +71,13 @@ export function percentile(values, p) {
 const PERCENTILE_TEST = `
 test('percentile returns the nearest-rank value', () => {
   assert.equal(percentile([1, 2, 3, 4], 50), 3);
+});
+
+test('percentile rejects no values, a value that is not finite and a p outside 1 to 100', () => {
+  assert.throws(() => percentile([], 50), RangeError);
+  assert.throws(() => percentile([1, NaN], 50), TypeError);
+  assert.throws(() => percentile([1, 2], 0), RangeError);
+  assert.throws(() => percentile([1, 2], 50.5), RangeError);
 });
 `;
 
@@ -77,6 +88,7 @@ const SUMMARY = `function addUp(values) {
 }
 
 export function summary(values) {
+  if (values.length === 0) throw new RangeError('summary of no values');
   const total = addUp(values);
   return { count: values.length, total, average: total / values.length };
 }

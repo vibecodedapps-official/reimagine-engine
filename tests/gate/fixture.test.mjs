@@ -26,33 +26,33 @@ const capChecks = '{\n  "checks": [\n    "npm test"\n  ],\n  "gate": {\n    "max
 const variants = {
   converges: {
     main: 'fa98f9ec5de74f03952fdb1ca44547ed2063ce29',
-    feature: '1964ba5fcc7c9546baae85d94b9e9b50b3503553',
+    feature: '225d88e9016e97b40cc9a91902bebbb4546e6184',
     config: checks,
-    numstat: '6\t0\tsrc/stats.mjs\n5\t1\tsrc/stats.test.mjs\n',
+    numstat: '10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
   },
   defers: {
     main: 'fa98f9ec5de74f03952fdb1ca44547ed2063ce29',
-    feature: 'ec084f1a6e4b9013d0fb7497b08cf321d42b6a39',
+    feature: '9afec21255815785e59265b14cc82e0e28943996',
     config: checks,
-    numstat: '6\t0\tsrc/stats.mjs\n5\t1\tsrc/stats.test.mjs\n10\t0\tsrc/summary.mjs\n7\t0\tsrc/summary.test.mjs\n',
+    numstat: '10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n11\t0\tsrc/summary.mjs\n7\t0\tsrc/summary.test.mjs\n',
   },
   cap: {
     main: '4018c6906a14f47aabf04a13b8423996d7956ad3',
-    feature: '2976ac582eae248834b181cbe9378c4d395a2f89',
+    feature: 'd70e1d2cba1c10b7529a4657374e9df6ae5b9cd4',
     config: capChecks,
-    numstat: '6\t0\tsrc/stats.mjs\n5\t1\tsrc/stats.test.mjs\n',
+    numstat: '10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
   },
   carried: {
     main: 'fa98f9ec5de74f03952fdb1ca44547ed2063ce29',
-    feature: '6ba051a831b6879dab11af16358f113d91078031',
+    feature: 'c789b69357cdbbec4d0121f800153503c66c5690',
     config: checks,
-    numstat: '10\t0\tsrc/share.mjs\n15\t0\tsrc/share.test.mjs\n6\t0\tsrc/stats.mjs\n5\t1\tsrc/stats.test.mjs\n',
+    numstat: '10\t0\tsrc/share.mjs\n15\t0\tsrc/share.test.mjs\n10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
   },
   split: {
     main: 'fa98f9ec5de74f03952fdb1ca44547ed2063ce29',
-    feature: 'b500af922e230835adf0d355c195ad5ad7d094d6',
+    feature: '797b9542ef0e934b98a2790e7996543a7a5d4d6c',
     config: checks,
-    numstat: '1652\t0\tdata/levels.mjs\n6\t0\tsrc/stats.mjs\n5\t1\tsrc/stats.test.mjs\n',
+    numstat: '1652\t0\tdata/levels.mjs\n10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
   },
 };
 

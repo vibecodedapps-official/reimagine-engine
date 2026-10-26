@@ -101,7 +101,7 @@ test('R219: the skill has a Supporting files section', () => {
 });
 
 test('R219: Supporting files names every file of the skill, and each ends by naming where the run goes next', () => {
-  assert.deepEqual(supporting(), ['steps/0-preflight.md']);
+  assert.deepEqual(supporting(), ['steps/0-preflight.md', 'steps/1-pass.md']);
   const lines = SKILL.split('\n');
   const start = lines.indexOf('## Supporting files');
   const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
@@ -153,4 +153,35 @@ test('R310: Step 0 writes passes.json and the run entry, then sends the run to p
   const last = read('steps/0-preflight.md').trimEnd().split('\n').pop();
   assert.ok(last.includes('`steps/1-pass.md`') && last.includes('`xhigh`'), 'Step 0 does not send a new record to pass 1 at xhigh');
   assert.ok(last.includes('`steps/3-next.md`') && last.includes('Resume'), 'Step 0 does not send an existing record to Resume');
+});
+
+// The lines inside the fenced blocks of a text.
+const fencedLines = (text) => fences(text).flatMap((b) => b.lines);
+
+const COMMAND =
+  'cd <repo root> && env -u CLAUDECODE claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
+
+test('R305: Step 1 holds the child session command as one fenced line', () => {
+  const text = holds('steps/1-pass.md', 'run_in_background');
+  assert.ok(text.startsWith('# Step 1: A pass\n'));
+  assert.ok(fencedLines(text).includes(COMMAND), 'Step 1 lacks the command literal');
+});
+
+test('R305: the command unsets CLAUDECODE, reads stdin from /dev/null and allows only the review tools', () => {
+  const line = fencedLines(read('steps/1-pass.md') ?? '').find((l) => l.includes('claude -p')) ?? '';
+  for (const word of [
+    'Read', 'Grep', 'Glob', 'Skill', 'Agent', 'TaskStop',
+    'Bash(git diff *)', 'Bash(git log *)', 'Bash(git show *)', 'Bash(git status *)', 'Bash(git ls-files *)',
+    '--permission-mode default', 'env -u CLAUDECODE', '< /dev/null', '--output-format json',
+  ]) {
+    assert.ok(line.includes(word), `the command lacks ${word}`);
+  }
+});
+
+test('R299: Step 1 names the three buckets', () => {
+  holds('steps/1-pass.md', '`fix`', '`defer`', '`reject`');
+});
+
+test('R296: nothing is edited while a review runs', () => {
+  holds('steps/1-pass.md', 'Nothing is edited while a review runs.');
 });

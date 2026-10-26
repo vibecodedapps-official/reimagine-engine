@@ -99,7 +99,7 @@ A pass is one review of the whole change from the merge-base at one typed level,
 
 You do not choose the next level. After the fix round, `next.mjs` reads the record and returns the next level or a stop with the rule that produced it. The rules apply in this order:
 
-1. The latest pass's fix bucket is empty and its reject bucket holds nothing new: stop with `pass`, or `pass-with-deferred` when any pass deferred something.
+1. The latest pass's fix bucket is empty and its reject bucket holds nothing new: stop with `pass`, or `pass-with-deferred` when any pass of the run deferred something.
 2. The latest pass ran at `medium`: stop, with `pass` or `pass-with-deferred` when its fix bucket was empty and `unconverged` otherwise.
 3. The fix round changed an exported signature, a schema or migration, a file outside the original diff, or more than a quarter of the diff's files: `xhigh`, at most once per run after pass 1.
 4. The two latest passes both ran at `high`, each with an empty fix bucket and a reject bucket holding something new: `medium`.
@@ -141,7 +141,7 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 
 Every run ends in exactly one state.
 
-- `pass`: a stop with the fix bucket empty and nothing deferred in any pass, under rule 1 or 2 or under "no fixes".
+- `pass`: a stop with the fix bucket empty and nothing deferred in any pass of the run, under rule 1 or 2 or under "no fixes".
 - `pass-with-deferred`: the same stop, with deferred findings that go to the comment and the report.
 - `unconverged`: a cap was reached, a review failed, a `medium` pass still found something to fix, or a "no fixes" run has a non-empty fix bucket. Every open finding is listed.
 - `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, or a check still failing after three fixes.
@@ -166,12 +166,14 @@ The files:
 
 From run 2 on, a per-run name without a counter takes `-run<n>`.
 
-`passes.json` is the only record of completion. An entry is written `running` when a pass starts and `complete` after the fix round and its commit, through a temporary file and a rename. A second invocation on the same branch appends a run to the record. When the head and the merge-base are those the last complete pass left, it resumes at the first pass not `complete`, else at the level in that pass's `next` with `max-passes` counted afresh, and a `next` that is a stop ends the run with that verdict; a new head, or a changed merge-base, starts a new pass sequence at `xhigh` with the ledger kept, so earlier rejections carry.
+`passes.json` is the only record of completion. An entry is written `running` when a pass starts and `complete` after the fix round and its commit, through a temporary file and a rename. A second invocation on the same branch appends a run to the record. When the head and the merge-base are those the last complete pass left, it resumes at the first pass not `complete`, else at the level in that pass's `next` with `max-passes` counted afresh, and a `next` that is a stop ends the run with that verdict, unless it is the `no-fixes` stop and this run fixes; a new head, or a changed merge-base, starts a new pass sequence at `xhigh` with the ledger kept, so earlier rejections carry.
 
 ## Supporting files
 
 - `steps/0-preflight.md`: after the reading block, for each target in turn.
 - `steps/1-pass.md`: at the start of each pass, for the review and the triage.
 - `steps/2-fix.md`: after a triage that leaves a fix bucket, outside "no fixes".
+- `steps/3-next.md`: after the fix round, or after a triage with nothing to fix or in "no fixes"; its Resume section when Step 0 finds a record that holds passes.
+- `record.md`: when a step writes a record file, for the files, the `passes.json` and `findings.json` shapes and the write discipline.
 - `scripts/findings.mjs`: after each review, to turn its saved output into the pass's findings and the ledger.
 - `scripts/next.mjs`: after each fix round, to decide the next level or the stop from `passes.json`.

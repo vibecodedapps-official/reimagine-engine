@@ -101,7 +101,7 @@ test('R219: the skill has a Supporting files section', () => {
 });
 
 test('R219: Supporting files names every file of the skill, and each ends by naming where the run goes next', () => {
-  assert.deepEqual(supporting(), ['steps/0-preflight.md', 'steps/1-pass.md', 'steps/2-fix.md']);
+  assert.deepEqual(supporting(), ['record.md', 'steps/0-preflight.md', 'steps/1-pass.md', 'steps/2-fix.md', 'steps/3-next.md']);
   const lines = SKILL.split('\n');
   const start = lines.indexOf('## Supporting files');
   const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
@@ -208,4 +208,40 @@ test('R295: Step 2 reads the remote head with git ls-remote and compares it befo
 
 test('R301: Step 2 judges the fix round with the five change kinds next.mjs accepts', () => {
   holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`');
+});
+
+// The lines of the first fenced json block after the line `marker`, or null.
+const jsonAfter = (text, marker) => {
+  if (text === null) return null;
+  const lines = text.split('\n');
+  const at = lines.indexOf(marker);
+  if (at < 0) return null;
+  const start = lines.findIndex((l, i) => i > at && l === '```json');
+  const end = lines.findIndex((l, i) => i > start && l === '```');
+  return start < 0 || end < 0 ? null : lines.slice(start + 1, end);
+};
+
+test('R311: record.md holds the passes.json literal of the architecture, line for line', () => {
+  const arch = jsonAfter(readFileSync(new URL('../../docs/architecture.md', import.meta.url), 'utf8'), '`passes.json`:');
+  assert.notEqual(arch, null, 'architecture.md has no passes.json block');
+  assert.equal(arch.length, 17);
+  assert.equal(arch[0], '{');
+  assert.ok(arch.includes('  "merge_base": "<sha>",'));
+  assert.deepEqual(jsonAfter(read('record.md'), '`passes.json`:'), arch);
+});
+
+test('R301 and R303: Step 3 names the five rules of next.mjs, the two caps and the no-fixes stop', () => {
+  holds('steps/3-next.md', '`nothing-to-fix`', '`after-medium`', '`wide-fix`', '`rejects-at-high`', '`otherwise`', '`max-passes`', '`budget`', '`no-fixes`');
+});
+
+test('R312: Step 3 resumes a record by its head and merge-base', () => {
+  const text = holds('steps/3-next.md', '## Resume');
+  const resume = text.slice(text.indexOf('## Resume'));
+  for (const phrase of ['the first pass not `complete`', '`max-passes` counted afresh', 'a new pass sequence at `xhigh`', 'the ledger kept', 'merge-base']) {
+    assert.ok(resume.includes(phrase), `Resume lacks ${phrase}`);
+  }
+});
+
+test('decision 130: a pass of the run, not of the record, decides pass-with-deferred', () => {
+  assert.ok(SKILL.includes('`pass-with-deferred` when any pass of the run deferred something'));
 });

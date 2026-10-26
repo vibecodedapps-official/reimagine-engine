@@ -101,7 +101,7 @@ test('R219: the skill has a Supporting files section', () => {
 });
 
 test('R219: Supporting files names every file of the skill, and each ends by naming where the run goes next', () => {
-  assert.deepEqual(supporting(), ['steps/0-preflight.md', 'steps/1-pass.md']);
+  assert.deepEqual(supporting(), ['steps/0-preflight.md', 'steps/1-pass.md', 'steps/2-fix.md']);
   const lines = SKILL.split('\n');
   const start = lines.indexOf('## Supporting files');
   const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
@@ -184,4 +184,28 @@ test('R299: Step 1 names the three buckets', () => {
 
 test('R296: nothing is edited while a review runs', () => {
   holds('steps/1-pass.md', 'Nothing is edited while a review runs.');
+});
+
+test('R300: Step 2 takes the three snapshot files before each implementer call and restores only clean paths', () => {
+  const text = holds('steps/2-fix.md', 'pre-<n>.status', 'pre-<n>.patch', 'pre-<n>.hashes', 'models.implementer', '20 minutes', 'never touch an ignored path or anything under `.reimagine/`');
+  assert.ok(text.startsWith('# Step 2: The fix round\n'));
+});
+
+test('R300 and R303: Step 2 runs the checks one at a time for 15 minutes and fixes a failing one at most three times', () => {
+  holds('steps/2-fix.md', 'one command at a time', '15 minutes', 'three times', '`denied`', 'no `checks` key');
+});
+
+test('R300: Step 2 stages each path by name and never stages everything', () => {
+  const text = holds('steps/2-fix.md', 'git add -- <path>');
+  for (const form of ['git add -A', 'git add --all', 'git add .', 'git commit -a']) {
+    assert.ok(!text.includes(form), `steps/2-fix.md holds ${form}`);
+  }
+});
+
+test('R295: Step 2 reads the remote head with git ls-remote and compares it before every push', () => {
+  holds('steps/2-fix.md', 'git ls-remote', 'what preflight fetched', 'the last sha this run pushed', 'no force');
+});
+
+test('R301: Step 2 judges the fix round with the five change kinds next.mjs accepts', () => {
+  holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`');
 });

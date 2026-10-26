@@ -1,7 +1,7 @@
 {
   "name": "reimagine-engine",
   "version": "0.1.0",
-  "description": "Claude Code plugins: house rules, a build loop, an audit, and instruction-file maintenance",
+  "description": "Claude Code plugins: house rules, a build loop, an audit, a review gate, and instruction-file maintenance",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -14,6 +14,7 @@
     "test:loop": "node --test \"tests/loop/*.test.mjs\"",
     "test:audit": "node --test \"tests/audit/*.test.mjs\"",
     "test:primer": "node --test \"tests/primer/*.test.mjs\"",
+    "test:gate": "node --test \"tests/gate/*.test.mjs\"",
     "test:lint": "node --test \"tests/lint/*.test.mjs\"",
     "test:release": "node --test \"tests/release/*.test.mjs\"",
     "eval": "claude plugin eval . --eval-dir tests/evals --runs 2 --no-publish",

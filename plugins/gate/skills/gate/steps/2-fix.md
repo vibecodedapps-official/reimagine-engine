@@ -44,7 +44,7 @@ Judge the fix round's change kinds and write them into `changes`. The diff the p
 - `outside-diff`: at least one changed file is not.
 - `exported-signature`: an exported function, class, type or public API signature changed.
 - `schema-or-migration`: a schema or migration file changed.
-- `over-quarter`: the fix round changed more than a quarter of that diff's files.
+- `over-quarter`: the fix round changed more than a quarter of that diff's files. Count both lists: it applies when four times the number of changed files is more than the number of that diff's files, so 2 changed of 4 is over a quarter and 2 of 8 is not.
 
 A fix round that changed nothing is `[]`.
 

@@ -224,6 +224,10 @@ test('R301: Step 2 judges the fix round with the five change kinds next.mjs acce
   holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`');
 });
 
+test('R301: Step 2 counts the files for over-quarter instead of judging the share', () => {
+  holds('steps/2-fix.md', 'Count both lists: it applies when four times the number of changed files is more than the number of that diff\'s files, so 2 changed of 4 is over a quarter and 2 of 8 is not.');
+});
+
 // The lines of the first fenced json block after the line `marker`, or null.
 const jsonAfter = (text, marker) => {
   if (text === null) return null;

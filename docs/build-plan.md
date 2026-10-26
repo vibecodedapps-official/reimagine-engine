@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R283; the primer milestones M10 to M19 follow M9, and M20 to M28 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M39 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -424,6 +424,95 @@ Check:
 
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
+
+## The gate plugin and the loop's step 5: M34 to M39
+
+Added 2026-10-25. Requirements R285 to R320 and the amended R1, R6, R62, R63, R65, R66, R72, R106, R109, R110, R111, R113, R120, R127, R134, R135, R145, R219, R224, R272, R273 and R277, with R70 retired; decisions 118 to 134; acceptance items 46 to 54. Built after M33. M34 touches `plugins/loop/`, `tests/loop/` and the README and releases loop 0.1.6; M35 to M39 add `plugins/gate/`, `tests/gate/` with its evals, the catalog entry, lint's lists and rules, `package.json`, `.gitignore` and the hub, and release gate 0.1.0. The audit does not move (decision 129). Each commit runs the area scripts that cover what it touched, each as its own command with its exit code read; `npm test` and lint with the deny tokens run once per milestone before its push. Every shipped text names the activity, never a model, agent or tool, in anything a pull request or ticket reader sees.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M34 | loop step 5 one pass | the one-pass step 5 with its triage, the level cap, the `reviews` key, the `Gate:` report line; loop 0.1.6 | - |
+| M35 | gate scaffold and findings.mjs | `plugins/gate/` with manifest, skill core, README and LICENSE; `scripts/findings.mjs` and its suite; lint, catalog, hub and `test:gate` | - |
+| M36 | next.mjs | `scripts/next.mjs` and its suite: the level rules, the caps, the `medium` stop | M35 |
+| M37 | passes | the step files for preflight, the pass, the fix round, the next level and resume; the record files | M36 |
+| M38 | outputs | the comment, the manifest `gate` key, the report, the terminal states, "no fixes", the stand-in | M37 |
+| M39 | evals, acceptance and release | `tests/gate/evals/` with three cases and its fixture builder; items 46 to 54 run; gate 0.1.0 | M34, M38 |
+
+M34 and M35 touch no common file but the README, the catalog and the changelog, which the first to merge carries, and may proceed in either order; M39 needs both.
+
+### M34: loop step 5 one pass
+
+Work items, in this order, each test written first and seen failing against the untouched text:
+
+1. `node tools/release.mjs loop 0.1.6`, and the catalog's `metadata.version` raised by one by hand, since the script leaves it alone. Commit: `release(loop): 0.1.6`.
+2. Roles and level (R62, R63, R65, R66, R285): the roles table and the roles list of `SKILL.md` (the plan reviewer reviews the plan only; the final reviewer is `code-review` for every run with the `opus` stand-in once; the tools list says SendMessage continues an implementer only; the Supporting files line for `risk.md` names the floor alone); `risk.md` loses its higher-risk section and maps the effort in force to the skill's level with the `xhigh` cap, "max" giving `xhigh` there and `high` with no effort word; `steps/1-plan.md`'s plan-time judgment records the floor and the level, not a role, and its Reviewer request paragraph says Step 5 sends the request to the `opus` stand-in only, its `REVIEW.md` sentence (R272) with it; `multi-repo.md` and `worktree.md` describe the stand-in without the higher-risk condition or the SendMessage continuation; the README the same. `tests/loop/*.test.mjs`: the cap sentence, the "max" mapping, no "higher-risk" in any shipped loop file, and no "SendMessage across rounds". Commit: `feat(loop): review every run with code-review at a capped level`.
+3. Step 5 (R72, R106, R108 to R111, R113, R127): `steps/4-build.md` Step 5 as 5.1 integrate, 5.2 one pass, 5.3 triage into fix, defer and reject with a reason each, 5.4 the fix bucket through the owning implementers after a snapshot and the orchestrator's read of the fix diff, 5.5 record; Step 4.5 judges the floor alone; Step 6's failure path fixes through the implementer and reruns; the repair cycle of `steps/7-publish.md` item 5 is one pass with no higher-risk judgment; `SKILL.md`'s Budgets and rounds loses the third-round sentence and gives the repair cycle one pass; `record.md`'s `run.md` lines record the pass, its level and the buckets; `report.md`'s Risk section reads floor trigger, step 5 level, stand-in, swaps. Tests: the step headings, the bucket names, no "round" under Step 5 in `steps/4-build.md` or `SKILL.md`. Commit: `feat(loop): make the final review one pass with three-bucket triage`.
+4. Manifest and report (R120, R134, R286): `handoff.md`'s manifest shape gains `reviews`; `report.md`'s header gains the `Gate:` line and its `Audit:` rule changes; the README gains the manifest block, which it did not carry before. Tests: the manifest literal in `handoff.md` equals the README's; the header lines. Commit: `feat(loop): add the reviews key and suggest the gate`.
+5. After the push: the `## loop 0.1.6 - <date>` heading in `CHANGELOG.md`, one bullet per change, commit `docs(changelog): add the loop 0.1.6 heading`, pushed, then `claude plugin tag --push plugins/loop` after a yes; the acceptance record, commit `docs(acceptance): record the loop step 5 milestone`.
+
+Check:
+
+- `npm run test:loop` and `npm run test:lint` on each commit of items 2 to 4; the `SKILL.md` core stays under 5,800 words; `npm test` and lint with the deny tokens before the push.
+- Acceptance item 46, and items 21 and 22 at the tag.
+
+### M35: gate scaffold and findings.mjs
+
+Work items, in this order:
+
+1. The scaffold (R1, R2, R4, R9, R14, R288, R289, R291, R293, R294, R313, R318): `plugins/gate/.claude-plugin/plugin.json` at `0.1.0-alpha.1` with the repository URL and no `userConfig` or `dependencies`; `LICENSE` with the holder line; `README.md` with install, use, the configuration block and the record; `skills/gate/SKILL.md` with frontmatter (`name: gate`, the description of the architecture, `allowed-tools` pre-approving `date` and the read-only `git` and `gh` forms the loop pre-approves) and the core sections: reading the request, approval scope, roles, levels and caps, states, record, and a `## Supporting files` section. In the same commit: `tools/lint.mjs` `NAMES` gains `gate` and a gate frontmatter rule (name `gate`, a description naming "reimagine gate", `allowed-tools` within the pre-approved forms, R219); `tests/lint/lint.test.mjs` one negative case per new message, and its two expected messages that list the plugin names updated; `.claude-plugin/marketplace.json` gains the entry at `0.1.0-alpha.1` and `metadata.version` is raised by one; `.gitignore` gains `tests/gate/evals/results/` (R224); the root `README.md` install and uninstall lines and the status line; `CLAUDE.md`'s first paragraph says five plugins and names `gate`; `package.json` `test:gate`. Commit: `feat(gate): scaffold the plugin with its skill core`.
+2. `scripts/findings.mjs` (R302, R306, R307) and `tests/gate/findings.test.mjs` with fixtures under `tests/gate/fixture/`: the saved spike outputs of decision 118 with their paths made relative (a bare array; a scope note, the array and notes after it; two group outputs sharing one finding; a result with no array; `is_error` true), a stand-in reply as text, the normalization cases including the three wordings of decision 126, a regression against a ledger with a `fixed` entry, a carried reject against a `rejected` entry, and each exit code with its message. In the same commit `tools/lint.mjs` `EXECUTABLES` gains the script and the skill's `## Supporting files` names it, so lint's named-script rule holds on every commit. Commit: `feat(gate): parse review output into the ledger with findings.mjs`.
+
+Check:
+
+- `npm run test:gate` and `npm run test:lint` on each commit; `claude plugin validate --strict plugins/gate` and the marketplace; `npm test` and lint with the deny tokens before the push.
+- Acceptance item 1 for the gate from the local catalog.
+
+### M36: next.mjs
+
+Work items:
+
+1. `scripts/next.mjs` (R298, R301, R303, R311) and `tests/gate/next.test.mjs`, one case per rule with the literal level or verdict: pass 1 at `xhigh` with a fix bucket gives `high`; a fix round that changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files gives `xhigh` once and `high` the second time; an empty fix bucket with nothing new rejected gives `pass`, or `pass-with-deferred` when any pass deferred; two `high` passes each with an empty fix bucket and a new rejection give `medium`; after a `medium` pass the stop is `pass`, `pass-with-deferred` or `unconverged` by its fix bucket, before any `xhigh` re-review; `max-passes` reached returns the rule's level marked `capped`; carried rejections count as nothing; a malformed `passes.json` exits 1 naming the key; a recorded level outside `medium`, `high` and `xhigh` exits 1. In the same commit `tools/lint.mjs` `EXECUTABLES` gains the script and the skill names it. Commit: `feat(gate): decide the next pass level with next.mjs`.
+
+Check:
+
+- `npm run test:gate` and `npm run test:lint`; the suite runs under 30 seconds on each platform.
+
+### M37: passes
+
+Work items, in this order, each with a text test in `tests/gate/skill.test.mjs`:
+
+1. `steps/0-preflight.md` (R290 to R295, R309, R310): the target resolution for a pull request, several and a manifest; the base and merge-base; the explicit refspec fetch and the checkout; the clean tree; the instruction files and the permission statement; the record directory and the exclude; the reading block printed before any other tool call. Test: the block's four headings and the `git rev-parse --git-path info/exclude` form. Commit: `feat(gate): resolve targets and print the reading block`.
+2. `steps/1-pass.md` (R296 to R299, R305 to R308): the line count and the split by top-level path; the child session command with every flag and the allowlist as one literal, `CLAUDECODE` unset, stdin from `/dev/null`, `run_in_background` and the wait; the saved output; `findings.mjs`; the triage with its three buckets and reasons written to `passes.json` first; the stand-in and when it is chosen. Test: the command literal, the allowlist words, the bucket names, the sentence that nothing is edited while a review runs. Commit: `feat(gate): run a pass as a child session and triage its findings`.
+3. `steps/2-fix.md` (R300, R295): implementers per disjoint file group, the snapshots, the restore rule, the checks under their budget with the three-fix cap, the commit in the repository's convention staged by name, the remote-head check and the push. Test: the snapshot file names, the `git ls-remote` comparison, no `git add -A`. Commit: `feat(gate): fix, check, commit and push a pass`.
+4. `steps/3-next.md` and `record.md` (R301, R303, R311, R312): `next.mjs` and its rule names, the caps and the `unconverged` ending with open findings, the resume rules by head and merge-base, the record files and the `passes.json` shape as one literal equal to the architecture's. Test: the shape literal, the resume sentences. Commit: `feat(gate): choose the next level and resume a record`.
+
+Check:
+
+- `npm run test:gate` and `npm run test:lint` on each commit; every step file ends by naming the next read and `## Supporting files` names each one.
+
+### M38: outputs
+
+Work items, in this order:
+
+1. `steps/4-publish.md` and `report.md` (R314 to R317, R304): the comment template and its deny list of words that name a model, agent or tool; the manifest `gate` key keyed by `repo` and the minimal manifest; the report header and sections; the terminal states; "no fixes" as one pass with its verdict rule. Tests: the template names none of the deny words; the manifest literal; the header lines. Commit: `feat(gate): post the comment and write the manifest and report`.
+2. `README.md` of the gate: the use lines, the configuration block byte-identical to the skill's, the record and the states. Test: the block equality. Commit: `docs(gate): describe the run in the readme`.
+
+Check:
+
+- `npm run test:gate` and `npm run test:lint`; `npm test` and lint with the deny tokens before the push. The acceptance items wait for M39's builder.
+
+### M39: evals, acceptance and release
+
+Work items, in this order:
+
+1. `tests/gate/fixture/build.mjs` (R319): writes a throwaway repository with a base branch, a feature branch holding a seeded off-by-one in a new function with a test that passes only because of it, a `.reimagine.json` with `checks`, and a bare `origin` remote holding both branches with its HEAD on the base; by argument, the variants `converges` (the seeded bug alone), `defers` (a duplicated helper beside it), `cap` (`max-passes` 1), `carried` (a guard a caller provides, drawing a false positive, for item 48) and `split` (a generated second top-level path over 1500 changed lines beside the bug, for item 47's split run). Commit: `test(gate): add the seeded fixture builder`.
+2. `tests/gate/evals/<case>/prompt.md`, `graders/*.md` and the scaffold script for the three cases of R319, each asserting the verdict and the levels in order through a `regex` grader over the trace; `package.json` gains `eval:gate`. The `converges` case runs first, alone: when the runner's sandbox lets its child session commit and push to the scaffold's remote, the three cases ship and `npm run eval:gate` is run with its scores recorded; when it does not, the cases are dropped, decision 133 records the refusal, and items 47, 49 and 54 stand for them. Commit: `test(gate): add the eval cases`.
+3. Items 46 to 54 run and recorded; `node tools/release.mjs gate 0.1.0`, the catalog `metadata.version` raised by one, the README status line. Commit: `release(gate): 0.1.0`.
+4. After the push: the `## gate 0.1.0 - <date>` heading in `CHANGELOG.md`, commit `docs(changelog): add the gate 0.1.0 heading`, pushed, then `claude plugin tag --push plugins/gate` after a yes; the acceptance record, commit `docs(acceptance): record the gate release`.
+
+Check:
+
+- `npm run eval:gate` at 2 of 2 per case with the plugin, when the cases ship; `npm test` and lint with the deny tokens before the push; items 1, 21, 22, 38 and 39 at the tag.
 
 ## House-rule edit fourteen: M33
 

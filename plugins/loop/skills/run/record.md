@@ -42,9 +42,9 @@ No run rewrites a file a prior run wrote, except `steps.json`, `plan.md` (append
 - Each prompt and its answer, with the times before and after.
 - The checks discovered, each with its source and its baseline result.
 - Every edit made after Step 5.1's last full check run.
-- Per review round: the findings received, those verified, those rejected with the reason, and those fixed.
-- Every reviewer swap with its reason, the implementer per slice, every stand-in pass, and every code-review pass with its stage, round, level, range and result.
-- The risk floor and each higher-risk judgment, with the criterion that applied.
+- The Step 5 pass and each CI repair pass: the reviewer (`code-review` with its level and range, or the `opus` stand-in with its patch file and `effort`), every finding with its bucket (`fix`, `defer` or `reject`) and its reason, the fix batch with the result of the read, and each fix restored and deferred.
+- Every reviewer swap with its reason, and the implementer per slice.
+- The risk floor at each judgment, with the trigger that applied, and the Step 5 level.
 - Every decision: the choice, the reason, the options weighed with why each was rejected, who decided (`user`, `plan confirmation`, `review` or `run`), and where it was published.
 - Each commit the run made (slice commits, the snapshot commit, CI repairs), as a line `- commit <full sha> <subject>`. A later run tells the loop's own commits from foreign ones by these lines alone.
 - Each pull request the run opened, whose body it edited, or on which it commented, with the file it posted, and each ticket it commented on, with its file.

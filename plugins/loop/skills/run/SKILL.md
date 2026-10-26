@@ -144,7 +144,7 @@ Where a tool takes a timeout, pass the budget. The Bash foreground cap is 10 min
 
 Time comes only from `date -u +%Y-%m-%dT%H:%M:%SZ`, run at the start of Step 0 and of each step, before and after each timed call, after each push returns, at the terminal state, and just before and after each question. Copy the output; never write a time from memory or arithmetic. Before Step 0.5 nothing is written, so hold the times in memory and copy them into `run.md` when Step 0.5 creates it. Elapsed time is the difference of recorded times minus question waits, which are outside the run budget.
 
-Round cap: no step repeats more than three times. A round is one pass by the stage's reviewer plus the fixes it leads to. The orchestrator's single fix after the Step 4 cap is not a round; Step 5 has no such fix, and its third round fixes nothing. Each CI repair cycle gets one Step 5 round and one full Step 6 run, and cycles are capped at three.
+Round cap: no step repeats more than three times. A round is one pass by the stage's reviewer plus the fixes it leads to. The orchestrator's single fix after the Step 4 cap is not a round. Step 5 has one pass per run and no round (`steps/4-build.md`, Step 5). Each CI repair cycle gets one Step 5 pass and one full Step 6 run, and cycles are capped at three.
 
 ## Terminal states
 

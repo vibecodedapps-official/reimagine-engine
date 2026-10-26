@@ -10,6 +10,9 @@ const SKILL = read('SKILL.md');
 const RISK = read('risk.md');
 const PLAN = read('steps/1-plan.md');
 const README = readFileSync(new URL('README.md', LOOP), 'utf8');
+const BUILD = read('steps/4-build.md');
+const PUBLISH = read('steps/7-publish.md');
+const REPORT = read('report.md');
 
 // The text of a "## <heading>" section, up to the next "## " heading.
 const section = (text, heading) => {
@@ -50,10 +53,10 @@ test('R285: the README says the final review is never above xhigh', () => {
   assert.ok(README.includes('never above `xhigh`'));
 });
 
-test('R70 retired: the files of the role and level work item do not name a higher-risk rule', () => {
-  const files = { 'SKILL.md': SKILL, 'risk.md': RISK, 'steps/1-plan.md': PLAN, 'multi-repo.md': read('multi-repo.md'), 'worktree.md': read('worktree.md'), 'README.md': README };
-  for (const [name, text] of Object.entries(files)) {
-    assert.ok(!/higher-risk/i.test(text), `${name} still mentions the higher-risk rule`);
+test('R70 retired: no shipped loop file names a higher-risk rule', () => {
+  for (const file of walk(LOOP)) {
+    const text = readFileSync(new URL(file, LOOP), 'utf8');
+    assert.ok(!/higher-risk/i.test(text), `${file} still mentions the higher-risk rule`);
   }
 });
 
@@ -94,4 +97,74 @@ test('R285: SKILL.md names risk.md for the floor alone', () => {
   const text = section(SKILL, 'Supporting files');
   assert.notEqual(text, null);
   assert.ok(text.split('\n').includes('- `risk.md`: at Step 1.6, and whenever the floor is judged.'));
+});
+
+test('R109, R110: Step 5 holds the five items 5.1 to 5.5 in order', () => {
+  const text = section(BUILD, 'Step 5 Final review');
+  assert.notEqual(text, null);
+  const headings = ['**5.1 Integrate.**', '**5.2 One pass.**', '**5.3 Triage.**', '**5.4 Fix.**', '**5.5 Record.**'];
+  let last = -1;
+  for (const heading of headings) {
+    assert.equal(text.split(heading).length, 2, `${heading} is not present exactly once`);
+    const at = text.indexOf(heading);
+    assert.ok(at > last, `${heading} is out of order`);
+    last = at;
+  }
+});
+
+test('R110: Step 5 triage names the three buckets with their definitions', () => {
+  const text = section(BUILD, 'Step 5 Final review');
+  assert.notEqual(text, null);
+  assert.ok(text.includes('`fix` (a correctness finding inside the change)'));
+  assert.ok(text.includes('`defer` (reuse, simplification, efficiency, or a pre-existing issue the change did not introduce)'));
+  assert.ok(text.includes('`reject` (a false positive)'));
+});
+
+test('R72, R111: Step 5 has no rounds', () => {
+  const text = section(BUILD, 'Step 5 Final review');
+  assert.notEqual(text, null);
+  assert.ok(!/round/i.test(text), 'Step 5 still says "round"');
+});
+
+test('R72: SKILL.md gives Step 5 one pass and the repair cycle one pass', () => {
+  const text = section(SKILL, 'Budgets and rounds');
+  assert.notEqual(text, null);
+  assert.ok(text.includes('Step 5 has one pass per run and no round'));
+  assert.ok(text.includes('Each CI repair cycle gets one Step 5 pass and one full Step 6 run'));
+  assert.ok(!SKILL.includes('third round'));
+  assert.ok(!SKILL.includes('Step 5 round'));
+});
+
+test('R109: an empty diff is sent to nothing', () => {
+  const text = section(BUILD, 'Step 5 Final review');
+  assert.notEqual(text, null);
+  assert.ok(text.includes('"no changes"'));
+  assert.ok(text.includes('`git diff <merge-base> --stat`'));
+});
+
+test('R113: Step 6 fixes a failure through the owning implementer', () => {
+  const text = section(BUILD, 'Step 6 Checks');
+  assert.notEqual(text, null);
+  assert.ok(text.includes('is fixed through the implementer that owns the failing code'));
+  assert.ok(!text.includes('Step 5 round'));
+});
+
+test('R127: the repair cycle runs one Step 5 pass', () => {
+  const text = section(PUBLISH, '7.3 CI');
+  assert.notEqual(text, null);
+  assert.ok(/[Rr]e-enter Step 5 for one pass/.test(text));
+});
+
+test('R135: the Risk section of the report names the Step 5 level and the stand-in', () => {
+  const start = REPORT.indexOf('\n### Risk\n');
+  assert.notEqual(start, -1);
+  const end = REPORT.indexOf('\n### ', start + 1);
+  const text = REPORT.slice(start, end);
+  assert.ok(text.includes('Step 5 level'));
+  assert.ok(text.includes('stand-in'));
+  assert.ok(!text.includes('role'));
+});
+
+test('R106: Step 4.5 judges the floor alone', () => {
+  assert.ok(BUILD.includes('**4.5 Re-evaluation.** Judge the risk floor of `risk.md` on the actual diff from the merge-base.'));
 });

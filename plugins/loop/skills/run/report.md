@@ -70,10 +70,9 @@ State the mode: attended when any action prompted, else unattended. List the pro
 ### Risk
 
 - The floor trigger that applied, or `none`. When an edit touched a sensitive area and did not trigger the floor, say why (an incidental edit).
-- The effort hint, and the effort in force for reviewers.
-- The higher-risk judgment and the criterion that decided it, at the plan, after Step 4, and at each later judgment point.
-- The Step 5 role for each round.
-- Every reviewer swap, with its reason. A stand-in review pass is not a swap.
+- The effort hint, the effort in force for reviewers, and the Step 5 level typed to `code-review` or passed to the stand-in as `effort`.
+- The stand-in, when Step 5 or a CI repair pass used one, with the reason (the skill not listed, a worktree, an additional repository). A stand-in pass is not a swap.
+- Every reviewer swap, with its reason.
 - The `.reimagine.json` model overrides in force, and the values the run reported and ignored.
 
 ### What changed
@@ -82,11 +81,11 @@ Per input: the completion status (`complete`, `partial`, `blocked` or `not start
 
 ### Decisions
 
-Each decision: the choice, the reason, and who decided: `user`, `plan confirmation`, `review` or `run`. Then every code-review pass and stand-in pass with its round, level, range and result. A subagent's report is never cited as approval.
+Each decision: the choice, the reason, and who decided: `user`, `plan confirmation`, `review` or `run`. Then the Step 5 pass and each CI repair pass, `code-review` or the stand-in, with its level, its range or patch file, and its result. A subagent's report is never cited as approval.
 
 ### Findings rejected and why
 
-Each rejected finding with its source, its round and the reason for the rejection.
+Each rejected finding with its source (a plan review round, the Step 5 pass or a CI repair pass) and the reason for the rejection.
 
 ### Checks
 
@@ -122,7 +121,7 @@ For `prepared`, also give the branch, the commit state, and the exact commands i
 
 ### Log
 
-The implementer per slice and its model; the rounds used per step; the CI repair cycles; the elapsed time against the run budget, without the question waits. Copy times from the `date -u` output recorded in `run.md`; compute nothing from memory.
+The implementer per slice and its model; the rounds used in Steps 3 and 4, and the Step 5 passes; the CI repair cycles; the elapsed time against the run budget, without the question waits. Copy times from the `date -u` output recorded in `run.md`; compute nothing from memory.
 
 ## Rules
 

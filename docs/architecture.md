@@ -1,6 +1,6 @@
 # Architecture: 0.1.0
 
-Drafted 2026-10-14; amended 2026-10-20 for the `primer` plugin, which replaces `repo-docs` (decisions 73 to 89), and 2026-10-25 for the `gate` plugin and the loop's one-pass step 5 (decisions 118 to 133). The requirements are in requirements.md and win where the two disagree. The order of work is in build-plan.md. A fact marked "verified" was read from the host's documentation or observed in a spike recorded in decisions.md. Nothing here is implemented.
+Drafted 2026-10-14; amended 2026-10-20 for the `primer` plugin, which replaces `repo-docs` (decisions 73 to 89), and 2026-10-25 for the `gate` plugin and the loop's one-pass step 5 (decisions 118 to 134). The requirements are in requirements.md and win where the two disagree. The order of work is in build-plan.md. A fact marked "verified" was read from the host's documentation or observed in a spike recorded in decisions.md. Nothing here is implemented.
 
 ## Shape
 
@@ -374,7 +374,7 @@ Invoking by name approves fix commits on each target's branch, whether or not th
 { "gate": { "split": 1500, "max-passes": 4, "budget": 120, "models": { "implementer": "sonnet", "fallback-reviewer": "opus" } } }
 ```
 
-Every value is optional and the values shown are the defaults. The levels a run types are `xhigh`, `high` and `medium`; `max` and `ultra` are never typed (decision 122).
+Every value is optional and the values shown are the defaults. The levels a run types lie between the floor `medium` and the ceiling `xhigh`; `low`, `max` and `ultra` are never typed (decisions 122 and 134).
 
 ### Passes and caps
 
@@ -518,4 +518,4 @@ The loop, the gate and the audit run inside the user's permission mode and never
 
 ## Out of scope for 0.1.0
 
-A second model provider in any form; publishing pull requests on a non-GitHub host; a forge adapter for `work-items.jsonl`; generating the chat block from the output style; `claude plugin eval` in CI; a repair mode that reads earlier review comments; the deferred audit helper scripts; a routine or GitHub Actions integration for the loop; plugin telemetry; a mod for the notices; a workflow for the loop's slices; a second host (requirement 276); for the gate, comments on GitLab and Azure DevOps, the `max` and `ultra` levels, reading earlier review comments or CI results, and editing a pull request body (requirement 320).
+A second model provider in any form; publishing pull requests on a non-GitHub host; a forge adapter for `work-items.jsonl`; generating the chat block from the output style; `claude plugin eval` in CI; a repair mode that reads earlier review comments; the deferred audit helper scripts; a routine or GitHub Actions integration for the loop; plugin telemetry; a mod for the notices; a workflow for the loop's slices; a second host (requirement 276); for the gate, comments on GitLab and Azure DevOps, the `low`, `max` and `ultra` levels, reading earlier review comments or CI results, and editing a pull request body (requirement 320).

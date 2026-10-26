@@ -1,14 +1,14 @@
 # Architecture: 0.1.0
 
-Drafted 2026-10-14; amended 2026-10-20 for the `primer` plugin, which replaces `repo-docs` (decisions 73 to 89). The requirements are in requirements.md and win where the two disagree. The order of work is in build-plan.md. A fact marked "verified" was read from the host's documentation or observed in a spike recorded in decisions.md. Nothing here is implemented.
+Drafted 2026-10-14; amended 2026-10-20 for the `primer` plugin, which replaces `repo-docs` (decisions 73 to 89), and 2026-10-25 for the `gate` plugin and the loop's one-pass step 5 (decisions 118 to 132). The requirements are in requirements.md and win where the two disagree. The order of work is in build-plan.md. A fact marked "verified" was read from the host's documentation or observed in a spike recorded in decisions.md. Nothing here is implemented.
 
 ## Shape
 
-One repository, one marketplace, four plugins that a user installs separately and that work alone.
+One repository, one marketplace, five plugins that a user installs separately and that work alone.
 
 ```
 reimagine-engine/
-  .claude-plugin/marketplace.json   catalog: name, owner, four entries
+  .claude-plugin/marketplace.json   catalog: name, owner, five entries
   .github/workflows/ci.yml          lint, test, mawk, validate
   .gitattributes                    LF for shipped text
   .gitignore
@@ -21,6 +21,7 @@ reimagine-engine/
   plugins/rules/                    house rules, output style, chat block
   plugins/loop/                     plan, build, review, publish a bundle of tickets
   plugins/audit/                    read-only adversarial audit of finished bundles
+  plugins/gate/                     code-review passes over a pull request until nothing is left to fix
   plugins/primer/                   project instructions in the host's forms, memory promotion, two hooks
   tests/                            node:test suites and the audit sh suites
   tools/lint.mjs                    repository rules
@@ -32,6 +33,7 @@ reimagine-engine/
 | rules | house rules block, output style | `/rules` | `scripts/rules.mjs` | SessionStart `startup` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | ten sh scripts | none | own |
+| gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs` | none | own |
 | primer | project instructions | `/primer`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
 
 ## Layers on a machine
@@ -41,15 +43,15 @@ reimagine-engine/
 3. The user's own lines in that file, below the end marker, never touched.
 4. The repository's instruction files, kept in the forms the host loads by `primer`: a short hub, rules, nested files and skills.
 5. The output style `rules:Concise Plain`, selected by the user.
-6. The loop and the audit, which read layers 2 to 4 at their start and obey every ask-first rule they find.
+6. The loop, the gate and the audit, which read layers 2 to 4 at their start and obey every ask-first rule they find.
 
-`loop` and `audit` do not require `rules`; without it they still read whatever instruction files exist.
+`loop`, `gate` and `audit` do not require `rules`; without it they still read whatever instruction files exist.
 
 Only three hooks run outside a session request: the rules staleness notice at `startup`, the primer memory notice at `startup`, and the primer drift check before a `git commit`. Everything else happens because the user asked.
 
 ## Prompt first
 
-Prose carries the process. Scripts exist only where a model cannot be trusted to do the job byte for byte: editing the user's `CLAUDE.md` (`rules.mjs`), snapshotting and checking a repository's state (`readonly.sh`), building ledgers and gates from many files (`ledger.sh`), and the other audit scripts, each with a suite behind it. The two primer hooks are scripts because a hook has no model. No new script ships without a test under `tests/`.
+Prose carries the process. Scripts exist only where a model cannot be trusted to do the job byte for byte: editing the user's `CLAUDE.md` (`rules.mjs`), snapshotting and checking a repository's state (`readonly.sh`), building ledgers and gates from many files (`ledger.sh`), the other audit scripts, and turning a review's output into ledger entries and the next pass level (`findings.mjs`, `next.mjs`), each with a suite behind it. The two primer hooks are scripts because a hook has no model. No new script ships without a test under `tests/`.
 
 Skills are user-invocable and carry their trigger phrases in `description` (verified: the phrase in the description invoked the skill in 2 of 2 runs, and the bare skill name also carried; decisions.md item 14). Rarely used paths live in their own files, read on demand, and each step file ends by naming the next read.
 
@@ -73,6 +75,11 @@ Skills are user-invocable and carry their trigger phrases in `description` (veri
 - Without a `Workflow` allow rule a headless launch is refused with `Review dynamic workflow before running`; `Workflow(<plugin>:<name>)` allows it; with `disableWorkflows` the commands and the tool are absent; under `--permission-mode auto` a headless launch ran without a prompt and wrote no consent to the profile's settings (verified, decision 101).
 - `claude plugin eval` loads a case's `plugins` paths only under its containment root, the enclosing plugin or the directory targeted, so the suite targets the repository root with `--eval-dir tests/evals`; a `tool_used` grader is a plugin-fired indicator outside the score, and a `regex` grader over the trace or the last message carries the assertion (verified, decision 100).
 - `claude -p "/context"` answers headless as a local command with the skills, custom agents and memory files tables; `/skill-doctor` is not listed headless on 2.1.304 (verified, decision 102).
+- `claude -p "/code-review <level> <base>...HEAD" --output-format json` runs the bundled review skill as a fork in a child session: the typed level reaches the review, `--max-findings` is honored, the `result` is text whose last part is a fenced JSON array of `{file, line, summary, failure_scenario}` with repository-relative paths and no category tags, `num_turns` is 0 and the tokens sit in `modelUsage`, and a tool call outside `--allowedTools` is denied without a prompt and listed in `permission_denials`; the child refuses to start unless `CLAUDECODE` is unset, and waits three seconds for stdin unless it is redirected (verified, decision 118, on 2.1.310).
+- A level typed in a child session does not write `codeReviewLastEffort` to the host's configuration; the host writes it only from an interactive turn (verified, decision 119).
+- A plugin skill named `gate` answers as `/gate` and `/gate:gate`; no bundled skill owns the name (verified, decision 120, on 2.1.310).
+- The review skill's bare path target reviews the path's diff from the merge-base with the repository's default branch, read from `refs/remotes/origin/HEAD` with `main` as the fallback, and has no base flag; a `<base>...HEAD` target carries the base, and `<base>...HEAD <path>` reaches the review as its target text and is honored by the reviewer, which runs `git diff <base>...HEAD -- <path>` (verified, decision 121).
+- `/code-review ultra` is the host's cloud review, user-triggered and billed, offered only when a server flag, a first-party API and a local session coincide; the model cannot launch it, and a child session that types it falls back to a local `max` review with a notice, which on a ten-line diff ran 17 minutes and cost $17 (verified, decision 122). The suite never types `max` or `ultra`.
 
 ## The `rules` plugin
 
@@ -150,7 +157,7 @@ plugins/loop/
   skills/run/steps/1-plan.md       steps 1 to 3
   skills/run/steps/4-build.md      steps 4 to 6
   skills/run/steps/7-publish.md
-  skills/run/risk.md               risk floor, higher-risk rule, effort hint
+  skills/run/risk.md               risk floor, level cap, effort hint
   skills/run/record.md             record files, steps.json, resume rules
   skills/run/ci-watch.md
   skills/run/multi-repo.md
@@ -185,8 +192,8 @@ Invoking by name approves branch, commit, push, one pull request per repository,
 |---|---|---|
 | orchestrator, judge, slice reviewer | the session model | none; the run stops |
 | implementer | Agent `sonnet`, one per slice, parallel for disjoint slices | none; a tool error ends `blocked` after the snapshot restore |
-| plan reviewer, final reviewer | fresh Agent `fable`, read and report only | once to `opus` on a model or tool error; stays swapped |
-| higher-risk final reviewer | built-in `code-review` skill, explicit level, `<merge-base>...HEAD` | Agent `opus` over a patch file when the skill is not listed or the diff is in a worktree or another repository; continued with SendMessage across rounds |
+| plan reviewer | fresh Agent `fable`, read and report only | once to `opus` on a model or tool error; stays swapped |
+| final reviewer | built-in `code-review` skill, explicit level at most `xhigh`, `<merge-base>...HEAD` as a full sha, one pass | Agent `opus` over a patch file, once, when the skill is not listed or the diff is in a worktree or another repository |
 | reader | Agent `haiku` when a read is worth splitting out | the orchestrator reads |
 
 `.reimagine.json` at the primary repository's root:
@@ -201,11 +208,11 @@ Invoking by name approves branch, commit, push, one pull request per repository,
 }
 ```
 
-Every key is optional; the values shown are the defaults, except `checks` and `base`, which are examples: without `base` the base branch is the remote's default, and the request's "base <branch>" wins over the key. `models` accepts only subagent model names and never changes the risk floor or the higher-risk role.
+Every key is optional; the values shown are the defaults, except `checks` and `base`, which are examples: without `base` the base branch is the remote's default, and the request's "base <branch>" wins over the key. `models` accepts only subagent model names and never changes the risk floor or the step 5 role.
 
 ### Budgets, rounds, risk
 
-Per-call budgets in minutes: subagent 20, review 30, check 15, CI 45. One default run budget of 240 minutes, overridden by "budget <n> minutes", then `timeouts.run`, then a session instruction. `date -u +%Y-%m-%dT%H:%M:%SZ` runs at enumerated points only and its output is copied, never computed. Question waits are excluded. Every step is capped at three rounds. The risk floor (auth, permission, schema or migration, row-level security, data access path, public API) raises reviewer effort to at least `high` and never falls; the higher-risk rule (a floor trigger, more than eight files, or a new module cited elsewhere) selects the step 5 role and is sticky. The effort hint maps to the `effort` argument of Agent calls and cannot lower a floored run.
+Per-call budgets in minutes: subagent 20, review 30, check 15, CI 45. One default run budget of 240 minutes, overridden by "budget <n> minutes", then `timeouts.run`, then a session instruction. `date -u +%Y-%m-%dT%H:%M:%SZ` runs at enumerated points only and its output is copied, never computed. Question waits are excluded. Every step is capped at three rounds except step 5, which is one pass. The risk floor (auth, permission, schema or migration, row-level security, data access path, public API) raises reviewer effort to at least `high` and never falls. The effort hint maps to the `effort` argument of Agent calls and to the level typed to `code-review`, which is never above `xhigh` ("max" gives `xhigh` there, decision 122), and cannot lower a floored run.
 
 ### Steps
 
@@ -214,7 +221,7 @@ Per-call budgets in minutes: subagent 20, review 30, check 15, CI 45. One defaul
 2. Plan: `plan.md` with slices.
 3. Plan review by the fresh reviewer, up to three rounds; plan-only stop; optional confirmation; then branch, baseline, dependencies.
 4. Build: implementers per slice, slice checks, orchestrator slice review, re-evaluation.
-5. Final review: integrate, one role over the whole diff from the merge-base, three rounds.
+5. Final review: integrate, one `code-review` pass over the whole diff from the merge-base, triage into fix, defer and reject, the fix bucket applied once through the implementers, no second pass.
 6. Checks: discovery, baseline matching, reuse of 5.1; on a non-GitHub host, the body file and the `prepared` end.
 7. Publish: commit, push, pull request create or update, ticket comments, CI watch and repair, deferred list, handoff and manifest.
 
@@ -271,7 +278,7 @@ Terminal states: `done`, `plan-only`, `prepared`, `blocked`, `stopped`.
 
 ### Publication texts
 
-The pull request is created with `gh pr create --title "<title>" --body-file <absolute path>`, the title being the single ticket's title or the plan's one-line summary. `pr-body.md` sections: What changed, Drift corrections, Decisions for the reviewer, Checks not run, Related pull requests, Closes. On a non-GitHub host the run ends `prepared` after step 6 with a body file covering every input of every run of the record, one per repository; on an Azure DevOps remote that body is the short form under the 4,000-character description cap, the full body goes to a comment file to post first, and an Azure DevOps ticket is a `_workitems/edit/<n>` link in place of `AB#<n>`, which links only from GitHub through the Azure Boards app. Ticket comments carry state, pull request link, criteria, not done, deferred. Neither names a model, an agent, a tool, or a run-internal path; a report posted as a comment under `commit: true` is cut to its external sections for the same reason. The handoff (`reimagine-handoff: 1`) and `audit-manifest.json` (`{"bundles":[{"repo","pr","tickets"}|{"repo","branch","base","tickets"}],"claims":["<absolute handoff.md>"]}`) are written when the run has its own commit, and the report suggests `/audit:run "<manifest>"` for bundles with more than one repository, more than one ticket, or 500 or more changed lines.
+The pull request is created with `gh pr create --title "<title>" --body-file <absolute path>`, the title being the single ticket's title or the plan's one-line summary. `pr-body.md` sections: What changed, Drift corrections, Decisions for the reviewer, Checks not run, Related pull requests, Closes. On a non-GitHub host the run ends `prepared` after step 6 with a body file covering every input of every run of the record, one per repository; on an Azure DevOps remote that body is the short form under the 4,000-character description cap, the full body goes to a comment file to post first, and an Azure DevOps ticket is a `_workitems/edit/<n>` link in place of `AB#<n>`, which links only from GitHub through the Azure Boards app. Ticket comments carry state, pull request link, criteria, not done, deferred. Neither names a model, an agent, a tool, or a run-internal path; a report posted as a comment under `commit: true` is cut to its external sections for the same reason. The handoff (`reimagine-handoff: 1`) and `audit-manifest.json` (`{"bundles":[{"repo","pr","tickets"}|{"repo","branch","base","tickets"}],"claims":["<absolute handoff.md>"],"reviews":{"level","fixed":[{"file","summary"}],"deferred":[...],"rejected":[...]}}`) are written when the run has its own commit; the report's `Gate:` line suggests `/gate PR <n>` for 500 or more changed lines, and its `Audit:` line suggests `/audit:run "<manifest>"` for bundles with more than one repository or more than one ticket, and after the gate when the line count alone called for one.
 
 ## The `audit` plugin
 
@@ -315,6 +322,109 @@ The ten scripts and their suites embed these strings: `reimagine-handoff: 1`; `r
 `run-copies.sh` writes the run's `common.md`, header filled, and `audit-evidence.md` from the skill's copies, found from its own path, so neither passes through the model (requirement 283).
 
 `revert-tests.sh` reads `REVERT_TESTS_CAP`, `REVERT_TESTS_DEADLINE`, `REVERT_TESTS_WAIT` and `REVERT_TESTS_TICK` from the environment, whole or fractional seconds; its test sets them low, and the shipped defaults are unchanged (requirement 279).
+
+## The `gate` plugin
+
+```
+plugins/gate/
+  .claude-plugin/plugin.json
+  LICENSE  README.md
+  skills/gate/SKILL.md             /gate; core: reading, approval scope, roles, caps, states, record
+  skills/gate/steps/0-preflight.md targets, base, clean tree, record directory, permission statement
+  skills/gate/steps/1-pass.md      size, split, the child session, parsing, triage
+  skills/gate/steps/2-fix.md       implementers, snapshots, checks, the commit and the push
+  skills/gate/steps/3-next.md      next.mjs, caps, resume, terminal states
+  skills/gate/steps/4-publish.md   comment, manifest, report
+  skills/gate/record.md            record files, passes.json, findings.json
+  skills/gate/report.md
+  scripts/findings.mjs             a review's output to ledger entries
+  scripts/next.mjs                 the next level or the stop, from passes.json
+```
+
+The skill is named `gate`, like its plugin, so it answers as `/gate` and `/gate:gate` (verified, decision 120). Its description: "Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict when a pass finds nothing left to fix. Use when the user says "reimagine gate", "gate this branch", "gate PR <n>" or "gate the manifest <path>"." There is no command and no hook. The gate runs after the loop and before the audit, and the audit's manifest carries its result.
+
+### Reading the request
+
+No flags. The skill makes only the read-only calls that resolve the targets (`git remote`, `gh pr view`, a manifest read), then prints one block before any other tool call:
+
+```
+Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-retry, base main
+Mode: fix
+Budget: 120 minutes (default); max-passes 4; split 1500
+Engine: subprocess
+```
+
+"PR <n>", "<n> and <m>" and a pull request URL name targets; "the manifest <path>" runs one record per bundle with a `pr` or a `branch`, each in its own repository; "this branch", or nothing, gates the current branch against its base. "no fixes", "budget <n> minutes" and "base <branch>" are the other phrases. A pull request's base is its `baseRefName`; a branch's is the request's, else `.reimagine.json` `base`, else the remote's default. The merge-base is recorded and every review target is the three-dot range from it.
+
+### Approval scope
+
+Invoking by name approves fix commits on each target's branch, whether or not the loop opened its pull request, pushing that branch, and one comment per run on each target pull request (decision 127). Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, rebase, amend, reset, repository settings and a new issue always ask. A denial is final: never retried, never routed around. A dirty tree, a merged or closed pull request and a remote head that moved since preflight end `blocked`.
+
+### Roles
+
+| Role | Who | Fallback |
+|---|---|---|
+| orchestrator, triage | the session model | none; the run stops |
+| reviewer | a child session: `claude -p "/code-review <level> <base>...HEAD[ <path>]" --output-format json`, one per pass, or one per top-level path over `split` | Agent `opus` over `diff-<slug>.patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run |
+| implementer | Agent `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
+
+`.reimagine.json` at the repository root, the `gate` key beside the loop's:
+
+```json
+{ "gate": { "split": 1500, "max-passes": 4, "budget": 120, "models": { "implementer": "sonnet", "fallback-reviewer": "opus" } } }
+```
+
+Every value is optional and the values shown are the defaults. The levels a run types are `xhigh`, `high` and `medium`; `max` and `ultra` are never typed (decision 122).
+
+### Passes and caps
+
+A pass is one review at one typed level, the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Changed lines over `split` (added plus deleted from `git diff --numstat <merge-base>...HEAD`) split the review by top-level path into parallel child sessions, each with the target `<base>...HEAD <path>`, and the pass's findings are the union. The orchestrator sorts every finding into fix, defer or reject with a one-line reason before anything is edited; implementers apply the fix bucket, one per disjoint file group after a snapshot; the repository's `checks` run; a pass that changed anything ends with one commit and a push after the remote-head check. `next.mjs` then reads `passes.json` and returns, in this order: stop with `pass` or `pass-with-deferred` when the fix bucket is empty and nothing new was rejected; `xhigh` once per run when the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files; a stop after a `medium` pass, `unconverged` when that pass still found something to fix; `medium` after two `high` passes that each fixed nothing and rejected something new; else `high`. A finding is identified by file path and normalized summary; a fixed finding that returns is a regression and goes to the fix bucket, a rejected one that returns is carried and counts as nothing (decision 126). `max-passes` 4, a run budget of 120 minutes, 30 minutes per review, 20 per implementer call and 15 per check end a run `unconverged` with every open finding listed. "no fixes" runs pass 1 only and names what a fix run would do.
+
+### Engine
+
+The child session is the engine (decision 124). It runs from the repository root with `CLAUDECODE` unset, stdin from `/dev/null`, `--permission-mode default` and an allowlist of Read, Grep, Glob, Skill, Agent, TaskStop, the read-only git forms and the repository's `checks` commands, in the background under the Bash foreground cap, and its output is saved before `findings.mjs` parses it. Verified on 2.1.310 (decisions 118 to 121): the result is text whose last part is a fenced JSON array of `{file, line, summary, failure_scenario}` with repository-relative paths and no category tags; the typed level and `--max-findings` reach the review; a `high` review of a ten-line diff takes 80 to 150 s and costs about a dollar, an `xhigh` one 120 s and $1.23, a `max` one 17 minutes and $17; the remembered interactive level is untouched; a bare path target reviews against the repository's default branch, so a split group is always `<base>...HEAD <path>`; three Bash calls outside the allowlist were denied and listed in `permission_denials` without stopping the review.
+
+### Record
+
+```
+.reimagine/gate/<branch-slug>/
+  passes.json      the completion record
+  findings.json    the identity ledger across passes
+  report.md        rewritten at every terminal state
+  review-<n>[-<slug>].json | .md    each review's saved output
+  pre-<n>.status, pre-<n>.patch, pre-<n>.hashes   snapshots before implementer calls
+  diff-<slug>.patch                 a stand-in's input
+  comment-<n>.md                    the comment as posted, never committed
+  audit-manifest.json               written when the run did not come from one
+```
+
+`passes.json`:
+
+```json
+{
+  "branch": "feat/68-4567-export",
+  "base": "main",
+  "merge_base": "<sha>",
+  "targets": ["github:owner/app#73"],
+  "engine": "subprocess",
+  "runs": [{ "n": 1, "started": "2026-10-25T09:00:40Z", "ended": null, "state": "running" }],
+  "passes": [
+    { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...",
+      "reviews": [{ "slug": "all", "target": "main...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2 }],
+      "findings": { "src/stats.mjs|percentile indexes sorted rank ...": { "bucket": "fix", "reason": "off-by-one inside the change" } },
+      "changes": ["inside-diff"], "commit": "<sha>", "head": "<sha>",
+      "checks": [{ "command": "npm test", "result": "pass" }],
+      "next": { "level": "high", "rule": "otherwise" } },
+    { "n": 2, "run": 1, "level": "high", "status": "running", "started": "..." }
+  ]
+}
+```
+
+An entry is written `running` when the pass starts and `complete` after the fix round and its commit, through a temporary file and a rename; it is the only record of completion. A second run resumes at the first pass not `complete` when the head is the one the last complete pass left; a new head starts a new sequence at `xhigh` with the ledger kept; a changed merge-base restarts at pass 1 the same way. `.reimagine/` is excluded through the file `git rev-parse --git-path info/exclude` names, as the loop does.
+
+### Publication texts
+
+The comment, one per run per pull request through `gh pr comment --body-file`: the verdict, the passes with levels, the findings fixed, deferred and rejected with their reasons, the checks, the commits. It names no model, agent, tool or run-internal path, and the deferred list never goes to the body. The manifest the run came from gains a top-level `gate` key, an object keyed by each bundle's `repo` with `{"verdict", "passes", "record"}`; a run without one writes a minimal manifest in the record, so the report can suggest `/audit:run "<manifest>"`. Terminal states: `pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`.
 
 ## The `primer` plugin
 
@@ -392,20 +502,20 @@ A repository kept by repo-docs has a `## Spokes` index, spokes under `docs/` or 
 
 ## Versions, tags and release
 
-Each plugin has its own version, starting at 0.1.0, in its manifest and its catalog entry. Tags are `<plugin>--v<version>`, made with `claude plugin tag`, which checks that manifest and catalog agree. Lint fails when a plugin directory changed since its latest tag without a version above it, and when `CHANGELOG.md` lacks `## <plugin> <version> - <date>` for a tagged version; an untagged bump needs no heading yet, so the release order is bump, heading, tag. There is no suite version and no lockstep; the marketplace `metadata.version` is the catalog's own and is raised whenever an entry changes. `main` is the release ref. `tools/release.mjs <plugin> <version>` sets the version in the manifest and the catalog entry (and the audit `plugin_version` literals), computing every edit before writing, keeping CRLF files CRLF, and running lint; tagging stays with `claude plugin tag`; the changelog heading is written by hand.
+Each plugin has its own version, starting at 0.1.0, in its manifest and its catalog entry. Tags are `<plugin>--v<version>`, made with `claude plugin tag`, which checks that manifest and catalog agree. Lint fails when a plugin directory changed since its latest tag without a version above it, and when `CHANGELOG.md` lacks `## <plugin> <version> - <date>` for a tagged version; an untagged bump needs no heading yet, so the release order is bump, heading, tag. There is no suite version and no lockstep; the marketplace `metadata.version` is the catalog's own and is raised whenever an entry changes. `main` is the release ref. `tools/release.mjs <plugin> <version>` sets the version in the manifest and the catalog entry (and the audit `plugin_version` literals), computing every edit before writing, keeping CRLF files CRLF, and running lint; tagging stays with `claude plugin tag`; the changelog heading is written by hand. The gate enters the catalog at `0.1.0-alpha.1` with its scaffold and releases at 0.1.0; the loop's one-pass step 5 is loop 0.1.6; the audit does not move for the gate (decision 129).
 
 ## Repository tooling
 
 `tools/lint.mjs` has no dependencies and enforces the rules of requirement 219 with one message per rule. It reads an optional `LINT_DENY_TOKENS` environment variable, a comma-separated list, and fails on any tracked file containing one case-insensitively; CI never sets it, so the names stay outside the repository. `tests/lint/lint.test.mjs` copies the repository to a temporary directory, applies one mutation per case, and asserts the message. CI runs lint and tests on ubuntu, macOS and Windows with full history for the tag rule, the audit awk suites again under mawk, and `claude plugin validate --strict` on the marketplace and each plugin with a pinned Claude Code version.
 
-`package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per milestone before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
+`package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `gate`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per milestone before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
 
-`tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`.
+`tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's four cases (requirement 319) run against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes.
 
 ## Security and permissions
 
-The loop and the audit run inside the user's permission mode and never widen it. The loop's pre-approved tools are `date` and read-only `git` and `gh`. The audit's agents have no Edit or NotebookEdit and the read-only check detects any write. Credentials in pasted ticket text are redacted before the record is written, and the audit never passes forge text through the model. Nothing external names a model, an agent or a tool.
+The loop, the gate and the audit run inside the user's permission mode and never widen it. The loop's and the gate's pre-approved tools are `date` and read-only `git` and `gh`; the gate's child sessions run under `--permission-mode default` with an allowlist of read-only tools and the repository's own checks, so a call outside it is denied and counted, never prompted. The audit's agents have no Edit or NotebookEdit and the read-only check detects any write. Credentials in pasted ticket text are redacted before the record is written, and the audit never passes forge text through the model. Nothing external names a model, an agent or a tool.
 
 ## Out of scope for 0.1.0
 
-A second model provider in any form; publishing pull requests on a non-GitHub host; a forge adapter for `work-items.jsonl`; generating the chat block from the output style; `claude plugin eval` in CI; a repair mode that reads earlier review comments; the deferred audit helper scripts; a routine or GitHub Actions integration for the loop; plugin telemetry; a mod for the notices; a workflow for the loop's slices; a second host (requirement 276).
+A second model provider in any form; publishing pull requests on a non-GitHub host; a forge adapter for `work-items.jsonl`; generating the chat block from the output style; `claude plugin eval` in CI; a repair mode that reads earlier review comments; the deferred audit helper scripts; a routine or GitHub Actions integration for the loop; plugin telemetry; a mod for the notices; a workflow for the loop's slices; a second host (requirement 276); for the gate, comments on GitLab and Azure DevOps, the `max` and `ultra` levels, reading earlier review comments or CI results, and editing a pull request body (requirement 320).

@@ -424,7 +424,7 @@ An entry is written `running` when the pass starts and `complete` after the fix 
 
 ### Publication texts
 
-The comment, one per run per pull request through `gh pr comment --body-file`: the verdict, the passes with levels, the findings fixed, deferred and rejected with their reasons, the checks, the commits. It names no model, agent, tool or run-internal path, and the deferred list never goes to the body. The manifest the run came from gains a top-level `gate` key, an object keyed by each bundle's `repo` with `{"verdict", "passes", "record"}`; a run without one writes a minimal manifest in the record, so the report can suggest `/audit:run "<manifest>"`. Terminal states: `pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`.
+The comment, one per run per pull request through `gh pr comment --body-file`: the verdict, the passes with levels, the findings fixed, deferred and rejected with their reasons, the checks, the commits. It names no model, agent, tool or run-internal path, writes the user's home directory as `~` in text it quotes from a review, and the deferred list never goes to the body. The manifest the run came from gains a top-level `gate` key, an object keyed by each bundle's `repo` with `{"verdict", "passes", "record"}`; a run without one writes a minimal manifest in the record, so the report can suggest `/audit:run "<manifest>"`. Terminal states: `pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`.
 
 ## The `primer` plugin
 

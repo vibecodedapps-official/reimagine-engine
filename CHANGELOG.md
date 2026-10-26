@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.6 - 2026-10-26
+
+- Step 5 reviews every run with the `code-review` skill at an explicit level: the effort word's level, `high` with none and at least `high` on a floored run, never above `xhigh`, so "max" types `xhigh` there while the plan reviewer, the implementers and the readers keep `max`. Where the skill is not listed, or the diff lives in a worktree or another repository, a stand-in reviewer reviews a patch once. The fresh reviewer reviews the plan only, and the higher-risk rule, which chose the Step 5 role and nothing else, retires.
+- Step 5 is one pass: every finding goes to fix, defer or reject with a reason, and the fix bucket is applied once through the owning implementers, whose diff the orchestrator reads. Nothing reviews the fixes again in the run: Step 6 runs the checks, a converged review is the gate's job, and a CI repair cycle runs one pass. A Step 6 failure is fixed through its implementer and the checks rerun.
+- `audit-manifest.json` gains `reviews`, the Step 5 level and its findings by bucket; the audit ignores the key. The README shows the manifest.
+- The report's header gains a `Gate:` line that suggests `/gate PR <n>`, or `/gate this branch`, for a change of 500 or more lines, and the `Audit:` line follows the gate when the line count alone called for one.
+
 ## rules 0.1.10 - 2026-10-25
 
 - The Working item that asks for one report ends after "when the next step turns on my answer"; the clause "no progress notes unless I ask for them" goes. It restated the bound the first clause already sets, and the owner read it as pushing replies toward under-reporting. The rule count stays 35; the block updates through /rules.

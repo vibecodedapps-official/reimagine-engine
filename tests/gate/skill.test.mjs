@@ -216,6 +216,10 @@ test('R300: Step 2 stages each path by name and never stages everything', () => 
   }
 });
 
+test('R11: Step 2 types no attribution trailer in the fix commit', () => {
+  holds('steps/2-fix.md', 'The commit message follows it and names no model, agent or tool. Type no attribution trailer.');
+});
+
 test('R295: Step 2 reads the remote head with git ls-remote and compares it before every push', () => {
   holds('steps/2-fix.md', 'git ls-remote', 'what preflight fetched', 'the last sha this run pushed', 'no force');
 });
@@ -285,6 +289,10 @@ test('R314: the comment template is one fenced block with no deny word, and Step
   const body = blocks[0].lines.join('\n');
   for (const w of DENY) assert.ok(!wholeWord(w).test(body), `the comment template holds ${w}`);
   for (const w of DENY) assert.ok(text.includes(`\`${w}\``), `steps/4-publish.md does not list ${w}`);
+});
+
+test('R314: the comment writes the home directory as ~ in text quoted from a review', () => {
+  holds('steps/4-publish.md', 'except that the user\'s home directory in it is written `~`', 'the drive letter in either case, or the `/c/` form of Git Bash');
 });
 
 test('R315: Step 4 holds the minimal manifest literal and the gate key shape', () => {

@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.1 - 2026-10-26
+
+- The comment writes the user's home directory as `~` in a file path or summary it quotes from a review, in each spelling a review uses, since a review on Windows had quoted the user's instruction file by its full path.
+- Step 2's commit types no attribution trailer, as the loop's publish step does: the step had not said so, and runs either dropped the trailer the host's attribution setting adds or kept it.
+
 ## gate 0.1.0 - 2026-10-26
 
 - First release. The gate runs `code-review` passes over a pull request, several, a branch or a loop manifest, always from the merge-base; it sorts each pass's findings into fix, defer and reject with a reason, has the fix bucket fixed, commits and pushes once per pass, and picks the next pass's level from the record until a pass finds nothing left to fix or a cap ends the run.

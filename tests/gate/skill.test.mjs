@@ -216,6 +216,10 @@ test('R300: Step 2 stages each path by name and never stages everything', () => 
   }
 });
 
+test('R11: Step 2 types no attribution trailer in the fix commit', () => {
+  holds('steps/2-fix.md', 'The commit message follows it and names no model, agent or tool. Type no attribution trailer.');
+});
+
 test('R295: Step 2 reads the remote head with git ls-remote and compares it before every push', () => {
   holds('steps/2-fix.md', 'git ls-remote', 'what preflight fetched', 'the last sha this run pushed', 'no force');
 });

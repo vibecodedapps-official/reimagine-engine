@@ -61,6 +61,13 @@ Hand-run checks for the suite. Each milestone adds its items; items 27 to 36 wer
 
 ## Record of runs
 
+### 2026-10-26: gate next.mjs milestone
+
+Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, gh 2.91.0, Node 26.4.0, git 2.56.0 (Git for Windows). The branch `m36-next`, `main` at 57e7fb9 with the M35 merge. No child session ran and no acceptance item is listed for the milestone.
+
+- **The names `next.mjs` fixes.** The documents give the rules and their order, not their names or the change kinds a fix round records, beyond the architecture's `inside-diff` and `otherwise`. The rules are `nothing-to-fix`, `after-medium`, `wide-fix`, `rejects-at-high` and `otherwise`; the change kinds are `inside-diff`, `exported-signature`, `schema-or-migration`, `outside-diff` and `over-quarter`, the last four wide. A reject is new unless the same finding id was rejected in an earlier pass of the record, in any run, so a finding the triage matches to an earlier entry is recorded under that entry's id. `max-passes` counts the latest run's passes, and the script takes it as its second argument, since `passes.json` does not hold it. It only reads.
+- **Checks.** `tests/gate/next.test.mjs` failed 97 of 97 against the tree before the script and passes 97 with it. On the commit, `npm run test:gate` exit 0, 151 tests in 2.9 s, under the 30-second target; `npm run test:lint` exit 0, 131 tests in 36.3 s, over the area target of acceptance item 44 as it was before this milestone (31.3 s at the loop step 5 milestone, 35.5 s after the scaffold, lint reading more files each time); `npm run lint` `lint: ok (160 files, 5 plugins)`; `claude plugin validate --strict plugins/gate` exit 0. Before the push, `npm test` exit 0, 690 tests, 683 pass, 7 skipped, and `npm run lint` with the deny tokens `lint: ok (160 files, 5 plugins)`, exit 0.
+
 ### 2026-10-26: gate scaffold milestone
 
 Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, gh 2.91.0, Node 26.4.0, git 2.56.0 (Git for Windows). The branch `m35-gate-scaffold` with the gate at 0.1.0-alpha.1; a scratch profile under `C:/rc-scratch-2026-10-26/` with no login. No child session ran.

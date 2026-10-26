@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.0 - 2026-10-26
+
+- First release. The gate runs `code-review` passes over a pull request, several, a branch or a loop manifest, always from the merge-base; it sorts each pass's findings into fix, defer and reject with a reason, has the fix bucket fixed, commits and pushes once per pass, and picks the next pass's level from the record until a pass finds nothing left to fix or a cap ends the run.
+- A run keeps its record under `.reimagine/gate/<branch>/` and resumes from it, posts one comment per run that names no model, agent or tool, writes the `gate` key the audit reads, and prints its report as its last text.
+- With no `claude` command on the PATH, or a review session that reports the skill missing, the run reviews through a stand-in for the rest of the run; "no fixes" makes one pass and edits nothing.
+- On Windows the review command sets `MSYS_NO_PATHCONV=1`, since Git Bash rewrote the prompt's leading `/` into a path and the review never ran.
+
 ## loop 0.1.6 - 2026-10-26
 
 - Step 5 reviews every run with the `code-review` skill at an explicit level: the effort word's level, `high` with none and at least `high` on a floored run, never above `xhigh`, so "max" types `xhigh` there while the plan reviewer, the implementers and the readers keep `max`. Where the skill is not listed, or the diff lives in a worktree or another repository, a stand-in reviewer reviews a patch once. The fresh reviewer reviews the plan only, and the higher-risk rule, which chose the Step 5 role and nothing else, retires.

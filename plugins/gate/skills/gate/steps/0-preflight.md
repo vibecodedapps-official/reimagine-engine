@@ -64,7 +64,7 @@ Before any checkout, `git status --porcelain` must print nothing, untracked file
 3. Create the record directory unless it exists.
 4. An existing `passes.json` whose `branch` differs from this run's branch is a slug collision and ends the run `blocked`.
 5. Create `passes.json` when absent, with `branch` (the exact name), `base` (`<b>`), `merge_base` (0.6), `targets` (`github:<owner>/<repo>#<n>` for a pull request, else the branch name), `engine` (the block's Engine line: `subprocess` or `stand-in`), `"runs": []` and `"passes": []`.
-6. Append the run entry `{"n": <run>, "started": <utc>, "ended": null, "state": "running"}`, `<run>` being 1 on a new file and one more than the highest `n` in `runs` otherwise. On an existing file change nothing else here; the merge-base and the head wait in memory for Resume.
+6. Append the run entry `{"n": <run>, "started": <utc>, "ended": null, "state": "running"}`, `<run>` being 1 on a new file and one more than the highest `n` in `runs` otherwise. In the same write, an earlier entry still `running`, left by a run that never reached a terminal state, gets `"state": "interrupted"`, its `ended` left `null`. On an existing file change nothing else here; the merge-base and the head wait in memory for Resume.
 7. Write every record file whole to `<record>/<name>.tmp`, then move it over the file with `mv <tmp> <file>`, no flags, both paths absolute, keeping every entry you did not change.
 
 With no pass in `passes.json`, read `steps/1-pass.md` and run pass 1 at `xhigh`; otherwise read `steps/3-next.md`, section Resume, which decides where the run starts.

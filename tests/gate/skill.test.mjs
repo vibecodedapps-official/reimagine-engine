@@ -101,7 +101,9 @@ test('R219: the skill has a Supporting files section', () => {
 });
 
 test('R219: Supporting files names every file of the skill, and each ends by naming where the run goes next', () => {
-  assert.deepEqual(supporting(), ['record.md', 'steps/0-preflight.md', 'steps/1-pass.md', 'steps/2-fix.md', 'steps/3-next.md']);
+  assert.deepEqual(supporting(), [
+    'record.md', 'report.md', 'steps/0-preflight.md', 'steps/1-pass.md', 'steps/2-fix.md', 'steps/3-next.md', 'steps/4-publish.md',
+  ]);
   const lines = SKILL.split('\n');
   const start = lines.indexOf('## Supporting files');
   const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
@@ -244,4 +246,63 @@ test('R312: Step 3 resumes a record by its head and merge-base', () => {
 
 test('decision 130: a pass of the run, not of the record, decides pass-with-deferred', () => {
   assert.ok(SKILL.includes('`pass-with-deferred` when any pass of the run deferred something'));
+});
+
+test('R311: Step 0 marks a run entry an earlier run left running as interrupted', () => {
+  holds('steps/0-preflight.md', '"state": "interrupted"');
+  holds('record.md', '`interrupted`');
+});
+
+test('R316: the skill runs a pass, and every terminal state reads Step 4', () => {
+  assert.ok(!/prerelease|cannot run a pass/i.test(SKILL), 'SKILL.md still says it cannot run a pass');
+  assert.ok(SKILL.includes('Every terminal state reads `steps/4-publish.md`'));
+});
+
+const DENY = ['Claude', 'Anthropic', 'Opus', 'Sonnet', 'Haiku', 'Fable', 'model', 'agent', 'subagent', 'LLM', 'AI',
+  'code-review', 'child session', 'stand-in', 'Skill', 'TaskStop', 'Bash', '.reimagine'];
+const wholeWord = (w) => new RegExp(`(?<![A-Za-z0-9_-])${w.replace('.', '[.]')}(?![A-Za-z0-9_-])`, 'i');
+
+test('R314: the comment template is one fenced block with no deny word, and Step 4 lists every deny word', () => {
+  const text = holds('steps/4-publish.md', 'gh pr comment <number> --body-file <absolute path>', '`blocked` and `stopped` post nothing');
+  const blocks = fences(text).filter((b) => b.lines[0]?.startsWith('Gate verdict:'));
+  assert.equal(blocks.length, 1, 'expected one fenced block that starts with "Gate verdict:"');
+  const body = blocks[0].lines.join('\n');
+  for (const w of DENY) assert.ok(!wholeWord(w).test(body), `the comment template holds ${w}`);
+  for (const w of DENY) assert.ok(text.includes(`\`${w}\``), `steps/4-publish.md does not list ${w}`);
+});
+
+test('R315: Step 4 holds the minimal manifest literal and the gate key shape', () => {
+  holds(
+    'steps/4-publish.md',
+    '{"bundles":[{"repo":"<absolute path>","pr":"github:<owner>/<repo>#<n>","tickets":[]}],"claims":[],"gate":{...}}',
+    '{"verdict": "<state>", "passes": <n>, "record": "<absolute path of passes.json>"}',
+  );
+});
+
+test('R316: Step 4 names the five terminal states', () => {
+  holds('steps/4-publish.md', '`pass`', '`pass-with-deferred`', '`unconverged`', '`blocked`', '`stopped`');
+});
+
+test('R317: report.md holds the report header line for line and its seven sections in order', () => {
+  const block = fences(holds('report.md')).find((b) => b.lines[0] === '# gate report');
+  assert.notEqual(block, undefined, 'report.md has no fenced block that starts with "# gate report"');
+  assert.deepEqual(block.lines.slice(0, 14), [
+    '# gate report',
+    '',
+    '- Run number: <n>',
+    '- Branch: <branch>',
+    '- Record: <absolute path of the record directory | none written>',
+    '- Terminal state: <pass | pass-with-deferred | unconverged | blocked | stopped>',
+    '- Base: <remote>/<branch>',
+    '- Merge-base: <sha | none>',
+    '- Targets: <github:<owner>/<repo>#<n> (<link>) | the branch <name>>',
+    '- Run budget: <minutes> (<request | .reimagine.json | session instruction | default>); elapsed <minutes>',
+    '- Passes: <n> at <level> (<rule>), ... | none',
+    '- Engine: <subprocess | stand-in (<reason>)>',
+    '- Review level: your interactive code-review level is as it was; this run typed no level in this session',
+    '- Audit: /audit:run "<absolute path of the manifest>" (the command needs the audit plugin) | not suggested (<reason>)',
+  ]);
+  assert.deepEqual(block.lines.filter((l) => l.startsWith('## ')), [
+    '## Findings', '## Checks', '## Commits and pushes', '## Open findings', '## Blocked or stopped', '## Comment', '## Log',
+  ]);
 });

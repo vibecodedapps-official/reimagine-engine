@@ -283,6 +283,17 @@ test('R316: Step 4 names the five terminal states', () => {
   holds('steps/4-publish.md', '`pass`', '`pass-with-deferred`', '`unconverged`', '`blocked`', '`stopped`');
 });
 
+test('the README describes a run: no prerelease notice, the use phrases, the five states, the record and the manifest', () => {
+  assert.ok(!/prerelease|cannot run a pass/i.test(README), 'README.md still says it cannot run a pass');
+  for (const needle of [
+    'reimagine gate', 'gate PR <n>', 'gate this branch', 'gate the manifest <path>', 'no fixes', 'budget <n> minutes', 'base <branch>',
+    '`pass`', '`pass-with-deferred`', '`unconverged`', '`blocked`', '`stopped`',
+    '.reimagine/gate/<branch-slug>/', 'passes.json', 'findings.json', 'report.md', '/audit:run',
+  ]) {
+    assert.ok(README.includes(needle), `README.md lacks ${needle}`);
+  }
+});
+
 test('R317: report.md holds the report header line for line and its seven sections in order', () => {
   const block = fences(holds('report.md')).find((b) => b.lines[0] === '# gate report');
   assert.notEqual(block, undefined, 'report.md has no fenced block that starts with "# gate report"');

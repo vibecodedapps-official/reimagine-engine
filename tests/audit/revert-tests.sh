@@ -414,7 +414,9 @@ n=$(bash -c 'tick=0.1; tick10=1; w=$2; . "$1"
 	kill -KILL "$p" 2> /dev/null; wait' x "$tmp/wd.sh" "$tmp/wd5e" 2> "$tmp/err")
 [ "$n" -ge 2 ] 2> /dev/null ||
 	mismatch "$case_id: the watchdog fired after [$n] seconds of the shell's clock, not 2 or more"
-[ ! -s "$tmp/err" ] || mismatch "$case_id: stderr [$(tr '\n' '|' < "$tmp/err")]"
+# bash on macOS reports the sleep the watchdog killed, as `<pid> Terminated: 15  sleep 30`.
+sed '/Terminated.*sleep 30/d' "$tmp/err" > "$tmp/err5e"
+[ ! -s "$tmp/err5e" ] || mismatch "$case_id: stderr [$(tr '\n' '|' < "$tmp/err5e")]"
 
 # 5c. 5a's repo again in a new session with no controlling terminal, as under CI, started
 # with dash when it is installed: dash turns job control off without a terminal, so the

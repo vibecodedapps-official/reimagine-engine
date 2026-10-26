@@ -168,4 +168,4 @@ From run 2 on, a per-run name without a counter takes `-run<n>`.
 
 ## Supporting files
 
-None in this prerelease.
+- `scripts/findings.mjs`: after each review, to turn its saved output into the pass's findings and the ledger.

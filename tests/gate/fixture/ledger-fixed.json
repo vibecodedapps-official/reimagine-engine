@@ -1,0 +1,36 @@
+{
+  "findings": {
+    "src/stats.mjs|nearest rank percentile is 1 indexed but the code indexes sorted rank instead of sorted rank 1 so every result is shifte": {
+      "file": "src/stats.mjs",
+      "summary": "Nearest-rank percentile is 1-indexed but the code indexes `sorted[rank]` instead of `sorted[rank - 1]`, so every result is shifted one element up and the top rank reads past the array.",
+      "first_pass": 1,
+      "state": "fixed",
+      "passes": {
+        "1": {
+          "line": 23,
+          "bucket": "fix",
+          "reason": "off-by-one inside the change",
+          "prior": null
+        }
+      },
+      "match": {
+        "of": "src/stats.mjs|percentile reads one element past the rank",
+        "reason": "same defect worded differently, read by hand"
+      }
+    },
+    "package.json|the test script was narrowed from node test tests to a single hard coded file so any future test file under tests is sil": {
+      "file": "package.json",
+      "summary": "The test script was narrowed from `node --test tests/` to a single hard-coded file, so any future test file under tests/ is silently never run.",
+      "first_pass": 1,
+      "state": "deferred",
+      "passes": {
+        "1": {
+          "line": 1,
+          "bucket": "defer",
+          "reason": "pre-existing script, not introduced by the change",
+          "prior": null
+        }
+      }
+    }
+  }
+}

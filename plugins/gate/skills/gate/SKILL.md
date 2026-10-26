@@ -169,3 +169,4 @@ From run 2 on, a per-run name without a counter takes `-run<n>`.
 ## Supporting files
 
 - `scripts/findings.mjs`: after each review, to turn its saved output into the pass's findings and the ledger.
+- `scripts/next.mjs`: after each fix round, to decide the next level or the stop from `passes.json`.

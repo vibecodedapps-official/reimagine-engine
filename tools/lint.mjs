@@ -40,6 +40,7 @@ const EXECUTABLES = [
   'plugins/primer/hooks/drift.sh',
   'plugins/primer/hooks/notice.sh',
   'plugins/gate/scripts/findings.mjs',
+  'plugins/gate/scripts/next.mjs',
 ];
 const EXECUTABLE_EXTENSIONS = ['.sh', '.mjs', '.js', '.cjs', '.py', '.ps1', '.bat', '.cmd', '.exe'];
 const PLUGIN_TOP = ['.claude-plugin', 'skills', 'commands', 'agents', 'hooks', 'scripts', 'output-styles', 'rules', 'chat', 'README.md', 'LICENSE'];

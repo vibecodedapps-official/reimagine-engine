@@ -58,7 +58,7 @@ Top level, written by Step 0 when the file is absent:
 
 1. `branch` is the exact branch name. `base` is the base branch and `merge_base` the full sha of the merge-base with it. `targets` lists the pull request as `github:<owner>/<repo>#<n>`, or the branch name for a branch target.
 2. `engine` is `subprocess` or `stand-in`; Step 1 rewrites it to `stand-in` when the run moves to the stand-in.
-3. `runs` has one entry per run: `n`, `started`, `ended` (`null` while the run is open) and `state` (`running`, then the terminal state). Step 0 appends `{"n": <run>, "started": <utc>, "ended": null, "state": "running"}` with `<run>` one more than the highest `n` in `runs`; at a terminal state the run's entry gets `ended` and its `state`.
+3. `runs` has one entry per run: `n`, `started`, `ended` (`null` while the run is open) and `state` (`running`, then the terminal state, or `interrupted` when a later Step 0 finds it still `running`). Step 0 appends `{"n": <run>, "started": <utc>, "ended": null, "state": "running"}` with `<run>` one more than the highest `n` in `runs`; at a terminal state the run's entry gets `ended` and its `state`.
 4. `passes` has one entry per pass, in order of `n`, which counts across runs: pass 3 may be run 2's first pass.
 
 Each pass entry, and the step that writes it:

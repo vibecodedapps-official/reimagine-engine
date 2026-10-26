@@ -24,8 +24,8 @@
 #  5 processes: a background process left by a passing file and a child that ignores TERM
 #    after its parent dies at the deadline (5a); a command that ignores TERM until KILL,
 #    with REVERT_TESTS_TICK unset (5b); 5a with no controlling terminal, under dash where
-#    installed (5c, needs setsid); 5b with the low tick (5d); files that end before the
-#    deadline under the low tick (5e)
+#    installed (5c, needs setsid); 5b with the low tick (5d); the watchdog's deadline under
+#    the low tick, from the script's own text (5e)
 #  6 the time cap                        7 the file cap, with 21 files
 #  8 a path conflict                     9 the environment: LC_ALL, GIT_*, TMPDIR, and
 #    GIT_CEILING_DIRECTORIES
@@ -394,21 +394,29 @@ status tests/test_stubborn.sh > "$tmp/st"
 grep -qx -- '- Exit status: timed out after [2-9] seconds (exit status 137)' "$tmp/st" ||
 	mismatch "$case_id: status [$(cat "$tmp/st")]"
 
-# 5e. Two files that take 1.25 seconds against a deadline of 2, run at head and without the
-# change, under the low tick: each run's deadline counts whole seconds of the shell's
-# clock, and none may end before 2 seconds have passed.
+# 5e. The watchdog under the low tick, taken from the script's own text with its slack.
+# bash's SECONDS counts whole seconds of the wall clock, so a deadline of 1 started just
+# after a second begins may not fire until that clock has moved twice. A file racing the
+# deadline cannot tell an early deadline from a slow machine; the shell's own count can,
+# and a slow machine only makes the count larger.
 case_id="case 5e"
-mkrepo c5e
-put 100644 README 'x\n'
-commit main
-put 100644 tests/test_s1.sh 'sleep 1.25\n'
-put 100644 tests/test_s2.sh 'sleep 1.25\n'
-commit feature main
-run "$R" 'command\tsh\nrun\ttests/test_*.sh\ntimeout\t2\n'
-ok
-verdicts '- `tests/test_s1.sh`: passes at head and without the change
-- `tests/test_s2.sh`: passes at head and without the change
-'
+sed -n '/^slack=0$/,/^esac$/p; /^watchdog() {/,/^}/p' "$rt" > "$tmp/wd.sh"
+[ "$(grep -cE '^(slack=0|watchdog\(\) \{)$' "$tmp/wd.sh")" = 2 ] ||
+	mismatch "$case_id: the slack or the watchdog is not in the script"
+mkdir "$tmp/wd5e"
+n=$(bash -c 'tick=0.1; tick10=1; w=$2; . "$1"
+	set -m; { sleep 30 & } 2> /dev/null; p=$!; set +m
+	s=$SECONDS; while [ "$SECONDS" = "$s" ]; do sleep 0.01; done
+	h=$SECONDS
+	watchdog "$p" 1 &
+	while [ ! -e "$w/timedout" ]; do sleep 0.01; done
+	echo $((SECONDS - h))
+	kill -KILL "$p" 2> /dev/null; wait' x "$tmp/wd.sh" "$tmp/wd5e" 2> "$tmp/err")
+[ "$n" -ge 2 ] 2> /dev/null ||
+	mismatch "$case_id: the watchdog fired after [$n] seconds of the shell's clock, not 2 or more"
+# bash on macOS reports the sleep the watchdog killed, as `<pid> Terminated: 15  sleep 30`.
+sed '/Terminated.*sleep 30/d' "$tmp/err" > "$tmp/err5e"
+[ ! -s "$tmp/err5e" ] || mismatch "$case_id: stderr [$(tr '\n' '|' < "$tmp/err5e")]"
 
 # 5c. 5a's repo again in a new session with no controlling terminal, as under CI, started
 # with dash when it is installed: dash turns job control off without a terminal, so the

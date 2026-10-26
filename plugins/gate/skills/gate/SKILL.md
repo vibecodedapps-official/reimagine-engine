@@ -32,13 +32,7 @@ allowed-tools:
 
 # gate
 
-This prerelease holds the core of the skill and not the steps that run a pass.
-
-Reply with this one line and stop, reading and writing nothing:
-
-`gate: this prerelease cannot run a pass yet; the gate releases at 0.1.0.`
-
-The rest of this file is the core the later steps build on. It runs after the loop and before the audit: the loop ships a reviewed pull request, the gate converges the reviewer on it, the audit challenges the result.
+The gate runs after the loop and before the audit: the loop ships a reviewed pull request, the gate converges the reviewer on it, the audit challenges the result.
 
 You orchestrate one run over one pull request, several, or a loop manifest. You run `code-review` passes over the whole change from the merge-base, sort what each pass finds, have implementers fix what is worth fixing, decide from the record of the pass whether to run another and at what level, and stop at a verdict. The allowed-tools list pre-approves only date and read-only git and gh; every write, push and comment stays under the session's permission mode.
 
@@ -149,6 +143,8 @@ Every run ends in exactly one state.
 
 After `blocked` nothing more is pushed or posted; pushed commits stay and are named.
 
+Every terminal state reads `steps/4-publish.md` for the target that just ended, to write the run's end, the manifest, the comment and the report.
+
 ## Record
 
 The record lives at `.reimagine/gate/<branch-slug>/` in the target repository. The slug is the branch name lowercased, with each run of characters outside `[a-z0-9]` replaced by `-`, cut to at most 60 characters, then trailing `-` removed. Add `.reimagine/` to the exclude file that `git rev-parse --git-path info/exclude` names, never to `.gitignore`, and never stage anything under it. `passes.json` keeps the exact branch name, and a differing branch is the slug collision of Approval scope.
@@ -174,6 +170,8 @@ From run 2 on, a per-run name without a counter takes `-run<n>`.
 - `steps/1-pass.md`: at the start of each pass, for the review and the triage.
 - `steps/2-fix.md`: after a triage that leaves a fix bucket, outside "no fixes".
 - `steps/3-next.md`: after the fix round, or after a triage with nothing to fix or in "no fixes"; its Resume section when Step 0 finds a record that holds passes.
+- `steps/4-publish.md`: at every terminal state, for the run's end, the manifest, the comment and the next target.
 - `record.md`: when a step writes a record file, for the files, the `passes.json` and `findings.json` shapes and the write discipline.
+- `report.md`: from Step 4, for the report's header and sections.
 - `scripts/findings.mjs`: after each review, to turn its saved output into the pass's findings and the ledger.
 - `scripts/next.mjs`: after each fix round, to decide the next level or the stop from `passes.json`.

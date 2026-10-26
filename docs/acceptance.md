@@ -61,6 +61,23 @@ Hand-run checks for the suite. Each milestone adds its items; items 27 to 36 wer
 
 ## Record of runs
 
+### 2026-10-26: gate outputs milestone
+
+Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, Node 26.4.0, git 2.56.0 (Git for Windows). The branch `m38-outputs`, `main` at 40f1809 with the M37 merge. No child session ran, and the acceptance items wait for M39's builder as the build plan says. The skill's prerelease stop is gone, since every step of a run now exists.
+
+- **The audit's case 5e, reworked.** The case no longer races two files against a 2-second deadline. It takes the watchdog and its slack from `revert-tests.sh`'s own text, starts a 1-second deadline as bash's `SECONDS` turns, and requires that count to move at least twice before the watchdog fires; without the slack of 4e2d022 it fires after one. A slow machine only makes the count larger. On this machine the shipped script passed 10 of 10 runs alone and 10 of 10 under 48 busy processes; with the slack set to 0 the case failed 10 of 10 both ways, and the whole `tests/audit/revert-tests.sh` failed on that case alone: `case 5e: the watchdog fired after [1] seconds of the shell's clock, not 2 or more`. The pull request's first macOS job failed the case on its stderr check alone, `case 5e: stderr [x: line 5: 18563 Terminated: 15          sleep 30|]`: bash there reports the sleep the watchdog killed. The case now drops a line of that shape, as the script drops bash's `child setpgid` line. Bash 5.3 on this machine prints no such line, with job control on or off, so the macOS job is the check of that change.
+- **The report adds a Comment section.** Requirement 317 lists six sections; the report has a seventh, `## Comment`, before the Log, for the link of the posted comment, the text requirement 314 puts in the report for a host other than GitHub, or why no comment was posted.
+- **Readings the documents leave open.**
+  - A run that Resume ends on a stop already in the record posts no comment and writes the run entry, the manifest and the report, since requirement 312 says it "commits and posts nothing".
+  - The report's Passes line gives each pass with the `rule` of its own `next`, the decision that followed it, and the cap when there is one.
+  - The Audit line suggests `/audit:run` whenever the run wrote or updated a manifest, in any terminal state that has a record.
+  - The Log copies each implementer call's times from the `date` outputs Step 2 keeps, since `passes.json` has no field for them.
+  - The stand-in's reason comes from the record: a saved `.json` review of the run whose result says the review skill is missing, else that `claude` is not on the PATH.
+  - The comment's deny list is matched as whole words without regard to case; a file path or summary quoted from a review is left as the review wrote it.
+  - The `passes` of the manifest's `gate` value counts this run's passes.
+  - Step 0 marks a `runs` entry an earlier run left `running` as `interrupted`, which settles the open point of the passes milestone.
+- **Checks.** The case 5e commit: `npm run test:audit` exit 0, 22 tests, and `npm run lint` exit 0. Item 1's tests failed 7 of 33 against the commit before it, and item 2's README test 1 of 34. On each item's commit `npm run test:gate` exit 0 (179 and 180 tests, about 2.3 s), `npm run test:lint` exit 0 (131 tests, 36.6 and 37.4 s, over the area target of acceptance item 44 as before) and `npm run lint` `lint: ok (167 files, 5 plugins)`, exit 0; `claude plugin validate --strict plugins/gate` exit 0, with the icon warning every plugin of the repository gets. Before the push, `npm test` exit 0, 719 tests, 712 pass, 7 skipped, and `npm run lint` with the deny tokens `lint: ok (167 files, 5 plugins)`, exit 0.
+
 ### 2026-10-26: gate passes milestone
 
 Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, Node 26.4.0, git 2.56.0 (Git for Windows). The branch `m37-passes`, `main` at 5768615 with the M36 merge. No child session ran and no acceptance item is listed for the milestone. The skill keeps its prerelease stop line until the publish step exists, since a run could otherwise commit and push and then end with no report or comment.
@@ -70,11 +87,12 @@ Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, Node 26.4.0, gi
 - **Readings the documents leave open.**
   - The fix round's change kinds are judged against the files of the diff the pass reviewed, from the merge-base to the head at the pass's start.
   - A non-zero exit of `findings.mjs` is a failed review and ends the run `unconverged`; a non-zero exit of `next.mjs` ends it `blocked`, since the record cannot decide the next step.
-  - A child session whose result reports the review skill missing moves the run to the stand-in before the result can count as a failed review. The wording of that result is not verified; acceptance item 53 shows it.
+  - A child session whose result reports the review skill missing moves the run to the stand-in before the result can count as a failed review. The wording of that result is not verified, and no acceptance item shows it, since item 53 runs with no `claude` on the PATH.
   - A local head branch ahead of or diverged from its remote ends the run `blocked`, so a run only pushes its own fix commits on top of what the remote holds.
   - Each target's run takes its own start time, so the run budget applies per record.
   - Every `blocked` ending of the fix round records the pass `failed`, so a resume repeats it.
   - Step 3 writes `head` for a pass that skipped the fix round, so a resume can compare it.
+  - Implementer groups share no file, and two groups run one at a time when one's files import from the other's, since requirement 300's "serial otherwise" does not say what makes groups depend on each other.
   - Resume's expected head is the `head` of the last complete pass, or the `commit` of the first pass after it that is not complete; a pass it repeats rewrites its own review files. A `no-fixes` stop met by a later run that fixes starts a new sequence at `xhigh`: requirement 312 ends a resumed run at a recorded stop, which read literally would end a fix run after "no fixes" on the same head `unconverged` without fixing anything.
 - **Open for the outputs milestone.** A run that stopped before its terminal state leaves its `runs` entry with `ended` null; the loop marks such a run `interrupted`, and the publish step settles the gate's.
 - **The audit's case 5e on Windows CI.** `tests/audit/revert-tests.sh` case 5e timed out on the first Windows attempt of the scaffold's pull request and on both first attempts of the next.mjs pull request, and passed on rerun each time; it had passed every Windows run before the scaffold. `revert-tests.sh` took 283 to 388 seconds on that runner before the scaffold and 445 to 480 after, which fits the gate suites' added load, but the cause is not verified. Raising the case's deadline from 2 to 3 seconds was weighed and dropped: with the fix of 4e2d022 taken out, the case passed 1 of 10 runs at a deadline of 2 and 10 of 10 at 3, so the wider deadline stops it catching the defect it guards; the shipped script passed 10 of 10 at both. The case is unchanged, and a Windows job that fails on it is rerun.

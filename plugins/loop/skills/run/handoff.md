@@ -110,12 +110,13 @@ One `### R<n>` per deferred item, in the report's order. Keys, in this order:
 Write `audit-manifest.json` beside the handoff:
 
 ```
-{"bundles":[{"repo":"<absolute path>","pr":"github:<owner>/<repo>#<n>","tickets":["<ticket id>"]},{"repo":"<absolute path>","branch":"<branch>","base":"<remote>/<base branch>","tickets":["<ticket id>"]}],"claims":["<absolute path of handoff.md>"]}
+{"bundles":[{"repo":"<absolute path>","pr":"github:<owner>/<repo>#<n>","tickets":["<ticket id>"]},{"repo":"<absolute path>","branch":"<branch>","base":"<remote>/<base branch>","tickets":["<ticket id>"]}],"claims":["<absolute path of handoff.md>"],"reviews":{"level":"<level>","fixed":[{"file":"<repository-relative path>","summary":"<one line>"}],"deferred":[{"file":"<repository-relative path>","summary":"<one line>"}],"rejected":[{"file":"<repository-relative path>","summary":"<one line>"}]}}
 ```
 
 - One bundle per Bundles item, in the same order. `tickets` lists the ids of the tickets whose `bundles` value names that bundle.
 - A bundle names its pull request only when the live remote head equals the local HEAD of that branch: compare the first field of `git -C <repo> ls-remote --heads <remote> refs/heads/<branch>` with `git -C <repo> rev-parse HEAD`. Otherwise the bundle carries `branch` and `base` and no `pr`.
 - In a worktree run, `repo` is the worktree path.
+- `reviews` holds the level of the Step 5 pass (`steps/4-build.md`, 5.2) and every finding of this run's Step 5 pass and CI repair passes in the bucket the triage gave it: `fixed` for the `fix` bucket, `deferred` for `defer` (a fix restored and deferred counts here), `rejected` for `reject`. Each finding is its repository-relative `file` and a one-line `summary`. A list the pass left empty is written `[]`. The audit ignores the key.
 
 ## Example
 
@@ -187,7 +188,7 @@ generated: 2026-10-14T19:41:07Z
 `audit-manifest.json` (the remote head of `feat/12-sync-retry` equals the local HEAD):
 
 ```
-{"bundles":[{"repo":"/home/dev/widget-app","pr":"github:acme/widget-app#14","tickets":["github:acme/widget-app#12"]}],"claims":["/home/dev/widget-app/.reimagine/loop/feat-12-sync-retry/handoff.md"]}
+{"bundles":[{"repo":"/home/dev/widget-app","pr":"github:acme/widget-app#14","tickets":["github:acme/widget-app#12"]}],"claims":["/home/dev/widget-app/.reimagine/loop/feat-12-sync-retry/handoff.md"],"reviews":{"level":"high","fixed":[{"file":"src/sync.js","summary":"the retry delay starts at zero, so the first retry fires at once"}],"deferred":[],"rejected":[]}}
 ```
 
 Return to Final report handling in SKILL.md.

@@ -29,7 +29,8 @@ A headless session does not show text written before a Skill call, so the header
 - Pull request: <link per repository | none; for a continued branch, the pull request commented on>
 - CI state: <green | not applicable (<reason>) | pending | failed | not reached>
 - Handoff: <absolute path of handoff.md | not written: <reason>>
-- Audit: </audit:run "<absolute path of audit-manifest.json>" (the command needs the audit plugin) | not suggested>
+- Gate: </gate PR <n> | /gate this branch> (the command needs the gate plugin) | not suggested>
+- Audit: </audit:run "<absolute path of audit-manifest.json>" (the command needs the audit plugin) | /audit:run "<absolute path of audit-manifest.json>" after the gate (the command needs the audit plugin) | not suggested>
 
 ## Attended or unattended
 
@@ -59,7 +60,8 @@ A headless session does not show text written before a Skill call, so the header
 - Pull request: a link per repository, or `none`. On a continued branch, name the pull request the run commented on.
 - CI state: `green`, `not applicable (<reason>)`, `pending`, `failed`, or `not reached` when Step 7.3 never ran.
 - Handoff: the absolute path when `handoff.md` was written, else `not written: <reason>`, for example `not written: no commit from this run`.
-- Audit: write the `/audit:run` line with the absolute manifest path only when the handoff was written and the work spans more than one repository, more than one ticket, or 500 or more changed lines (added plus deleted, from `git diff --numstat <merge-base>...HEAD` in each repository, summed). Add the note that the command needs the audit plugin. Otherwise write `not suggested`.
+- Gate: when the handoff was written and the change has 500 or more changed lines (added plus deleted, from `git diff --numstat <merge-base>...HEAD` in each repository, summed), write `/gate PR <n>` with the pull request this run opened or continued, or `/gate this branch` when no pull request exists, and add the note that the command needs the gate plugin. Otherwise write `not suggested`.
+- Audit: when the handoff was written and the work spans more than one repository or more than one ticket, write the `/audit:run` line with the absolute manifest path. When only the line count of the Gate line called for a review, write the same line followed by `after the gate`, so the audit runs on the converged pull request. Add the note that the command needs the audit plugin. Otherwise write `not suggested`.
 
 ## Sections
 

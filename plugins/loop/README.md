@@ -52,6 +52,16 @@ These always ask: a force push, `--no-verify`, a merge, anything that deploys, a
 
 Each run keeps its files in `.reimagine/loop/<branch-slug>/` in your checkout: the inputs as fetched, the plan, a log, a completion record, and the report. The directory is excluded through `.git/info/exclude`, never `.gitignore`, and is never committed. Run the loop again on that branch and it reads the record and continues.
 
+## The handoff and the manifest
+
+When a run makes a commit of its own, it also writes `handoff.md` and `audit-manifest.json` in the record. The manifest is what `/audit:run` reads; its `reviews` key holds the level of the final review and its findings by bucket.
+
+```
+{"bundles":[{"repo":"<absolute path>","pr":"github:<owner>/<repo>#<n>","tickets":["<ticket id>"]},{"repo":"<absolute path>","branch":"<branch>","base":"<remote>/<base branch>","tickets":["<ticket id>"]}],"claims":["<absolute path of handoff.md>"],"reviews":{"level":"<level>","fixed":[{"file":"<repository-relative path>","summary":"<one line>"}],"deferred":[{"file":"<repository-relative path>","summary":"<one line>"}],"rejected":[{"file":"<repository-relative path>","summary":"<one line>"}]}}
+```
+
+When the change has 500 or more changed lines, the report suggests `/gate` on the pull request first, which needs the gate plugin.
+
 ## Configuration
 
 An optional `.reimagine.json` at the repository root. Every key is optional; the values shown are the defaults, except `checks`, which is an example.

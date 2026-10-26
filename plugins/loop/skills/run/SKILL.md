@@ -59,7 +59,7 @@ Recognized phrases:
 - "budget <n> minutes": set the run budget.
 - Effort words.
 
-Effort words and the effort they set: "quick" or "low" gives `low`; "medium" gives `medium`; "thorough" or "high" gives `high`; "very thorough" or "xhigh" gives `xhigh`; "max" gives `max`. A word counts only when it is a whole phrase of the request by itself, alone or with "effort" before or after it ("thorough", "effort high", "high effort"). A phrase is the text between commas, semicolons, periods, or the ends of the request, once the trigger phrase and the ticket ids are set aside. "reimagine loop #12, thorough" and "reimagine loop #12 thorough" give `high`; "quick fix for #12" and "fix the low disk space warning" give nothing. With no word, no effort argument is passed to Agent calls and the `code-review` level is `high`. A floored run (`risk.md`) passes at least `high` to every reviewer, and no hint lowers that.
+Effort words and the effort they set: "quick" or "low" gives `low`; "medium" gives `medium`; "thorough" or "high" gives `high`; "very thorough" or "xhigh" gives `xhigh`; "max" gives `max`. A word counts only when it is a whole phrase of the request by itself, alone or with "effort" before or after it ("thorough", "effort high", "high effort"). A phrase is the text between commas, semicolons, periods, or the ends of the request, once the trigger phrase and the ticket ids are set aside. "reimagine loop #12, thorough" and "reimagine loop #12 thorough" give `high`; "quick fix for #12" and "fix the low disk space warning" give nothing. With no word, no effort argument is passed to Agent calls and the `code-review` level is `high`. The `code-review` level is never above `xhigh`: "max" gives `xhigh` there while Agent calls keep `max` (`risk.md`). A floored run (`risk.md`) passes at least `high` to every reviewer, and no hint lowers that.
 
 Ticket forms, resolved per id in this order:
 
@@ -108,8 +108,8 @@ Invoking by name is the user's opt-in to parallel Agent calls.
 
 - Bash: git, gh, az, date and the repository's checks.
 - Read, Write, Edit: record files and files the run owns. Write and Edit never touch an implementer's slice files, except the single orchestrator fix of Step 4.4 and nothing else.
-- Agent: implementers, reviewers, stand-ins and readers.
-- SendMessage: continue an implementer or the opus stand-in.
+- Agent: implementers, the plan reviewer, the `opus` stand-in and readers.
+- SendMessage: continue an implementer.
 - Skill: `code-review` only.
 - TaskStop: stop a background check that passes its budget.
 - MCP tools for ticket reads and comments, when listed.
@@ -120,19 +120,19 @@ Invoking by name is the user's opt-in to parallel Agent calls.
 |---|---|---|
 | orchestrator, judge, slice reviewer | the session model | none; the run stops |
 | implementer | Agent at `sonnet`, one per slice, parallel for slices with disjoint files | none; a tool error ends `blocked` after the snapshot check |
-| plan reviewer, final reviewer | a fresh Agent at `fable`, read and report only | once at `opus` on a model or tool error; stays swapped for the run |
-| higher-risk final reviewer | the built-in `code-review` skill, explicit level, range `<merge-base>...HEAD` as a full sha, never `--comment` or `--fix` | an Agent at `opus` over a patch file when the skill is not listed, or the diff is in a worktree or another repository; continued with SendMessage across rounds; not a swap |
+| plan reviewer | a fresh Agent at `fable`, read and report only, Step 3 only | once at `opus` on a model or tool error; stays swapped for the run |
+| final reviewer | the built-in `code-review` skill for every run, explicit level at most `xhigh`, range `<merge-base>...HEAD` as a full sha, one pass, never `--comment` or `--fix` | an Agent at `opus` over a patch file, once, when the skill is not listed or the diff is in a worktree or another repository; not a swap |
 | reader | an Agent at `haiku` when a read is worth splitting out | you read |
 
 Agent calls never use a fork. Every Agent call passes `model` explicitly, and passes `effort` by the effort rule above.
 
 1. Orchestrator: you orchestrate, judge, review each slice diff and decide. You never implement a slice. Without you the run stops.
 2. Implementer: each slice goes to one Agent at `sonnet`. Slices with disjoint files run in parallel; others run serially. Parallel implementers run no checks and say so. You run each slice's checks afterward, one command at a time, and a command several slices name runs once. A tool error ends `blocked` after the snapshot check: restore only paths that were clean before the call; anything else ends `blocked`.
-3. Plan reviewer and final reviewer: a fresh-context Agent at `fable`, given the request text, the file paths and the required reply shape, and told to read and report only. On a model or tool error (an API error such as model not found, or a tool error) retry the call once at the `fallback-reviewer` model (`opus` unless `.reimagine.json` says otherwise), record the swap in `run.md`, and name it in the report. The reviewer stays swapped for the rest of the run. A denial or a timeout is not an error.
-4. Higher-risk final review: when the run is higher-risk (`risk.md`), Step 5 uses `code-review`. When a higher-risk Step 5 starts, confirm `code-review` is listed among the session's skills. Call it with the level first (`high` with no effort word, at least `high` when floored) and the range `<merge-base>...HEAD` with the full merge-base sha as target. Never pass `--comment` or `--fix`. Mark new files with `git add -N` first. Each pass is fresh. A pass that errors is retried once; a second error ends `blocked`.
-5. The opus stand-in, used when `code-review` is not listed or the diff is in a worktree or another repository: an Agent at `opus`, given the absolute path of the patch file, the plan, the acceptance criteria and the reply shape, and told to read and report only. Continue it with SendMessage in later rounds. Record it per pass. It is not a swap; the report names it.
+3. Plan reviewer: a fresh-context Agent at `fable`, given the request text, the file paths and the required reply shape, and told to read and report only. It reviews the plan in Step 3. On a model or tool error (an API error such as model not found, or a tool error) retry the call once at the `fallback-reviewer` model (`opus` unless `.reimagine.json` says otherwise), record the swap in `run.md`, and name it in the report. The reviewer stays swapped for the rest of the run. A denial or a timeout is not an error. Step 5 has no fresh reviewer; its one pass is item 4.
+4. Final reviewer: every run's Step 5 uses `code-review`. When Step 5 starts, confirm `code-review` is listed among the session's skills. Call it with the level of `risk.md` first and the range `<merge-base>...HEAD` with the full merge-base sha as target. Never pass `--comment` or `--fix`. Mark new files with `git add -N` first. One pass per run; a CI repair cycle adds one (`steps/7-publish.md`). A pass that errors is retried once; a second error ends `blocked`.
+5. The `opus` stand-in, used when `code-review` is not listed or the diff is in a worktree or another repository: an Agent at `opus`, given the absolute path of the patch file, the plan, the inputs, the acceptance criteria and the reply shape, with the `code-review` level of `risk.md` passed as its `effort` (`xhigh` where the word was "max"), and told to read and report only. It runs once per pass and is never continued with SendMessage. It is not a swap; the report names it.
 6. Reader: read-only work worth splitting out runs on `haiku`; you may read instead.
-7. `.reimagine.json` `models` accepts `implementer`, `reviewer`, `fallback-reviewer` and `reader`, each one of `sonnet`, `opus`, `haiku`, `fable`. It never changes the risk floor or the higher-risk role.
+7. `.reimagine.json` `models` accepts `implementer`, `reviewer`, `fallback-reviewer` and `reader`, each one of `sonnet`, `opus`, `haiku`, `fable`. It never changes the risk floor or the Step 5 role.
 
 The briefs and reply shapes each Agent call carries are in the step files.
 
@@ -144,7 +144,7 @@ Where a tool takes a timeout, pass the budget. The Bash foreground cap is 10 min
 
 Time comes only from `date -u +%Y-%m-%dT%H:%M:%SZ`, run at the start of Step 0 and of each step, before and after each timed call, after each push returns, at the terminal state, and just before and after each question. Copy the output; never write a time from memory or arithmetic. Before Step 0.5 nothing is written, so hold the times in memory and copy them into `run.md` when Step 0.5 creates it. Elapsed time is the difference of recorded times minus question waits, which are outside the run budget.
 
-Round cap: no step repeats more than three times. A round is one pass by the stage's reviewer plus the fixes it leads to. The orchestrator's single fix after the Step 4 cap is not a round; Step 5 has no such fix, and its third round fixes nothing. Each CI repair cycle gets one Step 5 round and one full Step 6 run, and cycles are capped at three.
+Round cap: no step repeats more than three times. A round is one pass by the stage's reviewer plus the fixes it leads to. The orchestrator's single fix after the Step 4 cap is not a round. Step 5 has one pass per run and no round (`steps/4-build.md`, Step 5). Each CI repair cycle gets one Step 5 pass and one full Step 6 run, and cycles are capped at three.
 
 ## Terminal states
 
@@ -223,7 +223,7 @@ Read each file at its point and not before. A sentence that only says where a la
 - `steps/1-plan.md`: at the start of Step 1.
 - `steps/4-build.md`: when Step 3 ends with a final plan in a run that is not plan-only. Read it at 3.6 when the plan is to be confirmed, else at 3.7. On an existing record with no new work, read it at the end of Step 0 to run Step 6.
 - `steps/7-publish.md`: at the start of Step 7.
-- `risk.md`: at Step 1.6, and whenever the floor or the higher-risk rule is judged.
+- `risk.md`: at Step 1.6, and whenever the floor is judged.
 - `record.md`: at Step 0.2 when the run's record directory exists, else at Step 0.5.
 - `ci-watch.md`: at Step 7.3.
 - `multi-repo.md`: at the start of Step 0 when the request says "also edit", or when Step 1.2 adopts a repository.

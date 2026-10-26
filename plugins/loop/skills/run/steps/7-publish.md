@@ -70,12 +70,12 @@ Read `ci-watch.md` and carry out its items 1 to 4 for the pull request, starting
 **Item 5, repair.** A red result (a required check, a required workflow, a deferred check or an applicable workflow that finished and did not pass) is repaired in a cycle:
 
 1. Read the failure from the failing run's log with `gh run view <run-id> --log-failed`, in its own Bash call.
-2. Judge the higher-risk rule before the round. A run that is higher-risk uses `code-review` or its stand-in, and a run never goes back to the other role.
-3. Re-enter Step 5 for one round on the repair, then run Step 6 in full once.
+2. Fix it through the implementer that owns the failing code, after a snapshot, as Step 5.1 fixes a regression.
+3. Re-enter Step 5 for one pass over the whole diff from the merge-base at the level of `risk.md`, with its triage and fix batch (5.2 to 5.5), then run Step 6 in full once.
 4. Commit the repair under the rules of 7.1, read the remote head as 7.2 says (it must equal the last pushed sha), push, and take `date` and the new sha.
 5. Return to `ci-watch.md` item 1 for the new head.
 
-At most three cycles run. A result still red after the third, or a repair the round cannot fix, ends the run `blocked` with the pull request linked in the report and nothing further pushed. A pull request that is not OPEN, a changed base and a merge conflict end it `blocked` at once, as `ci-watch.md` says. An expired run budget ends it `blocked` with the pull request left as it is.
+At most three cycles run. A result still red after the third, or a repair the pass cannot fix, ends the run `blocked` with the pull request linked in the report and nothing further pushed. A pull request that is not OPEN, a changed base and a merge conflict end it `blocked` at once, as `ci-watch.md` says. An expired run budget ends it `blocked` with the pull request left as it is.
 
 ## 7.4 Ticket comments
 

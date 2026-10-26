@@ -358,14 +358,14 @@ Engine: subprocess
 
 ### Approval scope
 
-Invoking by name approves fix commits on each target's branch, whether or not the loop opened its pull request, pushing that branch, and one comment per run on each target pull request (decision 127). Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, rebase, amend, reset, repository settings and a new issue always ask. A denial is final: never retried, never routed around. A dirty tree, a merged or closed pull request and a remote head that moved since preflight end `blocked`.
+Invoking by name approves fix commits on each target's branch, whether or not the loop opened its pull request, pushing that branch, and one comment per run on each target pull request (decision 127). Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, rebase, amend, reset, repository settings and a new issue always ask. A denial is final: never retried, never routed around. A dirty tree, a merged or closed pull request and a remote head that is neither the one preflight fetched nor the run's own last push end `blocked`.
 
 ### Roles
 
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or one per top-level path over `split` | Agent `opus` over `diff-<slug>.patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or one per top-level path over `split` | Agent `opus` over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run |
 | implementer | Agent `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
 `.reimagine.json` at the repository root, the `gate` key beside the loop's:
@@ -378,7 +378,7 @@ Every value is optional and the values shown are the defaults. The levels a run 
 
 ### Passes and caps
 
-A pass is one review at one typed level, the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Changed lines over `split` (added plus deleted from `git diff --numstat <merge-base>...HEAD`) split the review by top-level path into parallel child sessions, each with the target `<merge-base>...HEAD <path>` and the root group naming its files, and the pass's findings are the union. The orchestrator sorts every finding into fix, defer or reject with a one-line reason before anything is edited; implementers apply the fix bucket, one per disjoint file group after a snapshot; the repository's `checks` run; a pass that changed anything ends with one commit and a push after the remote-head check. `next.mjs` then reads `passes.json` and returns, in this order: stop with `pass` or `pass-with-deferred` when the fix bucket is empty and nothing new was rejected; a stop after a `medium` pass, `unconverged` when that pass still found something to fix; `xhigh` once per run when the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files; `medium` after two `high` passes that each fixed nothing and rejected something new; else `high`. At `max-passes` the level is returned marked `capped` and the run ends `unconverged`; a later run resumes from it. A finding is identified by file path and normalized summary; a fixed finding that returns is a regression and goes to the fix bucket, a rejected one that returns is carried and counts as nothing (decision 126). `max-passes` 4, a run budget of 120 minutes, 30 minutes per review, 20 per implementer call and 15 per check end a run `unconverged` with every open finding listed. "no fixes" runs pass 1 only and names what a fix run would do.
+A pass is one review at one typed level, the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Changed lines over `split` (added plus deleted from `git diff --numstat <merge-base>...HEAD`) split the review by top-level path into parallel child sessions, each with the target `<merge-base>...HEAD <path>` and the root group naming its files, and the pass's findings are the union. The orchestrator sorts every finding into fix, defer or reject with a one-line reason before anything is edited; implementers apply the fix bucket, one per disjoint file group after a snapshot; the repository's `checks` run; a pass that changed anything ends with one commit and a push after the remote-head check. `next.mjs` then reads `passes.json` and returns, in this order: stop with `pass` or `pass-with-deferred` when the fix bucket is empty and nothing new was rejected; a stop after a `medium` pass, `unconverged` when that pass still found something to fix; `xhigh` once per run when the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files; `medium` after two `high` passes that each fixed nothing and rejected something new; else `high`. At `max-passes` the level is returned marked `capped` and the run ends `unconverged`; a later run resumes from it. A finding is identified by file path and normalized summary; a fixed finding that returns is a regression and goes to the fix bucket, a rejected one that returns is carried and counts as nothing (decision 126). `max-passes` 4 with a level still to run, a run budget of 120 minutes and 30 minutes per review end a run `unconverged` with every open finding listed; an implementer call past 20 minutes or a check past 15 is a failed call and ends `blocked`. "no fixes" runs pass 1 only and names what a fix run would do.
 
 ### Engine
 
@@ -393,7 +393,7 @@ The child session is the engine (decision 124). It runs from the repository root
   report.md        rewritten at every terminal state
   review-<n>[-<slug>].json | .md    each review's saved output
   pre-<n>.status, pre-<n>.patch, pre-<n>.hashes   snapshots before implementer calls
-  diff-<slug>.patch                 a stand-in's input
+  diff-<n>[-<slug>].patch           a stand-in's input
   comment-<n>.md                    the comment as posted, never committed
   audit-manifest.json               written when the run did not come from one
 ```
@@ -510,7 +510,7 @@ Each plugin has its own version, starting at 0.1.0, in its manifest and its cata
 
 `package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `gate`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per milestone before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
 
-`tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's four cases (requirement 319) run against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes.
+`tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's three cases live under `tests/gate/evals/` with their own command, `npm run eval:gate`, since they need the runner's scaffold and tool grants, and run against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes (requirement 319).
 
 ## Security and permissions
 

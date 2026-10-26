@@ -61,6 +61,14 @@ Hand-run checks for the suite. Each milestone adds its items; items 27 to 36 wer
 
 ## Record of runs
 
+### 2026-10-26: loop 0.1.6 on GitHub
+
+Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, gh 2.91.0, Node 26.4.0, git 2.56.0 (Git for Windows); GitHub-hosted runners for CI. Branch `main` at 07e967a, tag `loop--v0.1.6`.
+
+- **Merged and tagged.** The six commits d314ee1 to 4c5e101 went up on the branch `m34-loop-step-5-one-pass` as pull request 22, whose run 40278312093 on 4c5e101 was green on every job; the pull request merged as 07e967a with a merge commit, carrying the changelog heading and the milestone's acceptance record, so nothing went to `main` directly. `claude plugin tag --push plugins/loop` created and pushed the annotated tag `loop--v0.1.6` at 07e967a; `git diff --quiet loop--v0.1.6 -- plugins/loop` exit 0, and lint on the tagged tree with the deny tokens printed `lint: ok (140 files, 4 plugins)`.
+- **Item 21 passed.** Run 40279184288 on the push of 07e967a: test on ubuntu, macOS and Windows, mawk, and validate all green.
+- **Item 22 passed** in a worktree at `loop--v0.1.6`: a line added to `plugins/loop/README.md` failed lint with `loop: plugins/loop/ changed since loop--v0.1.6; set a version above 0.1.6`; `node tools/release.mjs loop 0.1.7` passed it with no `## loop 0.1.7` heading. The worktree was removed.
+
 ### 2026-10-26: loop step 5 milestone
 
 Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, gh 2.91.0, Node 26.4.0, git 2.56.0 (Git for Windows). The loop at 0.1.6 from the branch `m34-loop-step-5-one-pass`, loaded by `--plugin-dir` from the repository working tree. The throwaway `vibecodedapps-dev/reimagine-throwaway-2026-10-26` with issues #1 "Add a median function" and #2 "Add a range function", its one commit holding `src/stats.mjs` with `sum` and `mean`, their test and a `.reimagine.json` of `{"checks": ["npm test"]}`, one clone per run. Two scratch profiles under `C:/rc-scratch-2026-10-26/`, each holding a copy of the owner's login and no `CLAUDE.md`; headless sessions under `--permission-mode auto`, run from a session under `bypassPermissions`.

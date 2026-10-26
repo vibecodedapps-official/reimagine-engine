@@ -61,6 +61,25 @@ Hand-run checks for the suite. Each milestone adds its items; items 27 to 36 wer
 
 ## Record of runs
 
+### 2026-10-26: gate passes milestone
+
+Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, Node 26.4.0, git 2.56.0 (Git for Windows). The branch `m37-passes`, `main` at 5768615 with the M36 merge. No child session ran and no acceptance item is listed for the milestone. The skill keeps its prerelease stop line until the publish step exists, since a run could otherwise commit and push and then end with no report or comment.
+
+- **The reading block stays in the core.** The build plan lists it under `steps/0-preflight.md`; it prints from `SKILL.md` before Step 0 is read, since reading the step file is itself a tool call and requirement 291 puts the block before any other, as the loop does. Step 0 takes the block's Targets, Mode, Budget and Engine lines, and its test checks that it names them.
+- **Names the documents leave open.** "no fixes" ends with the rule `no-fixes`, and a spent run budget adds `"capped": "budget"` beside the `max-passes` cap `next.mjs` returns. An unsplit pass has the review slug `all` and no suffix on its files; a split group's slug is its top-level path slugged, and the root group's is `root`. `pre-<n>` takes a counter one above the highest in the record, as the loop's snapshots do; `comment-<n>` takes the run number; `audit-manifest.json` is the one per-run name without a counter, so run 2 writes `audit-manifest-run2.json`.
+- **Readings the documents leave open.**
+  - The fix round's change kinds are judged against the files of the diff the pass reviewed, from the merge-base to the head at the pass's start.
+  - A non-zero exit of `findings.mjs` is a failed review and ends the run `unconverged`; a non-zero exit of `next.mjs` ends it `blocked`, since the record cannot decide the next step.
+  - A child session whose result reports the review skill missing moves the run to the stand-in before the result can count as a failed review. The wording of that result is not verified; acceptance item 53 shows it.
+  - A local head branch ahead of or diverged from its remote ends the run `blocked`, so a run only pushes its own fix commits on top of what the remote holds.
+  - Each target's run takes its own start time, so the run budget applies per record.
+  - Every `blocked` ending of the fix round records the pass `failed`, so a resume repeats it.
+  - Step 3 writes `head` for a pass that skipped the fix round, so a resume can compare it.
+  - Resume's expected head is the `head` of the last complete pass, or the `commit` of the first pass after it that is not complete; a pass it repeats rewrites its own review files. A `no-fixes` stop met by a later run that fixes starts a new sequence at `xhigh`: requirement 312 ends a resumed run at a recorded stop, which read literally would end a fix run after "no fixes" on the same head `unconverged` without fixing anything.
+- **Open for the outputs milestone.** A run that stopped before its terminal state leaves its `runs` entry with `ended` null; the loop marks such a run `interrupted`, and the publish step settles the gate's.
+- **The audit's case 5e on Windows CI.** `tests/audit/revert-tests.sh` case 5e timed out on the first Windows attempt of the scaffold's pull request and on both first attempts of the next.mjs pull request, and passed on rerun each time; it had passed every Windows run before the scaffold. `revert-tests.sh` took 283 to 388 seconds on that runner before the scaffold and 445 to 480 after, which fits the gate suites' added load, but the cause is not verified. Raising the case's deadline from 2 to 3 seconds was weighed and dropped: with the fix of 4e2d022 taken out, the case passed 1 of 10 runs at a deadline of 2 and 10 of 10 at 3, so the wider deadline stops it catching the defect it guards; the shipped script passed 10 of 10 at both. The case is unchanged, and a Windows job that fails on it is rerun.
+- **Checks.** Each commit's tests failed against the commit before it: 9 of 14, 5 of 18, 6 of 23 and 5 of 27. On each commit `npm run test:gate` exit 0 (160, 164, 169 and 173 tests, about 2.3 s), `npm run test:lint` exit 0 (131 tests, 35.9 to 36.2 s, over the area target of acceptance item 44 as before) and `npm run lint` exit 0. Before the push, `npm test` exit 0, 712 tests, 705 pass, 7 skipped, and `npm run lint` with the deny tokens `lint: ok (165 files, 5 plugins)`, exit 0.
+
 ### 2026-10-26: gate next.mjs milestone
 
 Windows 11 Pro 10.0.26300, 32 logical CPUs, Claude Code 2.1.310, gh 2.91.0, Node 26.4.0, git 2.56.0 (Git for Windows). The branch `m36-next`, `main` at 57e7fb9 with the M35 merge. No child session ran and no acceptance item is listed for the milestone.

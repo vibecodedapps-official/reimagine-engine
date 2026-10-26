@@ -1,11 +1,42 @@
-// The gate skill's frontmatter, reading block, configuration block, terminal states and supporting-files section.
+// The gate skill's frontmatter, reading block, configuration block, terminal states, supporting files and step files.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 const GATE = new URL('../../plugins/gate/', import.meta.url);
-const SKILL = readFileSync(new URL('skills/gate/SKILL.md', GATE), 'utf8');
+const SKILL_DIR = new URL('skills/gate/', GATE);
+const SKILL = readFileSync(new URL('SKILL.md', SKILL_DIR), 'utf8');
 const README = readFileSync(new URL('README.md', GATE), 'utf8');
+
+// A file of the skill by its path under skills/gate/, or null when it is missing.
+const read = (rel) => {
+  try {
+    return readFileSync(new URL(rel, SKILL_DIR), 'utf8');
+  } catch {
+    return null;
+  }
+};
+
+// Every Markdown file of the skill but SKILL.md, by its path under skills/gate/.
+const supporting = () => {
+  const out = [];
+  const walk = (rel) => {
+    for (const e of readdirSync(new URL(rel, SKILL_DIR), { withFileTypes: true })) {
+      if (e.isDirectory()) walk(`${rel}${e.name}/`);
+      else if (e.name.endsWith('.md') && `${rel}${e.name}` !== 'SKILL.md') out.push(`${rel}${e.name}`);
+    }
+  };
+  walk('');
+  return out.sort();
+};
+
+// Asserts that the file holds each needle.
+const holds = (rel, ...needles) => {
+  const text = read(rel);
+  assert.notEqual(text, null, `${rel} is missing`);
+  for (const needle of needles) assert.ok(text.includes(needle), `${rel} lacks: ${needle}`);
+  return text;
+};
 
 const frontmatter = (text) => {
   const lines = text.split('\n');
@@ -67,4 +98,150 @@ test('R316: the skill names the five terminal states', () => {
 
 test('R219: the skill has a Supporting files section', () => {
   assert.ok(SKILL.split('\n').includes('## Supporting files'));
+});
+
+test('R219: Supporting files names every file of the skill, and each ends by naming where the run goes next', () => {
+  assert.deepEqual(supporting(), ['record.md', 'steps/0-preflight.md', 'steps/1-pass.md', 'steps/2-fix.md', 'steps/3-next.md']);
+  const lines = SKILL.split('\n');
+  const start = lines.indexOf('## Supporting files');
+  const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
+  const spans = [...lines.slice(start + 1, end < 0 ? undefined : end).join('\n').matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+  for (const rel of supporting()) {
+    assert.ok(spans.includes(rel), `## Supporting files does not name ${rel}`);
+    const last = read(rel).trimEnd().split(/\n\s*\n/).pop();
+    assert.match(last, /\b(Return to|Next is|[Gg]oes to|[Gg]o to|reads? `[^`]+\.md`)/, `${rel}: the last paragraph names no hand-off`);
+  }
+});
+
+test('R291: Step 0 is read after the reading block and takes its four lines', () => {
+  assert.ok(SKILL.includes('After the block, read `steps/0-preflight.md` and start Step 0.'));
+  const text = holds('steps/0-preflight.md', 'before any other tool call', 'does not print the block again');
+  assert.ok(text.startsWith('# Step 0: Preflight\n'));
+  for (const heading of ['Targets', 'Mode', 'Budget', 'Engine']) assert.ok(text.includes(heading), `Step 0 does not name ${heading}`);
+});
+
+test('R309: Step 0 excludes the record through git rev-parse --git-path info/exclude, never .gitignore', () => {
+  holds('steps/0-preflight.md', 'git rev-parse --git-path info/exclude', 'git check-ignore -q .reimagine/', 'append `.reimagine/`', 'never `.gitignore`');
+});
+
+test('R292: Step 0 fetches the base and the head with the explicit refspec and keeps the merge-base as a full sha', () => {
+  holds('steps/0-preflight.md', '+refs/heads/<b>:refs/remotes/<r>/<b>', '+refs/heads/<head>:refs/remotes/<r>/<head>', 'git merge-base', 'full sha', 'base <branch>');
+});
+
+test('R295: Step 0 checks the clean tree before any checkout and keeps the fetched remote head', () => {
+  const text = holds('steps/0-preflight.md', 'git status --porcelain', 'git diff --cached --quiet', 'Never stash, reset or clean', 'git rev-parse refs/remotes/<r>/<head>');
+  assert.ok(text.indexOf('git diff --cached --quiet') < text.indexOf('git checkout'), 'the clean tree must come before the checkout');
+});
+
+test('R295: Step 0 blocks on an unauthenticated gh, a merged or closed pull request and a slug collision', () => {
+  holds('steps/0-preflight.md', 'not authenticated', 'merged or closed', 'cross-repository', 'slug collision');
+});
+
+test('R294 and R313: Step 0 reads the instruction files and the configuration and states the prompts', () => {
+  const text = holds('steps/0-preflight.md', '$CLAUDE_CONFIG_DIR', '.reimagine.json', 'ask-first', 'whether a prompt will occur');
+  for (const action of ['fetch', 'checkout', 'exclude', 'child session', 'subagent', 'check', 'commit', 'push', 'comment']) {
+    assert.ok(text.toLowerCase().includes(action), `the permission statement lacks ${action}`);
+  }
+});
+
+test('R290: Step 0 runs several targets one after another and a manifest by bundle', () => {
+  holds('steps/0-preflight.md', 'one after another', '`pr` or a `branch`', '`repo`', 'bundle order', 'unresolved', 'comment skipped');
+});
+
+test('R310: Step 0 writes passes.json and the run entry, then sends the run to pass 1 or to Resume', () => {
+  holds('steps/0-preflight.md', '"runs": []', '"passes": []', '{"n": <run>, "started": <utc>, "ended": null, "state": "running"}', 'mv <tmp> <file>');
+  const last = read('steps/0-preflight.md').trimEnd().split('\n').pop();
+  assert.ok(last.includes('`steps/1-pass.md`') && last.includes('`xhigh`'), 'Step 0 does not send a new record to pass 1 at xhigh');
+  assert.ok(last.includes('`steps/3-next.md`') && last.includes('Resume'), 'Step 0 does not send an existing record to Resume');
+});
+
+// The lines inside the fenced blocks of a text.
+const fencedLines = (text) => fences(text).flatMap((b) => b.lines);
+
+const COMMAND =
+  'cd <repo root> && env -u CLAUDECODE claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
+
+test('R305: Step 1 holds the child session command as one fenced line', () => {
+  const text = holds('steps/1-pass.md', 'run_in_background');
+  assert.ok(text.startsWith('# Step 1: A pass\n'));
+  assert.ok(fencedLines(text).includes(COMMAND), 'Step 1 lacks the command literal');
+});
+
+test('R305: the command unsets CLAUDECODE, reads stdin from /dev/null and allows only the review tools', () => {
+  const line = fencedLines(read('steps/1-pass.md') ?? '').find((l) => l.includes('claude -p')) ?? '';
+  for (const word of [
+    'Read', 'Grep', 'Glob', 'Skill', 'Agent', 'TaskStop',
+    'Bash(git diff *)', 'Bash(git log *)', 'Bash(git show *)', 'Bash(git status *)', 'Bash(git ls-files *)',
+    '--permission-mode default', 'env -u CLAUDECODE', '< /dev/null', '--output-format json',
+  ]) {
+    assert.ok(line.includes(word), `the command lacks ${word}`);
+  }
+});
+
+test('R299: Step 1 names the three buckets', () => {
+  holds('steps/1-pass.md', '`fix`', '`defer`', '`reject`');
+});
+
+test('R296: nothing is edited while a review runs', () => {
+  holds('steps/1-pass.md', 'Nothing is edited while a review runs.');
+});
+
+test('R300: Step 2 takes the three snapshot files before each implementer call and restores only clean paths', () => {
+  const text = holds('steps/2-fix.md', 'pre-<n>.status', 'pre-<n>.patch', 'pre-<n>.hashes', 'models.implementer', '20 minutes', 'never touch an ignored path or anything under `.reimagine/`');
+  assert.ok(text.startsWith('# Step 2: The fix round\n'));
+});
+
+test('R300 and R303: Step 2 runs the checks one at a time for 15 minutes and fixes a failing one at most three times', () => {
+  holds('steps/2-fix.md', 'one command at a time', '15 minutes', 'three times', '`denied`', 'no `checks` key');
+});
+
+test('R300: Step 2 stages each path by name and never stages everything', () => {
+  const text = holds('steps/2-fix.md', 'git add -- <path>');
+  for (const form of ['git add -A', 'git add --all', 'git add .', 'git commit -a']) {
+    assert.ok(!text.includes(form), `steps/2-fix.md holds ${form}`);
+  }
+});
+
+test('R295: Step 2 reads the remote head with git ls-remote and compares it before every push', () => {
+  holds('steps/2-fix.md', 'git ls-remote', 'what preflight fetched', 'the last sha this run pushed', 'no force');
+});
+
+test('R301: Step 2 judges the fix round with the five change kinds next.mjs accepts', () => {
+  holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`');
+});
+
+// The lines of the first fenced json block after the line `marker`, or null.
+const jsonAfter = (text, marker) => {
+  if (text === null) return null;
+  const lines = text.split('\n');
+  const at = lines.indexOf(marker);
+  if (at < 0) return null;
+  const start = lines.findIndex((l, i) => i > at && l === '```json');
+  const end = lines.findIndex((l, i) => i > start && l === '```');
+  return start < 0 || end < 0 ? null : lines.slice(start + 1, end);
+};
+
+test('R311: record.md holds the passes.json literal of the architecture, line for line', () => {
+  const arch = jsonAfter(readFileSync(new URL('../../docs/architecture.md', import.meta.url), 'utf8'), '`passes.json`:');
+  assert.notEqual(arch, null, 'architecture.md has no passes.json block');
+  assert.equal(arch.length, 17);
+  assert.equal(arch[0], '{');
+  assert.ok(arch.includes('  "merge_base": "<sha>",'));
+  assert.deepEqual(jsonAfter(read('record.md'), '`passes.json`:'), arch);
+});
+
+test('R301 and R303: Step 3 names the five rules of next.mjs, the two caps and the no-fixes stop', () => {
+  holds('steps/3-next.md', '`nothing-to-fix`', '`after-medium`', '`wide-fix`', '`rejects-at-high`', '`otherwise`', '`max-passes`', '`budget`', '`no-fixes`');
+});
+
+test('R312: Step 3 resumes a record by its head and merge-base', () => {
+  const text = holds('steps/3-next.md', '## Resume');
+  const resume = text.slice(text.indexOf('## Resume'));
+  for (const phrase of ['the first pass not `complete`', '`max-passes` counted afresh', 'a new pass sequence at `xhigh`', 'the ledger kept', 'merge-base']) {
+    assert.ok(resume.includes(phrase), `Resume lacks ${phrase}`);
+  }
+});
+
+test('decision 130: a pass of the run, not of the record, decides pass-with-deferred', () => {
+  assert.ok(SKILL.includes('`pass-with-deferred` when any pass of the run deferred something'));
 });

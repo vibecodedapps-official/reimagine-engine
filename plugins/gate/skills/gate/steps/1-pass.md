@@ -1,0 +1,55 @@
+# Step 1: A pass
+
+Read this file at the start of every pass. It holds the pass entry, the size and split, the reviews, `findings.mjs` and the triage. SKILL.md stays in force: its Approval scope, Levels and caps and Terminal states apply to every item here. `<record>` is the record directory, `<merge-base>` the full sha from `passes.json`, `<repo root>` the absolute path of the target repository's root, and every path handed to a command is absolute. Every write of `passes.json` and `findings.json` follows `record.md`, Write discipline.
+
+## 1.1 The pass entry
+
+1. Take `date -u +%Y-%m-%dT%H:%M:%SZ`. The pass number `n` is one more than the highest `n` in `passes[]`; it counts across runs. The level is the one the run arrived with: `xhigh` for pass 1, else the level Step 3 or Resume gave. Type only `xhigh`, `high` or `medium`, never `low`, `max` or `ultra`.
+2. Before the first review starts, append `{"n": <n>, "run": <run>, "level": "<level>", "status": "running", "started": "<utc>", "ended": null, "reviews": [], "findings": {}, "changes": [], "commit": null, "head": null, "checks": [], "next": null}` to `passes[]`. A pass that Resume repeats keeps its `n` and the entry Resume rewrote, and nothing is appended.
+3. Nothing is edited while a review runs.
+
+## 1.2 Size and split
+
+1. Run `git diff --numstat <merge-base>...HEAD` and sum added plus deleted over every line. A binary file, which prints `-`, counts as no lines.
+2. At or under `split`, the pass has one review, slug `all`, target `<merge-base>...HEAD`, and its files carry no suffix: `review-<n>.json`.
+3. Over `split`, run `git diff --name-only <merge-base>...HEAD` and group the files by the first segment of their path. Files at the root form the group `.`. The pass has one review per group, at the same level, in parallel. A group's target is `<merge-base>...HEAD <path>`; the root group's target names its files one by one, `<merge-base>...HEAD <file> <file>`, because `git diff -- .` selects the whole diff. A group that alone is over `split` is still one review.
+4. A group's slug is its top-level path lowercased with each run of characters outside `[a-z0-9]` replaced by `-` and leading and trailing `-` removed; the root group's slug is `root`. Its files are `review-<n>-<slug>.json` and `diff-<n>-<slug>.patch`.
+
+## 1.3 The child session
+
+When the Engine line of the reading block says the stand-in, or an earlier review of this run chose it, skip to 1.4. Otherwise run each review as one Bash call with `run_in_background`, all the calls of a split pass in one message:
+
+```
+cd <repo root> && env -u CLAUDECODE claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json
+```
+
+1. `<level>` is the pass's level. `[ <path>]` is the group's target from 1.2 and is absent for an unsplit pass. `[,Bash(<check>*)...]` adds one entry per command of the `checks` list of `.reimagine.json`. Never add `--comment`, `--fix` or `--max-findings`, and never call `code-review` through the Skill tool.
+2. Take `date` before the calls. Wait for each command's completion notice; do not poll. The review budget is 30 minutes, the reviews of a split pass running together within it. A review still running at the budget is stopped with TaskStop, the pass is recorded `failed` (1.5) and the run ends `unconverged`.
+3. The redirect saves the output as `review-<n>[-<slug>].json` before anything parses it. Read the saved file's `result`. A result that says the `code-review` skill is not available (the exact wording is not fixed; the signal is that no review ran for want of the skill) moves the run to the stand-in for the rest of the run, and that group is reviewed again by 1.4. Only after this check is a result with no findings array a failed review.
+
+## 1.4 The stand-in
+
+1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- <path>` for a split group and the root group's files one by one.
+2. Call an Agent at `models.fallback-reviewer` (default `opus`), passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, with the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, repository-relative paths, and `[]` when there are none. A split pass makes its calls in parallel, in one message; the review budget of 1.3 applies.
+3. Save the reply as `review-<n>[-<slug>].md`. Once chosen, the stand-in stays for the run: set `engine` to `stand-in` in `passes.json`.
+
+## 1.5 Findings
+
+1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/findings.mjs" <n> <record>/findings.json <output>...` once, with every review output of the pass.
+2. A non-zero exit is a failed review. Write the pass `"status": "failed"` with `ended` and one `reviews[]` entry per output, its numbers `null`, so the record names the saved result text; leave `next` `null`, keep the script's stderr line for the report, and go to SKILL.md, Terminal states, as `unconverged`. Never write a finding list of your own.
+3. On exit 0 read the printed summary. For each review in `reviews[]` write `{"slug": "<slug>", "target": "<the exact range typed>", "output": "<output>", "duration_ms": <n>, "total_cost_usd": <n>, "denials": <n>}`: the slug is `all` or the group's, and the other four fields come from the summary entry of that output (`null` for a stand-in's text).
+
+## 1.6 Triage
+
+Before any fix, sort every finding of the pass into one bucket with a one-line reason. Read each finding against the code it cites first. Finding issues is a judgment, not a count.
+
+- `fix`: a correctness finding inside the change, or a regression.
+- `defer`: reuse, simplification, efficiency, or a pre-existing issue the change did not introduce.
+- `reject`: a false positive.
+
+1. A finding the script printed with a bucket keeps it and its reason: a regression arrives as `fix` and a carried rejection as `reject`. Sort the rest, whose bucket is `null`.
+2. A finding the script marked `new` may be one defect that an earlier review worded differently. Read it against the `fixed` and `rejected` entries of `findings.json` on the same file; when it is the same defect, add `"match": {"of": "<earlier id>", "reason": "<why>"}` to the new entry, give it the earlier entry's regressed or carried bucket and state, and record it in `passes.json` under the earlier id.
+3. Write the ledger entry's bucket and reason in its `passes.<n>` and set its state: `open` for `fix` (a regression stays `regressed`), `deferred` for `defer`, `rejected` for `reject`.
+4. Write `findings` in the pass entry, `{"<id>": {"bucket": "<bucket>", "reason": "<reason>"}}` for every finding of the pass, and write `findings.json`, both before the fix round starts.
+
+In "no fixes" mode, or with an empty `fix` bucket, read `steps/3-next.md`. Otherwise read `steps/2-fix.md`. A failed review goes to SKILL.md, Terminal states, as `unconverged`.

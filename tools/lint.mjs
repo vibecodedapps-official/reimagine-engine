@@ -18,13 +18,14 @@ const run = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
 
 const CATALOG = '.claude-plugin/marketplace.json';
-const NAMES = ['rules', 'loop', 'audit', 'primer'];
+const NAMES = ['rules', 'loop', 'audit', 'primer', 'gate'];
 const RETIRED = ['repo-docs'];
 const LOOP_SKILL = 'plugins/loop/skills/run/SKILL.md';
 const LOOP_DIR = 'plugins/loop/skills/run/';
 const RULES_SKILL = 'plugins/rules/skills/rules/SKILL.md';
 const AUDIT_SKILL = 'plugins/audit/skills/audit/SKILL.md';
 const PRIMER_SKILL = 'plugins/primer/skills/primer/SKILL.md';
+const GATE_SKILL = 'plugins/gate/skills/gate/SKILL.md';
 const STYLE = 'plugins/rules/output-styles/concise-plain.md';
 const CHAT = 'plugins/rules/chat/instructions.md';
 const RULES_HOOKS = 'plugins/rules/hooks/hooks.json';
@@ -38,6 +39,7 @@ const EXECUTABLES = [
     .map((n) => `plugins/audit/scripts/${n}.sh`),
   'plugins/primer/hooks/drift.sh',
   'plugins/primer/hooks/notice.sh',
+  'plugins/gate/scripts/findings.mjs',
 ];
 const EXECUTABLE_EXTENSIONS = ['.sh', '.mjs', '.js', '.cjs', '.py', '.ps1', '.bat', '.cmd', '.exe'];
 const PLUGIN_TOP = ['.claude-plugin', 'skills', 'commands', 'agents', 'hooks', 'scripts', 'output-styles', 'rules', 'chat', 'README.md', 'LICENSE'];
@@ -393,6 +395,16 @@ function skillFailures(ctx) {
   if (ctx.files.some((f) => f.startsWith('plugins/loop/commands/'))) out.push('plugins/loop/commands: the loop has no commands; its skill is the entry point');
   for (const entry of listEntries(loopFm.get('allowed-tools'))) {
     if (!PRE_APPROVED.test(entry)) out.push(`${LOOP_SKILL}: allowed-tools entry ${entry} is not a pre-approved read`);
+  }
+
+  const gate = ctx.text(GATE_SKILL);
+  const gateFm = frontmatter(gate);
+  if (gate === null || gateFm.get('name') !== 'gate') out.push(`${GATE_SKILL}: frontmatter name is ${gateFm.get('name') || 'missing'}, not gate`);
+  if (gate !== null && !String(gateFm.get('description') ?? '').includes('reimagine gate')) {
+    out.push(`${GATE_SKILL}: description does not name "reimagine gate"`);
+  }
+  for (const entry of listEntries(gateFm.get('allowed-tools'))) {
+    if (!PRE_APPROVED.test(entry)) out.push(`${GATE_SKILL}: allowed-tools entry ${entry} is not a pre-approved read`);
   }
 
   if (!String(frontmatter(ctx.text(AUDIT_SKILL)).get('description') ?? '').includes('reimagine audit')) {

@@ -1,0 +1,18 @@
+{
+  "findings": {
+    "src/stats.mjs|the n 1 sample divisor is undocumented callers expecting population variance get a different number": {
+      "file": "src/stats.mjs",
+      "summary": "The n-1 (sample) divisor is undocumented; callers expecting population variance get a different number.",
+      "first_pass": 1,
+      "state": "rejected",
+      "passes": {
+        "1": {
+          "line": 26,
+          "bucket": "reject",
+          "reason": "design choice with no spec to judge it against",
+          "prior": null
+        }
+      }
+    }
+  }
+}

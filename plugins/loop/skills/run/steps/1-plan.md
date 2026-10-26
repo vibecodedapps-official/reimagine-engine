@@ -1,12 +1,12 @@
 # Steps 1 to 3: review, plan, plan review
 
-Read this file at the start of Step 1. It holds the reviewer request (used by Step 3 and by Step 5), Step 1, Step 2 and Steps 3.1 to 3.5. A plan-only run reads no step file after it.
+Read this file at the start of Step 1. It holds the reviewer request (used by Step 3, and by Step 5's `opus` stand-in), Step 1, Step 2 and Steps 3.1 to 3.5. A plan-only run reads no step file after it.
 
 At the start of each of Steps 1, 2 and 3, run `date -u +%Y-%m-%dT%H:%M:%SZ` and copy the output. Then apply `record.md`, Reuse and resume: a reused step is not run, and its entry stays as it is. Otherwise write that step's `steps.json` entry with status `running`, the start time and its inputs as `record.md`, steps.json, item 5, lists them: for Steps 1 and 2 the version of each input the step takes up, for Step 3 the hash of `plan.md` (`git hash-object --no-filters <file>`). Write the entry `complete`, with the end time from a fresh `date`, only when its outputs exist: `inputs.md` for Step 1, `plan.md` for Step 2 and Step 3. Every write goes to `steps.json.tmp` and then a plain `mv` over `steps.json`, as `record.md` says. Log each step in `run.md`.
 
 ## Reviewer request
 
-Step 3 sends it to the plan reviewer. Step 5 sends it to the final reviewer, with the changes named below. The reviewer is a fresh Agent call at the `reviewer` model (`fable` unless `.reimagine.json` says otherwise), never a fork, with `model` passed explicitly. It reads and reports. It never edits a file, runs a command that changes anything, or posts anything.
+Step 3 sends it to the plan reviewer. Step 5 sends it only to the `opus` stand-in (SKILL.md, Roles and models, item 5), with the changes named below; the `code-review` skill takes no request text. The plan reviewer is a fresh Agent call at the `reviewer` model (`fable` unless `.reimagine.json` says otherwise), never a fork, with `model` passed explicitly. The stand-in is an Agent call at `opus`, and the `fallback-reviewer` key does not apply to it. Each reads and reports, and never edits a file, runs a command that changes anything, or posts anything.
 
 Give the reviewer:
 
@@ -21,9 +21,9 @@ Each round is a fresh Agent call. From the second round on, also give the review
 
 After a `drop` answer to the credential question, the request and any patch you send carry only the redacted values.
 
-Pass the effort argument by the effort rule in SKILL.md: none when the request has no effort word, the word's level otherwise, and at least `high` when `risk.md` floors the run. Take `date` before the call and again after it. The review budget is 30 minutes (`timeouts.review`).
+Pass the effort argument by the effort rule in SKILL.md: none when the request has no effort word, the word's level otherwise, and at least `high` when `risk.md` floors the run. The `opus` stand-in takes the `code-review` level of `risk.md` as its `effort` instead, `high` with no effort word and `xhigh` for "max". Take `date` before the call and again after it. The review budget is 30 minutes (`timeouts.review`).
 
-On a model or tool error, retry once at the `fallback-reviewer` model (`opus` unless `.reimagine.json` says otherwise). From then on the reviewer for the whole run is that model. Record the swap in `run.md` and name it in the report. A permission denial is final and is not retried. A timeout is not an error: do not swap. A call past the review budget ends the run `blocked` naming the budget, as SKILL.md Budgets and rounds says.
+For the plan reviewer, on a model or tool error, retry once at the `fallback-reviewer` model (`opus` unless `.reimagine.json` says otherwise). From then on the reviewer for the whole run is that model. Record the swap in `run.md` and name it in the report. A permission denial is final and is not retried. A timeout is not an error: do not swap. A call past the review budget ends the run `blocked` naming the budget, as SKILL.md Budgets and rounds says. A stand-in pass that errors is retried once at `opus`, and a second error ends the run `blocked` (SKILL.md, Roles and models, item 4).
 
 ## Step 1: review and verify the inputs
 
@@ -54,7 +54,7 @@ On an existing record, leave the sections of `plan.md` as they are and append a 
 
 Slice count is a property of the plan. Split when parts touch disjoint files and one agent would otherwise carry more than one area, or more than one subagent budget of work. Never split work that shares a file; slices own disjoint files. The order of work says which slices are independent and may run in parallel.
 
-Judge the higher-risk rule of `risk.md` on the plan. Record the Step 5 role it selects and the criterion that held, or that none did.
+Judge the risk floor of `risk.md` on the plan. Record the floor, with its trigger or `none`, and the Step 5 level it gives.
 
 A plan that needs a writable checkout outside the scope ends `blocked`, as 1.2 says. Then write Step 2 `complete`.
 

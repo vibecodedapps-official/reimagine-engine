@@ -30,7 +30,7 @@ Phrases the loop recognizes:
 - `primary <path>`: work in that checkout instead of the one the session opened. It must be the root of a git checkout or a linked worktree.
 - `also edit <path>` and `also edit <path> on <branch>`: add a second checkout the run may change, with its own pull request.
 - `budget <n> minutes`: set the run budget.
-- Effort words: `quick` or `low`, `medium`, `thorough` or `high`, `very thorough` or `xhigh`, `max`. They set how hard the reviewers work. A word counts when it stands as its own phrase, for example after a comma (`reimagine loop #12, thorough`). Work that touches auth, permissions, schemas, row-level security, data access or a public API is always reviewed at `high` or above.
+- Effort words: `quick` or `low`, `medium`, `thorough` or `high`, `very thorough` or `xhigh`, `max`. They set how hard the reviewers work. A word counts when it stands as its own phrase, for example after a comma (`reimagine loop #12, thorough`). Work that touches auth, permissions, schemas, row-level security, data access or a public API is always reviewed at `high` or above. The final review runs Claude Code's `code-review` at the word's level, `high` without a word, and never above `xhigh`, so `max` reviews at `xhigh`.
 
 Ticket forms:
 
@@ -69,7 +69,7 @@ An optional `.reimagine.json` at the repository root. Every key is optional; the
 - `commit`: with `true`, the run commits a snapshot of the plan and report to the branch and posts the report as a pull request comment.
 - `checks`: the commands to run as checks. Without it the loop finds the repository's test, lint, typecheck and build commands.
 - `timeouts`: minutes for each implementer call (`subagent`), each review pass (`review`), each check (`check`) and the CI wait (`ci`), and the whole run (`run`).
-- `models`: the model for each role. Values are `sonnet`, `opus`, `haiku` or `fable`. This never changes the risk floor.
+- `models`: the model for each role. Values are `sonnet`, `opus`, `haiku` or `fable`. This never changes the risk floor or the final review.
 - `base`: the branch the review and the pull request are based on; without it, the repository's default branch. "base <branch>" in the request wins over the key.
 
 Unknown keys and bad values are reported and ignored. A file that does not parse stops the run before it starts.

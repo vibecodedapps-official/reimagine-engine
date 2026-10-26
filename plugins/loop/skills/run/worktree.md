@@ -23,7 +23,7 @@ Record two roots in `run.md`:
 - A continued branch checked out in the session's checkout cannot be checked out in the worktree. Step 0.2 detached the session in place; if the session is still on the branch, end the run `blocked`.
 - A branch switch inside the worktree detaches in place and fast-forwards with `git fetch . refs/remotes/<remote>/<branch>:refs/heads/<branch>`.
 - Name `<checkout>` as the only checkout in every implementer brief.
-- Diff reviews read `<record>/diff.patch`, written from `git -C <checkout> diff <merge-base>` after `git -C <checkout> add -N`. A higher-risk run uses the `opus` stand-in, because `code-review` reviews only the session's checkout.
+- Diff reviews read `<record>/diff.patch`, written from `git -C <checkout> diff <merge-base>` after `git -C <checkout> add -N`. Step 5 uses the `opus` stand-in, because `code-review` reviews only the session's checkout.
 - Step 7.2 opens the pull request with `cd <checkout> && gh pr create --head <branch> --body-file <record>/pr-body.md ...`, with `<record>` as an absolute path.
 
 ## At the end

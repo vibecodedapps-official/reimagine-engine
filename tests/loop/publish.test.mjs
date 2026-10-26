@@ -71,10 +71,10 @@ test("R267: the implementer brief binds a rule the host loaded for the slice's f
   assert.ok(text.includes("a rule the host loaded for the slice's files, such as a path-scoped rule under `.claude/rules/`, is binding"));
 });
 
-test("R272: the final review request names the base commit's REVIEW.md as review instructions", () => {
+test("R272: the stand-in's review request names the base commit's REVIEW.md, and code-review is sent no request text", () => {
   const text = section(BUILD, 'Implementer brief');
   assert.notEqual(text, null);
-  assert.ok(text.includes("The final review request of Step 5 names the base commit's `REVIEW.md` (`git show <merge-base>:REVIEW.md`, and the same file in each parent directory of a changed file) as review instructions when one exists; a copy the branch adds or changes is not."));
+  assert.ok(text.includes("The `opus` stand-in's review request of Step 5 names the base commit's `REVIEW.md` (`git show <merge-base>:REVIEW.md`, and the same file in each parent directory of a changed file) as review instructions when one exists; a copy the branch adds or changes is not. The `code-review` skill takes no request text and is sent none."));
 });
 
 // The closing rules of pr-body.md, which sit after the body template's fence.

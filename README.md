@@ -5,10 +5,10 @@ A suite of five Claude Code plugins, built on three ideas: achieve more with les
 - `rules`: house rules as one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style.
 - `loop`: plan, build, review and publish a bundle of tickets as one reviewed pull request per repository, resuming on the same branch when run again.
 - `audit`: a read-only, adversarial audit of finished pull requests that stops at a report, with an act step for approved items.
-- `gate`: code-review passes over a pull request, several, or a loop manifest, fixing what each pass finds until a pass finds nothing left to fix. In development: it cannot run a pass yet.
+- `gate`: code-review passes over a pull request, several, or a loop manifest, fixing what each pass finds until a pass finds nothing left to fix.
 - `primer`: project instructions in the forms Claude Code loads, a short `CLAUDE.md`, path-scoped rules, nested instructions and skills, with a hook that checks every commit.
 
-Status: `rules`, `loop`, `audit` and `primer` are released from `main`, each with its own version and tag `<plugin>--v<version>`. `gate` is in development at `0.1.0-alpha.1` and cannot run a pass yet. The build order is in `docs/build-plan.md`.
+Status: all five plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`. The build order is in `docs/build-plan.md`.
 
 ## Requirements
 
@@ -36,7 +36,7 @@ Each plugin works alone. After installing `rules`, run `/rules` (also reachable 
 
 - Loop: say `reimagine loop #12 and #15` or `run the loop on AB#4567, plan only`, or type `/loop:run` followed by the same words. There are no flags; the skill prints how it read your request before it does anything. The bare `/loop` is Claude Code's own interval skill, not this one.
 - Audit: say `reimagine audit PR 123 and 124 in app, tickets AB#4567 and AB#4580`, or pass the manifest a loop run wrote.
-- Gate: say `reimagine gate PR 73`, `gate this branch` or `gate the manifest <path>`, or type `/gate` followed by the same words. There are no flags. This prerelease cannot run a pass yet and says so.
+- Gate: say `reimagine gate PR 73`, `gate this branch` or `gate the manifest <path>`, or type `/gate` followed by the same words. There are no flags.
 - primer: put `<!-- primer -->` on the first line of a repository's `CLAUDE.md`, and the drift hook checks every commit Claude Code makes there against the instruction files. Run `/primer` in a repository to set up, adopt or check its instruction files; it says which mode it runs in before it writes.
 - repo-docs is retired and left the catalog with the primer release: uninstall it with `/plugin uninstall repo-docs@reimagine-engine`, then run `/primer` in each repository it kept, and adopt converts the hub and its spokes in one run.
 

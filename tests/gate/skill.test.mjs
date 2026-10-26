@@ -1,6 +1,7 @@
 // The gate skill's frontmatter, reading block, configuration block, terminal states, supporting files and step files.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 
 const GATE = new URL('../../plugins/gate/', import.meta.url);
@@ -161,7 +162,7 @@ test('R310: Step 0 writes passes.json and the run entry, then sends the run to p
 const fencedLines = (text) => fences(text).flatMap((b) => b.lines);
 
 const COMMAND =
-  'cd <repo root> && env -u CLAUDECODE claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
+  'cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
 
 test('R305: Step 1 holds the child session command as one fenced line', () => {
   const text = holds('steps/1-pass.md', 'run_in_background');
@@ -178,6 +179,17 @@ test('R305: the command unsets CLAUDECODE, reads stdin from /dev/null and allows
   ]) {
     assert.ok(line.includes(word), `the command lacks ${word}`);
   }
+});
+
+test('R305: the command hands the child its prompt unchanged, under Git Bash too', () => {
+  const line = fencedLines(read('steps/1-pass.md') ?? '').find((l) => l.includes('claude -p')) ?? '';
+  const prefix = line.slice(line.indexOf('&& ') + 3, line.indexOf('claude -p'));
+  assert.ok(prefix.startsWith('env '), `the command does not start the child through env: [${prefix}]`);
+  const echo = spawnSync('sh', ['-c', `${prefix}node -e "process.stdout.write(process.argv[1])" "/code-review xhigh abc...HEAD"`], {
+    encoding: 'utf8',
+  });
+  assert.equal(echo.status, 0, echo.stderr);
+  assert.equal(echo.stdout, '/code-review xhigh abc...HEAD');
 });
 
 test('R299: Step 1 names the three buckets', () => {
@@ -210,6 +222,10 @@ test('R295: Step 2 reads the remote head with git ls-remote and compares it befo
 
 test('R301: Step 2 judges the fix round with the five change kinds next.mjs accepts', () => {
   holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`');
+});
+
+test('R301: Step 2 counts the files for over-quarter instead of judging the share', () => {
+  holds('steps/2-fix.md', 'Count both lists: it applies when four times the number of changed files is more than the number of that diff\'s files, so 2 changed of 4 is over a quarter and 2 of 8 is not.');
 });
 
 // The lines of the first fenced json block after the line `marker`, or null.
@@ -316,4 +332,8 @@ test('R317: report.md holds the report header line for line and its seven sectio
   assert.deepEqual(block.lines.filter((l) => l.startsWith('## ')), [
     '## Findings', '## Checks', '## Commits and pushes', '## Open findings', '## Blocked or stopped', '## Comment', '## Log',
   ]);
+});
+
+test('R317: Step 4 prints the written report whole as the last text, with nothing after it', () => {
+  holds('steps/4-publish.md', 'print the whole text of the report, unchanged, as the last text of this target', 'Nothing follows it: no summary, note or offer.');
 });

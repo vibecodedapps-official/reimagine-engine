@@ -287,6 +287,10 @@ test('R314: the comment template is one fenced block with no deny word, and Step
   for (const w of DENY) assert.ok(text.includes(`\`${w}\``), `steps/4-publish.md does not list ${w}`);
 });
 
+test('R314: the comment writes the home directory as ~ in text quoted from a review', () => {
+  holds('steps/4-publish.md', 'except that the user\'s home directory in it is written `~`', 'the drive letter in either case, or the `/c/` form of Git Bash');
+});
+
 test('R315: Step 4 holds the minimal manifest literal and the gate key shape', () => {
   holds(
     'steps/4-publish.md',

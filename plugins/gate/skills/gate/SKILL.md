@@ -72,6 +72,8 @@ Targets lists each pull request or branch, how it resolved and its base. Mode is
 
 A target that cannot be resolved gets one line in the block and the run continues with the others. When none is left, the run ends `stopped`.
 
+After the block, read `steps/0-preflight.md` and start Step 0.
+
 ## Approval scope
 
 Invoking this skill by name approves, for this run only: fix commits on each target's branch, whether or not the loop opened its pull request; pushing that branch; and one comment per run on each target pull request. Nothing else is approved: no branch, no pull request, no edit of a pull request body, no ticket comment and no issue.
@@ -168,5 +170,6 @@ From run 2 on, a per-run name without a counter takes `-run<n>`.
 
 ## Supporting files
 
+- `steps/0-preflight.md`: after the reading block, for each target in turn.
 - `scripts/findings.mjs`: after each review, to turn its saved output into the pass's findings and the ledger.
 - `scripts/next.mjs`: after each fix round, to decide the next level or the stop from `passes.json`.

@@ -20,10 +20,10 @@ Read this file at the start of every pass. It holds the pass entry, the size and
 When the Engine line of the reading block says the stand-in, or an earlier review of this run chose it, skip to 1.4. Otherwise run each review as one Bash call with `run_in_background`, all the calls of a split pass in one message:
 
 ```
-cd <repo root> && env -u CLAUDECODE claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json
+cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json
 ```
 
-1. `<level>` is the pass's level. `[ <path>]` is the group's target from 1.2 and is absent for an unsplit pass. `[,Bash(<check>*)...]` adds one entry per command of the `checks` list of `.reimagine.json`. Never add `--comment`, `--fix` or `--max-findings`, and never call `code-review` through the Skill tool.
+1. `<level>` is the pass's level. `[ <path>]` is the group's target from 1.2 and is absent for an unsplit pass. `MSYS_NO_PATHCONV=1` keeps Git Bash on Windows from rewriting the prompt's leading `/` into a path; elsewhere it changes nothing. `[,Bash(<check>*)...]` adds one entry per command of the `checks` list of `.reimagine.json`. Never add `--comment`, `--fix` or `--max-findings`, and never call `code-review` through the Skill tool.
 2. Take `date` before the calls. Wait for each command's completion notice; do not poll. The review budget is 30 minutes, the reviews of a split pass running together within it. A review still running at the budget is stopped with TaskStop, the pass is recorded `failed` (1.5) and the run ends `unconverged`.
 3. The redirect saves the output as `review-<n>[-<slug>].json` before anything parses it. Read the saved file's `result`. A result that says the `code-review` skill is not available (the exact wording is not fixed; the signal is that no review ran for want of the skill) moves the run to the stand-in for the rest of the run, and that group is reviewed again by 1.4. Only after this check is a result with no findings array a failed review.
 

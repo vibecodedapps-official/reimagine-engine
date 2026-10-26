@@ -1,6 +1,7 @@
 // The gate skill's frontmatter, reading block, configuration block, terminal states, supporting files and step files.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 
 const GATE = new URL('../../plugins/gate/', import.meta.url);
@@ -161,7 +162,7 @@ test('R310: Step 0 writes passes.json and the run entry, then sends the run to p
 const fencedLines = (text) => fences(text).flatMap((b) => b.lines);
 
 const COMMAND =
-  'cd <repo root> && env -u CLAUDECODE claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
+  'cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
 
 test('R305: Step 1 holds the child session command as one fenced line', () => {
   const text = holds('steps/1-pass.md', 'run_in_background');
@@ -178,6 +179,17 @@ test('R305: the command unsets CLAUDECODE, reads stdin from /dev/null and allows
   ]) {
     assert.ok(line.includes(word), `the command lacks ${word}`);
   }
+});
+
+test('R305: the command hands the child its prompt unchanged, under Git Bash too', () => {
+  const line = fencedLines(read('steps/1-pass.md') ?? '').find((l) => l.includes('claude -p')) ?? '';
+  const prefix = line.slice(line.indexOf('&& ') + 3, line.indexOf('claude -p'));
+  assert.ok(prefix.startsWith('env '), `the command does not start the child through env: [${prefix}]`);
+  const echo = spawnSync('sh', ['-c', `${prefix}node -e "process.stdout.write(process.argv[1])" "/code-review xhigh abc...HEAD"`], {
+    encoding: 'utf8',
+  });
+  assert.equal(echo.status, 0, echo.stderr);
+  assert.equal(echo.stdout, '/code-review xhigh abc...HEAD');
 });
 
 test('R299: Step 1 names the three buckets', () => {

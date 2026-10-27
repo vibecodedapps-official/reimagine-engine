@@ -39,6 +39,8 @@ Amended 2026-10-26: the host's attribution trailer (decision 136) amends require
 
 Amended 2026-10-27: CI concurrency (decision 137) amends requirement 222.
 
+Amended 2026-10-27: the CI poll's wait (decision 140) amends requirement 126.
+
 ## Suite
 
 1. **One repository, one marketplace.** The marketplace is named `reimagine-engine` and lists exactly five plugins: `rules`, `loop`, `audit`, `primer` and `gate`, each at `plugins/<name>/`. Before a release a prerelease catalog may list a plugin that is built at a prerelease version (requirement 14), so a work machine can install it from `main` before its release, and may list `repo-docs` until requirement 268 retires it. Until the gate's scaffold milestone the catalog, lint's name list, the README and the repository's hub say four plugins, and that milestone moves all of them to five in one commit (decision 132). Check: lint.
@@ -226,7 +228,7 @@ Amended 2026-10-27: CI concurrency (decision 137) amends requirement 222.
 123. **Pull request state at every poll.** `gh pr view --json headRefOid,mergeable,baseRefName,state` plus the merge commit sha. Not OPEN ends `blocked`; a retarget ends `blocked`; the live remote head must equal the last pushed sha, with a stale `headRefOid` pending for two minutes; `CONFLICTING` ends `blocked` at once. Check: review.
 124. **Results.** Latest result per context and per check suite, from check-runs with `filter=latest`, statuses, and `actions/runs?head_sha=` for required workflows. Pass is success, neutral or skipped. The gated commit is the test merge commit when it has results, else the head. A status-only check that names an app ends `blocked`. Check: review.
 125. **Applicability.** `pull_request_target` is judged from the base branch's file; branch, path and type filters apply; skip markers make a workflow not applicable but required checks stay required; a deferred check whose filters exclude the pull request is not expected. Check: review.
-126. **Green.** Every required check, every deferred check and every applicable workflow reported, and every latest result passed. CI is not judged before two minutes after the push; polls are about thirty seconds apart; pending past the `ci` budget ends `blocked`. Not applicable only when nothing is required, applicable, expected or seen within two minutes. Check: review.
+126. **Green.** Every required check, every deferred check and every applicable workflow reported, and every latest result passed. CI is not judged before two minutes after the push; polls are about thirty seconds apart, each wait one `sleep 30` run in the background; pending past the `ci` budget ends `blocked`. Not applicable only when nothing is required, applicable, expected or seen within two minutes. Amended 2026-10-27: the wait runs in the background, since the host blocks a standalone `sleep` in the foreground (decision 140). Check: review; test (the wait in `ci-watch.md`).
 127. **Repair.** A red result re-enters step 5 for one pass (the fix through the owning implementer after a snapshot, then one `code-review` pass over the whole diff and its triage) and step 6, at most three cycles; still red ends `blocked` with the pull request linked. Check: review.
 
 ### Multi-repository

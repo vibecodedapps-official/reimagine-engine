@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M41 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M42 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -424,6 +424,28 @@ Check:
 
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
+
+## Backlog issue 1: M42
+
+Added 2026-10-27. The amended R222 and decision 137, with the semver and helper items of issue 1. Built after M41. Depends on nothing; touches `.github/workflows/ci.yml`, `tools/`, `tests/lint/` and `tests/release/` only. No plugin changes, so no release and no tag.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M42 | backlog issue 1 | CI cancels a run in progress only on a pull request; one semver module for lint and release, with the prerelease identifier rule; their tests | M41 |
+
+### M42: backlog issue 1
+
+Work items, in this order:
+
+1. The design documents: the amended R222 in `docs/requirements.md`, decision 137 in `docs/decisions.md`, `tools/semver.mjs` in the tree of `docs/architecture.md`, and this section. Commit: `docs(design): plan the fixes of issue 1`.
+2. `tools/semver.mjs`: the semver pattern with each prerelease identifier `0`, a number without a leading zero, or alphanumerics holding a letter or hyphen; the comparison; and the `plugin_version` literal pattern. `tools/lint.mjs` and `tools/release.mjs` import them in place of their own copies. Tests: lint fails a manifest version `0.1.1-01`, and release refuses `0.1.1-01`. Commit: `fix(tools): share one semver rule between lint and release`.
+3. `.github/workflows/ci.yml`: `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`; `tests/lint/ci.test.mjs`: an assertion that the line is there. Commit: `fix(ci): keep a run on main when a later push lands`.
+4. Issue 1's item 4 names the retired `repo-docs` and is closed as not applicable. The soundness check in `release.mjs`'s `edited()`, which item 3 calls unable to fail, stays as a guard that costs nothing. The pull request closes issue 1.
+
+Check:
+
+- `npm run test:lint` and `npm run test:release` on the commits of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+- The pull request's own CI run shows that the expression parses. The behavior on `main` shows on the first merge after it: the merge commit's run is not cancelled by a push that follows.
 
 ## The host's attribution trailer: M41
 

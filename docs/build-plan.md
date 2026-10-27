@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M44 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M45 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -424,6 +424,29 @@ Check:
 
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
+
+## The CI poll's wait: M45
+
+Added 2026-10-27. The amended R126 and decision 140. Built after M44. Depends on nothing; touches `plugins/loop/` and `tests/loop/` only, with the catalog, the changelog and the design documents.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M45 | the CI poll's wait | the background `sleep 30` in the loop's CI poll and its test; loop 0.1.8 | M44 |
+
+### M45: the CI poll's wait
+
+Work items, in this order:
+
+1. The design documents: the amended R126 in `docs/requirements.md`, decision 140 in `docs/decisions.md`, and this section. Commit: `docs(design): wait for the ci poll in the background`.
+2. `node tools/release.mjs loop 0.1.8`, with the catalog `metadata.version` raised by one. Commit: `release(loop): 0.1.8`.
+3. `plugins/loop/skills/run/ci-watch.md`: the wait of section 4 runs `sleep 30` with `run_in_background: true` and names the host's block; `tests/loop/publish.test.mjs`: an R126 assertion for it. Commit: `fix(loop): wait for the ci poll in the background`.
+4. Acceptance item 9 at loop 0.1.8 on a throwaway repository with one issue, headless, the loop loaded by `--plugin-dir`, and the record. Its event stream shows how each poll waited. Commit: `docs(acceptance): record the ci poll milestone`.
+5. After the push: the `## loop 0.1.8 - <date>` heading in `CHANGELOG.md`, commit `docs(changelog): add the loop 0.1.8 heading`, pushed, then `claude plugin tag --push plugins/loop` after a yes. Items 21 and 22 at the tag are recorded after it.
+
+Check:
+
+- `npm run test:loop` on the commits of items 2 and 3, each run as its own command with its exit code read, the new assertion failing on the text before; `npm test` and lint with the deny tokens before the push.
+- Acceptance item 9; items 21 and 22 at the tag.
 
 ## Chain acceptance: M44
 

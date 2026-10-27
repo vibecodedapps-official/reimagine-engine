@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.8 - 2026-10-27
+
+- The CI poll waits with `sleep 30` in the background, since the host blocks a standalone `sleep` in the foreground and runs had been waiting in forms the skill does not pre-approve.
+
 ## loop 0.1.7 - 2026-10-26
 
 - Step 7's commit and the pull request text type no attribution trailer of their own and keep one the host's attribution setting adds, since the bare "Type no attribution trailer." line overrode the user's setting.

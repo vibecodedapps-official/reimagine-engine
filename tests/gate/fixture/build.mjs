@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // build.mjs: build the gate's seeded repository, a small Node module whose feature branch holds an off-by-one
-// in a new function beside a test that passes only because of it, for the gate's eval cases and acceptance items.
+// in a new function beside a test that passes only because of it, in a diff of 8 or 10 files (3 for split), for
+// the gate's eval cases and acceptance items.
 // Usage: node tests/gate/fixture/build.mjs <converges|defers|cap|carried|split> <dir>
 // <dir> does not exist yet or is empty. It gets origin.git (a bare repository with main and feat/percentile, HEAD
 // on main), repo (a clone of it, on main) and audit-manifest.json; stdout is the manifest's absolute path.
@@ -60,7 +61,9 @@ const PERCENTILE = `
 // The nearest-rank percentile of finite numbers, p a whole percent from 1 to 100.
 export function percentile(values, p) {
   if (values.length === 0) throw new RangeError('percentile of no values');
-  if (!values.every(Number.isFinite)) throw new TypeError('percentile of a value that is not a finite number');
+  for (let i = 0; i < values.length; i += 1) {
+    if (!Number.isFinite(values[i])) throw new TypeError('percentile of a value that is not a finite number');
+  }
   if (!Number.isInteger(p) || p < 1 || p > 100) throw new RangeError('p must be a whole number from 1 to 100');
   const sorted = [...values].sort((a, b) => a - b);
   const rank = Math.ceil((p * sorted.length) / 100);
@@ -78,6 +81,43 @@ test('percentile rejects no values, a value that is not finite and a p outside 1
   assert.throws(() => percentile([1, NaN], 50), TypeError);
   assert.throws(() => percentile([1, 2], 0), RangeError);
   assert.throws(() => percentile([1, 2], 50.5), RangeError);
+});
+`;
+
+const README = `# stats
+
+Small statistics over arrays of finite numbers: \`sum\`, \`mean\` and \`percentile\`, exported from \`src/index.mjs\`.
+
+Run the tests with \`npm test\`.
+`;
+
+const CHANGELOG = `# Changelog
+
+## 0.2.0
+
+- Adds \`percentile(values, p)\`, the nearest-rank percentile.
+`;
+
+const PERCENTILE_DOC = `# percentile
+
+\`percentile(values, p)\` returns the nearest-rank percentile of \`values\`, an array of finite numbers, for \`p\` a whole percent from 1 to 100.
+
+The nearest rank is \`ceil(p / 100 * n)\`, counted from 1, where \`n\` is the number of values; the result is the value at that rank once the values are sorted in ascending order.
+
+For \`[1, 2, 3, 4]\`, \`p\` 50 gives rank 2 and the value 2, and \`p\` 100 gives rank 4 and the value 4.
+
+It throws a \`RangeError\` for no values or a \`p\` outside 1 to 100, and a \`TypeError\` for a value that is not a finite number.
+`;
+
+const INDEX = `export { mean, percentile, sum } from './stats.mjs';
+`;
+
+const INDEX_TEST = `import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import * as stats from './index.mjs';
+
+test('the index exports sum, mean and percentile', () => {
+  assert.deepEqual(Object.keys(stats).sort(), ['mean', 'percentile', 'sum']);
 });
 `;
 
@@ -198,6 +238,16 @@ const feature = {
   'src/stats.mjs': STATS + PERCENTILE,
   'src/stats.test.mjs': STATS_TEST.replace('{ mean, sum }', '{ mean, percentile, sum }') + PERCENTILE_TEST,
 };
+if (variant !== 'split') {
+  Object.assign(feature, {
+    'README.md': README,
+    'CHANGELOG.md': CHANGELOG,
+    'docs/percentile.md': PERCENTILE_DOC,
+    'src/index.mjs': INDEX,
+    'src/index.test.mjs': INDEX_TEST,
+    'package.json': json({ name: 'stats', private: true, version: '0.2.0', type: 'module', scripts: { test: 'node --test' } }),
+  });
+}
 if (variant === 'defers') Object.assign(feature, { 'src/summary.mjs': SUMMARY, 'src/summary.test.mjs': SUMMARY_TEST });
 if (variant === 'carried') Object.assign(feature, { 'src/share.mjs': SHARE, 'src/share.test.mjs': SHARE_TEST });
 if (variant === 'split') feature['data/levels.mjs'] = levels();

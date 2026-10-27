@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M40 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M41 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -424,6 +424,32 @@ Check:
 
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
+
+## The host's attribution trailer: M41
+
+Added 2026-10-26. The amended R11 and decision 136. Built after M40. Depends on nothing; touches `plugins/gate/`, `plugins/loop/`, `tests/gate/` and `tests/loop/` only, with the catalog and the changelog.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M41 | the host's attribution trailer | the trailer line in the gate's Step 2, the loop's Step 7 and its pull request text, and their tests; gate 0.1.2 and loop 0.1.7 | M40 |
+
+### M41: the host's attribution trailer
+
+The line, in each of the three places: "Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool."
+
+Work items, in this order:
+
+1. The design documents: the amended R11 in `docs/requirements.md`, decision 136 in `docs/decisions.md`, the attribution line in `docs/architecture.md`, and this section. Commit: `docs(design): keep the host's attribution trailer`.
+2. `node tools/release.mjs gate 0.1.2` and `node tools/release.mjs loop 0.1.7`, each with the catalog `metadata.version` raised by one. Commits: `release(gate): 0.1.2` and `release(loop): 0.1.7`.
+3. `plugins/gate/skills/gate/steps/2-fix.md`: the line in place of "Type no attribution trailer." in The commit, item 1; `tests/gate/skill.test.mjs`: the R11 assertion holds the new line. Commit: `fix(gate): keep the host's attribution trailer`.
+4. `plugins/loop/skills/run/steps/7-publish.md` and `plugins/loop/skills/run/pr-body.md`: the line in place of "Type no attribution trailer."; `tests/loop/publish.test.mjs`: an assertion for each. Commit: `fix(loop): keep the host's attribution trailer`.
+5. Acceptance item 47 once at gate 0.1.2 on a profile that sets no attribution, and the record. Items 9 and 40 rerun when publish changes; each is a full loop run, so they run after the owner's yes and are otherwise recorded as not run with that reason. Commit: `docs(acceptance): record the attribution milestone`.
+6. After the push: the `## gate 0.1.2 - <date>` and `## loop 0.1.7 - <date>` headings in `CHANGELOG.md`, commit `docs(changelog): add the gate 0.1.2 and loop 0.1.7 headings`, pushed, then `claude plugin tag --push plugins/gate` and `claude plugin tag --push plugins/loop` after a yes. Items 21 and 22 at the tags are recorded after them.
+
+Check:
+
+- `npm run test:gate` and `npm run test:loop` on each commit of items 2 to 4, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+- Acceptance item 47; items 21 and 22 at the tags.
 
 ## The gate comment's home directory: M40
 

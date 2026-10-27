@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.7 - 2026-10-26
+
+- Step 7's commit and the pull request text type no attribution trailer of their own and keep one the host's attribution setting adds, since the bare "Type no attribution trailer." line overrode the user's setting.
+
+## gate 0.1.2 - 2026-10-26
+
+- Step 2's commit types no attribution trailer of its own and keeps one the host's attribution setting adds, since 0.1.1's bare line had removed the trailer the host adds by default.
+
 ## gate 0.1.1 - 2026-10-26
 
 - The comment writes the user's home directory as `~` in a file path or summary it quotes from a review, in each spelling a review uses, since a review on Windows had quoted the user's instruction file by its full path.

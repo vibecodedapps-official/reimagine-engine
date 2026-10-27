@@ -35,6 +35,8 @@ Amended 2026-10-25: the `gate` plugin (decisions 118 to 134) adds requirements 2
 
 Amended 2026-10-26: the gate's comment (decision 135) amends requirement 314.
 
+Amended 2026-10-26: the host's attribution trailer (decision 136) amends requirement 11.
+
 ## Suite
 
 1. **One repository, one marketplace.** The marketplace is named `reimagine-engine` and lists exactly five plugins: `rules`, `loop`, `audit`, `primer` and `gate`, each at `plugins/<name>/`. Before a release a prerelease catalog may list a plugin that is built at a prerelease version (requirement 14), so a work machine can install it from `main` before its release, and may list `repo-docs` until requirement 268 retires it. Until the gate's scaffold milestone the catalog, lint's name list, the README and the repository's hub say four plugins, and that milestone moves all of them to five in one commit (decision 132). Check: lint.
@@ -47,7 +49,7 @@ Amended 2026-10-26: the gate's comment (decision 135) amends requirement 314.
 8. **Three hooks outside a request.** Only three hooks run without a session request: the rules SessionStart staleness notice, the primer SessionStart memory notice and the primer drift check. No other plugin ships a `hooks/hooks.json`. Check: lint.
 9. **Independent plugins.** `loop` and `audit` do not require `rules`; no manifest declares `dependencies`. Each plugin works alone after `/plugin install <name>@reimagine-engine`. Check: lint; acceptance.
 10. **Reusable files carry nothing owner-specific.** No shipped file names a person, a person's email address (an address at a `.invalid` domain is allowed), an absolute path under a user's home, or a specific repository other than this one. Check: lint.
-11. **Nothing external names a model, agent or tool.** Pull request bodies, pull request comments, ticket comments and commit messages name the activity and the date, never the model, the agent type or the tool that produced the text. Run records and reports kept in a run directory may name them. The loop never types an attribution trailer; the host's attribution setting decides that alone. Check: review; acceptance.
+11. **Nothing external names a model, agent or tool.** Pull request bodies, pull request comments, ticket comments and commit messages name the activity and the date, never the model, the agent type or the tool that produced the text. Run records and reports kept in a run directory may name them. No plugin types an attribution trailer of its own or removes one the host's attribution setting adds; that setting decides alone (decision 136). Check: review; acceptance.
 12. **Commit form.** Commits in this repository and commits the loop makes read `type(scope): subject` in lowercase, with a body that says why. A bare `@token` in a subject or pull request text is written in backticks. Check: review.
 13. **Moves and renames apart.** A commit that moves or renames files changes no file content; string renames go in their own commit. Check: review.
 14. **Versions and tags.** Each plugin has its own version line in its manifest and its catalog entry, which agree. The first release is 0.1.0; before it a built plugin may ship as `0.1.0-alpha.<n>`, a semver prerelease that sorts below 0.1.0, and the 0.1.0 target of every plugin stands. A release is tagged `<plugin>--v<version>` with `claude plugin tag`. A plugin directory that changed since its last tag carries a version above that tag. There is no shared suite version. Check: lint.

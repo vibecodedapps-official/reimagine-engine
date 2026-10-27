@@ -203,6 +203,9 @@ refuses('R221: refuses a usage error with one argument', () => {}, ['rules'], 2,
 refuses('R221: refuses a version that is not semver', () => {}, ['rules', '1.0'], 1,
   'release: 1.0 is not semver');
 
+refuses('R221: refuses a prerelease identifier with a leading zero', () => {}, ['rules', '0.1.1-01'], 1,
+  'release: 0.1.1-01 is not semver');
+
 refuses('R221: refuses an unknown plugin', () => {}, ['nope', '0.1.0'], 1,
   'release: no plugin nope');
 

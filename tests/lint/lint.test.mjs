@@ -249,6 +249,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   negative('Decision 32: .claude-plugin/marketplace.json: metadata.version is missing or not semver (missing)', (dir) => editJson(dir, catalog, (c) => { delete c.metadata.version; }), 1, [
     '.claude-plugin/marketplace.json: metadata.version is missing or not semver',
   ]);
+  negative('R14: <manifest>: version <v> is not semver (a numeric prerelease identifier with a leading zero)', (dir) => setVersion(dir, 'rules', '0.1.1-01'), 2, [
+    '.claude-plugin/marketplace.json entry rules: version 0.1.1-01 is not semver',
+    'plugins/rules/.claude-plugin/plugin.json: version 0.1.1-01 is not semver',
+  ]);
 
   negative('R1: .claude-plugin/marketplace.json: entry <name> is not one of rules, loop, audit, primer, gate', (dir) => {
     editJson(dir, catalog, (c) => { c.plugins.push({ name: 'extra', source: './plugins/loop', description: 'x', version: '0.1.0-alpha.1' }); });

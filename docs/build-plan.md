@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M43 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M44 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -424,6 +424,29 @@ Check:
 
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
+
+## Chain acceptance: M44
+
+Added 2026-10-27. Decision 139, the verdicts on the chain backlog. Built after M43. Depends on nothing; touches `docs/` only. No plugin changes, so no release and no tag.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M44 | chain acceptance | decision 139; item 46's commands publish, and both its runs rerun; item 51 at gate 0.1.2 | M43 |
+
+### M44: chain acceptance
+
+Work items, in this order:
+
+1. The design documents: decision 139 in `docs/decisions.md`, item 46's commands without "do not publish" in `docs/acceptance.md`, and this section. Commit: `docs(design): plan the chain acceptance runs`.
+2. Item 46, both runs, on a throwaway GitHub repository with two issues and `.reimagine.json` `checks`, the loop at 0.1.7 loaded by `--plugin-dir`, headless, one scratch profile per run holding a copy of the login, no `CLAUDE.md`, and `codeReviewLastEffort` `medium` written (decision 119). `run.md`, `audit-manifest.json` and the report are read back against every expectation of the item.
+3. Item 51 at gate 0.1.2: `tests/gate/fixture/build.mjs converges` pushed as item 47's setup, with pull request 1, the gate loaded by `--plugin-dir`, a profile of the same shape; the two timed trivial runs come first, then item 47's command, with each review's `duration_ms` and cost and the remembered level after.
+4. The record of both, with each item's run history. Commit: `docs(acceptance): record the chain acceptance milestone`.
+
+Check:
+
+- No commit touches `plugins/` or `tests/`, so no area suite runs on a commit; `npm test` and lint with the deny tokens run before the push, each as its own command with its exit code read.
+- `git diff --quiet loop--v0.1.7 -- plugins/loop` and `git diff --quiet gate--v0.1.2 -- plugins/gate` before the runs, so the runs speak for the tagged releases.
+- Item 9 is not rerun: it predates the `reviews` key, and its run of 2026-10-26 stands. Item 47's split run and items 48, 49, 50, 52, 53 and 54 are not rerun: no plugin or fixture changed since the record of 2026-10-27.
 
 ## The gate fixture's shape: M43
 

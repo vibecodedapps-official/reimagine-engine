@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M42 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M43 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -424,6 +424,27 @@ Check:
 
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
+
+## The gate fixture's shape: M43
+
+Added 2026-10-27. Decision 138. Built after M42. Depends on nothing; touches `tests/gate/` only, with the acceptance record. No plugin changes, so no release and no tag.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M43 | the gate fixture's shape | a fixture diff of eight or more files outside `split` and a check that visits every slot; items 47, 48, 49, 50 and 54 rerun | M42 |
+
+### M43: the gate fixture's shape
+
+Work items, in this order:
+
+1. `tests/gate/fixture/build.mjs`: the six added paths and the index loop of decision 138; `tests/gate/fixture.test.mjs`: the new shas and numstat literals. Commit: `test(gate): widen the fixture diff and check every slot`.
+2. The design documents: decision 138 and this section. Commit: `docs(design): plan the gate fixture's shape`.
+3. Acceptance items 47 (the converges run), 48, 49 (its two runs), 50 and 54, one run each on the new fixture, and the record. Commit: `docs(acceptance): record the gate fixture milestone`.
+
+Check:
+
+- `npm run test:gate` on item 1's commit, with the old literals failing against the new builder; `npm test` and lint with the deny tokens before the push.
+- The split run of item 47 is not rerun: its diff changes only in the shared percentile, and its item checks only the split. Items 52 and 53 are not rerun: their rerun rules name stage 1, the engine and the mode, and none changed.
 
 ## Backlog issue 1: M42
 

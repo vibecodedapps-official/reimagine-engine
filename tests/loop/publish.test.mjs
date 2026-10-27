@@ -157,3 +157,12 @@ test('R215: with several repositories on other, the body names take the run suff
   assert.ok(MULTI.includes('one `comment-<n>.md` for each repository, numbered in turn, and the report names the repository each one goes with'));
   assert.ok(section(REPORT, 'Sections').includes('with several repositories, each file with the repository it goes with'));
 });
+
+test('R11: Step 7 types no attribution trailer of its own and keeps the host\'s', () => {
+  assert.ok(PUBLISH.includes('- Name no model, no agent type and no tool, in the subject or the body. Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.'));
+});
+
+test('R11: the pull request text types no attribution trailer of its own and keeps the host\'s', () => {
+  assert.ok(PR_BODY.includes('Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.'));
+  assert.ok(!PR_BODY.includes('Type no attribution trailer. '));
+});

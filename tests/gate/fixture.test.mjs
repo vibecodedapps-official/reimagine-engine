@@ -26,33 +26,37 @@ const capChecks = '{\n  "checks": [\n    "npm test"\n  ],\n  "gate": {\n    "max
 const variants = {
   converges: {
     main: 'fa98f9ec5de74f03952fdb1ca44547ed2063ce29',
-    feature: '225d88e9016e97b40cc9a91902bebbb4546e6184',
+    feature: '47a6b6a8c73137d85032617937eb021e71b8b2ca',
     config: checks,
-    numstat: '10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
+    numstat:
+      '5\t0\tCHANGELOG.md\n5\t0\tREADME.md\n9\t0\tdocs/percentile.md\n1\t0\tpackage.json\n1\t0\tsrc/index.mjs\n7\t0\tsrc/index.test.mjs\n12\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
   },
   defers: {
     main: 'fa98f9ec5de74f03952fdb1ca44547ed2063ce29',
-    feature: '9afec21255815785e59265b14cc82e0e28943996',
+    feature: '11ff56c3537023099d035f5c97bd7cf5512ec425',
     config: checks,
-    numstat: '10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n11\t0\tsrc/summary.mjs\n7\t0\tsrc/summary.test.mjs\n',
+    numstat:
+      '5\t0\tCHANGELOG.md\n5\t0\tREADME.md\n9\t0\tdocs/percentile.md\n1\t0\tpackage.json\n1\t0\tsrc/index.mjs\n7\t0\tsrc/index.test.mjs\n12\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n11\t0\tsrc/summary.mjs\n7\t0\tsrc/summary.test.mjs\n',
   },
   cap: {
     main: '4018c6906a14f47aabf04a13b8423996d7956ad3',
-    feature: 'd70e1d2cba1c10b7529a4657374e9df6ae5b9cd4',
+    feature: '0364bb54eb8737788fac42197624d5aa5b2c5d80',
     config: capChecks,
-    numstat: '10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
+    numstat:
+      '5\t0\tCHANGELOG.md\n5\t0\tREADME.md\n9\t0\tdocs/percentile.md\n1\t0\tpackage.json\n1\t0\tsrc/index.mjs\n7\t0\tsrc/index.test.mjs\n12\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
   },
   carried: {
     main: 'fa98f9ec5de74f03952fdb1ca44547ed2063ce29',
-    feature: 'c789b69357cdbbec4d0121f800153503c66c5690',
+    feature: 'a6a1a86f2b4edef117e9d7dd78a7559d2d839173',
     config: checks,
-    numstat: '10\t0\tsrc/share.mjs\n15\t0\tsrc/share.test.mjs\n10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
+    numstat:
+      '5\t0\tCHANGELOG.md\n5\t0\tREADME.md\n9\t0\tdocs/percentile.md\n1\t0\tpackage.json\n1\t0\tsrc/index.mjs\n7\t0\tsrc/index.test.mjs\n10\t0\tsrc/share.mjs\n15\t0\tsrc/share.test.mjs\n12\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
   },
   split: {
     main: 'fa98f9ec5de74f03952fdb1ca44547ed2063ce29',
-    feature: '797b9542ef0e934b98a2790e7996543a7a5d4d6c',
+    feature: 'cfec32c8631bc8a48dff656473a790f682e3ca04',
     config: checks,
-    numstat: '1652\t0\tdata/levels.mjs\n10\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
+    numstat: '1652\t0\tdata/levels.mjs\n12\t0\tsrc/stats.mjs\n12\t1\tsrc/stats.test.mjs\n',
   },
 };
 

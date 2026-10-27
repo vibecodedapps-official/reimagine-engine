@@ -13,6 +13,7 @@ import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { LITERAL, SEMVER, SEMVER_CORE, compareSemver } from './semver.mjs';
 
 const run = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -50,8 +51,6 @@ const GIT_READS = ['status', 'diff', 'log', 'show', 'rev-parse', 'merge-base', '
 const GH_READS = ['repo view', 'issue view', 'issue list', 'pr view', 'pr list', 'pr checks', 'run list', 'run view'];
 const PRE_APPROVED = new RegExp(`^Bash\\((date|date \\*|sleep \\*|git (${GIT_READS.join('|')})( \\*)?|gh (${GH_READS.join('|')})( \\*)?)\\)$`);
 
-const SEMVER_CORE = '(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?';
-const SEMVER = new RegExp(`^${SEMVER_CORE}$`);
 const HEADING = new RegExp(`^## (${[...NAMES, ...RETIRED].join('|')}) (${SEMVER_CORE}) - (\\d{4}-\\d{2}-\\d{2})$`);
 const FENCE = /^\s*```/;
 
@@ -70,30 +69,6 @@ const PRIMER_HOOK = {
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const shown = (v) => (v === undefined || v === null ? 'missing' : typeof v === 'string' ? v : JSON.stringify(v));
 const isSemver = (v) => typeof v === 'string' && SEMVER.test(v);
-
-function parseSemver(v) {
-  const dash = v.indexOf('-');
-  const core = (dash < 0 ? v : v.slice(0, dash)).split('.').map(Number);
-  return { core, pre: dash < 0 ? null : v.slice(dash + 1).split('.') };
-}
-
-function compareIdentifiers(a, b) {
-  const an = /^\d+$/.test(a), bn = /^\d+$/.test(b);
-  if (an && bn) return Number(a) - Number(b);
-  if (an !== bn) return an ? -1 : 1;
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-function compareSemver(a, b) {
-  const x = parseSemver(a), y = parseSemver(b);
-  for (let i = 0; i < 3; i++) if (x.core[i] !== y.core[i]) return x.core[i] < y.core[i] ? -1 : 1;
-  if (!x.pre || !y.pre) return x.pre === y.pre ? 0 : x.pre ? -1 : 1;
-  for (let i = 0; i < Math.min(x.pre.length, y.pre.length); i++) {
-    const c = compareIdentifiers(x.pre[i], y.pre[i]);
-    if (c) return c;
-  }
-  return Math.sign(x.pre.length - y.pre.length);
-}
 
 function same(a, b) {
   if (Array.isArray(a) || Array.isArray(b)) {
@@ -622,7 +597,7 @@ function pluginVersionFailures(ctx) {
   for (const file of ctx.shipped.filter((f) => f.startsWith('plugins/audit/'))) {
     ctx.text(file).split('\n').forEach((line, i) => {
       if (!line.includes('plugin_version')) return;
-      for (const m of line.matchAll(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]*[0-9A-Za-z])?/g)) {
+      for (const m of line.matchAll(LITERAL)) {
         found++;
         if (typeof version === 'string' && m[0] !== version) out.push(`${file}:${i + 1}: plugin_version literal ${m[0]} differs from the audit manifest ${version}`);
       }

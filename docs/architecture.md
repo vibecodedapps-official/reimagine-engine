@@ -26,6 +26,7 @@ reimagine-engine/
   tests/                            node:test suites and the audit sh suites
   tools/lint.mjs                    repository rules
   tools/release.mjs                 version bump per plugin
+  tools/semver.mjs                  the semver rule lint and release share
 ```
 
 | Plugin | Installs | Entry points | Scripts | Hooks | Version line |

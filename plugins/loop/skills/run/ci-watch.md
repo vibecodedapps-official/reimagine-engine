@@ -58,7 +58,7 @@ The gated commit is the test merge commit when it has any result, else the head 
 
 ## 4. Polling and green
 
-Poll about thirty seconds apart: wait with `sleep 30` in its own Bash call. At each poll take `date -u +%Y-%m-%dT%H:%M:%SZ` and check the run budget.
+Poll about thirty seconds apart: wait with `sleep 30` in its own Bash call with `run_in_background: true`, and poll again when the host reports that it finished. The host blocks a standalone `sleep` in the foreground; do not chain shorter sleeps or loop on `date` in its place. At each poll take `date -u +%Y-%m-%dT%H:%M:%SZ` and check the run budget.
 
 Judge nothing before two minutes have passed since the push, counted from the time taken right after the push returned.
 

@@ -166,3 +166,11 @@ test('R11: the pull request text types no attribution trailer of its own and kee
   assert.ok(PR_BODY.includes('Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.'));
   assert.ok(!PR_BODY.includes('Type no attribution trailer. '));
 });
+
+test('R126: the CI poll waits with sleep 30 in the background, since the host blocks a foreground sleep', () => {
+  const text = section(read('ci-watch.md'), '4. Polling and green');
+  assert.notEqual(text, null);
+  assert.ok(text.includes('wait with `sleep 30` in its own Bash call with `run_in_background: true`, and poll again when the host reports that it finished.'));
+  assert.ok(text.includes('do not chain shorter sleeps or loop on `date` in its place.'));
+  assert.ok(!text.includes('wait with `sleep 30` in its own Bash call.'));
+});

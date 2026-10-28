@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R320; the primer milestones M10 to M19 follow M9, and M20 to M45 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R321; the primer milestones M10 to M19 follow M9, and M20 to M46 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -424,6 +424,29 @@ Check:
 
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
+
+## Published text and leftovers: M46
+
+Added 2026-10-27. R321, the amended R11, R43 and R118, and decision 141. Built after M45. Depends on nothing; touches `plugins/rules/`, `plugins/loop/`, `tests/rules/`, `tests/loop/`, `tests/lint/` and `tools/lint.mjs`, with the catalog, the changelog and the design documents.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M46 | published text and leftovers | house-rule edit fifteen, Concise Plain 4.8 and the chat block; the loop's pass and level ban; rules 0.1.11, loop 0.1.9 | M45 |
+
+### M46: published text and leftovers
+
+Work items, in this order:
+
+1. The design documents: R321, the amended R11, R43 and R118 in `docs/requirements.md`, decision 141 in `docs/decisions.md`, and this section. Commit: `docs(design): specify house-rule edit fifteen and concise plain 4.8`.
+2. `node tools/release.mjs rules 0.1.11` and `node tools/release.mjs loop 0.1.9`, with the catalog `metadata.version` raised by one and the version literals of `tests/rules/rules.test.mjs` moved to 0.1.11. Commit: `release(rules, loop): rules 0.1.11 and loop 0.1.9`.
+3. `plugins/rules/rules/core.md`: the three items of decision 141; `plugins/rules/output-styles/concise-plain.md`: the Leave out categories, the defect-report line and the Drafts scan, at 4.8; `plugins/rules/chat/instructions.md`: the same three lines and the version note; `tools/lint.mjs` and `tests/lint/lint.test.mjs`: the R43 literal at 4.8; `tests/rules/rules.test.mjs`: an R321 assertion for the three items, with the shipped digest literals and the adopt and import line-number literals moved by running the script once and pasting the observed values (decision 11); the rule count does not move. Commit: `feat(rules): keep process detail out of published text, list leftovers as they are made`.
+4. `plugins/loop/skills/run/pr-body.md` and `steps/7-publish.md`: the ban extends to a review pass and its level; `tests/loop/publish.test.mjs`: the R11 assertion moved to the new line. Commit: `fix(loop): name no review pass or level in published text`.
+5. After the push: the `## rules 0.1.11 - <date>` and `## loop 0.1.9 - <date>` headings in `CHANGELOG.md`, committed and pushed, then `claude plugin tag --push plugins/rules` and `claude plugin tag --push plugins/loop` after a yes; the acceptance record.
+
+Check:
+
+- `npm run test:rules`, `npm run test:loop` and `npm run test:lint` on the commits of items 2 to 4, on the branch head, each run as its own command with its exit code read, the R321 assertion failing on the text before; `npm test` and lint with the deny tokens before the push.
+- Acceptance items 4, 5 and 22 rerun at the tags.
 
 ## The CI poll's wait: M45
 

@@ -31,9 +31,10 @@ Any instruction file can add an ask-first rule; none removes one.
   that changes only the suspected factor. If you can't, say which check and what blocked
   it, and call the cause unverified.
 - Scratch files go in the repo's ignored scratch directory, else outside the repo. Record
-  each scratch file, script, worktree or branch you make in one list as you make it.
-  When done, say which are safe to delete and why, and nothing more; delete only on my
-  yes.
+  each scratch file, script, worktree or branch in one list as you make or first change
+  it, by exact name, noting which existed already. When done, from that list and the
+  disk, say which you made are safe to delete and why, and nothing more; delete only on
+  my yes.
 - Before opening an issue or starting a fix, search for an issue or PR that covers it.
   One symptom per issue; a side finding gets its own, linked.
 - When a tool, integration, or file in the session can answer a question, use it before

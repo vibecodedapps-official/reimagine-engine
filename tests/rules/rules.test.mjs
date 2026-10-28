@@ -23,10 +23,10 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = '6774418104448cfd';
+const SHIPPED_CORE_DIGEST = '09d31b3bd227b95e';
 
-test('R25: the block version is the version in the manifest of the plugin root, and the shipped manifest is 0.1.11', () => {
-  assert.equal(pluginVersion(), '0.1.11');
+test('R25: the block version is the version in the manifest of the plugin root, and the shipped manifest is 0.1.12', () => {
+  assert.equal(pluginVersion(), '0.1.12');
   const dir = mkdtempSync(join(tmpdir(), 'rules-test-'));
   try {
     mkdirSync(join(dir, '.claude-plugin'));
@@ -39,8 +39,8 @@ test('R25: the block version is the version in the manifest of the plugin root, 
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, '6774418104448cfd');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '69ac6051b87e21f2');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, '09d31b3bd227b95e');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'd1c9839286c8e7b5');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -62,9 +62,9 @@ test('R20: core.md holds the item that asks for one report, without the progress
   assert.equal(items.some((n) => n.includes('no progress notes')), false);
 });
 
-test('R321: the scratch, issue and commit items carry the leftovers list, one symptom per issue, and a commit about the change', () => {
+test('R321: the scratch item records made or first changed by exact name and offers only what was made, with one symptom per issue and a commit about the change', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes("Scratch files go in the repo's ignored scratch directory, else outside the repo. Record each scratch file, script, worktree or branch you make in one list as you make it. When done, say which are safe to delete and why, and nothing more; delete only on my yes."));
+  assert.ok(items.includes("Scratch files go in the repo's ignored scratch directory, else outside the repo. Record each scratch file, script, worktree or branch in one list as you make or first change it, by exact name, noting which existed already. When done, from that list and the disk, say which you made are safe to delete and why, and nothing more; delete only on my yes."));
   assert.ok(items.includes('Before opening an issue or starting a fix, search for an issue or PR that covers it. One symptom per issue; a side finding gets its own, linked.'));
   assert.ok(items.includes('Commits: `type(scope): subject`, lowercase. The body says why. Both are about the change, never about the session that made it.'));
 });
@@ -435,7 +435,7 @@ test('R18, R36: the windows option puts the shipped Windows paragraph before the
   s.run('plan', ['--options', 'core,windows'], { platform: 'win32' });
   s.run('apply');
   const lines = bytes(s.claude).split('\n');
-  assert.match(lines[0], /^<!-- reimagine:house-rules begin version=0.1.11 options=core,windows join=none digest=[0-9a-f]{16} -->$/);
+  assert.match(lines[0], /^<!-- reimagine:house-rules begin version=0.1.12 options=core,windows join=none digest=[0-9a-f]{16} -->$/);
   assert.equal(lines.slice(1).join('\n'), `${SHIPPED['windows.md']}\n${SHIPPED['core.md']}${END}\n`);
 }));
 
@@ -512,7 +512,7 @@ test('R29: an existing file is backed up with the time in its name, and no tempo
   assert.deepEqual(s.run('apply'), [`rules: wrote ${s.claude}; the backup is ${s.claude}.reimagine-backup-20261003120000`]);
   assert.deepEqual(readdirSync(s.claudeDir).sort(), ['CLAUDE.md', 'CLAUDE.md.reimagine-backup-20261003120000']);
   assert.equal(bytes(`${s.claude}.reimagine-backup-20261003120000`), 'mine\n');
-  assert.ok(bytes(s.claude).startsWith('mine\n\n<!-- reimagine:house-rules begin version=0.1.11 options=core join=blank digest='));
+  assert.ok(bytes(s.claude).startsWith('mine\n\n<!-- reimagine:house-rules begin version=0.1.12 options=core join=blank digest='));
   assert.equal(s.state().created, false);
   assert.deepEqual(readdirSync(s.data).sort(), ['rules-plan.json', 'rules-state.json']);
 }));
@@ -1013,7 +1013,7 @@ test('R34: the overlap note and the recommendation for a hand copy, and adopt th
   assert.deepEqual(s.run('apply', [], { now: AT }), [`rules: wrote ${s.claude}; the backup is ${s.claude}.reimagine-backup-20261003120000`]);
   assert.equal(bytes(`${s.claude}.reimagine-backup-20261003120000`), copy);
   const after = bytes(s.claude);
-  assert.equal(after.startsWith('# Mine\n\n<!-- reimagine:house-rules begin version=0.1.11 options=core join=none digest='), true);
+  assert.equal(after.startsWith('# Mine\n\n<!-- reimagine:house-rules begin version=0.1.12 options=core join=none digest='), true);
   assert.equal(after.split('Make the simplest change that is correct').length, 2);
   assert.equal(s.run('plan', ['--options', 'core']).includes('state: current'), true);
   s.run('remove');
@@ -1374,11 +1374,11 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
     'note: 1 of 35 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 106 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 107 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
     'note: 1 of 35 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 106 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 107 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1397,7 +1397,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 104: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 105: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));

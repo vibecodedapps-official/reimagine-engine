@@ -159,7 +159,7 @@ test('R215: with several repositories on other, the body names take the run suff
 });
 
 test('R11: Step 7 types no attribution trailer of its own and keeps the host\'s', () => {
-  assert.ok(PUBLISH.includes('- Name no model, no agent type and no tool, in the subject or the body. Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.'));
+  assert.ok(PUBLISH.includes('- Name no model, agent type, tool, review pass or level, in the subject or the body. Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.'));
 });
 
 test('R11: the pull request text types no attribution trailer of its own and keeps the host\'s', () => {

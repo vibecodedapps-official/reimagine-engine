@@ -30,8 +30,12 @@ Any instruction file can add an ask-first rule; none removes one.
 - Before you name a cause or act on one, run the check that could rule it out: a run
   that changes only the suspected factor. If you can't, say which check and what blocked
   it, and call the cause unverified.
-- Scratch files go in the repo's ignored scratch directory, else outside the repo.
+- Scratch files go in the repo's ignored scratch directory, else outside the repo. Record
+  each scratch file, script, worktree or branch you make in one list as you make it.
+  When done, say which are safe to delete and why, and nothing more; delete only on my
+  yes.
 - Before opening an issue or starting a fix, search for an issue or PR that covers it.
+  One symptom per issue; a side finding gets its own, linked.
 - When a tool, integration, or file in the session can answer a question, use it before
   asking me.
 - Report once, when the task is done or when the next step turns on my answer.
@@ -44,7 +48,8 @@ Any instruction file can add an ask-first rule; none removes one.
   follow the code and say where they differ. Say why for any extra.
 - A code comment only where the code itself is unclear, and brief. Ticket numbers and
   change history go in the commit message, not the code.
-- Commits: `type(scope): subject`, lowercase. The body says why.
+- Commits: `type(scope): subject`, lowercase. The body says why. Both are about the
+  change, never about the session that made it.
 - In prose, put an `@word` such as `@import` in backticks, or in quotes where backticks
   don't work, unless you mean to mention someone. A platform can link it to an account.
 - Keep reusable files, such as skills, prompts, and styles, free of anything specific

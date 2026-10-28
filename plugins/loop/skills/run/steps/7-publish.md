@@ -22,7 +22,7 @@ Commit the work of each slice whose closing commit is not yet on the branch, one
 
 - Write the message as `type(scope): subject`, lowercase, with a body that says why the change was made. When the repository's instruction files set another form, follow them.
 - Write a bare `@token` in backticks.
-- Name no model, no agent type and no tool, in the subject or the body. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
+- Name no model, agent type, tool, review pass or level, in the subject or the body. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
 - Stage paths by name only. Never run `git add -A` or `git add .`.
 - Before each commit run `git -C <checkout> diff --cached --name-only` and confirm the list is exactly the slice's paths and holds nothing under `.reimagine/`. Unstage anything else with `git -C <checkout> restore --staged <path>`.
 

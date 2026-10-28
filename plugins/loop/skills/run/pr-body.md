@@ -2,7 +2,7 @@
 
 Read this file from `steps/7-publish.md` when you write a pull request body, a continued pull request comment or a ticket comment, and from `steps/4-build.md` at the end of Step 6 on a host other than `github`, to write the run's body file.
 
-These texts are published. Name the activity and the date, never a model, an agent type or a tool, and never a run-internal path such as one under `.reimagine/`. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool. Write a bare `@token` in backticks. Write each section from the record's facts, not from a subagent's claim; check a claim before you repeat it. A section with nothing to say holds the word "none".
+These texts are published. Name the activity and the date, never a model, an agent type, a tool, a review pass or its level, and never a run-internal path such as one under `.reimagine/`. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool. Write a bare `@token` in backticks. Write each section from the record's facts, not from a subagent's claim; check a claim before you repeat it. A section with nothing to say holds the word "none".
 
 ## Pull request body
 
@@ -79,6 +79,6 @@ Deferred:
 - State "partial" plainly when it is partial.
 - Cite evidence for every criterion: a check, a test name, a commit or a line of output.
 - Mark a criterion "not confirmed" when you did not see it met yourself.
-- Name no run-internal path, no model, no agent and no tool.
+- Name no run-internal path, no model, no agent, no tool, no review pass and no level.
 
 Return to the step that sent you here.

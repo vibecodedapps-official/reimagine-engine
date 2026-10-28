@@ -2,6 +2,15 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.11 - 2026-10-27
+
+- The Working scratch item records each scratch file, script, worktree or branch in one list as it is made, and when done says which are safe to delete and why, and nothing more, with the deletion waiting on a yes; long sessions had left leftovers behind once the offer to clean up faded. The issue item asks for one symptom per issue, with a side finding in its own linked issue. The commit item says the subject and body are about the change, never about the session that made it, since a subject had named a review round. The rule count stays 35; the block updates through /rules.
+- Concise Plain 4.8: "How you got there" names what it covers, passes, levels, verdicts and finding counts, after a pull request description carried the review rounds and their levels; the Drafts scan step scans for the same and replaces each with the activity and date or drops it; a defect report opens with the wrong outcome, where it was seen, then the cause. The chat block carries the three lines.
+
+## loop 0.1.9 - 2026-10-27
+
+- The publication texts and Step 7.1 name no review pass or level, beside the model, agent type, tool and run-internal path they already left out.
+
 ## loop 0.1.8 - 2026-10-27
 
 - The CI poll waits with `sleep 30` in the background, since the host blocks a standalone `sleep` in the foreground and runs had been waiting in forms the skill does not pre-approve.

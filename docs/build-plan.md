@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R321; the primer milestones M10 to M19 follow M9, and M20 to M46 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R321; the primer milestones M10 to M19 follow M9, and M20 to M47 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -424,6 +424,28 @@ Check:
 
 - `npm run test:rules` and `npm run test:lint` on each commit of items 2 and 3, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 - Acceptance items 4, 5 and 22 rerun: the staleness notice on a profile holding the 0.1.5 block; the style listed as `rules:Concise Plain`; the tag rule at `rules--v0.1.6`; each recorded with date, machine, versions and permission mode.
+
+## Scratch made or changed: M47
+
+Added 2026-10-28. The amended R321 and decision 142. Built after M46. Depends on nothing; touches `plugins/rules/` and `tests/rules/` only, with the catalog, the changelog and the design documents.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M47 | scratch made or changed | house-rule edit sixteen; rules 0.1.12 | M46 |
+
+### M47: scratch made or changed
+
+Work items, in this order:
+
+1. The design documents: the amended R321 in `docs/requirements.md`, decision 142 in `docs/decisions.md`, and this section. Commit: `docs(design): specify house-rule edit sixteen`.
+2. `node tools/release.mjs rules 0.1.12`, with the catalog `metadata.version` raised by one and the version literals of `tests/rules/rules.test.mjs` moved to 0.1.12. Commit: `release(rules): 0.1.12`.
+3. `plugins/rules/rules/core.md`: the scratch item of decision 142; `tests/rules/rules.test.mjs`: the R321 literal moved, with the shipped digest literals moved by running the script once and pasting the observed values (decision 11); the rule count does not move. Commit: `feat(rules): record a scratch file as made or changed, offer only what was made`.
+4. The `## rules 0.1.12 - <date>` heading in `CHANGELOG.md`, committed before the pull request; after the merge, `claude plugin tag --push plugins/rules` after a yes, and the acceptance record.
+
+Check:
+
+- `npm run test:rules` on the commits of items 2 and 3, on the branch head, each run as its own command with its exit code read, the R321 assertion failing on the text before; `npm test` and lint with the deny tokens before the push.
+- Acceptance items 4, 5 and 22 rerun at the tag.
 
 ## Published text and leftovers: M46
 

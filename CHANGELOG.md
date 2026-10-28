@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.12 - 2026-10-28
+
+- The Working scratch item records each scratch file, script, worktree or branch as it is made or first changed, by exact name, noting which existed already, and when done offers only what the session made, from the list and the disk; a session had rewritten a file that existed before it started and, once a summary dropped that detail, offered it as safe to delete, and had listed logs as globs that matched another session's files. The rule count stays 35; the block updates through /rules.
+
 ## rules 0.1.11 - 2026-10-27
 
 - The Working scratch item records each scratch file, script, worktree or branch in one list as it is made, and when done says which are safe to delete and why, and nothing more, with the deletion waiting on a yes; long sessions had left leftovers behind once the offer to clean up faded. The issue item asks for one symptom per issue, with a side finding in its own linked issue. The commit item says the subject and body are about the change, never about the session that made it, since a subject had named a review round. The rule count stays 35; the block updates through /rules.

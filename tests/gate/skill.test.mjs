@@ -167,6 +167,12 @@ test('R292: a branch target takes the request\'s base, then the bundle\'s, then 
   holds('steps/0-preflight.md', order);
 });
 
+test('R292: a bundle base written as <remote>/<branch> is read as the branch', () => {
+  const strip = "A bundle `base` whose first segment names a remote that `git remote` lists in the bundle's repository is read without that segment and its `/`";
+  assert.ok(SKILL.includes(strip), 'SKILL.md lacks the remote prefix rule');
+  holds('steps/0-preflight.md', strip, '`origin/main` is read as `main`');
+});
+
 test('R297: a pass over split groups by path at the shallowest depth that gives more than one group', () => {
   const phrase = 'by path at the shallowest depth that gives more than one group';
   holds('steps/1-pass.md',

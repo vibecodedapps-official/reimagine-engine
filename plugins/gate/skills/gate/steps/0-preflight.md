@@ -46,7 +46,7 @@ Before any checkout, `git status --porcelain` must print nothing, untracked file
 
 ## 0.6 Base and merge-base
 
-1. The base `<b>` of a pull request is its `baseRefName`; "base <branch>" in the request on a pull request whose base differs ends `blocked`, naming both, since the gate never retargets a pull request. The base of a branch target is "base <branch>" in the request, else the manifest bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch, from `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, or on another host `git ls-remote --symref <r> HEAD`.
+1. The base `<b>` of a pull request is its `baseRefName`; "base <branch>" in the request on a pull request whose base differs ends `blocked`, naming both, since the gate never retargets a pull request. The base of a branch target is "base <branch>" in the request, else the manifest bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch, from `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, or on another host `git ls-remote --symref <r> HEAD`. A bundle `base` whose first segment names a remote that `git remote` lists in the bundle's repository is read without that segment and its `/`, since the loop's manifest writes `<remote>/<base branch>`: with a remote `origin`, `origin/main` is read as `main`.
 2. Fetch it with `git fetch <r> +refs/heads/<b>:refs/remotes/<r>/<b>`. A fetch that fails ends the run `blocked`, naming the branch.
 3. The merge-base is `git merge-base refs/remotes/<r>/<b> <head>`, printed as a full sha, with `<head>` the local branch after 0.7. Hold it. Every review target and every line count of Step 1 is the three-dot range from it.
 

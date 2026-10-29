@@ -26,7 +26,7 @@ Phrases the gate recognizes:
 - `no fixes`: make the first pass only. Nothing is edited, committed or pushed; the report and the comment say what a fix run would do.
 - `budget <n> minutes`: set the run budget.
 - `base <branch>`: name the base branch of a branch target. A pull request keeps its own base, so a different one stops the run.
-- `checks <command>[; <command>]`: the commands the fix round runs after its fixes, in place of the repository's `checks` in `.reimagine.json`. It is read as the last phrase of the request, since a command may hold a comma, so put it last, and separate commands with `;`.
+- `checks <command>[; <command>]`: the commands the fix round runs after its fixes, in place of the repository's `checks` in `.reimagine.json`. It runs to the next comma that another recognized phrase follows, such as `, no fixes`, else to the end of the request, since a command may hold a comma. Separate commands with `;`.
 
 A pull request must be open, in the repository of the session and not from a fork. Several run one after another, each with its own record. A manifest runs one record per bundle that has a pull request or a branch.
 

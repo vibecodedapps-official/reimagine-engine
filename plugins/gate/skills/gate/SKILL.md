@@ -48,7 +48,7 @@ Recognized phrases, and nothing else is read from the request:
 - "no fixes": make pass 1 only and edit nothing.
 - "budget <n> minutes": set the run budget.
 - "base <branch>": name the base branch of a branch target.
-- "checks <command>[; <command>]": the checks the fix round runs. Read it as the last phrase of the request, since a command may hold a comma; split it at `;` and trim each command.
+- "checks <command>[; <command>]": the checks the fix round runs. It runs to the next comma that another recognized phrase follows, such as ", no fixes", else to the end of the request, since a command may hold a comma; split it at `;` and trim each command.
 
 A pull request target must be open, in the session's repository and not cross-repository. Its head branch is fetched with the explicit refspec and checked out, which needs a clean tree. Several pull requests run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or one of the same shape; it runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order, with every git and gh command running against that bundle's `repo`. A branch target or a manifest bundle on a host other than GitHub runs with the comment skipped, and the report says so. A pull request number on such a host cannot resolve, so it is an unresolved target.
 

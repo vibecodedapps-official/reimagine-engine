@@ -91,10 +91,13 @@ test('R291: the reading block is one fenced block of five lines in a fixed order
   block.lines.forEach((line, i) => assert.ok(line.startsWith(heads[i]), `line ${i + 1} does not start with ${heads[i]}`));
 });
 
-test('R289 and R300: the checks phrase is in both grammar lists, read as the last phrase', () => {
+test('R289 and R300: the checks phrase is in both grammar lists and ends where another phrase starts', () => {
   assert.ok(SKILL.includes('- "checks <command>[; <command>]": '), 'SKILL.md does not list the checks phrase');
   assert.ok(README.includes('- `checks <command>[; <command>]`: '), 'README.md does not list the checks phrase');
-  for (const text of [SKILL, README]) assert.ok(text.includes('last phrase'), 'the checks phrase is not read as the last phrase');
+  for (const text of [SKILL, README]) {
+    assert.ok(text.includes('runs to the next comma that another recognized phrase follows'), 'the checks phrase does not end at a later phrase');
+    assert.ok(!text.includes('last phrase'), 'the checks phrase is still read as the last phrase');
+  }
 });
 
 test('R300: the checks come from the request, the manifest bundle or the configuration, in that order', () => {

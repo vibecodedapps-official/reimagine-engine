@@ -180,7 +180,8 @@ test('R99, R104: Step 2 sizes a slice to the subagent budget, and the brief name
 
 test('R67, R104: an implementer call is judged by its notification, and the brief bars background commands', () => {
   assert.ok(SKILL.includes('An Agent or SendMessage call is judged against its budget by the `duration_ms` of its completion notification'));
-  assert.ok(SKILL.includes('A notification for a call you did not send, after that call already returned, is not a new call'));
+  assert.ok(SKILL.includes('A notification that arrives for an implementer or fix call after that call already returned is not a new call'));
+  assert.ok(SKILL.includes('Any other late notification, or one for an agent this run did not launch, is logged in `run.md` and changes nothing.'));
   assert.ok(SKILL.includes('a check longer than that runs with `run_in_background` beside a `sleep` of its budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; whichever ends first, the other is stopped with TaskStop.'));
   assert.ok(!SKILL.includes('take `date` before and after the call and treat a return past the budget as expired'));
   assert.ok(BUILD.includes("each call's `duration_ms` from its completion notification"));

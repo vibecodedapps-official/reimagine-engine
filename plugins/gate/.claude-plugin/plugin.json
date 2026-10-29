@@ -1,6 +1,6 @@
 {
   "name": "gate",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Run code-review passes over a pull request, fixing what each pass finds, until a pass finds nothing left to fix.",
   "author": { "name": "vibecodedapps.net" },
   "repository": "https://github.com/vibecodedapps-official/reimagine-engine",

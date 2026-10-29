@@ -78,7 +78,7 @@ to `Q4` or a custom list.
    top-up write no trace.
 7. Write `## Claims`: every claim assigned to your scope, `true`, `false` or
    `not verified`, with the finding id or the evidence, in the line shapes of
-   `## Claims list`.
+   `## Claims list`; with no claim assigned, the heading and the one line `none`.
    - A `verification` claim is `true, reproduced` only when you reproduced the stated
      result yourself, by a run, or by a quote when the result is a fact of the code at the
      pinned sha. A quote of other text saying it was checked reproduces nothing.

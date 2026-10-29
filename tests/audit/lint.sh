@@ -597,7 +597,9 @@ done
 for f in skills/audit/stages/4-pass-one.md:'when its last line is not `status: complete`, or when it has no `## Claims` heading' \
 	skills/audit/stages/5-pass-two.md:'its last line is not `status: complete`, it has no `## Claims challenged` heading' \
 	skills/audit/resume.md:'or has no `## Claims` (stage 4) or `## Claims challenged` (stage 5) heading, moves as above' \
-	skills/audit/common.md:'and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`'; do
+	skills/audit/common.md:'and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
+	skills/audit/common.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
+	agents/auditor.md:'with no claim assigned, the heading and the one line `none`'; do
 	s=${f#*:}
 	f=${f%%:*}
 	[ -f "$f" ] || continue

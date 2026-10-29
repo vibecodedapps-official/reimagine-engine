@@ -289,7 +289,8 @@ claim targets `hygiene`; the stage files say which scope receives them.
 
 ## Claims list
 
-Each claim assigned to the scope in `claims.md` gets one line:
+Each claim assigned to the scope in `claims.md` gets one line. A scope with no claim
+assigned writes the heading and the one line `none`.
 
 ```
 ## Claims

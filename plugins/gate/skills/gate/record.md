@@ -4,7 +4,7 @@ Read this file when Step 0 sets up the record directory; you return to it whenev
 
 ## Location
 
-1. The record directory is `.reimagine/gate/<branch-slug>/` in the target repository's root: for a manifest bundle, that bundle's `repo`. The branch and `<branch-slug>` are set as SKILL.md, Record, says.
+1. The record directory is `.reimagine/gate/<branch-slug>/` in the target repository's root: for a manifest bundle, that bundle's `repo`; for a branch target named by "repo <path>", that path. The branch and `<branch-slug>` are set as SKILL.md, Record, says.
 2. `passes.json` keeps the exact branch name. A record whose `passes.json` branch differs from this run's branch is a slug collision and ends preflight `blocked`, naming both branches.
 3. `.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, never into `.gitignore`. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
 4. Every shell argument that names a record file is its absolute path.

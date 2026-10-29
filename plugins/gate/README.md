@@ -23,6 +23,7 @@ With no target, the current branch is gated against its base. There are no flags
 
 Phrases the gate recognizes:
 
+- `repo <path>`: gate the branch checked out at that path in place of the session's, since a `cd` in one call does not carry to the next. The path must be a git toplevel or a linked worktree, else the target is unresolved.
 - `no fixes`: make the first pass only. Nothing is edited, committed or pushed; the report and the comment say what a fix run would do.
 - `budget <n> minutes`: set the run budget.
 - `base <branch>`: name the base branch of a branch target. A pull request keeps its own base, so a different one stops the run.

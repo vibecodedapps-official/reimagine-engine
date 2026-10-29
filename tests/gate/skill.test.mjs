@@ -124,6 +124,20 @@ test('R289 and R300: the checks phrase is in both grammar lists and ends where a
   }
 });
 
+test('R289 and R323: the repo phrase is in both grammar lists and is checked as the toplevel of its path', () => {
+  assert.ok(SKILL.includes('- "repo <path>": '), 'SKILL.md does not list the repo phrase');
+  assert.ok(README.includes('- `repo <path>`: '), 'README.md does not list the repo phrase');
+  assert.ok(SKILL.includes('`git -C <path> rev-parse --show-toplevel` prints that path, compared as absolute paths with forward slashes and no trailing slash, else the target is unresolved'), 'SKILL.md lacks the toplevel check');
+  assert.ok(SKILL.includes('Beside a pull request or manifest target, "repo <path>" is one unresolved line'), 'SKILL.md lacks the unresolved rule beside a pull request or manifest target');
+  assert.ok(SKILL.includes('a branch target named by "repo <path>" shows its resolved toplevel'), 'SKILL.md does not put the toplevel on the Targets line');
+});
+
+test('R323: a target named by repo runs its commands in the forms of a manifest bundle', () => {
+  const text = holds('steps/0-preflight.md', 'A branch target named by "repo <path>" runs the same way: `git -C <path>`, and `cd <path> && <command>` in one Bash call for gh and the child session, with absolute paths.');
+  assert.ok(text.includes('Those forms, and a manifest bundle\'s, count as prompts'), 'the permission statement does not count the forms as prompts');
+  assert.ok(text.includes('read it with `git -C <path> rev-parse --abbrev-ref HEAD`'), 'the head is not read in the named repository');
+});
+
 test('R300: the checks come from the request, the manifest bundle or the configuration, in that order', () => {
   const order = "the request's \"checks\" phrase, else the manifest bundle's `checks`, else `.reimagine.json` `checks`";
   assert.ok(SKILL.includes(order), "SKILL.md lacks the order of the checks' sources");

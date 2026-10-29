@@ -45,12 +45,15 @@ Recognized phrases, and nothing else is read from the request:
 - "PR <n>", "<n> and <m>" and a pull request URL: the targets.
 - "the manifest <path>": run one record per bundle of that manifest.
 - "this branch": gate the current branch against its base. With no target at all, this is what runs.
+- "repo <path>": gate the branch checked out at that path in place of the session's, since a `cd` in one call does not carry to the next.
 - "no fixes": make pass 1 only and edit nothing.
 - "budget <n> minutes": set the run budget.
 - "base <branch>": name the base branch of a branch target.
 - "checks <command>[; <command>]": the checks the fix round runs. It runs to the next comma that another recognized phrase follows, such as ", no fixes", else to the end of the request, since a command may hold a comma; split it at `;` and trim each command.
 
 A pull request target must be open, in the session's repository and not cross-repository. Its head branch is fetched with the explicit refspec and checked out, which needs a clean tree. Several pull requests run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or one of the same shape; it runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order, with every git and gh command running against that bundle's `repo`. A branch target or a manifest bundle on a host other than GitHub runs with the comment skipped, and the report says so. A pull request number on such a host cannot resolve, so it is an unresolved target.
+
+The path of "repo <path>" must be a git toplevel or a linked worktree: `git -C <path> rev-parse --show-toplevel` prints that path, compared as absolute paths with forward slashes and no trailing slash, else the target is unresolved. The head branch is the one checked out there, and the preflight runs the target's commands in the forms of a manifest bundle's. Beside a pull request or manifest target, "repo <path>" is one unresolved line and the run continues with those targets, since they name their own repository.
 
 For a pull request target the base is its `baseRefName`. For a branch target the base is "base <branch>" in the request, else the manifest bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch, so a release or hotfix branch gated through a manifest is diffed against the base its bundle names. A bundle `base` whose first segment names a remote that `git remote` lists in the bundle's repository is read without that segment and its `/`, since the loop's manifest writes `<remote>/<base branch>`. Fetch the base with the explicit refspec `+refs/heads/<b>:refs/remotes/<r>/<b>`; a fetch that fails ends `blocked` naming the branch. Record the merge-base with the base. Every review target and every line count uses the three-dot range from it. "base <branch>" on a pull request target whose base differs ends `blocked`, because the gate never retargets a pull request.
 
@@ -68,7 +71,7 @@ Engine: subprocess
 Scripts: <the plugin's directory>/scripts
 ```
 
-Targets lists each pull request or branch, how it resolved and its base. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`, then the subagent, review and check budgets in force, each with its source (`gate.timeouts`, root `timeouts`) when it is not the default. Engine is `subprocess`, or the stand-in with the reason for it. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored.
+Targets lists each pull request or branch, how it resolved and its base; a branch target named by "repo <path>" shows its resolved toplevel. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`, then the subagent, review and check budgets in force, each with its source (`gate.timeouts`, root `timeouts`) when it is not the default. Engine is `subprocess`, or the stand-in with the reason for it. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored.
 
 A target that cannot be resolved gets one line in the block and the run continues with the others. When none is left, the run ends `stopped`.
 

@@ -219,8 +219,8 @@ when the invocation block says `command: resume`; the rules of
      `pass1/<scope>.md` (stage 4) or `pass2/<scope>.md` (stage 5) whose last line is
      `status: complete` and whose `consumed:` hashes each equal the hash of that file now
      is kept where it is, from `git hash-object --no-filters <file>`: it is not moved and
-     gets no record in the `superseded` list. A file that fails either test moves as
-     above. The rerun stage launches only the scopes with no kept file and lists the kept
+     gets no record in the `superseded` list. A file that fails either test, or has no
+     `## Claims` (stage 4) or `## Claims challenged` (stage 5) heading, moves as above. The rerun stage launches only the scopes with no kept file and lists the kept
      files among its outputs.
    - When the first rerun stage is 1 and its entry is missing or `running`, supersede the
      stage 1 outputs that exist the same way.

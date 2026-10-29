@@ -500,7 +500,8 @@ entry: the merger has no shell, and `runs:` holds only commands, directories and
 statuses, or `none`.
 
 A file whose last line is not `status: complete` is a failed output, whatever the agent
-returned.
+returned, and so is a pass-one file without `## Claims` or a pass-two file other than a
+map-correction `-topup.md` without `## Claims challenged`.
 
 ```
 runs:

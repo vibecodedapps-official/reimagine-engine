@@ -481,10 +481,10 @@ p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1 true'
 perr "pass1 claims entry without a colon" "$D" "report: pass1/g1.md:2: malformed claim line"
 p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: '
 perr "pass1 claims entry without a rest" "$D" "report: pass1/g1.md:2: malformed claim line"
-p1; wp "$D/pass1/g1.md" '## Decisions' '- claim 2: agree'
-perr "pass1 decisions entry without a ref" "$D" "report: pass1/g1.md:2: malformed claim line"
-p1; wp "$D/pass1/g1.md" '## Scope' '- claim 3 (s1): '
-perr "pass1 scope entry without a rest" "$D" "report: pass1/g1.md:2: malformed claim line"
+p1; wp "$D/pass1/g1.md" '## Claims' 'none' '## Decisions' '- claim 2: agree'
+perr "pass1 decisions entry without a ref" "$D" "report: pass1/g1.md:4: malformed claim line"
+p1; wp "$D/pass1/g1.md" '## Claims' 'none' '## Scope' '- claim 3 (s1): '
+perr "pass1 scope entry without a rest" "$D" "report: pass1/g1.md:4: malformed claim line"
 p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: true' '## Scope' '- claim 3 (a)b): x'
 perr "pass1 scope entry with a closing parenthesis in the ref" "$D" "report: pass1/g1.md:4: malformed claim line"
 p1; wp "$D/pass1/g1.md" '## Claims' '- claim 7: true'
@@ -493,12 +493,12 @@ p1; wp "$D/pass1/g1.md" '## Claims' '- claim 4: true'
 perr "pass1 entry for an other line" "$D" "report: pass1/g1.md:2: claim 4 is not a claim of claims.md"
 p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: true' 'runs: none'; wp "$D/pass1/g2.md" '## Claims' 'none' '- claim 1: false'
 perr "pass1 claim twice across files" "$D" "report: pass1/g2.md:3: claim 1 listed twice"
-p1; wp "$D/pass1/g1.md" '## Decisions' '- claim 2 (d1): a' '- claim 2 (d1): b'
-perr "pass1 decision twice" "$D" "report: pass1/g1.md:3: claim 2 listed twice"
-p1; wp "$D/pass1/g1.md" '## Decisions' '- claim 1 (d1): a'
-perr "pass1 decision for a code claim" "$D" "report: pass1/g1.md:2: claim 1 is not a decision claim"
-p1; wp "$D/pass1/g1.md" '## Scope' '- claim 2 (s1): a'
-perr "pass1 scope for a decision claim" "$D" "report: pass1/g1.md:2: claim 2 is not a scope claim"
+p1; wp "$D/pass1/g1.md" '## Claims' 'none' '## Decisions' '- claim 2 (d1): a' '- claim 2 (d1): b'
+perr "pass1 decision twice" "$D" "report: pass1/g1.md:5: claim 2 listed twice"
+p1; wp "$D/pass1/g1.md" '## Claims' 'none' '## Decisions' '- claim 1 (d1): a'
+perr "pass1 decision for a code claim" "$D" "report: pass1/g1.md:4: claim 1 is not a decision claim"
+p1; wp "$D/pass1/g1.md" '## Claims' 'none' '## Scope' '- claim 2 (s1): a'
+perr "pass1 scope for a decision claim" "$D" "report: pass1/g1.md:4: claim 2 is not a scope claim"
 p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: true' '## Decisions' '- claim 2 (d1): a' '- claim 2 (d1): b'
 perr "pass1 error in a later section" "$D" "report: pass1/g1.md:5: claim 2 listed twice"
 # The same claim in two kinds of section is not a repeat.
@@ -508,14 +508,14 @@ run "pass1 same claim in two sections" 0 "" parts "$D"
 p2() { base "$D"; mkdir -p "$D/pass2"; }
 p2; wp "$D/pass2/a.md" '## Claims challenged' '- claim 1 upheld'
 perr "pass2 entry without a colon" "$D" "report: pass2/a.md:2: malformed claim line"
-p2; wp "$D/pass2/a.md" '## Decisions challenged' '- claim 2 (d1): agree'
-perr "pass2 entry with a ref" "$D" "report: pass2/a.md:2: malformed claim line"
-p2; wp "$D/pass2/a.md" '## Scope challenged' '- claim 8: agree'
-perr "pass2 unknown claim" "$D" "report: pass2/a.md:2: claim 8 is not a claim of claims.md"
+p2; wp "$D/pass2/a.md" '## Claims challenged' 'none' '## Decisions challenged' '- claim 2 (d1): agree'
+perr "pass2 entry with a ref" "$D" "report: pass2/a.md:4: malformed claim line"
+p2; wp "$D/pass2/a.md" '## Claims challenged' 'none' '## Scope challenged' '- claim 8: agree'
+perr "pass2 unknown claim" "$D" "report: pass2/a.md:4: claim 8 is not a claim of claims.md"
 p2; wp "$D/pass2/a.md" '## Claims challenged' '- claim 1: upheld; evidence: a'; wp "$D/pass2/b.md" '## Claims challenged' '- claim 1: upheld; evidence: b'
 perr "pass2 claim twice across files" "$D" "report: pass2/b.md:2: claim 1 listed twice"
-p2; wp "$D/pass2/a.md" '## Scope challenged' '- claim 3: agree' '- claim 3: agree'
-perr "pass2 scope twice" "$D" "report: pass2/a.md:3: claim 3 listed twice"
+p2; wp "$D/pass2/a.md" '## Claims challenged' 'none' '## Scope challenged' '- claim 3: agree' '- claim 3: agree'
+perr "pass2 scope twice" "$D" "report: pass2/a.md:5: claim 3 listed twice"
 
 p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: false, contradicted; F-1'
 perr "false claim without a correction" "$D" "report: claims.md:1: claim 1 is false and report/parts/claims-override.txt gives no correction"
@@ -602,11 +602,15 @@ w "$tmp/want-hb" \
 	''
 same "headings with trailing blanks 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-hb"
 
-# A finished pass file without its claims heading is malformed, a map-correction file is not.
-p1; wp "$D/pass1/g1.md" '## claims' '- claim 1: true; F-1'
-perr "pass1 without a Claims heading" "$D" "report: pass1/g1.md:1: no ## Claims heading"
-p2; wp "$D/pass2/a.md" '## claims challenged' '- claim 1: upheld; evidence: x'
-perr "pass2 without a Claims challenged heading" "$D" "report: pass2/a.md:1: no ## Claims challenged heading"
+# A finished pass file without its claims heading is a failed output, skipped as if absent
+# whatever it holds, as stages 4 and 5 fail it; a map-correction file needs no heading.
+p1; wp "$D/pass1/g1.md" '## claims' '- claim 1: true; F-1' '## Decisions' '- claim 9 (d1): x'
+run "pass1 without a Claims heading" 0 "" parts "$D"
+same "pass1 without a Claims heading 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-nostatus"
+p1; mkdir -p "$D/pass2"; wp "$D/pass1/g1.md" '## Claims' '- claim 1: true; F-1'
+wp "$D/pass2/a.md" '## claims challenged' '- claim 1: overturned to false, contradicted; evidence: x' '- claim 9: bad'
+run "pass2 without a Claims challenged heading" 0 "" parts "$D"
+same "pass2 without a Claims challenged heading 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-pt"
 p2; wp "$D/pass2/x-topup.md" '# Findings' '- F-9: a new finding'
 run "pass2 map-correction file" 0 "" parts "$D"
 

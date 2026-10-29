@@ -67,8 +67,8 @@ restate the finding schema or the output contract.
 
 4. **On each completion.** Record tokens and duration labeled "task notification,
    subagent_tokens; scope not documented". The adversary failed when it returned an error,
-   its file is missing, its last line is not `status: complete`, or step 3 found a missing
-   verdict or claims line. A `_test` `fail` entry with role `adversary` and this scope or
+   its file is missing, its last line is not `status: complete`, it has no
+   `## Claims challenged` heading, or step 3 found a missing verdict or claims line. A `_test` `fail` entry with role `adversary` and this scope or
    `any` turns the scope's first `times` completions into failures. Ladder (SKILL.md,
    Roles): relaunch on the same model; then on `fable`, recorded as a swap; then the scope
    fails and its findings have no pass-two verdict. Check the budget before every launch

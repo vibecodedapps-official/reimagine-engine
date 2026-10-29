@@ -16,10 +16,10 @@
 # challenged` and `## Scope challenged` sections of pass2/*.md; a *.pre-topup.md copy is
 # not a report and is skipped. Every input line is read with one trailing CR removed, and
 # a heading or an end line with its trailing blanks and tabs removed. A blank line of the
-# three lists is skipped. A pass file whose last nonblank line is not `status: complete` is
-# a failed output and is skipped as if absent. A finished pass-one file without
-# `## Claims`, or a finished pass-two file without `## Claims challenged` that is not a
-# map-correction *-topup.md file, is malformed, as is a claim number that claims.md lists twice. A pass-one claims
+# three lists is skipped. A pass file whose last nonblank line is not `status: complete`,
+# a pass-one file without `## Claims`, and a pass-two file without `## Claims challenged`
+# that is not a map-correction *-topup.md file are failed outputs and are skipped as if
+# absent. A claim number that claims.md lists twice is malformed. A pass-one claims
 # line whose evidence (the text after the verdict's `; `) is a `, ` list takes the first
 # word of each element: every such word that is an id of items.txt adds its item, once,
 # in order of first appearance, as ` (C1, C2)` after the evidence and as the finding and
@@ -182,8 +182,17 @@ function scan(rel, which,    n, i, line, fence, sect, k, num, after, rest, p, h,
 	sub(/[ \t]+$/, "", lastl)
 	if (last == 0 || lastl != "status: complete") return
 	fence = 0
+	seen = (which == 2 && rel ~ /-topup\.md$/)
+	for (i = 1; i <= n && !seen; i++) {
+		line = L[i]
+		if (line ~ /^[ \t]*```/) { fence = !fence; continue }
+		h = line
+		sub(/[ \t]+$/, "", h)
+		if (!fence && h == H[which, 1]) seen = 1
+	}
+	if (!seen) return
+	fence = 0
 	sect = 0
-	seen = 0
 	for (i = 1; i <= n; i++) {
 		line = L[i]
 		if (line ~ /^[ \t]*```/) { fence = !fence; continue }
@@ -193,7 +202,6 @@ function scan(rel, which,    n, i, line, fence, sect, k, num, after, rest, p, h,
 			sub(/[ \t]+$/, "", h)
 			sect = 0
 			for (k = 1; k <= 3; k++) if (h == H[which, k]) sect = k
-			if (sect == 1) seen = 1
 			continue
 		}
 		if (isend(line)) { sect = 0; continue }
@@ -217,7 +225,6 @@ function scan(rel, which,    n, i, line, fence, sect, k, num, after, rest, p, h,
 		E[which, sect, num] = rest
 		EL[which, sect, num] = line
 	}
-	if (!seen && !(which == 2 && rel ~ /-topup\.md$/)) die(rel, 1, "no " H[which, 1] " heading")
 }
 # ledger: the entries of one kind (decision or scope) of report/parts/08-decisions.md.
 function ledger(kd, sect,    j, num, cnt) {

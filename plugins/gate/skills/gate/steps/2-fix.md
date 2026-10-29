@@ -50,7 +50,7 @@ A fix round that changed nothing is `[]`.
 
 ## Checks
 
-1. Run the `checks` of `.reimagine.json` one command at a time, in order, each with 15 minutes. With no `checks` key nothing runs, `checks` stays empty and the report says no check ran.
+1. Run the run's checks (SKILL.md, Reading the request) one command at a time, in order, each with 15 minutes. With no source, meaning no phrase, no bundle `checks` and no `checks` key in `.reimagine.json`, nothing runs, the pass's `checks` stays empty and the report says no check ran.
 2. Record each as `{"command": "<command>", "result": "pass"|"fail"|"denied"}`. A check refused by the permission mode is `denied`: never retry it and never run it another way; go on to the next.
 3. A check past its budget is a failed call: end the run `blocked`, naming the 15-minute budget and the check.
 4. A failing check is fixed through the implementer that owns the failing code, in the same round: take a snapshot, send the failure output to that implementer (SendMessage, else a fresh implementer with the failure and its group's current diff), read the fix as above, and run the whole list again. Fix a check at most three times in all; a check still failing after the third ends the run `blocked`, naming the check.

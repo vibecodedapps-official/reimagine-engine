@@ -414,7 +414,7 @@ The child session is the engine (decision 124). It runs from the repository root
   "runs": [{ "n": 1, "started": "2026-10-25T09:00:40Z", "ended": null, "state": "running" }],
   "passes": [
     { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...",
-      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2 }],
+      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "notes": "The suite could not be run here." }],
       "findings": { "src/stats.mjs|percentile indexes sorted rank ...": { "bucket": "fix", "reason": "off-by-one inside the change" } },
       "changes": ["inside-diff"], "commit": "<sha>", "head": "<sha>",
       "checks": [{ "command": "npm test", "result": "pass" }],

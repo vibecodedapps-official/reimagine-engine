@@ -48,10 +48,13 @@ Recognized phrases, and nothing else is read from the request:
 - "no fixes": make pass 1 only and edit nothing.
 - "budget <n> minutes": set the run budget.
 - "base <branch>": name the base branch of a branch target.
+- "checks <command>[; <command>]": the checks the fix round runs. Read it as the last phrase of the request, since a command may hold a comma; split it at `;` and trim each command.
 
 A pull request target must be open, in the session's repository and not cross-repository. Its head branch is fetched with the explicit refspec and checked out, which needs a clean tree. Several pull requests run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or one of the same shape; it runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order, with every git and gh command running against that bundle's `repo`. A branch target or a manifest bundle on a host other than GitHub runs with the comment skipped, and the report says so. A pull request number on such a host cannot resolve, so it is an unresolved target.
 
 For a pull request target the base is its `baseRefName`. For a branch target the base is "base <branch>" in the request, else `.reimagine.json` `base`, else the remote's default branch. Fetch the base with the explicit refspec `+refs/heads/<b>:refs/remotes/<r>/<b>`; a fetch that fails ends `blocked` naming the branch. Record the merge-base with the base. Every review target and every line count uses the three-dot range from it. "base <branch>" on a pull request target whose base differs ends `blocked`, because the gate never retargets a pull request.
+
+The run's checks come from the first source that gives any: the request's "checks" phrase, else the manifest bundle's `checks`, else `.reimagine.json` `checks`. A bundle's `checks` is an array of command strings. The one list feeds the fix round's checks, the child session's allowed tools, the permission statement and the report, which names the source. With no source, no check runs and the report says so.
 
 `${CLAUDE_PLUGIN_ROOT}` is not a shell variable. It is empty in the session's shell, so a command that types it runs `/scripts/...`. Resolve the scripts directory once, with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Print it on the reading block's Scripts line. Every Bash command that runs a script writes that absolute path, never the variable.
 

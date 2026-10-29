@@ -91,6 +91,28 @@ test('R291: the reading block is one fenced block of five lines in a fixed order
   block.lines.forEach((line, i) => assert.ok(line.startsWith(heads[i]), `line ${i + 1} does not start with ${heads[i]}`));
 });
 
+test('R289 and R300: the checks phrase is in both grammar lists, read as the last phrase', () => {
+  assert.ok(SKILL.includes('- "checks <command>[; <command>]": '), 'SKILL.md does not list the checks phrase');
+  assert.ok(README.includes('- `checks <command>[; <command>]`: '), 'README.md does not list the checks phrase');
+  for (const text of [SKILL, README]) assert.ok(text.includes('last phrase'), 'the checks phrase is not read as the last phrase');
+});
+
+test('R300: the checks come from the request, the manifest bundle or the configuration, in that order', () => {
+  const order = "the request's \"checks\" phrase, else the manifest bundle's `checks`, else `.reimagine.json` `checks`";
+  assert.ok(SKILL.includes(order), "SKILL.md lacks the order of the checks' sources");
+  holds('steps/2-fix.md', "the run's checks");
+  holds('steps/0-preflight.md', "the run's checks");
+  holds('steps/1-pass.md', "one entry per command of the run's checks");
+  holds('report.md', 'the source of the checks');
+});
+
+test('R311 and R317: each review keeps its notes in passes.json and the Log prints them', () => {
+  const lines = jsonAfter(read('record.md'), '`passes.json`:');
+  assert.ok(lines.some((l) => l.includes('"reviews": [') && l.includes('"denials": 2, "notes": ')), 'the reviews literal of record.md has no notes key');
+  holds('steps/1-pass.md', '"notes": "<notes.before>"');
+  holds('report.md', 'denial count and notes, from `reviews[]`');
+});
+
 test('R316: the skill names the five terminal states', () => {
   for (const state of ['pass', 'pass-with-deferred', 'unconverged', 'blocked', 'stopped']) {
     assert.ok(SKILL.includes(`\`${state}\``), `SKILL.md lacks ${state}`);

@@ -560,6 +560,13 @@ w "$D/pass2/a.md" '## Claims challenged' '- claim 1: overturned to false, contra
 run "failed outputs are not read" 0 "" parts "$D"
 same "failed outputs are not read 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-pt"
 
+# As in ledger.sh, an end line is compared without trailing blanks, and the status line is
+# the last nonblank line.
+base "$D"; mkdir -p "$D/pass1"
+w "$D/pass1/g1.md" '## Claims' '- claim 1: true; F-1' 'runs: none ' '- claim 9: x' "status: complete$T" ''
+run "end lines with trailing blanks" 0 "" parts "$D"
+same "end lines with trailing blanks 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-pt"
+
 # A heading is compared with its trailing blanks and tabs removed.
 base "$D"; mkdir -p "$D/pass1" "$D/pass2"
 wp "$D/pass1/g1.md" '## Claims ' '- claim 1: true; F-1'

@@ -15,11 +15,11 @@
 # `## Scope` sections of pass1/*.md and the `## Claims challenged`, `## Decisions
 # challenged` and `## Scope challenged` sections of pass2/*.md; a *.pre-topup.md copy is
 # not a report and is skipped. Every input line is read with one trailing CR removed, and
-# a heading with its trailing blanks and tabs removed. A blank line of the three lists is
-# skipped. A pass file whose last line is not `status: complete` is a failed output and is
-# skipped as if absent. A finished pass-one file without `## Claims`, or a finished
-# pass-two file without `## Claims challenged` that is not a map-correction *-topup.md
-# file, is malformed, as is a claim number that claims.md lists twice. A pass-one claims
+# a heading or an end line with its trailing blanks and tabs removed. A blank line of the
+# three lists is skipped. A pass file whose last nonblank line is not `status: complete` is
+# a failed output and is skipped as if absent. A finished pass-one file without
+# `## Claims`, or a finished pass-two file without `## Claims challenged` that is not a
+# map-correction *-topup.md file, is malformed, as is a claim number that claims.md lists twice. A pass-one claims
 # line whose evidence (the text after the verdict's `; `) is a `, ` list takes the first
 # word of each element: every such word that is an id of items.txt adds its item, once,
 # in order of first appearance, as ` (C1, C2)` after the evidence and as the finding and
@@ -105,6 +105,7 @@ function slurp(rel,    path, r, n, line) {
 	return n
 }
 function isend(s) {
+	sub(/[ \t]+$/, "", s)
 	return s == "runs:" || s == "runs: none" || s == "consumed:" || s == "consumed: none" || s == "opened:" || s == "opened: none" || s == "status: complete"
 }
 # parse_claim: split a claim line into pk (kind), ptk (ticket), psrc, pln, pref and ptx
@@ -166,10 +167,14 @@ function parse_claim(line,    hdr, rest, sp, tok, sl, s, pos, p, q, r, r2, regio
 	return 1
 }
 # scan: read the three sections of one pass file into E (entry rest) and EL (entry line).
-function scan(rel, which,    n, i, line, fence, sect, k, num, after, rest, p, h, seen) {
+function scan(rel, which,    n, i, line, fence, sect, k, num, after, rest, p, h, seen, last, lastl) {
 	n = slurp(rel)
 	if (n < 0) nofile(rel)
-	if (n == 0 || L[n] != "status: complete") return
+	last = n
+	while (last > 0 && L[last] ~ /^[ \t]*$/) last--
+	lastl = L[last]
+	sub(/[ \t]+$/, "", lastl)
+	if (last == 0 || lastl != "status: complete") return
 	fence = 0
 	sect = 0
 	seen = 0

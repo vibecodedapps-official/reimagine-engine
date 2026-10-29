@@ -6,21 +6,21 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 - The `gate` key of `.reimagine.json` is skipped without a report, since it belongs to the gate plugin and was reported as unknown.
 - Step 2 states the implementer budget in force where it sizes slices, and the implementer brief names it, since a slice sized with no budget in view could run past it and end the run blocked.
-- A slice's files are hashed as the working copy's bytes and compared with the tip through the checkout's filters, since under `core.autocrlf` a file whose index and working copy differ in line endings never matched the tip.
+- A slice's files are hashed as the working copy's bytes, and a path counts as held when the tip has it and the hash equals the committed blob or the blob as a checkout writes it, since under `core.autocrlf` a file whose index and working copy differ in line endings never matched the tip, and a path missing at the tip had hashed as the empty blob.
 - A run blocked in Step 4 with slice edits left uncommitted prints the `git add`, `git commit` and `git push` commands, so the user can commit them and a rerun finds those slices done.
-- An implementer call is judged by the `duration_ms` of its completion notification, since a parallel batch shared one start time and the minutes spent writing its briefs counted against each call; a late notification for a call that already returned changes nothing, and the brief bars background commands, which had woken a finished call again.
+- An implementer call is judged by the `duration_ms` of its completion notification, since a parallel batch shared one start time and the minutes spent writing its briefs counted against each call; a late notification for a call that already returned is checked against the `post-<n>` snapshot the call wrote when it returned, and the brief bars background commands, which had woken a finished call again.
 - `code-review` covers the primary whenever it is the session's checkout, a linked worktree included, since a session started in a linked worktree got the stand-in review instead.
 - With a `checks` key the configured commands run, and Step 6.1 still reads the manifests and CI jobs and names each CI job no configured check covers as deferred to CI, so the gap shows before publishing.
 - The user's instruction files are read in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, and the permission statement names the directory read, since a run read both and honored rules the session never loads.
 
 ## gate 0.1.4 - 2026-10-29
 
-- A matched finding's `match` is written in the same write as its bucket and state, and `findings.mjs` warns on stderr about a carried or regressed entry new in the latest pass with no match, since a matched finding had been recorded under its new id without the link.
+- A matched finding's `match` is written in the same write as its bucket and state, and `findings.mjs` warns on stderr about a carried or regressed entry new in the latest pass with no match, at the next pass and through `--check` after each triage, since a matched finding had been recorded under its new id without the link.
 - The `gate` key takes `timeouts` with `subagent`, `review` and `check`, each absent key falling back to the root `timeouts`, then the default, and the reading block's Budget line prints the three, since a fixed 15-minute check budget kept a repository with a longer suite from finishing a fix round.
-- A group still over `split` whose key is a directory is grouped again one segment deeper, since a diff with most of its changes under one folder kept one oversized review after the split.
-- "repo <path>" names the checkout of a branch target, checked as its git toplevel, with every command run in a manifest bundle's forms, since a `cd` in one call does not carry to the next and "this branch" always resolved against the session's checkout.
+- A group still over `split` whose key is a directory is grouped again one segment deeper, unless that gives a single group, since a diff with most of its changes under one folder kept one oversized review after the split.
+- "repo <path>" names the checkout of a branch target, checked with `git -C <path> rev-parse --show-prefix`, with every command run in a manifest bundle's forms and the exclude file named as an absolute path, since a `cd` in one call does not carry to the next and "this branch" always resolved against the session's checkout.
 - The user's instruction files are read in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, and the permission statement names the directory read, since preflight read the home instruction file when a configuration directory was set.
-- An implementer call is judged by the `duration_ms` of its completion notification, a late notification for a call that already returned changes nothing, and the brief bars background commands, as in the loop.
+- An implementer call is judged by the `duration_ms` of its completion notification, a late notification for a call that already returned is checked against the call's `post-<n>` snapshot, and the brief bars background commands, as in the loop.
 
 ## audit 0.1.9 - 2026-10-29
 

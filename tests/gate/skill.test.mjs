@@ -144,7 +144,8 @@ test('R323: a target named by repo runs its commands in the forms of a manifest 
   assert.ok(text.includes('read it with `git -C <path> rev-parse --abbrev-ref HEAD`'), 'the head is not read in the named repository');
   assert.ok(text.includes('For a manifest bundle or "repo <path>", read the repository\'s instruction files in its `repo` or in `<path>`, not in the session\'s folder'), '0.3 does not read the instruction files in the target');
   assert.ok(text.includes('for a manifest bundle or "repo <path>", read it in its `repo` or in `<path>`'), '0.3 does not read .reimagine.json in the target');
-  holds('steps/2-fix.md', 'for a manifest bundle or "repo <path>", run each check as `cd <path> && <check>` in one Bash call, with `<path>` the bundle\'s `repo` or the path of "repo <path>"');
+  holds('steps/0-preflight.md', 'Each path in these forms is written in double quotes, since a folder name may hold a space.');
+  holds('steps/2-fix.md', 'for a manifest bundle or "repo <path>", run each check as `cd "<path>" && <check>` in one Bash call, with `<path>` the bundle\'s `repo` or the path of "repo <path>"');
   assert.ok(SKILL.includes('for "repo <path>" it is the `.reimagine.json` of `<path>`, not of the session\'s folder'), 'SKILL.md Configuration reads the session\'s .reimagine.json');
 });
 

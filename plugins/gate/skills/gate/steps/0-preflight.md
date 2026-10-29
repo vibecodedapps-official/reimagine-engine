@@ -60,7 +60,7 @@ Before any checkout, `git status --porcelain` must print nothing, untracked file
 ## 0.8 The record
 
 1. The record is `.reimagine/gate/<slug>/` in the target's repository, the slug as SKILL.md, Record, says.
-2. Run `git check-ignore -q .reimagine/`, with the trailing slash, since without it git reads a directory that does not exist yet as not ignored. When it fails, append `.reimagine/` to the file that `git rev-parse --git-path info/exclude` names, never `.gitignore`. Never stage anything under it.
+2. Run `git check-ignore -q .reimagine/`, with the trailing slash, since without it git reads a directory that does not exist yet as not ignored. Run it, and the exclude-file lookup below, in the target's repository: as `git -C <path>` for a manifest bundle or "repo <path>", in the plain form for the session's checkout. When the check fails, append `.reimagine/` to the file that `git rev-parse --path-format=absolute --git-path info/exclude` names, never `.gitignore`; without `--path-format=absolute`, `git -C <path>` prints a path relative to `<path>` that a write from the session's folder would miss. Never stage anything under it.
 3. Create the record directory unless it exists.
 4. An existing `passes.json` whose `branch` differs from this run's branch is a slug collision and ends the run `blocked`.
 5. Create `passes.json` when absent, with `branch` (the exact name), `base` (`<b>`), `merge_base` (0.6), `targets` (`github:<owner>/<repo>#<n>` for a pull request, else the branch name), `engine` (the block's Engine line: `subprocess` or `stand-in`), `"runs": []` and `"passes": []`.

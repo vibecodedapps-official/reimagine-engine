@@ -198,8 +198,15 @@ test('R318: the scripts run by the path of the Scripts line, never by the plugin
   holds('steps/3-next.md', 'node "<scripts>/next.mjs"');
 });
 
-test('R309: Step 0 excludes the record through git rev-parse --git-path info/exclude, never .gitignore', () => {
-  holds('steps/0-preflight.md', 'git rev-parse --git-path info/exclude', 'git check-ignore -q .reimagine/', 'append `.reimagine/`', 'never `.gitignore`');
+test('R309: the record is excluded through git rev-parse --path-format=absolute --git-path info/exclude, never .gitignore', () => {
+  const lookup = 'git rev-parse --path-format=absolute --git-path info/exclude';
+  holds('steps/0-preflight.md', lookup, 'git check-ignore -q .reimagine/', 'append `.reimagine/`', 'never `.gitignore`');
+  holds('record.md', lookup);
+  for (const rel of supporting()) {
+    const bare = read(rel).replaceAll(lookup, '');
+    assert.ok(!bare.includes('--git-path'), `${rel} holds --git-path without --path-format=absolute`);
+  }
+  assert.ok(!SKILL.replaceAll(lookup, '').includes('--git-path'), 'SKILL.md holds --git-path without --path-format=absolute');
 });
 
 test('R292: Step 0 fetches the base and the head with the explicit refspec and keeps the merge-base as a full sha', () => {

@@ -158,7 +158,7 @@ Every terminal state reads `steps/4-publish.md` for the target that just ended, 
 
 ## Record
 
-The record lives at `.reimagine/gate/<branch-slug>/` in the target repository. The slug is the branch name lowercased, with each run of characters outside `[a-z0-9]` replaced by `-`, cut to at most 60 characters, then trailing `-` removed. Add `.reimagine/` to the exclude file that `git rev-parse --git-path info/exclude` names, never to `.gitignore`, and never stage anything under it. `passes.json` keeps the exact branch name, and a differing branch is the slug collision of Approval scope.
+The record lives at `.reimagine/gate/<branch-slug>/` in the target repository. The slug is the branch name lowercased, with each run of characters outside `[a-z0-9]` replaced by `-`, cut to at most 60 characters, then trailing `-` removed. Add `.reimagine/` to the exclude file that `git rev-parse --path-format=absolute --git-path info/exclude` names, run in the target's repository, never to `.gitignore`, and never stage anything under it. `passes.json` keeps the exact branch name, and a differing branch is the slug collision of Approval scope.
 
 The files:
 

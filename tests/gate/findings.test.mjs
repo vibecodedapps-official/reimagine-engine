@@ -489,6 +489,24 @@ describe('the ledger across passes', { concurrency }, () => {
     );
   });
 
+  test('an entry the same pass reported is no candidate for a new finding', async () => {
+    const fixed = { file: 'src/a.mjs', summary: 'The loop skips the last item.', first_pass: 1, state: 'fixed', passes: { 1: { line: 10, bucket: 'fix', reason: 'off by one', prior: null } } };
+    const reply =
+      '```json\n[' +
+      '{"file": "src/a.mjs", "line": 10, "summary": "The loop skips the last item.", "failure_scenario": "x"},' +
+      '{"file": "src/a.mjs", "line": 11, "summary": "The final element is never visited.", "failure_scenario": "y"}' +
+      ']\n```\n';
+    const dir = kase([], { 'findings.json': text({ findings: { 'src/a.mjs|the loop skips the last item': fixed } }), 'reply.md': reply });
+    const summary = succeeded(await run(dir, '2', 'findings.json', 'reply.md'));
+    assert.deepEqual(
+      summary.findings.map((f) => [f.id, f.state, f.bucket, f.candidates]),
+      [
+        ['src/a.mjs|the loop skips the last item', 'regressed', 'fix', undefined],
+        ['src/a.mjs|the final element is never visited', 'new', null, []],
+      ],
+    );
+  });
+
   test("the candidates are the same file's settled entries at their latest line, nearest first, a null distance last, then by id", async () => {
     const entry = (state, passes) => ({ file: 'src/a.mjs', summary: 's', first_pass: 1, state, passes });
     const p = (line, bucket, prior = null) => ({ line, bucket, reason: 'r', prior });

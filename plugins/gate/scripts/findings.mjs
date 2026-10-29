@@ -103,10 +103,11 @@ const latestLine = (entry) => {
   return isObject(pass) && pass.line !== undefined ? pass.line : null;
 };
 
-// The settled entries on the same file as a new finding, nearest line first, a null distance last, then by id.
-function candidatesFor(ledger, id, file, line) {
+// The settled entries on the same file as a new finding that pass n did not report, nearest line first, a null
+// distance last, then by id.
+function candidatesFor(ledger, n, file, line) {
   return Object.entries(ledger.findings)
-    .filter(([otherId, e]) => otherId !== id && e.file === file && CANDIDATE_STATES.includes(e.state))
+    .filter(([, e]) => e.passes[n] === undefined && e.file === file && CANDIDATE_STATES.includes(e.state))
     .map(([otherId, e]) => {
       const at = latestLine(e);
       return { id: otherId, state: e.state, line: at, distance: Number.isInteger(line) && Number.isInteger(at) ? Math.abs(line - at) : null };
@@ -212,7 +213,7 @@ function ingest(argv) {
     findings.push({ id: f.id, file: f.file, line: f.line, summary: f.summary, failure_scenario: f.failure_scenario, outputs: f.outputs, state: entry.state, bucket, reason });
   }
   for (const finding of findings) {
-    if (finding.state === 'new') finding.candidates = candidatesFor(ledger, finding.id, finding.file, finding.line);
+    if (finding.state === 'new') finding.candidates = candidatesFor(ledger, n, finding.file, finding.line);
   }
   return { ledgerPath, ledger: JSON.stringify(ledger, null, 2) + '\n', summary: JSON.stringify({ pass: n, reviews, findings }, null, 2) + '\n' };
 }

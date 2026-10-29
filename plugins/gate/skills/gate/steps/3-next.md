@@ -6,7 +6,7 @@ Read this file from Step 2 when its commit and push are done, from Step 1 when t
 
 1. Run `date -u +%Y-%m-%dT%H:%M:%SZ` and copy its output.
 2. In "no fixes" mode `next.mjs` is not run (SKILL.md, Levels and caps). When the fix bucket is empty the verdict is `pass`, or `pass-with-deferred` when the pass deferred something; otherwise it is `unconverged`. The pass's `next` is `{"stop": "<verdict>", "rule": "no-fixes"}`; go to item 5.
-3. Otherwise `max-passes` is `.reimagine.json` `gate.max-passes`, else 4. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/next.mjs" <absolute passes.json> <max-passes>`. It prints one JSON line, `{"stop": "<verdict>", "rule": "<rule>"}` or `{"level": "<level>", "rule": "<rule>"[, "capped": "max-passes"]}`, from the first rule that matches:
+3. Otherwise `max-passes` is `.reimagine.json` `gate.max-passes`, else 4. Run `node "<scripts>/next.mjs" <absolute passes.json> <max-passes>`, where `<scripts>` is the path on the reading block's Scripts line. It prints one JSON line, `{"stop": "<verdict>", "rule": "<rule>"}` or `{"level": "<level>", "rule": "<rule>"[, "capped": "max-passes"]}`, from the first rule that matches:
    - `nothing-to-fix`: the latest pass has no fix finding and no new rejection, a carried rejection counting as nothing: stop `pass`, or `pass-with-deferred` when a pass of the run deferred something.
    - `after-medium`: the latest pass ran at `medium`: stop as `nothing-to-fix` would when it has no fix finding, else `unconverged`, since no pass verifies its fixes.
    - `wide-fix`: the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of its files, and no pass of the run after its first ran at `xhigh`: `xhigh`.

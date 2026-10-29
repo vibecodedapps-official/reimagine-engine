@@ -50,6 +50,7 @@ Every rule holds in every stage, for the orchestrator and for every agent.
      `git -C <repo> <command>`;
    - `git hash-object --no-filters <file>`, never with `-w`, for the `consumed:` hashes;
    - `rg` and `ls`;
+   - `mkdir -p` of its own scratch folder, and nothing else with `mkdir`;
    - the read-only forms of `sed -n`, `awk`, `diff`, `wc`, `sort`, `head`, `tail`, `cut`,
      `uniq` and `grep`, as commands or as pipe stages, over an exported file under the
      run directory or over `git show` output; `cat` of an exported file; and, for a
@@ -62,8 +63,11 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    No command edits a file in place: no `sed -i`, no `awk -i inplace`, no sed `w`, `W` or
    `e` command, no `w` or `e` flag, no `sort -o`, `--output` or `--compress-program`, no
    `uniq` with an output file operand, and no awk program with `system()`, output
-   redirection, `getline` from a command, or a pipe to a command. No output goes into an
-   audited tree. An agent may redirect a command's output into its own scratch folder,
+   redirection, `getline` from a command, or a pipe to a command. There is no interpreter
+   run with an inline program or a heredoc, such as `python3 - <<EOF`, `node -e` or
+   `perl -e`, and no command that waits on input; the repository's own test or lint
+   commands stay allowed as the list above says. No output goes into an audited tree. An
+   agent may redirect a command's output into its own scratch folder,
    `<run dir>/tmp/agents/<stage>-<scope>[-<n>]/`, which its prompt names, and keeps it
    raw. The digester keeps its narrower byte-range rule.
 
@@ -78,19 +82,22 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    `readonly.sh`. The orchestrator snapshots every audited repository in stage 1 and
    checks it after every stage. A change to tracked files, untracked files that are not
    ignored, refs, the index, stashes or config, an added or deleted file included, ends
-   the run `blocked`, unless an approved fetch caused it, or a background fetch the user
-   confirmed (a `background-fetch` entry in `approvals`, as the `### Read-only check`
-   section of `SKILL.md` says). A change among ignored files that no logged run accounts
-   for ends it too, unless it is another audit run's or a handoff's file under an audited
-   repository's `<scratch>/audit/`, or under the same path in the main checkout of a
-   primary repository that is a linked worktree, outside this run's directory. The check
-   does not see: an ignored file replaced by one of the same size with its modification
-   time restored; changes inside `.git/` other than refs, stashes and config; a nested
-   repository's refs other than its HEAD, its stashes and its config; a change inside a
-   repository that sits in an ignored directory, such as a linked worktree, other than an
-   entry added or removed at its top level; and changes outside the audited
-   repositories. The user's own edits to an audited repository during a run trip the
-   check as well.
+   the run `blocked`, unless an approved fetch caused it, a background fetch the user
+   confirmed (a `background-fetch` entry in `approvals`), or a new local branch and its
+   `branch.<name>.*` config that the user confirmed as their own work in another
+   worktree (a `local-branch` entry), as the `### Read-only check` section of `SKILL.md`
+   says; refs and config are shared by every worktree of a repository. A deleted or
+   moved branch still ends the run `blocked`. A change among ignored files that no
+   logged run accounts for ends it too, unless it is another audit run's or a handoff's
+   file under an audited repository's `<scratch>/audit/`, or under the same path in the
+   main checkout of a primary repository that is a linked worktree, outside this run's
+   directory. The check does not see: an ignored file replaced by one of the same size
+   with its modification time restored; changes inside `.git/` other than refs, stashes
+   and config; a nested repository's refs other than its HEAD, its stashes and its
+   config; a change inside a repository that sits in an ignored directory, such as a
+   linked worktree, other than an entry added or removed at its top level; and changes
+   outside the audited repositories. The user's own edits to an audited repository
+   during a run trip the check as well.
 3. **No model, agent or tool names** in anything external: commit messages, pull request
    and ticket text, and drafted comments. The report and the run records stay in the run
    directory and may name them.
@@ -282,7 +289,8 @@ claim targets `hygiene`; the stage files say which scope receives them.
 
 ## Claims list
 
-Each claim assigned to the scope in `claims.md` gets one line:
+Each claim assigned to the scope in `claims.md` gets one line. A scope with no claim
+assigned writes the heading and the one line `none`.
 
 ```
 ## Claims
@@ -482,7 +490,9 @@ Every agent:
    run-directory path and its hash from `git hash-object --no-filters <file>`; or
    `consumed: none`.
 4. Ends the file with the line `status: complete`, as its last line. A merger that cannot
-   read an input to its end ends it instead with `status: failed at <file>:<line>`.
+   read an input to its end ends it instead with `status: failed at <file>:<line>`. The
+   file is final then: the agent writes nothing to it afterwards, even when it wakes
+   again.
 5. Returns only the output path and one line of status.
 
 Only the merger may add an `opened:` heading, before `consumed:`, listing each ledger
@@ -491,7 +501,8 @@ entry: the merger has no shell, and `runs:` holds only commands, directories and
 statuses, or `none`.
 
 A file whose last line is not `status: complete` is a failed output, whatever the agent
-returned.
+returned, and so is a pass-one file without `## Claims` or a pass-two file other than a
+map-correction `-topup.md` without `## Claims challenged`.
 
 ```
 runs:

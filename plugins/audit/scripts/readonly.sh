@@ -63,20 +63,24 @@
 # this order, each group sorted:
 #   blocked <status|stash|config|hashes|refs> <-|+> <line>
 #   remote-ref <-|+> <line>
+#   local-branch + <line>
 #   ignored <added|deleted|changed> <path>
 #   touched <path>
 # `-` is a line only in the baseline, `+` a line only now. A refs line whose ref name
-# starts with refs/remotes/ is `remote-ref`, any other is `blocked refs`. Ignored files are
-# compared with <ignored base prefix>.ignored by path, on size and mtime. `touched` is a
-# file newer than <baseline prefix>.marker that is not ignored and not part of a blocked
-# line.
+# starts with refs/remotes/ is `remote-ref`, any other is `blocked refs`, except that a `+`
+# refs/heads/<name> line is `local-branch` when no baseline refs line has that ref and <name>
+# is not the baseline's `# branch.head`, as is a `+` config line `branch.<name>.<key>=<value>`
+# for such a name. Refs and config are shared by every worktree, so another worktree's new
+# branch shows here. Ignored files are compared with <ignored base prefix>.ignored by path,
+# on size and mtime. `touched` is a file newer than <baseline prefix>.marker that is not
+# ignored and not part of a blocked line.
 #
 # Exit status, the first that holds:
 #   2  a collection or comparison step failed, or the arguments are wrong (one line on
 #      stderr; nothing is printed on stdout), except the optional `touched` walk,
 #      whose `find` errors are printed and ignored
 #   1  a `blocked` line was printed
-#   3  only `remote-ref` or `ignored` lines were printed
+#   3  only `remote-ref`, `local-branch` or `ignored` lines were printed
 #   0  otherwise (`touched` lines may be printed)
 
 set -u
@@ -470,7 +474,7 @@ check() {
 	snapshot "$1" "$2" "$5"
 
 	: > "$tmp/blocked"
-	: > "$tmp/remote"
+	: > "$tmp/remote" && : > "$tmp/localbr"
 	# An awk operand such as k=v.status would be taken as an assignment, so a relative
 	# prefix gets ./ in front for the compare.
 	case $base in /*|[A-Za-z]:*) cb=$base ;; *) cb=./$base ;; esac
@@ -478,11 +482,11 @@ check() {
 	# One awk pass over the baseline and current file of every kind, counting each distinct
 	# line, so a line present twice in the baseline and once now is reported once, as
 	# `comm` on the sorted files did. Lines only in the baseline are `-`, only now `+`. A
-	# refs line whose ref name starts with refs/remotes/ is a remote-ref line. The order of
-	# the output does not matter: the final print sorts each group.
-	BLK=$tmp/blocked REM=$tmp/remote awk -v kinds="status stash config hashes refs" '
+	# refs line whose ref name starts with refs/remotes/ is a remote-ref line, a new branch's
+	# refs and config lines are local-branch lines. The final print sorts each group.
+	BLK=$tmp/blocked REM=$tmp/remote LOC=$tmp/localbr awk -v kinds="status stash config hashes refs" '
 		BEGIN {
-			blk = ENVIRON["BLK"]; rem = ENVIRON["REM"]
+			blk = ENVIRON["BLK"]; rem = ENVIRON["REM"]; loc = ENVIRON["LOC"]
 			nk = split(kinds, kn, " ")
 			for (i = 1; i <= nk; i++) {
 				kind[ARGV[2 * i - 1]] = kn[i]; side[ARGV[2 * i - 1]] = "b"
@@ -493,6 +497,10 @@ check() {
 			key = kind[FILENAME] SUBSEP $0
 			if (side[FILENAME] == "b") cb[key]++
 			else cn[key]++
+			if (kind[FILENAME] == "refs") seen[side[FILENAME] substr($0, index($0, "\t") + 1)] = 1
+		}
+		function newcfg(line) {
+			return substr(line, 1, 7) == "branch." && match(substr(line, 1, index(line, "=") - 1), /\.[^.]*$/) > 8 && (substr(line, 8, RSTART - 8) in newn)
 		}
 		function emit(key, times, sign,   k, line, n, ref, i) {
 			k = index(key, SUBSEP)
@@ -503,11 +511,14 @@ check() {
 					n = index(line, "\t")
 					ref = substr(line, n + 1)
 					if (n > 0 && index(ref, "refs/remotes/") == 1) print "remote-ref " sign " " line >> rem
+					else if (n > 0 && sign == "+" && index(ref, "refs/heads/") == 1 && (substr(ref, 12) in newn)) print "local-branch + " line >> loc
 					else print "blocked refs " sign " " line >> blk
-				} else print "blocked " k " " sign " " line >> blk
+				} else if (k == "config" && sign == "+" && newcfg(line)) print "local-branch + " line >> loc
+				else print "blocked " k " " sign " " line >> blk
 			}
 		}
 		END {
+			for (s in seen) if (index(s, "nrefs/heads/") == 1 && !(("b" substr(s, 2)) in seen) && !(("status" SUBSEP "# branch.head " substr(s, 13)) in cb)) newn[substr(s, 13)] = 1
 			for (key in cb) if (cb[key] > cn[key] + 0) emit(key, cb[key] - cn[key], "-")
 			for (key in cn) if (cn[key] > cb[key] + 0) emit(key, cn[key] - cb[key], "+")
 		}' "$cb.status" "$cn.status" "$cb.stash" "$cn.stash" "$cb.config" "$cn.config" \
@@ -663,14 +674,14 @@ check() {
 	case $statkind in
 	*-seconds) echo "note mtime precision: seconds" > "$tmp/final" ;;
 	esac
-	for f in blocked remote ignored.diff; do
+	for f in blocked remote localbr ignored.diff; do
 		sort "$tmp/$f" >> "$tmp/final" || die "sort failed"
 	done
 	cat "$tmp/touched" >> "$tmp/final" || die "cat failed"
 	cat "$tmp/final"
 	if [ -s "$tmp/blocked" ]; then
 		exit 1
-	elif [ -s "$tmp/remote" ] || [ -s "$tmp/ignored.diff" ]; then
+	elif [ -s "$tmp/remote" ] || [ -s "$tmp/localbr" ] || [ -s "$tmp/ignored.diff" ]; then
 		exit 3
 	fi
 	exit 0

@@ -26,14 +26,15 @@ Phrases the gate recognizes:
 - `no fixes`: make the first pass only. Nothing is edited, committed or pushed; the report and the comment say what a fix run would do.
 - `budget <n> minutes`: set the run budget.
 - `base <branch>`: name the base branch of a branch target. A pull request keeps its own base, so a different one stops the run.
+- `checks <command>[; <command>]`: the commands the fix round runs after its fixes, in place of the repository's `checks` in `.reimagine.json`. It runs to the next comma that another recognized phrase follows, such as `, no fixes`, else to the end of the request, since a command may hold a comma. Separate commands with `;`.
 
 A pull request must be open, in the repository of the session and not from a fork. Several run one after another, each with its own record. A manifest runs one record per bundle that has a pull request or a branch.
 
 ## What a run does
 
-- Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed by top-level path, in parallel.
+- Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed by path at the shallowest depth that gives more than one group, in parallel.
 - Each finding is sorted into fix, defer or reject, with a reason. Only the fix bucket leads to code changes; deferred and rejected findings go to the report and the comment, never to code.
-- Implementers fix the findings in the fix bucket. The repository's `checks` run, a failing check is fixed at most three times, and a pass that changed anything ends with one commit and a push on the target's branch.
+- Implementers fix the findings in the fix bucket. The run's checks run (from the request, the manifest bundle or `.reimagine.json`, in that order), a failing check is fixed at most three times, and a pass that changed anything ends with one commit and a push on the target's branch.
 - The record decides the next level, or the stop, by fixed rules. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
 - At the end it posts one comment per run on each target pull request, and writes the report.
 
@@ -60,7 +61,7 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 }
 ```
 
-`split` is the number of changed lines above which a pass reviews by top-level path in parallel. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the three are whole numbers of 1 or more. `models` names the model of the implementer and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
+`split` is the number of changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the three are whole numbers of 1 or more. `models` names the model of the implementer and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
 
 ## How a run ends
 

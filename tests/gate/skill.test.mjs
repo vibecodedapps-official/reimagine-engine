@@ -83,12 +83,37 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   });
 });
 
-test('R291: the reading block is one fenced block of four lines in a fixed order', () => {
+test('R291: the reading block is one fenced block of five lines in a fixed order', () => {
   const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
   assert.notEqual(block, undefined, 'SKILL.md has no reading block');
-  assert.equal(block.lines.length, 4);
-  const heads = ['Targets: ', 'Mode: ', 'Budget: ', 'Engine: '];
+  assert.equal(block.lines.length, 5);
+  const heads = ['Targets: ', 'Mode: ', 'Budget: ', 'Engine: ', 'Scripts: '];
   block.lines.forEach((line, i) => assert.ok(line.startsWith(heads[i]), `line ${i + 1} does not start with ${heads[i]}`));
+});
+
+test('R289 and R300: the checks phrase is in both grammar lists and ends where another phrase starts', () => {
+  assert.ok(SKILL.includes('- "checks <command>[; <command>]": '), 'SKILL.md does not list the checks phrase');
+  assert.ok(README.includes('- `checks <command>[; <command>]`: '), 'README.md does not list the checks phrase');
+  for (const text of [SKILL, README]) {
+    assert.ok(text.includes('runs to the next comma that another recognized phrase follows'), 'the checks phrase does not end at a later phrase');
+    assert.ok(!text.includes('last phrase'), 'the checks phrase is still read as the last phrase');
+  }
+});
+
+test('R300: the checks come from the request, the manifest bundle or the configuration, in that order', () => {
+  const order = "the request's \"checks\" phrase, else the manifest bundle's `checks`, else `.reimagine.json` `checks`";
+  assert.ok(SKILL.includes(order), "SKILL.md lacks the order of the checks' sources");
+  holds('steps/2-fix.md', "the run's checks");
+  holds('steps/0-preflight.md', "the run's checks");
+  holds('steps/1-pass.md', "one entry per command of the run's checks");
+  holds('report.md', 'the source of the checks');
+});
+
+test('R311 and R317: each review keeps its notes in passes.json and the Log prints them', () => {
+  const lines = jsonAfter(read('record.md'), '`passes.json`:');
+  assert.ok(lines.some((l) => l.includes('"reviews": [') && l.includes('"denials": 2, "notes": ')), 'the reviews literal of record.md has no notes key');
+  holds('steps/1-pass.md', '"notes": "<notes.before>"');
+  holds('report.md', 'denial count and notes, from `reviews[]`');
 });
 
 test('R316: the skill names the five terminal states', () => {
@@ -116,11 +141,19 @@ test('R219: Supporting files names every file of the skill, and each ends by nam
   }
 });
 
-test('R291: Step 0 is read after the reading block and takes its four lines', () => {
+test('R291: Step 0 is read after the reading block and takes its five lines', () => {
   assert.ok(SKILL.includes('After the block, read `steps/0-preflight.md` and start Step 0.'));
   const text = holds('steps/0-preflight.md', 'before any other tool call', 'does not print the block again');
   assert.ok(text.startsWith('# Step 0: Preflight\n'));
-  for (const heading of ['Targets', 'Mode', 'Budget', 'Engine']) assert.ok(text.includes(heading), `Step 0 does not name ${heading}`);
+  for (const heading of ['Targets', 'Mode', 'Budget', 'Engine', 'Scripts']) assert.ok(text.includes(heading), `Step 0 does not name ${heading}`);
+});
+
+test('R318: the scripts run by the path of the Scripts line, never by the plugin root variable', () => {
+  assert.ok(SKILL.includes('`${CLAUDE_PLUGIN_ROOT}` is not a shell variable'), 'SKILL.md does not say the variable is not a shell variable');
+  assert.ok(SKILL.includes('two levels above it, then `scripts`'), 'SKILL.md does not say how the Scripts line is resolved');
+  for (const rel of supporting()) assert.ok(!read(rel).includes('${CLAUDE_PLUGIN_ROOT}'), `${rel} holds \${CLAUDE_PLUGIN_ROOT}`);
+  holds('steps/1-pass.md', 'node "<scripts>/findings.mjs"');
+  holds('steps/3-next.md', 'node "<scripts>/next.mjs"');
 });
 
 test('R309: Step 0 excludes the record through git rev-parse --git-path info/exclude, never .gitignore', () => {
@@ -129,6 +162,46 @@ test('R309: Step 0 excludes the record through git rev-parse --git-path info/exc
 
 test('R292: Step 0 fetches the base and the head with the explicit refspec and keeps the merge-base as a full sha', () => {
   holds('steps/0-preflight.md', '+refs/heads/<b>:refs/remotes/<r>/<b>', '+refs/heads/<head>:refs/remotes/<r>/<head>', 'git merge-base', 'full sha', 'base <branch>');
+});
+
+test('R292: a branch target takes the request\'s base, then the bundle\'s, then the configuration\'s, then the default', () => {
+  const order = '"base <branch>" in the request, else the manifest bundle\'s `base`, else `.reimagine.json` `base`, else the remote\'s default branch';
+  assert.ok(SKILL.includes(order), 'SKILL.md lacks the base order');
+  holds('steps/0-preflight.md', order);
+});
+
+test('R292: a bundle base written as <remote>/<branch> is read as the branch', () => {
+  const strip = "A bundle `base` whose first segment names a remote that `git remote` lists in the bundle's repository is read without that segment and its `/`";
+  assert.ok(SKILL.includes(strip), 'SKILL.md lacks the remote prefix rule');
+  holds('steps/0-preflight.md', strip, '`origin/main` is read as `main`');
+});
+
+test('R297: a pass over split groups by path at the shallowest depth that gives more than one group', () => {
+  const phrase = 'by path at the shallowest depth that gives more than one group';
+  holds('steps/1-pass.md',
+    phrase,
+    'The depth `d` starts at 1; a file\'s key is its first `d` segments when it has more than `d` segments, else the key `.`; while every file has the same key and some file has more than `d` segments, `d` grows by one.',
+    'the `.` key\'s slug is `root` at depth 1 and `<prefix slug>-root` deeper',
+    'For example, a diff of `src/api/a.ts`, `src/web/b.ts` and `src/index.ts` has the one key `src` at depth 1, so it splits at depth 2 into `src/api` (slug `src-api`), `src/web` (slug `src-web`) and the `.` key holding `src/index.ts` (slug `src-root`).');
+  holds('record.md', phrase);
+  assert.ok(SKILL.includes(phrase), 'SKILL.md lacks the depth phrase');
+  assert.ok(README.includes(phrase), 'README lacks the depth phrase');
+  for (const [name, text] of [['SKILL.md', SKILL], ['README.md', README], ...supporting().map((rel) => [rel, read(rel)])]) {
+    assert.ok(!text.includes('top-level path'), `${name} still splits by top-level path`);
+  }
+});
+
+test('R302: a match takes what the script gives a returning entry of the candidate\'s state', () => {
+  holds('steps/1-pass.md', '`fix` and `regressed` for a fixed one, `reject` and `carried` for a rejected or carried one, `defer` and `deferred` for a deferred one, and for a regressed one no bucket, its state staying `regressed`');
+  holds('record.md', 'A regressed entry that returns keeps the state `regressed` and gets no bucket');
+  holds('record.md', 'When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says');
+  assert.ok(!read('record.md').includes('an earlier fixed or rejected entry'), 'record.md still limits a match to fixed or rejected entries');
+});
+
+test('R297: two keys of one pass never share a slug', () => {
+  const rule = 'The slugs are given in byte order of key path with the `.` key last, and a slug an earlier key already holds takes `-2`, else `-3`, and so on, the first one free.';
+  holds('steps/1-pass.md', rule, 'so `src/root` keeps `src-root` and the `.` key takes `src-root-2`');
+  holds('record.md', 'a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on');
 });
 
 test('R295: Step 0 checks the clean tree before any checkout and keeps the fetched remote head', () => {

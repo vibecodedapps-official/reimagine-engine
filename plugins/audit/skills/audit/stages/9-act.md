@@ -178,11 +178,20 @@ compaction, read the item ids and `--per-item` from the block recorded there.
 
 7. **One commit per group,** one group at a time, in each repository it touches:
    1. Record `git -C <repo> ls-files --eol -- <files>` for each file the group touches.
-   2. Make the group's change in the checkout.
-   3. Run `git -C <repo> ls-files --eol -- <files>` again. Each file's working-tree line
+   2. **Show the defect first.** For each item of the group whose evidence is reading
+      rather than a run, run, before the change, a check that covers it or the test its
+      `demonstrated` field describes, when one can show the defect and runs no longer
+      than the slowest baseline check of step 4 took. Run it under step 4's rule for
+      check runs. Log the command and its result as `demonstrate`. A result that shows
+      the defect goes on. A result that contradicts the item's premise, such as the
+      described test passing at baseline, stops the group: show the result and ask
+      whether to skip the item. With no such check, or for an item whose evidence is
+      already a run, log `demonstrate: none` with the reason and go on.
+   3. Make the group's change in the checkout.
+   4. Run `git -C <repo> ls-files --eol -- <files>` again. Each file's working-tree line
       endings (`w/crlf`, `w/lf`, mixed) must be what they were; restore them before
       staging when an edit changed them.
-   4. Stage the group's change, never a recorded regenerated path. When no other
+   5. Stage the group's change, never a recorded regenerated path. When no other
       approved group touches the same file, the file holds only this group's hunks.
       When one does, stage only this group's hunks from a byte-exact patch written by
       shell redirect, never by a file-writing tool, keeping only this group's hunks:
@@ -196,20 +205,24 @@ compaction, read the item ids and `--per-item` from the block recorded there.
       When this group's hunks overlap or touch another group's, stop and ask. After
       staging, confirm with `git -C <repo> ls-files --eol` that each file's index line
       endings are unchanged.
-   5. Rerun the checks that cover the change, then the required checks, after each
-      group's staging, applying step 4's rule after every run.
-   6. Compare each result with the baseline. A check that passed then and fails now is
+   6. Rerun the checks that cover the change, then the required checks, after each
+      group's staging, applying step 4's rule after every run. Then rerun each
+      `demonstrate` command of the group and log its result as `demonstrate`, the after
+      result sub-step 9 puts in the commit body.
+   7. Compare each result with the baseline. A check that passed then and fails now is
       **introduced**: say so and offer no commit until the user decides. A failure
       present at baseline is **preexisting**: report it; it is not act's to fix.
-   7. Show the staged diff
+   8. Show the staged diff
       (`git -C <repo> diff --cached --no-ext-diff --no-textconv --no-color`) and both
       results against the baseline, and ask before committing.
-   8. On yes, recompute the revision, write the message to
+   9. On yes, recompute the revision, write the message to
       `<run dir>/act/msg-<group>.txt`, and run `git -C <repo> commit -F <file>`. The
       message follows the repository's convention, read from its `git log`, and names
-      no model, agent or tool, with no trailer that does. No hook is skipped and
-      `--no-verify` is never passed; when a hook fails, stop and report it.
-   9. Log the commit.
+      no model, agent or tool, with no trailer that does. Its body carries, for each
+      item, the demonstration result before the change and the same command's result
+      after it, or why there was none. No hook is skipped and `--no-verify` is never
+      passed; when a hook fails, stop and report it.
+   10. Log the commit.
 
 8. **No push and no forge edits.** Act never pushes, and never edits a ticket or a pull
    request unless the user says so for that item. Work-item fixes and decision comments
@@ -224,9 +237,9 @@ compaction, read the item ids and `--per-item` from the block recorded there.
    - <time> <repo> <action>: <command or decision>; <result or exit status>
    ```
 
-   Actions: `approve`, `check-repo`, `drift`, `baseline`, `stage`, `check`, `commit`,
-   `rebase`, `merge`, `regen`, `push`, `post`, `stop`. The forms that a later act on the
-   same run reads to tell its own work from drift:
+   Actions: `approve`, `check-repo`, `drift`, `baseline`, `demonstrate`, `stage`,
+   `check`, `commit`, `rebase`, `merge`, `regen`, `push`, `post`, `stop`. The forms that
+   a later act on the same run reads to tell its own work from drift:
 
    ```
    - <time> <repo> commit <sha> on <branch>: items <ids>; ticket <id or none>

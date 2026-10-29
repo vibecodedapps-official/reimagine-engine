@@ -182,7 +182,7 @@ An agent fails when it returns an error, when the last line of its output file i
 3. Before each launch, create the agent's scratch folder `<run dir>/tmp/agents/<stage>-<scope>[-<n>]/`, unique per launch, with `<n>` for a top-up, a relaunch or a batch. Every agent gets one, the merger included. `sed -i` is barred; agents may use read-only pipe stages and log them under a `runs:` heading.
 4. Keep the prompt short: the absolute paths of `audit-brief.md`, `common.md`, the scope file or list, the output file and the scratch folder, the scope's questions, and the items the stage file names. An auditor's or adversary's prompt, in every mode, also names `audit-evidence.md`. The agent definition holds the standing instructions; do not restate them.
 5. Each agent returns its output path and one line. Read the file to judge it.
-6. On each completion notification, add to the stage's `agents` list: `type`, `model` (requested), `scope`, `started`, `ended`, `tokens` from the notification's `subagent_tokens` field (`null` when absent), `tokens_scope` `"task notification, subagent_tokens; scope not documented"`, `duration_ms`, and `result` (`complete` or `failed: <reason>`).
+6. On each completion notification, add to the stage's `agents` list: `type`, `model` (requested), `scope`, `started`, `ended`, `tokens` from the notification's `subagent_tokens` field (`null` when absent), `tokens_scope` `"task notification, subagent_tokens; scope not documented"`, `duration_ms`, and `result` (`complete` or `failed: <reason>`). A completion notification for an agent whose stage entry is already `complete` or `failed` changes nothing: note it with the agent, its scope and the time in that stage's check file, `baseline/<stage>-check.md`, and leave `stages.json` and the agent's output as they are.
 
 ### Stage order and control flow
 
@@ -244,16 +244,16 @@ After every stage, stages 1 and 8 included, and before that stage's final entry,
 
 `sh ${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh check <repo> <run dir> <run dir>/baseline/<name> <ignored base prefix> <run dir>/baseline/<stage>/<name>`
 
-The ignored base prefix is `<run dir>/baseline/<name>` until a check passes after the baseline was taken, then the out prefix of the last check that passed. Everything else is compared with the stage 1 baseline, which never moves. The script prints `blocked <status|stash|config|hashes|refs> <-|+> <line>`, `remote-ref <-|+> <line>`, `ignored <added|deleted|changed> <path>` and `touched <path>`, and may lead with `note mtime precision: seconds`, which is not a difference.
+The ignored base prefix is `<run dir>/baseline/<name>` until a check passes after the baseline was taken, then the out prefix of the last check that passed. Everything else is compared with the stage 1 baseline, which never moves. The script prints `blocked <status|stash|config|hashes|refs> <-|+> <line>`, `remote-ref <-|+> <line>`, `local-branch + <line>`, `ignored <added|deleted|changed> <path>` and `touched <path>`, and may lead with `note mtime precision: seconds`, which is not a difference.
 
 Judge the exit status:
 
 - `2`: the boundary could not be checked. End the run `blocked`.
 - `1`: a `blocked` line, a change to tracked or untracked files, refs, index, stash or config. End the run `blocked`. The hash walk is fatal.
-- `3`: only `remote-ref` or `ignored` lines. Judge each as below.
+- `3`: only `remote-ref`, `local-branch` or `ignored` lines. Judge each as below.
 - `0`: nothing to judge. `touched` lines are informational and never stop the run.
 
-A `remote-ref` line passes when an approved fetch in `approvals`, recorded after the baseline, explains it, or a `background-fetch` entry for the same ref with the same old and new commits does. Otherwise ask the user whether a background fetch explains the moved refs. The question names each ref with its old and new commit, or "new" or "deleted"; says that an editor's or Git client's automatic fetch, such as VS Code `git.autofetch`, can move refs even with no remote configured; and recommends no answer. On yes, append one `background-fetch` approval per ref with target `<repo name>:<ref>`, decision, time, and old and new commits, then go on. A further move of the same ref asks again. On no, or no answer, end the run `blocked`.
+A `remote-ref` line passes when an approved fetch in `approvals`, recorded after the baseline, explains it, or a `background-fetch` entry for the same ref with the same old and new commits does. Otherwise ask the user whether a background fetch explains the moved refs. The question names each ref with its old and new commit, or "new" or "deleted"; says that an editor's or Git client's automatic fetch, such as VS Code `git.autofetch`, can move refs even with no remote configured; and recommends no answer. On yes, append one `background-fetch` approval per ref with target `<repo name>:<ref>`, decision, time, and old and new commits, then go on. A further move of the same ref asks again. On no, or no answer, end the run `blocked`. A `local-branch` line is a new `refs/heads/<name>` other than the checkout's own branch, or a `+` config line `branch.<name>.<key>=<value>` for that name; refs and config are shared by every worktree of a repository, so the user's work in another worktree shows here. It passes when a `local-branch` approval for the same branch and commit explains it. Otherwise ask the user whether their own work in another worktree explains the branch, naming the branch and its commit, and recommend no answer. On yes, append a `local-branch` approval with target `<repo name>:<branch>`, decision, time and commit, then go on; its config lines pass with it. A later line for the same branch at another commit asks again. On no, or no answer, end the run `blocked`. A deleted or moved branch and any other config line print as `blocked`.
 
 An `ignored` line is judged in this order:
 
@@ -310,7 +310,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 ```json
 {
-  "plugin_version": "0.1.7",
+  "plugin_version": "0.1.8",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],
@@ -334,7 +334,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 1. Input hashes come from `git hash-object --no-filters <file>`. Source and bundle inputs are recorded as shas. Stage 1 also hashes the manifest, the claims files and the questions file.
 2. `status` is `running`, `complete`, `failed`, `not_applicable` or `superseded`.
-3. `approvals[]` kinds are `fetch`, `live`, `export-over-1gb` and `background-fetch`, each with `target`, `decision` and `time`. A `fetch` adds `commands`, the exact commands run under it, and `resolved`, each bare name with the kind it resolved to; a planned command that differs is asked again. A `live` approval adds `by` and `source` (`live/results-<k>.md:<line>`). A `background-fetch` adds the old and new commits.
+3. `approvals[]` kinds are `fetch`, `live`, `export-over-1gb`, `background-fetch` and `local-branch`, each with `target`, `decision` and `time`. A `fetch` adds `commands`, the exact commands run under it, and `resolved`, each bare name with the kind it resolved to; a planned command that differs is asked again. A `live` approval adds `by` and `source` (`live/results-<k>.md:<line>`). A `background-fetch` adds the old and new commits, and a `local-branch` the branch's commit.
 4. When a stage starts, write its entry `running` with its inputs. When every listed output exists and the stage's read-only check passed, write the final status. That write is the stage's last act. `stages.json` is the only record of completion.
 5. Stage keys: stage 1 records `forge_hashes` and `forge_gaps` (the forge files and failed reads resume compares and retries), `review_files` (each `REVIEW.md` read at a bundle's base, by blob id) and each pull request's pinned head; stages 2 and 3 record `output_hashes` and `failed_scopes`, stage 2 `split_files`, stage 3 `test_planted`; stage 5 records `ledger_build` when `ledger.sh build5` never succeeded; stage 6 records `sentinels`, `missing_positions` and `batched`; stage 7 records `converged_check` (`pass` or `fail`) and lists split slices among its outputs. Stages 6, 7 and 8 record each live file they read, `live/findings.md`, `live/claims.md` and each `live/carried/<id>.md`, by hash or `absent`.
 

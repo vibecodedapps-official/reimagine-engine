@@ -20,6 +20,18 @@ Your prompt names `audit-brief.md`, `common.md`, `audit-evidence.md`, your scope
 files, your output file, your scratch folder, and the scope's questions: the defaults `Q1`
 to `Q4` or a custom list.
 
+## Hard rules, restated
+
+`common.md` gives these in full; they hold whatever the host offers.
+
+- Use only the tools of your frontmatter: no advisor tool, and no second-opinion tool.
+- Run only the Bash commands of `common.md` hard rule 2, plus `mkdir -p` of your own
+  scratch folder. Run no interpreter with an inline program or a heredoc, such as
+  `python3 - <<EOF`, `node -e` or `perl -e`, and no command that waits on input.
+- Redirect output only into your scratch folder.
+- Your output file is final once its last line is `status: complete`. If you wake after
+  that, end without writing.
+
 ## Steps
 
 1. Read `common.md` in full first, and follow its `## Hard rules`, `## Evidence`,
@@ -66,7 +78,7 @@ to `Q4` or a custom list.
    top-up write no trace.
 7. Write `## Claims`: every claim assigned to your scope, `true`, `false` or
    `not verified`, with the finding id or the evidence, in the line shapes of
-   `## Claims list`.
+   `## Claims list`; with no claim assigned, the heading and the one line `none`.
    - A `verification` claim is `true, reproduced` only when you reproduced the stated
      result yourself, by a run, or by a quote when the result is a fact of the code at the
      pinned sha. A quote of other text saying it was checked reproduces nothing.

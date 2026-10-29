@@ -63,7 +63,7 @@ Per pass of this run, each finding by bucket (`fix`, `defer`, `reject`) with its
 
 ### Checks
 
-Run: the command and its result. Not run: the exact command and the reason; with no `checks` key in `.reimagine.json`, write that no check ran. Write `denied` only for a refused permission. A check still failing after three fixes is named here and under Blocked or stopped.
+The section names the source of the checks: the request, the manifest bundle or `.reimagine.json`. Run: the command and its result. Not run: the exact command and the reason; with no source, write that no check ran. Write `denied` only for a refused permission. A check still failing after three fixes is named here and under Blocked or stopped.
 
 ### Commits and pushes
 
@@ -83,7 +83,7 @@ The link of the comment posted. For a host other than GitHub, the comment's text
 
 ### Log
 
-Each review with its slug, duration, cost and denial count, from `reviews[]`; each implementer call with its group's files and its start and end, copied from the `date -u` outputs Step 2 kept; and the elapsed time against the run budget.
+Each review with its slug, duration, cost, denial count and notes, from `reviews[]`, the notes printed as the reviewer wrote them, or `none` when empty; each implementer call with its group's files and its start and end, copied from the `date -u` outputs Step 2 kept; and the elapsed time against the run budget.
 
 ## Rules
 

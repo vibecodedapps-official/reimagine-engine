@@ -90,6 +90,22 @@
 # - skills/audit/SKILL.md allowed-tools pre-approves `git ls-tree`, `git cat-file` and
 #   `git branch --list`, each also in its `git -C *` form; the bare `git cat-file` only
 #   with `-t`, `-s` or `-p`, since `--textconv` and `--filters` run configured programs.
+# - skills/audit/stages/1-orient.md, read as one line, spreads a claim that names no
+#   file across the bundle's groups in turn, caps a group at 80 such claims, and has
+#   the brief's Claims section record each scope's claim count and each move.
+# - skills/audit/resume.md keeps a finished pass1/ or pass2/ file when stage 4 or 5 is
+#   the first rerun stage because its entry is missing or running, and stages 4 and 5
+#   launch no agent for a scope whose file resume kept; each file is read as one line.
+# - Each of the five agents has a `## Hard rules, restated` section before `## Steps`
+#   that names no advisor or second-opinion tool, its scratch folder and
+#   `status: complete`, and, but for the merger, `mkdir -p`, a heredoc and a command
+#   that waits on input; skills/audit/common.md hard rule 2 allows `mkdir -p` of the
+#   agent's own scratch folder and bars an inline program or a heredoc; SKILL.md says a
+#   late completion notification changes nothing.
+# - skills/audit/stages/9-act.md shows an item's defect before the edit, logs it as
+#   `demonstrate`, lists that action, and carries the before and after results into the
+#   commit body; step 7 reruns each `demonstrate` command after the change and logs its
+#   result as `demonstrate`; the file is read as one line.
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -547,6 +563,101 @@ for f in skills/audit/stages/9-act.md skills/audit/common.md; do
 	grep -qF 'the `REVIEW.md` copies `audit-brief.md` records at the base' "$tmp/list" ||
 		fail "$f: the instruction files read before a change do not name the REVIEW.md copies at the base"
 done
+# A claim that names no file spreads across the bundle's groups and no group holds
+# more than 80 of them; the file is read as one line.
+f=skills/audit/stages/1-orient.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "else across the bundle's groups that hold a file, in claim order, one claim per group in turn, starting again at the first" "$tmp/list" ||
+		fail "$f: step 9 does not spread a claim that names no file across the bundle's groups"
+	grep -qF 'a group holding more than 80 claims that name no file keeps the 80 with the lowest numbers' "$tmp/list" ||
+		fail "$f: step 9 does not cap a group at 80 claims that name no file"
+	grep -qF "each scope's claim count and each move of step 9 rule 5" "$tmp/list" ||
+		fail "$f: the brief's Claims section does not record each scope's claim count and each move"
+fi
+# A resume whose first rerun stage is 4 or 5 because its entry is missing or running
+# keeps each finished scope output, and the stage launches no agent for it; each file is
+# read as one line.
+f=skills/audit/resume.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'whose last line is `status: complete` and whose `consumed:` hashes each equal the hash of that file now is kept where it is' "$tmp/list" ||
+		fail "$f: step 7 does not keep a finished pass1 or pass2 file when stage 4 or 5 never closed"
+fi
+for f in skills/audit/stages/4-pass-one.md:'Launch no auditor for a scope whose `pass1/<scope>.md` resume kept' \
+	skills/audit/stages/5-pass-two.md:'Launch no adversary for a scope whose `pass2/<scope>.md` resume kept'; do
+	s=${f#*:}
+	f=${f%%:*}
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "$s" "$tmp/list" || fail "$f: launches an agent for a scope whose output resume kept"
+done
+# A pass report without its claims heading is a failed output, which report.sh skips: the
+# stage fails it and resume does not keep it.
+for f in skills/audit/stages/4-pass-one.md:'when its last line is not `status: complete`, or when it has no `## Claims` heading' \
+	skills/audit/stages/5-pass-two.md:'its last line is not `status: complete`, it has no `## Claims challenged` heading' \
+	skills/audit/resume.md:'or has no `## Claims` (stage 4) or `## Claims challenged` (stage 5) heading, moves as above' \
+	skills/audit/common.md:'and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
+	skills/audit/common.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
+	agents/auditor.md:'with no claim assigned, the heading and the one line `none`'; do
+	s=${f#*:}
+	f=${f%%:*}
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "$s" "$tmp/list" || fail "$f: a pass report without its claims heading is not a failed output"
+done
+# Each agent restates hard rules 2 and 4 in a section before its steps: no second-opinion
+# tool, the Bash rules (the merger has no Bash), redirects inside its scratch folder, and
+# an output that is final at `status: complete`. Each section is read as one line.
+for f in agents/auditor.md agents/adversary.md agents/mapper.md agents/digester.md agents/merger.md; do
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | awk '/^## Hard rules, restated$/ { on = 1; next } /^## / { if (on) exit } on' |
+		tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	[ -s "$tmp/list" ] || {
+		fail "$f: no ## Hard rules, restated section before the next heading"
+		continue
+	}
+	tr -d '\r' < "$f" | awk '/^## Hard rules, restated$/ { r = NR } /^## Steps/ { s = NR } END { exit !(r && s && r < s) }' ||
+		fail "$f: the ## Hard rules, restated section does not come before ## Steps"
+	set -- 'no advisor tool, and no second-opinion tool' 'scratch folder' '`status: complete`'
+	case $f in
+	agents/merger.md) ;;
+	*) set -- "$@" '`mkdir -p`' 'heredoc' 'waits on input' ;;
+	esac
+	for c in "$@"; do
+		grep -qF "$c" "$tmp/list" || fail "$f: the restated rules lack $c"
+	done
+done
+f=skills/audit/common.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF '`mkdir -p` of its own scratch folder' "$tmp/list" ||
+		fail "$f: hard rule 2 does not allow mkdir -p of the agent's own scratch folder"
+	grep -qF 'no interpreter run with an inline program or a heredoc' "$tmp/list" ||
+		fail "$f: hard rule 2 does not bar an inline program or a heredoc"
+fi
+f=skills/audit/SKILL.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'A completion notification for an agent whose stage entry is already `complete` or `failed` changes nothing' "$tmp/list" ||
+		fail "$f: does not say a late completion notification changes nothing"
+fi
+# Act shows an item's defect at baseline before it edits, logs it as `demonstrate`, and
+# carries the before and after results into the commit body; the file is read as one line.
+f=skills/audit/stages/9-act.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF '**Show the defect first.**' "$tmp/list" ||
+		fail "$f: step 7 has no Show the defect first sub-step"
+	grep -qF 'Log the command and its result as `demonstrate`' "$tmp/list" ||
+		fail "$f: step 7 does not log the demonstration as demonstrate"
+	grep -qF '`baseline`, `demonstrate`, `stage`' "$tmp/list" ||
+		fail "$f: the act/log.md actions do not list demonstrate"
+	grep -qF 'the demonstration result before the change and the same command' "$tmp/list" ||
+		fail "$f: the commit body does not carry the before and after results"
+	grep -qF 'rerun each `demonstrate` command of the group and log its result as `demonstrate`' "$tmp/list" ||
+		fail "$f: step 7 does not rerun the demonstration after the change"
+fi
 
 if [ "$fails" -gt 0 ]; then
 	exit 1

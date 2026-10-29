@@ -74,7 +74,9 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
    `audit-evidence.md`, the scope file `scope/<scope>.md`, the output file
    `pass1/<scope>.md` and the scratch folder `tmp/agents/pass1-<scope>/`, and gives the
    scope's question ids and text. Finding ids are `<scope>-F<n>`. Record each launch:
-   type, requested model, scope, start time.
+   type, requested model, scope, start time. Launch no auditor for a scope whose
+   `pass1/<scope>.md` resume kept (`resume.md`, step 7); list that file among the stage's
+   outputs.
 
 5. **Hold.** When `_test` `hold` names stage 4, the jobs of step 4 wait until the stage it
    waits on has ended its initial agents. When `hold` waits on stage 4, the held stage's
@@ -85,10 +87,11 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
    1. Record the end time, the notification's `subagent_tokens` and `duration_ms`, labeled
       "task notification, subagent_tokens; scope not documented", in the entry and in
       `usage.md`.
-   2. The agent failed when it returned an error, when `pass1/<scope>.md` is missing, or
-      when its last line is not `status: complete`. A `_test` `fail` entry with role
-      `auditor` and this scope or `any` turns the scope's first `times` completions into
-      failures.
+   2. The agent failed when it returned an error, when `pass1/<scope>.md` is missing,
+      when its last line is not `status: complete`, or when it has no `## Claims`
+      heading, which every report holds, with `none` when no claim is assigned. A
+      `_test` `fail` entry with role `auditor` and this scope or `any` turns the scope's
+      first `times` completions into failures.
    3. On a failure, follow the ladder (SKILL.md, Roles): relaunch on the same model with
       the same prompt; then relaunch on `fable`, recorded as a swap with role, scope, from,
       to and reason; then the scope fails, with its coverage loss recorded. A relaunch

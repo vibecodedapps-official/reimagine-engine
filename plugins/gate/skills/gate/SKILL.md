@@ -48,10 +48,15 @@ Recognized phrases, and nothing else is read from the request:
 - "no fixes": make pass 1 only and edit nothing.
 - "budget <n> minutes": set the run budget.
 - "base <branch>": name the base branch of a branch target.
+- "checks <command>[; <command>]": the checks the fix round runs. It runs to the next comma that another recognized phrase follows, such as ", no fixes", else to the end of the request, since a command may hold a comma; split it at `;` and trim each command.
 
 A pull request target must be open, in the session's repository and not cross-repository. Its head branch is fetched with the explicit refspec and checked out, which needs a clean tree. Several pull requests run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or one of the same shape; it runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order, with every git and gh command running against that bundle's `repo`. A branch target or a manifest bundle on a host other than GitHub runs with the comment skipped, and the report says so. A pull request number on such a host cannot resolve, so it is an unresolved target.
 
-For a pull request target the base is its `baseRefName`. For a branch target the base is "base <branch>" in the request, else `.reimagine.json` `base`, else the remote's default branch. Fetch the base with the explicit refspec `+refs/heads/<b>:refs/remotes/<r>/<b>`; a fetch that fails ends `blocked` naming the branch. Record the merge-base with the base. Every review target and every line count uses the three-dot range from it. "base <branch>" on a pull request target whose base differs ends `blocked`, because the gate never retargets a pull request.
+For a pull request target the base is its `baseRefName`. For a branch target the base is "base <branch>" in the request, else the manifest bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch, so a release or hotfix branch gated through a manifest is diffed against the base its bundle names. A bundle `base` whose first segment names a remote that `git remote` lists in the bundle's repository is read without that segment and its `/`, since the loop's manifest writes `<remote>/<base branch>`. Fetch the base with the explicit refspec `+refs/heads/<b>:refs/remotes/<r>/<b>`; a fetch that fails ends `blocked` naming the branch. Record the merge-base with the base. Every review target and every line count uses the three-dot range from it. "base <branch>" on a pull request target whose base differs ends `blocked`, because the gate never retargets a pull request.
+
+The run's checks come from the first source that gives any: the request's "checks" phrase, else the manifest bundle's `checks`, else `.reimagine.json` `checks`. A bundle's `checks` is an array of command strings. The one list feeds the fix round's checks, the child session's allowed tools, the permission statement and the report, which names the source. With no source, no check runs and the report says so.
+
+`${CLAUDE_PLUGIN_ROOT}` is not a shell variable. It is empty in the session's shell, so a command that types it runs `/scripts/...`. Resolve the scripts directory once, with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Print it on the reading block's Scripts line. Every Bash command that runs a script writes that absolute path, never the variable.
 
 Make only the read-only calls that resolve the targets and the engine: `git remote`, `gh pr view`, a manifest read and `command -v claude`. Then print the reading block as your next text, before any other tool call:
 
@@ -60,9 +65,10 @@ Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-re
 Mode: fix
 Budget: 120 minutes (default); max-passes 4; split 1500
 Engine: subprocess
+Scripts: <the plugin's directory>/scripts
 ```
 
-Targets lists each pull request or branch, how it resolved and its base. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`. Engine is `subprocess`, or the stand-in with the reason for it. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored.
+Targets lists each pull request or branch, how it resolved and its base. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`. Engine is `subprocess`, or the stand-in with the reason for it. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored.
 
 A target that cannot be resolved gets one line in the block and the run continues with the others. When none is left, the run ends `stopped`.
 
@@ -82,7 +88,7 @@ Invoking this skill by name approves, for this run only: fix commits on each tar
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or one per top-level path over `split` | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; it stays for the run |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; it stays for the run |
 | implementer | an Agent at `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
 The `models` key of the configuration changes the implementer and the stand-in reviewer. The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was; the report says so in one line.
@@ -124,7 +130,7 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 }
 ```
 
-- `split`: the changed lines above which a pass reviews by top-level path in parallel.
+- `split`: the changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
 - `models`: the model of the implementer and of the stand-in reviewer.

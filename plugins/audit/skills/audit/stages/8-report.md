@@ -247,11 +247,55 @@ result's text, approver and time; a `result_file` result's text is its copy
        labeled "task notification, subagent_tokens; scope not documented", the stage
        6 agents included like any other. No total is presented as exact.
 
-   Write the body to `<run dir>/report.body.tmp` with the Write tool, not yet to
-   `report.md` and never by a shell heredoc or `printf`: a body carried in a command's
-   text passes the process argument cap, and the write fails. Only the revision line
-   and the assembly of `report.md` in step 9 run by shell. Coverage is filled in two
-   passes: everything but the `work-items.sh` result now, that result at step 8.
+   The body is built from part files under `<run dir>/report/parts/`, joined into
+   `<run dir>/report.body.tmp`, not yet into `report.md`. The layout of each part is in
+   `report.md`, "Parts":
+   1. Start from an empty `<run dir>/report/parts/`: when it holds files from an earlier
+      attempt, delete each, since `assemble` joins every part file there.
+   2. With the Write tool, write the lists `report.sh` reads into `report/parts/`, each
+      line in the form `report.sh` checks:
+      - `claims-files.txt`: one line per claims file, the name `claims.md` gives it in
+        its claim lines, a tab, its absolute path, a tab, `handoff` or `prose`, a tab,
+        and the hash the stage 1 entry records (40 or 64 lowercase hexadecimal
+        characters). Empty when there is no claims file.
+      - `items.txt`: one line per report item, `C<n>: <id>, <id>`, the ledger ids it
+        absorbs, with one blank after each comma and no id in two items. Empty when
+        there is no item.
+      - `claims-override.txt`, only when needed: `claim <n>: <verdict>; <evidence>` for
+        a claim whose verdict the pass files do not give (a live claim, or one that
+        cites an item a `REVIEW.md` rule skipped), and `claim <n> correction: <text>`
+        for each claim whose verdict is `false`, since `parts` stops on a `false` claim
+        with no correction.
+
+      `report.sh` reads only pass files that end `status: complete`, skips blank list
+      lines, and stops on a repeated claim number or a pass file missing its claims
+      heading.
+   3. With the Write tool, write the parts that are yours, each beginning with its
+      section heading `## <n>. <title>` (the header part with the
+      `# audit report: <run-id>` title instead) and ending with one empty line:
+      `00-header.md`, `01-verdict.md`, `02-findings.md`, `03-verified.md`,
+      `04-disagreements.md`, `05-next-steps.md`, `06-code-fixes.md`,
+      `07-work-item-fixes.md`, `08-other.md` (section 8's Other decisions only, under
+      `### Other decisions`, since `08-decisions.md` holds the heading and the other two
+      parts), `09-live.md`, `11-coverage.md` (without the `work-items.sh` result) and
+      `12-usage.md`. Sections 3 and 9 stay yours: no format fixes the pass-two line
+      that marks a Verified OK item challenged, and a Live checks status joins
+      approvals, gate reasons and result copies.
+   4. Run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/report.sh parts "<run dir>"`, with
+      `${CLAUDE_PLUGIN_ROOT}` resolved as step 8 says. It writes `08-decisions.md`,
+      `10-claims.md` and `claims-verdicts.body.md`, all three or none. On exit 1 or 2,
+      write those three parts with the Write tool in the shapes `report.md` fixes, and
+      name the failure, with the script's stderr line, in `11-coverage.md`.
+   5. Run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/report.sh assemble "<run dir>"`, which joins
+      every `report/parts/*.md` but `claims-verdicts.body.md`, in byte order of name,
+      into `<run dir>/report.body.tmp`. On a nonzero exit stop with its message and
+      write no `report.md`.
+
+   No body passes through a shell argument, heredoc or `printf`: a body carried in a
+   command's text passes the process argument cap, and the write fails. Only the
+   scripts, the revision line and the assembly of `report.md` in step 9 run by shell.
+   Coverage is filled in two passes: everything but the `work-items.sh` result now,
+   that result at step 8.
 
 7. **Write `work-items.jsonl`** in the run directory from the operations of section 7,
    one JSON object per line, in the format of `work-items.md`. With no operations the
@@ -264,8 +308,8 @@ result's text, approver and time; a `result_file` result's text is its copy
    sh ${CLAUDE_PLUGIN_ROOT}/scripts/work-items.sh check work-items.jsonl report.body.tmp claims.md
    ```
 
-   Put the result in the Coverage section of `report.body.tmp`, a text change that
-   touches no item:
+   Put the result in `report/parts/11-coverage.md` and run `report.sh assemble` again,
+   a text change that touches no item:
    - exit 0: `work-items: ok`;
    - exit 1: the file is kept, every `work-items <file>:<line>: <message>` line is
      listed, and the file is marked not ready for an adapter;
@@ -292,8 +336,14 @@ result's text, approver and time; a `result_file` result's text is its copy
    `tail -n +2 report.md | { sha256sum 2>/dev/null || shasum -a 256; }`. Remove
    `report.body.tmp`.
 
-10. **Write `claims-verdicts.md`** in the format below, with the revision `<hex>` of
-    step 9. It is written with the Write tool and not hashed.
+10. **Write `claims-verdicts.md`** with the revision `<hex>` of step 9, from
+    `report/parts/claims-verdicts.body.md`, in the format below. It is not hashed:
+
+    ```
+    sh ${CLAUDE_PLUGIN_ROOT}/scripts/report.sh claims-verdicts "<run dir>" <hex>
+    ```
+
+    On a nonzero exit, write it with the Write tool in that format.
 
 11. **Read-only check.** Run the check in `SKILL.md`, "Read-only check", and write
     `baseline/8-check.md`. When it fails the run is `blocked`: the report stays on disk,
@@ -301,7 +351,7 @@ result's text, approver and time; a `result_file` result's text is its copy
 
 12. **Write the stage 8 entry last,** once the check has passed, as `SKILL.md`, "State
     files", says: status `complete`, the input hashes of step 1, and the outputs
-    `["report.md", "claims-verdicts.md", "work-items.jsonl"]`.
+    `["report.md", "claims-verdicts.md", "work-items.jsonl", "report/parts/"]`.
 
 13. **Update `${CLAUDE_PLUGIN_DATA}/runs.json`:** set this run's `state` to the terminal
     state under the lock, as `SKILL.md`, "State files", says. On a refusal or a failure,
@@ -395,7 +445,7 @@ that environment and feed the result back with `/audit:resume <run-id> --live <f
   line, so a text or a correction may contain `; `. Entries are grouped by claims file
   in claim order. The file hash is the one stage 1 recorded for that claims file in its
   entry's `inputs`, so it names the bytes the audit read. `other` sentences are not
-  listed.
+  listed, and a claims file with no `claim` line gets the one line `none`.
 - `ticket` is the ticket the claim is about: for a handoff claim, the ticket field
   `handoff.sh claims` printed; for a prose claim, the ticket stage 1 tagged it with, an
   export written as its `id`; else `none`.

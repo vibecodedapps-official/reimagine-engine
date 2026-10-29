@@ -30,6 +30,13 @@ test('R81: the configuration block has exactly the keys commit, checks, timeouts
   assert.deepEqual(config.models, { implementer: 'sonnet', reviewer: 'fable', 'fallback-reviewer': 'opus', reader: 'haiku' });
 });
 
+test('R81: SKILL.md and README.md skip the gate key without reporting it', () => {
+  for (const text of [SKILL, README]) {
+    assert.ok(text.includes('The `gate` key belongs to the gate plugin and is skipped without a report.'));
+    assert.ok(!text.includes('Unknown keys and bad values are reported and ignored.'));
+  }
+});
+
 test('R45: the SKILL.md frontmatter names the skill run and its description carries both trigger phrases', () => {
   const match = SKILL.match(/^---\n([\s\S]*?)\n---\n/);
   assert.notEqual(match, null);
@@ -57,6 +64,19 @@ test('R59: every Bash rule in allowed-tools has at most one *, and only at its e
   for (const rule of rules) {
     assert.ok(!rule.slice(0, -1).includes('*'), `Bash(${rule}) has a * before its end`);
   }
+});
+
+test('R112: the checks bullets and Step 6.1 say a checks key still leaves the manifests and CI jobs read, and name the uncovered CI jobs', () => {
+  const sentence = 'With a `checks` key those commands are the ones run, and Step 6.1 still reads the manifests and the CI jobs and names each CI job no configured check covers as deferred to CI in `run.md` and the report.';
+  const old = 'With no `checks` key, Step 6.1 discovery applies';
+  const build = read('../../plugins/loop/skills/run/steps/4-build.md');
+  const step61 = build.slice(build.indexOf('1. **6.1 Discovery.**'), build.indexOf('2. **6.2 Not run.**'));
+  const bullet = (text) => text.split('\n').find((line) => line.startsWith('- `checks`:'));
+  assert.ok(step61.length > 0, 'Step 6.1 not found');
+  assert.ok(bullet(SKILL).includes(sentence), 'the SKILL.md checks bullet lacks the sentence');
+  assert.ok(bullet(README).includes(sentence), 'the README checks bullet lacks the sentence');
+  assert.ok(step61.includes(sentence), 'Step 6.1 lacks the sentence');
+  for (const text of [SKILL, README, build]) assert.ok(!text.includes(old));
 });
 
 test('R282: SKILL.md and README.md explain the base key the same way: without it the remote default, and the request phrase wins', () => {

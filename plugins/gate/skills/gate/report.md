@@ -83,7 +83,7 @@ The link of the comment posted. For a host other than GitHub, the comment's text
 
 ### Log
 
-Each review with its slug, duration, cost, denial count and notes, from `reviews[]`, the notes printed as the reviewer wrote them, or `none` when empty; each implementer call with its group's files and its start and end, copied from the `date -u` outputs Step 2 kept; and the elapsed time against the run budget.
+Each review with its slug, duration, cost, denial count and notes, from `reviews[]`, the notes printed as the reviewer wrote them, or `none` when empty; each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch; and the elapsed time against the run budget.
 
 ## Rules
 

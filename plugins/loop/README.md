@@ -77,12 +77,12 @@ An optional `.reimagine.json` at the repository root. Every key is optional; the
 ```
 
 - `commit`: with `true`, the run commits a snapshot of the plan and report to the branch and posts the report as a pull request comment.
-- `checks`: the commands to run as checks. Without it the loop finds the repository's test, lint, typecheck and build commands.
+- `checks`: the commands to run as checks. Without it the loop finds the repository's test, lint, typecheck and build commands. With a `checks` key those commands are the ones run, and Step 6.1 still reads the manifests and the CI jobs and names each CI job no configured check covers as deferred to CI in `run.md` and the report.
 - `timeouts`: minutes for each implementer call (`subagent`), each review pass (`review`), each check (`check`) and the CI wait (`ci`), and the whole run (`run`).
 - `models`: the model for each role. Values are `sonnet`, `opus`, `haiku` or `fable`. This never changes the risk floor or the final review.
 - `base`: the branch the review and the pull request are based on; without it, the repository's default branch. "base <branch>" in the request wins over the key.
 
-Unknown keys and bad values are reported and ignored. A file that does not parse stops the run before it starts.
+The `gate` key belongs to the gate plugin and is skipped without a report. Any other unknown key, and every bad value, is reported and ignored. A file that does not parse stops the run before it starts.
 
 ## How a run ends
 

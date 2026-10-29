@@ -71,9 +71,19 @@ test('R87: the branch tip is the remote head when the branch exists on the remot
 });
 
 test('R89: a slice committed outside the loop is found by the hashes of its files', () => {
-  assert.ok(section(RECORD, 'steps.json').includes('git -C <checkout> hash-object -- <path>'));
-  assert.ok(section(RECORD, 'An existing record').includes('git rev-parse <tip>:<path>'));
+  const steps = section(RECORD, 'steps.json');
+  const existing = section(RECORD, 'An existing record');
+  assert.ok(steps.includes('git -C <checkout> hash-object --no-filters -- <path>'), 'a path starting with - would be read as an option');
+  assert.ok(existing.includes('git -C <checkout> cat-file -e <tip>:<path>'));
+  assert.ok(existing.includes('git -C <checkout> rev-parse <tip>:<path>'));
+  assert.ok(existing.includes('git -C <checkout> cat-file --filters <tip>:<path> | git hash-object --stdin --no-filters'));
+  for (const text of [steps, existing]) {
+    assert.ok(!text.includes('hash-object -- <path>'));
+  }
   assert.ok(section(SKILL, 'Final report handling').includes('its `files`'));
+  assert.ok(steps.includes('A slice that a run built to `complete` and did not commit also has `files`'));
+  assert.ok(steps.includes('a slice that is `failed` or `running` has none'));
+  assert.ok(section(SKILL, 'Final report handling').includes('built to `complete`'));
 });
 
 test("R90: a run with no new work publishes nothing only when the record's work is published", () => {

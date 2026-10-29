@@ -12,7 +12,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'plugins', 'gate', 'scripts', 'findings.mjs');
 const fixtureDir = join(root, 'tests', 'gate', 'fixture');
 const concurrency = Math.max(1, availableParallelism() - 1);
-const USAGE = 'usage: node findings.mjs <pass> <findings.json> <review-output>...';
+const USAGE = 'usage: node findings.mjs <pass> <findings.json> <review-output>... | node findings.mjs --check <pass> <findings.json>';
 
 let base;
 before(() => {
@@ -647,6 +647,103 @@ describe('the ledger across passes', { concurrency }, () => {
   });
 });
 
+describe('a match written without its link', { concurrency }, () => {
+  const ID = 'src/share.mjs|signed values are truncated';
+  const entry = (state, extra = {}, first = 1) => ({
+    file: 'src/share.mjs',
+    summary: 'signed values are truncated',
+    first_pass: first,
+    state,
+    passes: { [first]: { line: 12, bucket: state === 'deferred' ? 'defer' : 'reject', reason: 'same defect as the pass-1 rejection', prior: null } },
+    ...extra,
+  });
+  const EMPTY = 'Nothing found.\n\n```json\n[]\n```\n';
+  const WARNING = `findings: warning: ${ID} is carried with no match; write the match of Step 1.6\n`;
+  const ingestOnce = async (findings, pass = '2') => {
+    const dir = kase([], { 'findings.json': text({ findings }), 'reply.md': EMPTY });
+    const r = await run(dir, pass, 'findings.json', 'reply.md');
+    assert.equal(r.status, 0);
+    assert.equal(JSON.parse(r.stdout).findings.length, 0);
+    return r;
+  };
+
+  test('a carried entry new in the latest pass with no match is warned about on stderr', async () => {
+    const r = await ingestOnce({ [ID]: entry('carried') });
+    assert.equal(r.stderr, WARNING);
+  });
+
+  test('an entry that holds its match is not warned about', async () => {
+    const r = await ingestOnce({ [ID]: entry('carried', { match: { of: 'src/share.mjs|other', reason: 'same defect' } }) });
+    assert.equal(r.stderr, '');
+  });
+
+  test('a regressed entry new in the latest pass with no match is warned about as regressed', async () => {
+    const r = await ingestOnce({ [ID]: entry('regressed') });
+    assert.equal(r.stderr, `findings: warning: ${ID} is regressed with no match; write the match of Step 1.6\n`);
+  });
+
+  test('a deferred entry with no match is not warned about', async () => {
+    const r = await ingestOnce({ [ID]: entry('deferred') });
+    assert.equal(r.stderr, '');
+  });
+
+  test('an entry new before the latest pass the ledger holds is not warned about', async () => {
+    const r = await ingestOnce({ [ID]: entry('carried'), 'src/other.mjs|later': { ...entry('new', {}, 2), file: 'src/other.mjs', summary: 'later' } }, '3');
+    assert.equal(r.stderr, '');
+  });
+
+  test('the warnings come in id order, and the pass being re-ingested is rolled back first', async () => {
+    const b = 'src/share.mjs|b';
+    const a = 'src/share.mjs|a';
+    const r = await ingestOnce({ [b]: entry('carried'), [a]: entry('regressed'), 'src/share.mjs|c': entry('carried', {}, 2) });
+    assert.equal(
+      r.stderr,
+      'findings: warning: src/share.mjs|a is regressed with no match; write the match of Step 1.6\n' +
+        'findings: warning: src/share.mjs|b is carried with no match; write the match of Step 1.6\n',
+    );
+  });
+
+  test('a failed run prints no warning', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried') } }), 'reply.md': 'Everything is fine.\n' });
+    failed(await run(dir, '2', 'findings.json', 'reply.md'), 1, ['findings: reply.md: no fenced json array of findings']);
+  });
+
+  test('--check warns about a carried entry new in the pass it names with no match and writes nothing', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried', {}, 2) } }) });
+    const before = ledgerText(dir);
+    const r = await run(dir, '--check', '2', 'findings.json');
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, WARNING);
+    assert.equal(ledgerText(dir), before);
+    assert.deepEqual(readdirSync(dir), ['findings.json']);
+  });
+
+  test('--check is silent for a ledger whose entries all hold their match', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried', { match: { of: 'src/share.mjs|other', reason: 'same defect' } }, 2) } }) });
+    const r = await run(dir, '--check', '2', 'findings.json');
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, '');
+  });
+
+  test('--check reads the ledger as it stands, so an entry new before the pass it names is not warned about', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried'), 'src/other.mjs|later': { ...entry('new', {}, 2), file: 'src/other.mjs', summary: 'later' } } }) });
+    const r = await run(dir, '--check', '2', 'findings.json');
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, '');
+  });
+
+  test('--check after a pass with no findings is silent about an entry an earlier pass left without its match', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried') } }) });
+    const r = await run(dir, '--check', '2', 'findings.json');
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, '');
+  });
+});
+
 describe('usage and read or write errors', { concurrency }, () => {
   for (const args of [[], ['1'], ['1', 'findings.json'], ['0', 'findings.json', 'standin.md'], ['two', 'findings.json', 'standin.md'], ['1.5', 'findings.json', 'standin.md'], ['-1', 'findings.json', 'standin.md'], ['', 'findings.json', 'standin.md']]) {
     test(`usage for arguments [${args.join(' ')}]`, async () => {
@@ -654,6 +751,30 @@ describe('usage and read or write errors', { concurrency }, () => {
       failed(await run(dir, ...args), 2, [USAGE], dir);
     });
   }
+
+  for (const args of [['--check'], ['--check', 'findings.json'], ['--check', '0', 'findings.json'], ['--check', '2', 'findings.json', 'standin.md']]) {
+    test(`usage for arguments [${args.join(' ')}]`, async () => {
+      const dir = kase(['standin.md']);
+      failed(await run(dir, ...args), 2, [USAGE], dir);
+    });
+  }
+
+  test('--check on a ledger that does not exist', async () => {
+    const dir = kase();
+    failed(await run(dir, '--check', '2', 'findings.json'), 2, ['findings: cannot read findings.json'], dir);
+  });
+
+  test('--check on a ledger that is not JSON', async () => {
+    const dir = kase([], { 'findings.json': '{"findings": ' });
+    failed(await run(dir, '--check', '2', 'findings.json'), 1, ['findings: findings.json: not JSON']);
+    assert.equal(ledgerText(dir), '{"findings": ');
+  });
+
+  test('--check on a file that is not a findings ledger', async () => {
+    const dir = kase([], { 'findings.json': '{}' });
+    failed(await run(dir, '--check', '2', 'findings.json'), 1, ['findings: findings.json: not a findings ledger']);
+    assert.equal(ledgerText(dir), '{}');
+  });
 
   test('a review output that cannot be read', async () => {
     const dir = kase();

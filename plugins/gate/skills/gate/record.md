@@ -4,9 +4,9 @@ Read this file when Step 0 sets up the record directory; you return to it whenev
 
 ## Location
 
-1. The record directory is `.reimagine/gate/<branch-slug>/` in the target repository's root: for a manifest bundle, that bundle's `repo`. The branch and `<branch-slug>` are set as SKILL.md, Record, says.
+1. The record directory is `.reimagine/gate/<branch-slug>/` in the target repository's root: for a manifest bundle, that bundle's `repo`; for a branch target named by "repo <path>", that path. The branch and `<branch-slug>` are set as SKILL.md, Record, says.
 2. `passes.json` keeps the exact branch name. A record whose `passes.json` branch differs from this run's branch is a slug collision and ends preflight `blocked`, naming both branches.
-3. `.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, never into `.gitignore`. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
+3. `.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, run in the target's repository and read relative to the repository's folder when it is not absolute, never into `.gitignore`. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
 4. Every shell argument that names a record file is its absolute path.
 
 ## Files
@@ -18,13 +18,14 @@ All names are relative to the record directory. Times in every file are copied f
 | `passes.json` | Step 0, then Steps 1 to 3 | The completion record (see the next section) |
 | `findings.json` | Step 1 by `findings.mjs`, then the triage and Step 2 | The identity ledger across passes (see Findings ledger) |
 | `report.md` | Every terminal state | The report, compiled from the record. Rewritten in place |
-| `review-<n>[-<slug>].json` or `.md` | Step 1, after each review | The review's saved output: `.json` from a child session, `.md` from the stand-in. `<n>` is the pass number, which counts across runs. An unsplit pass has no `-<slug>`; a pass over `split` groups its files by path at the shallowest depth that gives more than one group, and a group's slug is its key's path lowercased, each run of characters outside `[a-z0-9]` replaced by `-`, leading and trailing `-` removed, and for the `.` key `root` at depth 1 or `<prefix slug>-root` deeper, and a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on (Step 1.2) |
+| `review-<n>[-<slug>].json` or `.md` | Step 1, after each review | The review's saved output: `.json` from a child session, `.md` from the stand-in. `<n>` is the pass number, which counts across runs. An unsplit pass has no `-<slug>`; a pass over `split` groups its files by path at the shallowest depth that gives more than one group and a group still over `split` is grouped again one segment deeper, and a group's slug is its key's path lowercased, each run of characters outside `[a-z0-9]` replaced by `-`, leading and trailing `-` removed, and for the `.` key `root` at depth 1 or `<prefix slug>-root` deeper (the prefix of a `.` key made by regrouping the directory key `<k>` is `<k>`), and a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on (Step 1.2) |
 | `diff-<n>[-<slug>].patch` | Step 1, before a stand-in review | The stand-in's input; `<n>` and `<slug>` as for `review-<n>` |
 | `pre-<n>.status`, `pre-<n>.patch`, `pre-<n>.hashes` | Step 2, before each implementer call | `git status`, a patch and file hashes, for restoring after a failed call. `<n>` is one more than the highest number among the record's `pre-*.status` files, or 1 when there is none; a parallel batch takes one snapshot per file group before any call of the batch starts |
+| `post-<n>.status`, `post-<n>.hashes` | Step 2, when an implementer call returns | `git status` and file hashes of the checkout as the call left it, for comparing the checkout after a late notification for that call. `<n>` is the call's own `pre-<n>` number |
 | `comment-<n>.md` | When the run publishes | The comment as posted, never committed. `<n>` is the run number |
 | `audit-manifest.json` | When the run did not come from a manifest | The minimal manifest for the audit |
 
-No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`, `report.md` and the review files of a pass that Resume repeats. The counters keep the other names apart: `review-<n>` and `diff-<n>` take the pass number, `pre-<n>` its own counter and `comment-<n>` the run number. The one per-run name with no counter is `audit-manifest.json`, which from run 2 on is `audit-manifest-run<n>.json`, with `<n>` the run's number, as in `audit-manifest-run2.json`. Within one run, a later write of the same file replaces it.
+No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`, `report.md` and the review files of a pass that Resume repeats. The counters keep the other names apart: `review-<n>` and `diff-<n>` take the pass number, `pre-<n>` its own counter, `post-<n>` shares its call's number with `pre-<n>` and `comment-<n>` the run number. The one per-run name with no counter is `audit-manifest.json`, which from run 2 on is `audit-manifest-run<n>.json`, with `<n>` the run's number, as in `audit-manifest-run2.json`. Within one run, a later write of the same file replaces it.
 
 ## passes.json
 
@@ -82,13 +83,13 @@ Each pass entry, and the step that writes it:
 4. `passes`, from a pass number to `{"line", "bucket", "reason", "prior"}`: the line the review gave, the bucket and reason of the triage, and the entry's earlier state, or `null`.
 5. After a match, `match`: `{"of": "<earlier id>", "reason": "<one line>"}`.
 
-`findings.mjs` writes the file and sets `new`, `regressed` (bucket `fix`, for a finding fixed in an earlier pass that returns) and `carried` (bucket `reject`, for a rejected finding that returns, which counts as nothing in `next.mjs`). A deferred finding that returns keeps the state `deferred` and gets the bucket `defer` with the reason of its last defer pass, or `deferred in an earlier pass` when no pass holds one. A regressed entry that returns keeps the state `regressed` and gets no bucket, so the triage sorts it again. It leaves the bucket and reason of a new entry `null`, and prints each new finding with its `candidates`, the same file's settled entries that no review of this pass reported (Step 1.6), which the ledger does not keep.
+`findings.mjs` writes the file and sets `new`, `regressed` (bucket `fix`, for a finding fixed in an earlier pass that returns) and `carried` (bucket `reject`, for a rejected finding that returns, which counts as nothing in `next.mjs`). A deferred finding that returns keeps the state `deferred` and gets the bucket `defer` with the reason of its last defer pass, or `deferred in an earlier pass` when no pass holds one. A regressed entry that returns keeps the state `regressed` and gets no bucket, so the triage sorts it again. It leaves the bucket and reason of a new entry `null`, and prints each new finding with its `candidates`, the same file's settled entries that no review of this pass reported (Step 1.6), which the ledger does not keep. It prints a warning on stderr for an entry new in the latest pass the ledger holds that is `carried` or `regressed` with no `match`, and still exits 0. Its `--check` mode, `findings.mjs --check <pass> <ledger>`, prints the same warnings for the ledger as it stands, for the entries new in `<pass>`, and writes nothing, and Step 1.6 runs it after each triage.
 
 You write the rest:
 
 1. The triage fills each `null` bucket and reason in the pass's entry and sets the state: `fix` gives `open` (a `regressed` entry stays `regressed`), `defer` gives `deferred`, `reject` gives `rejected`.
 2. After the fix round's commit exists, each fix-bucket entry of the pass becomes `fixed`.
-3. When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says: add `match` to the new entry, give it the bucket and state the script gives a returning entry of the candidate's state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
+3. When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says: add `match` to the new entry in the same write as the bucket and state the script gives a returning entry of the candidate's state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
 
 ## Write discipline
 

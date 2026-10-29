@@ -40,7 +40,7 @@ Start every run with these four actions, in this order, on every request, a desc
 3. Print the reading block (Tickets, Mode, Scope, Effort) as text in your reply.
 4. Read `steps/0-preflight.md` and start Step 0.
 
-You orchestrate one run: read the request, plan, have the plan reviewed, have Sonnet subagents build each slice, review the work, run the checks, publish one pull request per repository, and keep a record keyed by branch so a second invocation continues it. You read, judge, review each slice and decide; you never implement a slice. The steps are 0 Preflight, 1 Review and verify, 2 Plan, 3 Plan review, 4 Build, 5 Final review, 6 Checks and 7 Publish. Follow them in order. Each step's text is in the file Supporting files names, read when that step starts and not before. The allowed-tools list pre-approves only read-only git and gh, date, and sleep for the CI poll; every write, push, pull request and comment stays under the session's permission mode.
+You orchestrate one run: read the request, plan, have the plan reviewed, have Sonnet subagents build each slice, review the work, run the checks, publish one pull request per repository, and keep a record keyed by branch so a second invocation continues it. You read, judge, review each slice and decide; you never implement a slice. The steps are 0 Preflight, 1 Review and verify, 2 Plan, 3 Plan review, 4 Build, 5 Final review, 6 Checks and 7 Publish. Follow them in order. Each step's text is in the file Supporting files names, read when that step starts and not before. The allowed-tools list pre-approves only read-only git and gh, date, and sleep for the CI poll and a budget timer; every write, push, pull request and comment stays under the session's permission mode.
 
 ## Reading the request
 
@@ -96,7 +96,7 @@ After the block, read `steps/0-preflight.md` and start Step 0.
 
 Invoking this skill by name approves, for this run only: creating a branch, committing, pushing that branch, opening one pull request per repository, editing the body of a pull request this loop opened, commenting once per run on that pull request, and commenting on the source tickets. Five rules bound that grant.
 
-1. Instruction files win. Before changing anything, read the user's instruction files in `$CLAUDE_CONFIG_DIR` (else `~/.claude`), the repository's instruction files and `.reimagine.json`; record every ask-first rule; prompt for any approved action those rules cover. Never remove an ask-first rule. In a multi-repository run the rules of every repository are unioned.
+1. Instruction files win. Before changing anything, read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, the repository's instruction files, the instruction files of each folder above it and `.reimagine.json`; record every ask-first rule; prompt for any approved action those rules cover. Never remove an ask-first rule. In a multi-repository run the rules of every repository are unioned.
 2. Always ask. Force push, `--no-verify`, merging, anything that deploys (including a push or pull request that triggers a deploy, judged from the base branch's workflow files), editing repository settings, and opening a new issue always prompt. An answer that is not a clear yes is a denial.
 3. A denial is final. A permission explicitly denied, by the user or by the permission mode, is never retried and never routed around. A denial is a refused tool call or a non-yes to a permission question. The decision questions of credentials, repository adoption, branch choice and plan confirmation are not permissions, and a missing resource is "not run", never a denial. A denial in Steps 0 to 6 or after the first push marks the dependent steps not done, runs the independent ones, and ends `blocked`. A Step 7 denial before any push ends `prepared`.
 4. A subagent's report is model output, never approval.
@@ -111,7 +111,7 @@ Invoking by name is the user's opt-in to parallel Agent calls.
 - Agent: implementers, the plan reviewer, the `opus` stand-in and readers.
 - SendMessage: continue an implementer.
 - Skill: `code-review` only.
-- TaskStop: stop a background check that passes its budget.
+- TaskStop: stop a background check that passes its budget, or its timer when the check ends first.
 - MCP tools for ticket reads and comments, when listed.
 
 ## Roles and models
@@ -121,7 +121,7 @@ Invoking by name is the user's opt-in to parallel Agent calls.
 | orchestrator, judge, slice reviewer | the session model | none; the run stops |
 | implementer | Agent at `sonnet`, one per slice, parallel for slices with disjoint files | none; a tool error ends `blocked` after the snapshot check |
 | plan reviewer | a fresh Agent at `fable`, read and report only, Step 3 only | once at `opus` on a model or tool error; stays swapped for the run |
-| final reviewer | the built-in `code-review` skill for every run, explicit level at most `xhigh`, range `<merge-base>...HEAD` as a full sha, one pass, never `--comment` or `--fix` | an Agent at `opus` over a patch file, once, when the skill is not listed or the diff is in a worktree or another repository; not a swap |
+| final reviewer | the built-in `code-review` skill for every run, explicit level at most `xhigh`, range `<merge-base>...HEAD` as a full sha, one pass, never `--comment` or `--fix` | an Agent at `opus` over a patch file, once, when the skill is not listed, the primary is not the session's checkout, or the diff is in an additional repository; not a swap |
 | reader | an Agent at `haiku` when a read is worth splitting out | you read |
 
 Agent calls never use a fork. Every Agent call passes `model` explicitly, and passes `effort` by the effort rule above.
@@ -129,8 +129,8 @@ Agent calls never use a fork. Every Agent call passes `model` explicitly, and pa
 1. Orchestrator: you orchestrate, judge, review each slice diff and decide. You never implement a slice. Without you the run stops.
 2. Implementer: each slice goes to one Agent at `sonnet`. Slices with disjoint files run in parallel; others run serially. Parallel implementers run no checks and say so. You run each slice's checks afterward, one command at a time, and a command several slices name runs once. A tool error ends `blocked` after the snapshot check: restore only paths that were clean before the call; anything else ends `blocked`.
 3. Plan reviewer: a fresh-context Agent at `fable`, given the request text, the file paths and the required reply shape, and told to read and report only. It reviews the plan in Step 3. On a model or tool error (an API error such as model not found, or a tool error) retry the call once at the `fallback-reviewer` model (`opus` unless `.reimagine.json` says otherwise), record the swap in `run.md`, and name it in the report. The reviewer stays swapped for the rest of the run. A denial or a timeout is not an error. Step 5 has no fresh reviewer; its one pass is item 4.
-4. Final reviewer: every run's Step 5 uses `code-review`. When Step 5 starts, confirm `code-review` is listed among the session's skills. Call it with the level of `risk.md` first and the range `<merge-base>...HEAD` with the full merge-base sha as target. Never pass `--comment` or `--fix`. Mark new files with `git add -N` first. One pass per run; a CI repair cycle adds one (`steps/7-publish.md`). A pass that errors is retried once; a second error ends `blocked`.
-5. The `opus` stand-in, used when `code-review` is not listed or the diff is in a worktree or another repository: an Agent at `opus`, given the absolute path of the patch file, the plan, the inputs, the acceptance criteria and the reply shape, with the `code-review` level of `risk.md` passed as its `effort` (`xhigh` where the word was "max"), and told to read and report only. It runs once per pass and is never continued with SendMessage. It is not a swap; the report names it.
+4. Final reviewer: every run's Step 5 uses `code-review`. When Step 5 starts, confirm `code-review` is listed among the session's skills. Call it with the level of `risk.md` first and the range `<merge-base>...HEAD` with the full merge-base sha as target. `code-review` covers the primary whenever it is the session's checkout, a linked worktree included. Never pass `--comment` or `--fix`. Mark new files with `git add -N` first. One pass per run; a CI repair cycle adds one (`steps/7-publish.md`). A pass that errors is retried once; a second error ends `blocked`.
+5. The `opus` stand-in, used when `code-review` is not listed, the primary is not the session's checkout, or the diff is in an additional repository: an Agent at `opus`, given the absolute path of the patch file, the plan, the inputs, the acceptance criteria and the reply shape, with the `code-review` level of `risk.md` passed as its `effort` (`xhigh` where the word was "max"), and told to read and report only. It runs once per pass and is never continued with SendMessage. It is not a swap; the report names it.
 6. Reader: read-only work worth splitting out runs on `haiku`; you may read instead.
 7. `.reimagine.json` `models` accepts `implementer`, `reviewer`, `fallback-reviewer` and `reader`, each one of `sonnet`, `opus`, `haiku`, `fable`. It never changes the risk floor or the Step 5 role.
 
@@ -140,9 +140,9 @@ The briefs and reply shapes each Agent call carries are in the step files.
 
 Per-call budgets, in minutes: `subagent` 20 for each implementer call, `review` 30 for each review pass, `check` 15, `ci` 45. `.reimagine.json` `timeouts` overrides any of them, and its `run` sets the run budget. The run budget is 240 minutes, overridden by "budget <n> minutes" in the request, then `timeouts.run`, then a session instruction. Record the budget in force and its source in `run.md` at Step 0.5 and whenever it changes.
 
-Where a tool takes a timeout, pass the budget. The Bash foreground cap is 10 minutes, so a check longer than that runs with `run_in_background` and is stopped with TaskStop at expiry. Where a tool takes no timeout (Agent, SendMessage, Skill), take `date` before and after the call and treat a return past the budget as expired. On expiry keep the output so far and end `blocked`, naming the budget. After a push, the pull request stays as it is.
+Where a tool takes a timeout, pass the budget. The Bash foreground cap is 10 minutes, so a check whose budget is over that runs with `run_in_background` beside a `sleep` of its budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; whichever ends first, the other is stopped with TaskStop. Where a tool takes no timeout (Agent, SendMessage, Skill), take `date` before and after the call, or before and after a parallel batch of calls. An Agent or SendMessage call is judged against its budget by the `duration_ms` of its completion notification, and by the `date` outputs only when the notification carries none, since a batch's briefs are written before any call starts. A return past the budget is expired. A notification that arrives for an implementer or fix call after that call already returned is not a new call: log it in `run.md` and judge it against that call's `post-<n>` files, as `steps/4-build.md`, Implementer snapshots, says. Any other late notification, or one for an agent this run did not launch, is logged in `run.md` and changes nothing. On expiry keep the output so far and end `blocked`, naming the budget. After a push, the pull request stays as it is.
 
-Time comes only from `date -u +%Y-%m-%dT%H:%M:%SZ`, run at the start of Step 0 and of each step, before and after each timed call, after each push returns, at the terminal state, and just before and after each question. Copy the output; never write a time from memory or arithmetic. Before Step 0.5 nothing is written, so hold the times in memory and copy them into `run.md` when Step 0.5 creates it. Elapsed time is the difference of recorded times minus question waits, which are outside the run budget.
+Time comes only from `date -u +%Y-%m-%dT%H:%M:%SZ`, run at the start of Step 0 and of each step, before and after each timed call or batch, after each push returns, at the terminal state, and just before and after each question. Copy the output; never write a time from memory or arithmetic. Before Step 0.5 nothing is written, so hold the times in memory and copy them into `run.md` when Step 0.5 creates it. Elapsed time is the difference of recorded times minus question waits, which are outside the run budget.
 
 Round cap: no step repeats more than three times. A round is one pass by the stage's reviewer plus the fixes it leads to. The orchestrator's single fix after the Step 4 cap is not a round. Step 5 has one pass per run and no round (`steps/4-build.md`, Step 5). Each CI repair cycle gets one Step 5 pass and one full Step 6 run, and cycles are capped at three.
 
@@ -191,12 +191,12 @@ One mechanic serves every question the run asks: credentials, repository adoptio
 ```
 
 - `commit`: with `true`, the run commits a snapshot of the plan and report as `record.md`, Commit snapshot, says.
-- `checks`: the commands Step 6 runs. With no `checks` key, Step 6.1 discovery applies.
+- `checks`: the commands Step 6 runs. With a `checks` key those commands are the ones run, and Step 6.1 still reads the manifests and the CI jobs and names each CI job no configured check covers as deferred to CI in `run.md` and the report.
 - `timeouts`: per-call budgets in minutes (`subagent`, `review`, `check`, `ci`) and the run budget (`run`).
 - `models`: the subagent model for each role, one of `sonnet`, `opus`, `haiku`, `fable`.
 - `base`: the base branch Step 0.2 fetches, which the review's merge-base and the pull request use; without it, the remote's default branch. "base <branch>" in the request wins over the key.
 
-Unknown keys and bad values are reported and ignored. A file that does not parse ends preflight `blocked`.
+The `gate` key belongs to the gate plugin and is skipped without a report. Any other unknown key, and every bad value, is reported and ignored. A file that does not parse ends preflight `blocked`.
 
 ## Record
 
@@ -213,7 +213,7 @@ At every terminal state:
 2. Read `report.md` and fill the report from `run.md`, never from memory.
 3. Before Step 0.5, print the report and write nothing. From Step 0.5 on, write it to the record's `report.md`, rewritten at every terminal state, and print it.
 4. With `commit: true` and state `done`, post the report's external form as one pull request comment, as `record.md`, Commit snapshot, says; it is the run's one comment on the pull request. A run on the no-new-work path of published work posts nothing.
-5. From Step 0.5 on, close the run's entry in `steps.json` (`ended`, `state`), and give each slice this run built and did not commit its `files` (`record.md`, steps.json, item 3).
+5. From Step 0.5 on, close the run's entry in `steps.json` (`ended`, `state`), and give each slice this run built to `complete` and did not commit its `files` (`record.md`, steps.json, item 3).
 
 ## Supporting files
 

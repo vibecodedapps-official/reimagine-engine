@@ -168,3 +168,65 @@ test('R135: the Risk section of the report names the Step 5 level and the stand-
 test('R106: Step 4.5 judges the floor alone', () => {
   assert.ok(BUILD.includes('**4.5 Re-evaluation.** Judge the risk floor of `risk.md` on the actual diff from the merge-base.'));
 });
+
+test('R99, R104: Step 2 sizes a slice to the subagent budget, and the brief names it', () => {
+  assert.ok(PLAN.includes('The subagent budget is the one in force for the run, `timeouts.subagent` in `.reimagine.json`, else 20 minutes'));
+  assert.ok(PLAN.includes('An implementer call past it ends the run `blocked`'));
+  const brief = section(BUILD, 'Implementer brief');
+  assert.notEqual(brief, null);
+  assert.ok(brief.includes('7. The subagent budget in force, in minutes, and that a call past it ends the run `blocked`'));
+  assert.ok(brief.includes('8. The reply shape'));
+});
+
+test('R67, R104: an implementer call is judged by its notification, and the brief bars background commands', () => {
+  assert.ok(SKILL.includes('An Agent or SendMessage call is judged against its budget by the `duration_ms` of its completion notification'));
+  assert.ok(SKILL.includes('A notification that arrives for an implementer or fix call after that call already returned is not a new call'));
+  assert.ok(SKILL.includes('Any other late notification, or one for an agent this run did not launch, is logged in `run.md` and changes nothing.'));
+  assert.ok(SKILL.includes('The allowed-tools list pre-approves only read-only git and gh, date, and sleep for the CI poll and a budget timer;'));
+  assert.ok(BUILD.includes('A check whose budget is over 10 minutes runs in the background beside the `sleep` timer SKILL.md gives with the budgets, whichever ends first stopping the other.'));
+  assert.ok(SKILL.split('\n').includes('- TaskStop: stop a background check that passes its budget, or its timer when the check ends first.'));
+  assert.ok(SKILL.includes('a check whose budget is over that runs with `run_in_background` beside a `sleep` of its budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; whichever ends first, the other is stopped with TaskStop.'));
+  assert.ok(!SKILL.includes('take `date` before and after the call and treat a return past the budget as expired'));
+  assert.ok(BUILD.includes("each call's `duration_ms` from its completion notification"));
+  assert.ok(BUILD.includes("A call is judged by its notification's `duration_ms`"));
+  const brief = section(BUILD, 'Implementer brief');
+  assert.notEqual(brief, null);
+  assert.ok(brief.includes('start a background command'));
+});
+
+test('R67: a late notification is judged against its post-<n> files', () => {
+  const snaps = section(BUILD, 'Implementer snapshots');
+  assert.notEqual(snaps, null);
+  assert.ok(snaps.includes('post-<n>.status'));
+  assert.ok(snaps.includes('post-<n>.hashes'));
+  assert.ok(snaps.includes('ends the run `blocked` naming the path'));
+  assert.ok(snaps.includes('Read each path from a status line unquoted and unescaped when status prints it in double quotes, and for a rename (`old -> new`) take the new path.'));
+  assert.ok(snaps.includes('each path read as item 1 says'));
+  assert.ok(snaps.includes("compare the checkout with that call's `post-<n>` files, hashing each path as item 7 does, since `pre-<n>.hashes` uses the filtered hash."));
+  assert.ok(!SKILL.includes('unless the snapshot comparison finds the tree changed after the first return'));
+  assert.ok(SKILL.includes('post-<n>'));
+  assert.ok(read('record.md').includes('post-<n>'));
+});
+
+test('R63: code-review covers a primary that is the session checkout, and the stand-in covers the rest', () => {
+  const ARCH = readFileSync(new URL('../../docs/architecture.md', import.meta.url), 'utf8');
+  const MULTI = read('multi-repo.md');
+  const old = [
+    'the diff is in a worktree or another repository',
+    'the diff is in a worktree or an additional repository',
+    '(and a primary in a worktree)',
+    '(a worktree or an additional repository)',
+  ];
+  const standIn = "the primary is not the session's checkout, or the diff is in an additional repository";
+  const files = { 'SKILL.md': SKILL, 'steps/4-build.md': BUILD, 'multi-repo.md': MULTI, 'steps/1-plan.md': PLAN, 'docs/architecture.md': ARCH };
+  for (const [name, text] of Object.entries(files)) {
+    for (const phrase of old) assert.ok(!text.includes(phrase), `${name} still holds "${phrase}"`);
+    assert.ok(text.includes(standIn), `${name} lacks the stand-in condition`);
+  }
+  const covers = "`code-review` covers the primary whenever it is the session's checkout, a linked worktree included";
+  assert.ok(SKILL.includes(covers));
+  assert.ok(MULTI.includes(covers));
+  const report = read('report.md');
+  assert.ok(!report.includes('(the skill not listed, a worktree, an additional repository)'));
+  assert.ok(report.includes("(the skill not listed, a primary that is not the session's checkout, an additional repository)"));
+});

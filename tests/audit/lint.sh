@@ -14,7 +14,9 @@
 #
 # Checks:
 # - commands/run.md, resume.md, act.md, handoff.md exist; every commands/*.md has
-#   frontmatter keys description, argument-hint, allowed-tools.
+#   frontmatter keys description, argument-hint, allowed-tools; no commands/*.md file
+#   holds the variable inside double quotes, as "$ARGUMENTS" (alone on a line or
+#   anywhere), which would make the user's whole request one token.
 # - agents/digester.md, mapper.md, auditor.md, adversary.md, merger.md exist; every
 #   agents/*.md has frontmatter keys name (equal to the file name), description,
 #   model, tools; every tools entry (YAML list, comma string, or [flow list]) is one
@@ -101,7 +103,8 @@
 #   `status: complete`, and, but for the merger, `mkdir -p`, a heredoc and a command
 #   that waits on input; skills/audit/common.md hard rule 2 allows `mkdir -p` of the
 #   agent's own scratch folder and bars an inline program or a heredoc; SKILL.md says a
-#   late completion notification changes nothing.
+#   late completion notification, or one for an agent this session did not launch, changes
+#   nothing.
 # - skills/audit/stages/9-act.md shows an item's defect before the edit, logs it as
 #   `demonstrate`, lists that action, and carries the before and after results into the
 #   commit body; step 7 reruns each `demonstrate` command after the change and logs its
@@ -203,6 +206,8 @@ for c in run resume act handoff; do
 done
 for f in $(listed '^commands/[^/]+\.md$'); do
 	need_keys "$f" description argument-hint allowed-tools
+	grep -nF '"$ARGUMENTS"' "$f" > "$tmp/grep"
+	hits "$f" 'holds "$ARGUMENTS" in double quotes; hold $ARGUMENTS unquoted so the words split into tokens' < "$tmp/grep"
 done
 
 # Agents.
@@ -641,6 +646,8 @@ if [ -f "$f" ]; then
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF 'A completion notification for an agent whose stage entry is already `complete` or `failed` changes nothing' "$tmp/list" ||
 		fail "$f: does not say a late completion notification changes nothing"
+	grep -qF 'for an agent this session did not launch, such as one an earlier session launched, also changes nothing' "$tmp/list" ||
+		fail "$f: does not say a completion notification for an unlisted agent changes nothing"
 fi
 # Act shows an item's defect at baseline before it edits, logs it as `demonstrate`, and
 # carries the before and after results into the commit body; the file is read as one line.

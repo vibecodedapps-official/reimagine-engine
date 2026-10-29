@@ -79,8 +79,32 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   assert.notEqual(readme, undefined, 'README.md has no json block');
   assert.equal(skill.lines.join('\n'), readme.lines.join('\n'));
   assert.deepEqual(JSON.parse(skill.lines.join('\n')), {
-    gate: { split: 1500, 'max-passes': 4, budget: 120, models: { implementer: 'sonnet', 'fallback-reviewer': 'opus' } },
+    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', 'fallback-reviewer': 'opus' } },
   });
+});
+
+test('R313: the timeouts key is described and falls back to the root timeouts in SKILL.md and the README', () => {
+  for (const [name, text] of [['SKILL.md', SKILL], ['README.md', README]]) {
+    for (const key of ['subagent', 'review', 'check']) assert.ok(text.includes(`\`${key}\``), `${name} does not describe timeouts.${key}`);
+    assert.ok(text.includes('takes the root `.reimagine.json` `timeouts` value of the same name, then the default'), `${name} does not state the fallback to the root timeouts`);
+  }
+  assert.ok(SKILL.includes('`split`, `max-passes` and `budget` are whole numbers of 1 or more. `timeouts` holds positive numbers.'), 'SKILL.md does not validate timeouts');
+});
+
+test('R303: the step files state no fixed minutes for a review, an implementer call or a check', () => {
+  for (const rel of supporting().filter((r) => r.startsWith('steps/'))) {
+    const text = read(rel);
+    for (const literal of ['20 minutes', '30 minutes', '15 minutes', '20-minute', '30-minute', '15-minute']) assert.ok(!text.includes(literal), `${rel} still holds: ${literal}`);
+  }
+  holds('steps/1-pass.md', 'The review budget is');
+});
+
+test('R291 and R313: the Budget line names the subagent, review and check budgets after max-passes and split', () => {
+  const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
+  assert.notEqual(block, undefined, 'SKILL.md has no reading block');
+  const line = block.lines.find((l) => l.startsWith('Budget: '));
+  assert.equal(line, 'Budget: 120 minutes (default); max-passes 4; split 1500; subagent 20, review 30, check 15 minutes (default)');
+  assert.ok(SKILL.includes('then the subagent, review and check budgets in force, each with its source (`gate.timeouts`, root `timeouts`) when it is not the default'), 'SKILL.md does not describe the Budget line');
 });
 
 test('R291: the reading block is one fenced block of five lines in a fixed order', () => {
@@ -98,6 +122,31 @@ test('R289 and R300: the checks phrase is in both grammar lists and ends where a
     assert.ok(text.includes('runs to the next comma that another recognized phrase follows'), 'the checks phrase does not end at a later phrase');
     assert.ok(!text.includes('last phrase'), 'the checks phrase is still read as the last phrase');
   }
+});
+
+test('R289 and R323: the repo phrase is in both grammar lists and is checked as the toplevel of its path', () => {
+  assert.ok(SKILL.includes('- "repo <path>": '), 'SKILL.md does not list the repo phrase');
+  assert.ok(README.includes('- `repo <path>`: '), 'README.md does not list the repo phrase');
+  assert.ok(SKILL.includes('`git -C <path> rev-parse --is-inside-work-tree --show-prefix` exits 0 and prints `true` and then an empty line, else the target is unresolved, since a `.git` folder prints `false` with an empty prefix'), 'SKILL.md lacks the toplevel check');
+  assert.ok(!SKILL.includes('`git -C <path> rev-parse --show-prefix` exits 0 and prints an empty line'), 'SKILL.md still accepts a .git folder');
+  assert.ok(SKILL.includes('The check compares no strings, so a path typed in another case or as `/c/...` resolves, and a leading `~` is written as `$HOME`, since git does not expand a quoted `~`'), 'SKILL.md lacks the statement that the check compares no strings');
+  assert.ok(!SKILL.includes('with `~` or as `/c/...` resolves'), 'SKILL.md still says a quoted ~ resolves');
+  assert.ok(SKILL.includes('`git -C <path> rev-parse --show-toplevel` gives the toplevel the Targets line names'), 'SKILL.md does not take the toplevel from --show-toplevel');
+  assert.ok(!SKILL.includes('compared as absolute paths with forward slashes'), 'SKILL.md still compares the path as a string');
+  assert.ok(SKILL.includes('and for "repo <path>" the `git -C <path> rev-parse` calls, which may prompt, since the skill pre-approves only the plain forms'), 'SKILL.md does not list the git -C calls among those made before the reading block');
+  assert.ok(SKILL.includes('Beside a pull request or manifest target, "repo <path>" is one unresolved line'), 'SKILL.md lacks the unresolved rule beside a pull request or manifest target');
+  assert.ok(SKILL.includes('a branch target named by "repo <path>" shows its resolved toplevel'), 'SKILL.md does not put the toplevel on the Targets line');
+});
+
+test('R323: a target named by repo runs its commands in the forms of a manifest bundle', () => {
+  const text = holds('steps/0-preflight.md', 'A branch target named by "repo <path>" runs the same way: `git -C <path>`, and `cd <path> && <command>` in one Bash call for gh, the child session and the run\'s checks, with absolute paths.');
+  assert.ok(text.includes('Those forms, and a manifest bundle\'s, count as prompts'), 'the permission statement does not count the forms as prompts');
+  assert.ok(text.includes('read it with `git -C <path> rev-parse --abbrev-ref HEAD`'), 'the head is not read in the named repository');
+  assert.ok(text.includes('For a manifest bundle or "repo <path>", read the repository\'s instruction files in its `repo` or in `<path>`, not in the session\'s folder'), '0.3 does not read the instruction files in the target');
+  assert.ok(text.includes('for a manifest bundle or "repo <path>", read it in its `repo` or in `<path>`'), '0.3 does not read .reimagine.json in the target');
+  holds('steps/0-preflight.md', 'Each path in these forms is written in double quotes, since a folder name may hold a space.');
+  holds('steps/2-fix.md', 'for a manifest bundle or "repo <path>", run each check as `cd "<path>" && <check>` in one Bash call, with `<path>` the bundle\'s `repo` or the path of "repo <path>"');
+  assert.ok(SKILL.includes('for "repo <path>" it is the `.reimagine.json` of `<path>`, not of the session\'s folder'), 'SKILL.md Configuration reads the session\'s .reimagine.json');
 });
 
 test('R300: the checks come from the request, the manifest bundle or the configuration, in that order', () => {
@@ -156,8 +205,13 @@ test('R318: the scripts run by the path of the Scripts line, never by the plugin
   holds('steps/3-next.md', 'node "<scripts>/next.mjs"');
 });
 
-test('R309: Step 0 excludes the record through git rev-parse --git-path info/exclude, never .gitignore', () => {
-  holds('steps/0-preflight.md', 'git rev-parse --git-path info/exclude', 'git check-ignore -q .reimagine/', 'append `.reimagine/`', 'never `.gitignore`');
+test('R309: the record is excluded through git rev-parse --git-path info/exclude read relative to the repository, never .gitignore', () => {
+  const lookup = 'git rev-parse --git-path info/exclude';
+  const relative = 'read relative to the repository\'s folder when it is not absolute';
+  holds('steps/0-preflight.md', lookup, relative, 'git check-ignore -q .reimagine/', 'append `.reimagine/`', 'never `.gitignore`');
+  holds('record.md', lookup, relative);
+  assert.ok(SKILL.includes(lookup) && SKILL.includes(relative), 'SKILL.md lacks the relative reading of the exclude path');
+  for (const text of [SKILL, ...supporting().map(read)]) assert.ok(!text.includes('--path-format'), 'a gate file still needs --path-format, which git before 2.31 lacks');
 });
 
 test('R292: Step 0 fetches the base and the head with the explicit refspec and keeps the merge-base as a full sha', () => {
@@ -191,11 +245,40 @@ test('R297: a pass over split groups by path at the shallowest depth that gives 
   }
 });
 
+test('R297: a group still over split is grouped again one segment deeper and its slugs follow the final keys', () => {
+  holds('steps/1-pass.md',
+    'After grouping, a group still over `split` whose key is a directory is grouped again by the same rule over its own files, its depth starting one segment deeper and growing while all of them share one key, and so on until no group is over `split` or the group over it cannot split, being the `.` key or one file.',
+    'A regrouping that gives a single group, as when every file of the group sits directly in its directory, leaves the group as it was, under its directory key, target and slug.',
+    'a `src/api` group that holds only `src/api/a.ts` and `src/api/b.ts` stays the one group `src/api`, slug `src-api`, target `<merge-base>...HEAD src/api`.',
+    'Suppose the `src/api` group is itself over `split` and holds `src/api/v1/x.ts`, `src/api/v2/y.ts` and `src/api/index.ts`: it is grouped again at depth 3 into `src/api/v1` (slug `src-api-v1`), `src/api/v2` (slug `src-api-v2`) and the `.` key holding `src/api/index.ts` (slug `src-api-root`).',
+    'The slugs are made from the final keys: a `.` key made by grouping a directory key `<k>` again has the prefix `<k>`, and when several `.` keys remain they come after every directory key, in byte order of their prefixes.');
+  const gone = 'A group that alone is over `split` is still one review';
+  for (const [name, text] of [['SKILL.md', SKILL], ['README.md', README], ...supporting().map((rel) => [rel, read(rel)])]) {
+    assert.ok(!text.includes(gone), `${name} still holds: ${gone}`);
+  }
+  holds('record.md', 'a group still over `split` is grouped again one segment deeper');
+  assert.ok(SKILL.includes('a group still over `split` is grouped again one segment deeper'), 'SKILL.md lacks the regrouping');
+  assert.ok(README.includes('a group still over `split` is grouped again one segment deeper'), 'README.md lacks the regrouping');
+});
+
 test('R302: a match takes what the script gives a returning entry of the candidate\'s state', () => {
   holds('steps/1-pass.md', '`fix` and `regressed` for a fixed one, `reject` and `carried` for a rejected or carried one, `defer` and `deferred` for a deferred one, and for a regressed one no bucket, its state staying `regressed`');
   holds('record.md', 'A regressed entry that returns keeps the state `regressed` and gets no bucket');
   holds('record.md', 'When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says');
   assert.ok(!read('record.md').includes('an earlier fixed or rejected entry'), 'record.md still limits a match to fixed or rejected entries');
+});
+
+test('R302 and R306: the match is written with the bucket and state, and a match without its link is warned about', () => {
+  holds('steps/1-pass.md', 'its `match`, `{"of": "<earlier id>", "reason": "<why>"}`, and the bucket and state of item 2 go in this same write', 'findings: warning:');
+  holds('record.md', 'with no `match`');
+});
+
+test('R306: Step 1.6 runs findings.mjs --check after each triage write and the repair keys the finding under the earlier id', () => {
+  holds('steps/1-pass.md',
+    'node "<scripts>/findings.mjs" --check <n> <record>/findings.json',
+    'key the finding under the earlier id in the pass\'s `findings` of `passes.json`',
+    'key that finding under it in the `findings` of that earlier pass in `passes.json`');
+  holds('record.md', '`--check`');
 });
 
 test('R297: two keys of one pass never share a slug', () => {
@@ -220,6 +303,16 @@ test('R294 and R313: Step 0 reads the instruction files and the configuration an
   }
 });
 
+test('R294: the gate reads the instruction files of one directory only and the statement names it', () => {
+  const rule = 'in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both';
+  const step = holds('steps/0-preflight.md', rule, 'since the session loads only that directory\'s user instruction files', 'the instruction directory read, by name', 'Instruction directory read: ~/.claude.', 'and `CLAUDE.md` and `.claude/CLAUDE.md` in each folder above the repository\'s root, since the session loads those as project instructions, `~/.claude/CLAUDE.md` among them for a repository under the home folder');
+  const skill = holds('SKILL.md', rule, 'the instruction files of each folder above it');
+  for (const text of [step, skill]) {
+    assert.ok(!text.includes('(else `~/.claude`)'), 'the old parenthesis is still there');
+    assert.ok(!text.includes('in `$CLAUDE_CONFIG_DIR`, else `~/.claude`'), 'the old wording is still there');
+  }
+});
+
 test('R290: Step 0 runs several targets one after another and a manifest by bundle', () => {
   holds('steps/0-preflight.md', 'one after another', '`pr` or a `branch`', '`repo`', 'bundle order', 'unresolved', 'comment skipped');
 });
@@ -238,6 +331,8 @@ const COMMAND =
   'cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
 
 test('R305: Step 1 holds the child session command as one fenced line', () => {
+  holds('SKILL.md', 'In every command the skill and its step files show, a placeholder for a path, such as `<path>`, `<repo>`, `<repo root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.');
+  holds('steps/1-pass.md', 'every path handed to a command is absolute and in double quotes, since a folder name may hold a space.');
   const text = holds('steps/1-pass.md', 'run_in_background');
   assert.ok(text.startsWith('# Step 1: A pass\n'));
   assert.ok(fencedLines(text).includes(COMMAND), 'Step 1 lacks the command literal');
@@ -274,12 +369,36 @@ test('R296: nothing is edited while a review runs', () => {
 });
 
 test('R300: Step 2 takes the three snapshot files before each implementer call and restores only clean paths', () => {
-  const text = holds('steps/2-fix.md', 'pre-<n>.status', 'pre-<n>.patch', 'pre-<n>.hashes', 'models.implementer', '20 minutes', 'never touch an ignored path or anything under `.reimagine/`');
+  const text = holds('steps/2-fix.md', 'pre-<n>.status', 'pre-<n>.patch', 'pre-<n>.hashes', 'models.implementer', 'the subagent budget', 'never touch an ignored path or anything under `.reimagine/`');
   assert.ok(text.startsWith('# Step 2: The fix round\n'));
+  for (const old of ['Each call has 20 minutes', 'the 20-minute budget', 'The budget: 20 minutes']) assert.ok(!text.includes(old), `steps/2-fix.md still holds: ${old}`);
 });
 
-test('R300 and R303: Step 2 runs the checks one at a time for 15 minutes and fixes a failing one at most three times', () => {
-  holds('steps/2-fix.md', 'one command at a time', '15 minutes', 'three times', '`denied`', 'no `checks` key');
+test('R300: Step 2 judges an implementer call by its notification duration_ms and bars a background command', () => {
+  holds('steps/2-fix.md',
+    'before and after each implementer call, or before and after a parallel batch, and each check',
+    'A call is judged against the subagent budget by the `duration_ms` of its completion notification, and by the `date` outputs only when the notification carries none, since a batch\'s briefs are written before any call starts.',
+    'A notification that arrives for an implementer call after that call already returned is not a new call: Snapshots, item 8, says how it is judged. Any other late notification, or one for an agent this run did not launch, is logged and changes nothing.',
+    'or start a background command, since one that finishes after the call returns wakes it again',
+    'After a failed call (Groups, item 4)');
+  holds('report.md', "its `duration_ms` from the completion notification");
+});
+
+test('R300: Step 2 judges a late notification against the call\'s post-<n> files', () => {
+  const text = holds('steps/2-fix.md', '## Snapshots');
+  const start = text.indexOf('## Snapshots');
+  const end = text.indexOf('\n## ', start + 1);
+  const snaps = text.slice(start, end);
+  assert.ok(snaps.includes('post-<n>.status'));
+  assert.ok(snaps.includes('post-<n>.hashes'));
+  assert.ok(snaps.includes('ends the run `blocked` naming the path'));
+  assert.ok(!text.includes('unless the snapshot comparison finds the tree changed after the first return'));
+  holds('record.md', '`post-<n>.status`, `post-<n>.hashes`', '`post-<n>` shares its call\'s number');
+});
+
+test('R300 and R303: Step 2 runs the checks one at a time within the check budget and fixes a failing one at most three times', () => {
+  const text = holds('steps/2-fix.md', 'one command at a time', 'the check budget', 'three times', '`denied`', 'no `checks` key');
+  for (const old of ['each with 15 minutes', 'the 15-minute budget']) assert.ok(!text.includes(old), `steps/2-fix.md still holds: ${old}`);
 });
 
 test('R300: Step 2 stages each path by name and never stages everything', () => {
@@ -417,4 +536,23 @@ test('R317: report.md holds the report header line for line and its seven sectio
 
 test('R317: Step 4 prints the written report whole as the last text, with nothing after it', () => {
   holds('steps/4-publish.md', 'print the whole text of the report, unchanged, as the last text of this target', 'Nothing follows it: no summary, note or offer.');
+});
+
+test('R303: a check whose budget is over the foreground limit runs in the background and is stopped at expiry', () => {
+  holds('steps/2-fix.md', "3. Each check runs with its budget as the Bash call's timeout, since the default is 2 minutes.");
+  holds('steps/2-fix.md', 'A check whose budget is over 10 minutes, the foreground limit of the shell, runs with `run_in_background` instead, beside a `sleep` of the budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; whichever ends first, the other is stopped with TaskStop.');
+  holds('steps/1-pass.md', 'start a `sleep` of the review budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends', 'A review still running when the sleep ends is stopped with TaskStop', 'when every review has ended first, the sleep is stopped with TaskStop');
+  holds('SKILL.md', '  - Bash(sleep *)\n');
+});
+
+test('R317: the Log gives each implementer call its notification duration and the date pair of its call or batch', () => {
+  holds('report.md', "each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch");
+});
+
+test('R306: the repair of a warning takes the earlier id from passes.json, else from the reason, else leaves the entry', () => {
+  holds('steps/1-pass.md', 'the earlier id being the one that pass\'s `findings` in `passes.json` already keys the finding under, else the one its reason names; with neither, leave the entry as it is and name it in the Log', 'With an earlier id, also key that finding under it in the `findings` of that earlier pass in `passes.json`, and note the repair in the report\'s Log.');
+});
+
+test('R300: the snapshot items read each path from a status line unquoted and take the new path of a rename', () => {
+  holds('steps/2-fix.md', 'Read each path from a status line unquoted and unescaped when status prints it in double quotes, and for a rename (`old -> new`) take the new path.', 'each path read as item 1 says', "compare the checkout with that call's `post-<n>` files, hashing each path as item 7 does, since `pre-<n>.hashes` uses the filtered hash.");
 });

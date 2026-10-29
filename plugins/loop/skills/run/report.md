@@ -73,7 +73,7 @@ State the mode: attended when any action prompted, else unattended. List the pro
 
 - The floor trigger that applied, or `none`. When an edit touched a sensitive area and did not trigger the floor, say why (an incidental edit).
 - The effort hint, the effort in force for reviewers, and the Step 5 level typed to `code-review` or passed to the stand-in as `effort`.
-- The stand-in, when Step 5 or a CI repair pass used one, with the reason (the skill not listed, a worktree, an additional repository). A stand-in pass is not a swap.
+- The stand-in, when Step 5 or a CI repair pass used one, with the reason (the skill not listed, a primary that is not the session's checkout, an additional repository). A stand-in pass is not a swap.
 - Every reviewer swap, with its reason.
 - The `.reimagine.json` model overrides in force, and the values the run reported and ignored.
 
@@ -120,6 +120,8 @@ For `prepared`, also give the branch, the commit state, and the exact commands i
 2. `git commit`
 3. `git push -u <remote> <branch>`
 4. `gh pr create --title "<title>" --body-file <absolute path of the body file>`; for a continued branch with one open pull request, `gh pr comment <pr> --body-file <absolute path>` instead, preceded by `gh pr edit <pr> --body-file <absolute path of the body file>` when this loop opened that pull request; on a non-GitHub host, in place of a `gh` command, the title, the absolute path of the body file to paste as the pull request's description, the absolute path of the `comment-<n>.md` file to post as its first comment when there is one (with several repositories, each file with the repository it goes with), and the note that the pull request opens, and its work items are linked, with that host's own tooling.
+
+For a `blocked` run that left slice edits uncommitted in the tree, as after a block in Step 4, also give the exact commands, in the form of `prepared`: `git add <paths>` with the paths of each slice whose `status` in `steps.json` is `complete`, one line per slice; `git commit`; and `git push <remote> <branch>` when the branch exists on the remote, since the rerun's Step 0.2 stops on a local branch ahead of its remote. Say that a rerun then finds those slices committed by their files (`record.md`, An existing record, item 6) and builds nothing again for them. Each other slice whose edits are in the tree is named as not done with its paths, which are left out of the commands; say that the rerun's Step 0.3 stops on them until they are committed, restored or moved out of the tree, and then builds the slice again, since its partial edits would otherwise count as committed. With several repositories, give the set per repository with `git -C <path>`.
 
 ### Log
 

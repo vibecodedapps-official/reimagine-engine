@@ -12,7 +12,7 @@ Read this file after the reading block, which SKILL.md printed before any other 
 ## 0.2 Targets
 
 1. Several pull requests run one after another, in the order of the Targets line. Each goes through Steps 0 to 3 and its terminal state before the next starts, and each has its own record.
-2. A manifest runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order. Every git and gh command of a bundle runs against its `repo`: `git -C <repo>` and, for gh, `cd <repo> && <command>` in one Bash call, with absolute paths, as the loop's `multi-repo.md` says. The record is in that `repo`.
+2. A manifest runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order. Every git and gh command of a bundle runs against its `repo`: `git -C <repo>` and, for gh, `cd <repo> && <command>` in one Bash call, with absolute paths, as the loop's `multi-repo.md` says. The record is in that `repo`. A branch target named by "repo <path>" runs the same way: `git -C <path>`, and `cd <path> && <command>` in one Bash call for gh, the child session and the run's checks, with absolute paths. `<path>` is the toplevel the block shows, and the record is in it. Each path in these forms is written in double quotes, since a folder name may hold a space.
 3. A target the block lists as unresolved already has its line there. Skip it.
 4. A host other than GitHub runs with the comment skipped. Hold that for the report.
 5. `<r>` is the remote of the target's repository: the one whose fetch URL matches the `url` of `gh repo view --json nameWithOwner,url`, else `origin`.
@@ -21,13 +21,13 @@ Read this file after the reading block, which SKILL.md printed before any other 
 
 Do this once, before the first fetch. With a manifest, read every bundle's repository and union the rules.
 
-1. Read the user's instruction files in `$CLAUDE_CONFIG_DIR`, else `~/.claude`. Read the repository's instruction files: root `CLAUDE.md`, `AGENTS.md`, `.claude/CLAUDE.md`, and every file they import. Record every ask-first rule with the file it came from.
-2. Read `.reimagine.json` at the repository root. A file that does not parse ends the run `blocked`. The `gate` key and the `base` key are as SKILL.md, Configuration, says; the block already reports an unknown key or a bad value.
-3. Print the permission statement before any fetch. It gives the approved actions (SKILL.md, Approval scope), the always-ask actions, the ask-first rules found with their files, and, for each action the run takes, whether a prompt will occur: fetch, checkout, writing the exclude and the record, the child sessions, the subagents, the checks, the commit, the push and the comment. The statement also names the run's checks, each command with its source (the request, the manifest bundle or `.reimagine.json`), or says that no check will run. Judge each from the permission mode the session states and the allow rules in the user, project and local settings files (`$CLAUDE_CONFIG_DIR/settings.json` else `~/.claude/settings.json`, `<repo>/.claude/settings.json`, `<repo>/.claude/settings.local.json`). An action runs unprompted only when the mode approves it, or an allow rule matches its command and no ask or deny rule does. An outcome you cannot determine counts as a prompt. End with one line: "this run will prompt at: <list>" or "this run is unattended".
+1. Read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, since the session loads only that directory's user instruction files. Read the repository's instruction files: root `CLAUDE.md`, `AGENTS.md`, `.claude/CLAUDE.md`, and every file they import, and `CLAUDE.md` and `.claude/CLAUDE.md` in each folder above the repository's root, since the session loads those as project instructions, `~/.claude/CLAUDE.md` among them for a repository under the home folder. For a manifest bundle or "repo <path>", read the repository's instruction files in its `repo` or in `<path>`, not in the session's folder. Record every ask-first rule with the file it came from.
+2. Read `.reimagine.json` at the repository root; for a manifest bundle or "repo <path>", read it in its `repo` or in `<path>`, not in the session's folder. A file that does not parse ends the run `blocked`. The `gate` key and the `base` key are as SKILL.md, Configuration, says; the block already reports an unknown key or a bad value.
+3. Print the permission statement before any fetch. It gives the approved actions (SKILL.md, Approval scope), the always-ask actions, the instruction directory read, by name, the ask-first rules found with their files, and, for each action the run takes, whether a prompt will occur: fetch, checkout, writing the exclude and the record, the child sessions, the subagents, the checks, the commit, the push and the comment. The statement also names the run's checks, each command with its source (the request, the manifest bundle or `.reimagine.json`), or says that no check will run. Judge each from the permission mode the session states and the allow rules in the user, project and local settings files (`$CLAUDE_CONFIG_DIR/settings.json` else `~/.claude/settings.json`, `<repo>/.claude/settings.json`, `<repo>/.claude/settings.local.json`). An action runs unprompted only when the mode approves it, or an allow rule matches its command and no ask or deny rule does. The allowed-tools list matches only the plain forms, so a command in the forms of 0.2.2 is not pre-approved. Those forms, and a manifest bundle's, count as prompts unless an allow rule or the mode approves them. An outcome you cannot determine counts as a prompt. End with one line: "this run will prompt at: <list>" or "this run is unattended".
 
 ```
 Approved for this run: fix commits on each target's branch, push it, one comment per target pull request.
-Always asked: force push, --no-verify, merge, rebase, amend, reset, repository settings, a new issue. Ask-first rules found: 2 (<repo>/CLAUDE.md).
+Always asked: force push, --no-verify, merge, rebase, amend, reset, repository settings, a new issue. Instruction directory read: ~/.claude. Ask-first rules found: 2 (<repo>/CLAUDE.md).
 Prompts: fetch: no; checkout: no; exclude and record: yes (no allow rule); child sessions: yes; subagents: no; checks: yes; commit: yes; push: yes; comment: yes
 this run will prompt at: the record, the child sessions, the checks, the commit, the push, the comment
 ```
@@ -38,7 +38,7 @@ For each target on GitHub:
 
 1. A `gh` that is not authenticated ends the run `blocked` for that host. Test it with the `gh repo view` of 0.2.5.
 2. Read the pull request with `gh pr view <n> --json number,url,state,headRefName,baseRefName,isCrossRepository`. A merged or closed pull request ends `blocked`. A cross-repository pull request is an unresolved target: skip it, and when no target is left the run ends `stopped`.
-3. A branch target's head is the branch `git rev-parse --abbrev-ref HEAD` prints. `HEAD` there, a detached head, ends `blocked`.
+3. A branch target's head is the branch `git rev-parse --abbrev-ref HEAD` prints; for "repo <path>", read it with `git -C <path> rev-parse --abbrev-ref HEAD`. `HEAD` there, a detached head, ends `blocked`.
 
 ## 0.5 Clean tree
 
@@ -60,7 +60,7 @@ Before any checkout, `git status --porcelain` must print nothing, untracked file
 ## 0.8 The record
 
 1. The record is `.reimagine/gate/<slug>/` in the target's repository, the slug as SKILL.md, Record, says.
-2. Run `git check-ignore -q .reimagine/`, with the trailing slash, since without it git reads a directory that does not exist yet as not ignored. When it fails, append `.reimagine/` to the file that `git rev-parse --git-path info/exclude` names, never `.gitignore`. Never stage anything under it.
+2. Run `git check-ignore -q .reimagine/`, with the trailing slash, since without it git reads a directory that does not exist yet as not ignored. Run it, and the exclude-file lookup below, in the target's repository: as `git -C <path>` for a manifest bundle or "repo <path>", in the plain form for the session's checkout. When the check fails, append `.reimagine/` to the file that `git rev-parse --git-path info/exclude` names, read relative to the repository's folder when it is not absolute, never `.gitignore`; `git -C <path>` prints a path relative to `<path>`, which a write from the session's folder would miss. Never stage anything under it.
 3. Create the record directory unless it exists.
 4. An existing `passes.json` whose `branch` differs from this run's branch is a slug collision and ends the run `blocked`.
 5. Create `passes.json` when absent, with `branch` (the exact name), `base` (`<b>`), `merge_base` (0.6), `targets` (`github:<owner>/<repo>#<n>` for a pull request, else the branch name), `engine` (the block's Engine line: `subprocess` or `stand-in`), `"runs": []` and `"passes": []`.

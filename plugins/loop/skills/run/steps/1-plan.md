@@ -11,7 +11,7 @@ Step 3 sends it to the plan reviewer. Step 5 sends it only to the `opus` stand-i
 Give the reviewer:
 
 - The request text of the run, credential-scanned and redacted.
-- The absolute paths of the files to read: `inputs.md` and `plan.md`. For a diff review add the acceptance criteria from `plan.md`, and either the absolute path of a patch file (a worktree or an additional repository) or the instruction to run `git diff <merge-base>` after new files are marked with `git add -N`. Never send an empty diff to review.
+- The absolute paths of the files to read: `inputs.md` and `plan.md`. For a diff review add the acceptance criteria from `plan.md`, and either the absolute path of a patch file (used when the primary is not the session's checkout, or the diff is in an additional repository) or the instruction to run `git diff <merge-base>` after new files are marked with `git add -N`. Never send an empty diff to review.
 - The absolute paths of the repository's instruction files, so the reviewer can hold the change to them.
 - The meaning of blocking, as SKILL.md defines it under Blocking: the change would ship wrong behavior, break an acceptance criterion, or violate a repository rule.
 - For every contract change in the plan (an API, schema, file format or spec that other code reads), the ask to name the code that reads it and confirm the shapes match.
@@ -52,7 +52,7 @@ Write `plan.md`. For each input: scope, acceptance criteria and buildable status
 
 On an existing record, leave the sections of `plan.md` as they are and append a section `## Run <n> slices` holding the open inputs' scope, criteria and buildable status, their slices, and what the parts across inputs gain from them. A prior run's open slice stays in its own section and is built in this run. A slice name is never used twice in one record.
 
-Slice count is a property of the plan. Split when parts touch disjoint files and one agent would otherwise carry more than one area, or more than one subagent budget of work. Never split work that shares a file; slices own disjoint files. The order of work says which slices are independent and may run in parallel.
+Slice count is a property of the plan. Split when parts touch disjoint files and one agent would otherwise carry more than one area, or more than one subagent budget of work. The subagent budget is the one in force for the run, `timeouts.subagent` in `.reimagine.json`, else 20 minutes (SKILL.md, Budgets and rounds). An implementer call past it ends the run `blocked` (`steps/4-build.md`, 4.2), so size each slice to finish well inside it. Never split work that shares a file; slices own disjoint files. The order of work says which slices are independent and may run in parallel.
 
 Judge the risk floor of `risk.md` on the plan. Record the floor, with its trigger or `none`, and the Step 5 level it gives.
 

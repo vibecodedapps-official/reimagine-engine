@@ -346,6 +346,16 @@ test('R300: Step 2 takes the three snapshot files before each implementer call a
   for (const old of ['Each call has 20 minutes', 'the 20-minute budget', 'The budget: 20 minutes']) assert.ok(!text.includes(old), `steps/2-fix.md still holds: ${old}`);
 });
 
+test('R300: Step 2 judges an implementer call by its notification duration_ms and bars a background command', () => {
+  holds('steps/2-fix.md',
+    'before and after each implementer call, or before and after a parallel batch, and each check',
+    'A call is judged against the subagent budget by the `duration_ms` of its completion notification, and by the `date` outputs only when the notification carries none, since a batch\'s briefs are written before any call starts.',
+    'A notification for a call the gate did not send, after that call already returned, is not a new call: note it in the Log and change nothing, unless the snapshot comparison finds the tree changed after the first return, which is then handled as a failed call.',
+    'or start a background command, since one that finishes after the call returns wakes it again',
+    'After a failed call (Groups, item 4)');
+  holds('report.md', 'its start and end, copied from the `date -u` outputs Step 2 kept, and its `duration_ms` from the completion notification');
+});
+
 test('R300 and R303: Step 2 runs the checks one at a time within the check budget and fixes a failing one at most three times', () => {
   const text = holds('steps/2-fix.md', 'one command at a time', 'the check budget', 'three times', '`denied`', 'no `checks` key');
   for (const old of ['each with 15 minutes', 'the 15-minute budget']) assert.ok(!text.includes(old), `steps/2-fix.md still holds: ${old}`);

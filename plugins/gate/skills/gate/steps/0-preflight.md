@@ -1,6 +1,6 @@
 # Step 0: Preflight
 
-Read this file after the reading block, which SKILL.md printed before any other tool call, this file's read included. Take the targets in the order of the block's Targets line, and use its Mode, Budget and Engine lines; this step does not print the block again. SKILL.md stays in force: its Approval scope, Record and Terminal states apply to every item here.
+Read this file after the reading block, which SKILL.md printed before any other tool call, this file's read included. Take the targets in the order of the block's Targets line, and use its Mode, Budget, Engine and Scripts lines, where `<scripts>` in the step files is the path on the Scripts line; this step does not print the block again. SKILL.md stays in force: its Approval scope, Record and Terminal states apply to every item here.
 
 ## 0.1 Rules that hold in all of Step 0
 

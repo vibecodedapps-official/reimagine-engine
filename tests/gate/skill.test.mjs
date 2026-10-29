@@ -83,11 +83,11 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   });
 });
 
-test('R291: the reading block is one fenced block of four lines in a fixed order', () => {
+test('R291: the reading block is one fenced block of five lines in a fixed order', () => {
   const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
   assert.notEqual(block, undefined, 'SKILL.md has no reading block');
-  assert.equal(block.lines.length, 4);
-  const heads = ['Targets: ', 'Mode: ', 'Budget: ', 'Engine: '];
+  assert.equal(block.lines.length, 5);
+  const heads = ['Targets: ', 'Mode: ', 'Budget: ', 'Engine: ', 'Scripts: '];
   block.lines.forEach((line, i) => assert.ok(line.startsWith(heads[i]), `line ${i + 1} does not start with ${heads[i]}`));
 });
 
@@ -116,11 +116,19 @@ test('R219: Supporting files names every file of the skill, and each ends by nam
   }
 });
 
-test('R291: Step 0 is read after the reading block and takes its four lines', () => {
+test('R291: Step 0 is read after the reading block and takes its five lines', () => {
   assert.ok(SKILL.includes('After the block, read `steps/0-preflight.md` and start Step 0.'));
   const text = holds('steps/0-preflight.md', 'before any other tool call', 'does not print the block again');
   assert.ok(text.startsWith('# Step 0: Preflight\n'));
-  for (const heading of ['Targets', 'Mode', 'Budget', 'Engine']) assert.ok(text.includes(heading), `Step 0 does not name ${heading}`);
+  for (const heading of ['Targets', 'Mode', 'Budget', 'Engine', 'Scripts']) assert.ok(text.includes(heading), `Step 0 does not name ${heading}`);
+});
+
+test('R318: the scripts run by the path of the Scripts line, never by the plugin root variable', () => {
+  assert.ok(SKILL.includes('`${CLAUDE_PLUGIN_ROOT}` is not a shell variable'), 'SKILL.md does not say the variable is not a shell variable');
+  assert.ok(SKILL.includes('two levels above it, then `scripts`'), 'SKILL.md does not say how the Scripts line is resolved');
+  for (const rel of supporting()) assert.ok(!read(rel).includes('${CLAUDE_PLUGIN_ROOT}'), `${rel} holds \${CLAUDE_PLUGIN_ROOT}`);
+  holds('steps/1-pass.md', 'node "<scripts>/findings.mjs"');
+  holds('steps/3-next.md', 'node "<scripts>/next.mjs"');
 });
 
 test('R309: Step 0 excludes the record through git rev-parse --git-path info/exclude, never .gitignore', () => {

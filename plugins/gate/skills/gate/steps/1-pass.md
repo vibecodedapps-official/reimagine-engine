@@ -1,6 +1,6 @@
 # Step 1: A pass
 
-Read this file at the start of every pass. It holds the pass entry, the size and split, the reviews, `findings.mjs` and the triage. SKILL.md stays in force: its Approval scope, Levels and caps and Terminal states apply to every item here. `<record>` is the record directory, `<merge-base>` the full sha from `passes.json`, `<repo root>` the absolute path of the target repository's root, and every path handed to a command is absolute. Every write of `passes.json` and `findings.json` follows `record.md`, Write discipline.
+Read this file at the start of every pass. It holds the pass entry, the size and split, the reviews, `findings.mjs` and the triage. SKILL.md stays in force: its Approval scope, Levels and caps and Terminal states apply to every item here. `<record>` is the record directory, `<merge-base>` the full sha from `passes.json`, `<repo root>` the absolute path of the target repository's root, `<scripts>` the path on the reading block's Scripts line, and every path handed to a command is absolute. Every write of `passes.json` and `findings.json` follows `record.md`, Write discipline.
 
 ## 1.1 The pass entry
 
@@ -35,7 +35,7 @@ cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <
 
 ## 1.5 Findings
 
-1. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/findings.mjs" <n> <record>/findings.json <output>...` once, with every review output of the pass.
+1. Run `node "<scripts>/findings.mjs" <n> <record>/findings.json <output>...` once, with every review output of the pass.
 2. A non-zero exit is a failed review. Write the pass `"status": "failed"` with `ended` and one `reviews[]` entry per output, its numbers `null`, so the record names the saved result text; leave `next` `null`, keep the script's stderr line for the report, and go to SKILL.md, Terminal states, as `unconverged`. Never write a finding list of your own.
 3. On exit 0 read the printed summary. For each review in `reviews[]` write `{"slug": "<slug>", "target": "<the exact range typed>", "output": "<output>", "duration_ms": <n>, "total_cost_usd": <n>, "denials": <n>}`: the slug is `all` or the group's, and the other four fields come from the summary entry of that output (`null` for a stand-in's text).
 

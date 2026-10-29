@@ -53,6 +53,8 @@ A pull request target must be open, in the session's repository and not cross-re
 
 For a pull request target the base is its `baseRefName`. For a branch target the base is "base <branch>" in the request, else `.reimagine.json` `base`, else the remote's default branch. Fetch the base with the explicit refspec `+refs/heads/<b>:refs/remotes/<r>/<b>`; a fetch that fails ends `blocked` naming the branch. Record the merge-base with the base. Every review target and every line count uses the three-dot range from it. "base <branch>" on a pull request target whose base differs ends `blocked`, because the gate never retargets a pull request.
 
+`${CLAUDE_PLUGIN_ROOT}` is not a shell variable. It is empty in the session's shell, so a command that types it runs `/scripts/...`. Resolve the scripts directory once, with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Print it on the reading block's Scripts line. Every Bash command that runs a script writes that absolute path, never the variable.
+
 Make only the read-only calls that resolve the targets and the engine: `git remote`, `gh pr view`, a manifest read and `command -v claude`. Then print the reading block as your next text, before any other tool call:
 
 ```
@@ -60,9 +62,10 @@ Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-re
 Mode: fix
 Budget: 120 minutes (default); max-passes 4; split 1500
 Engine: subprocess
+Scripts: <the plugin's directory>/scripts
 ```
 
-Targets lists each pull request or branch, how it resolved and its base. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`. Engine is `subprocess`, or the stand-in with the reason for it. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored.
+Targets lists each pull request or branch, how it resolved and its base. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`. Engine is `subprocess`, or the stand-in with the reason for it. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored.
 
 A target that cannot be resolved gets one line in the block and the run continues with the others. When none is left, the run ends `stopped`.
 

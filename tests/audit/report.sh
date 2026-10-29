@@ -567,6 +567,15 @@ w "$D/pass1/g1.md" '## Claims' '- claim 1: true; F-1' 'runs: none ' '- claim 9: 
 run "end lines with trailing blanks" 0 "" parts "$D"
 same "end lines with trailing blanks 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-pt"
 
+# An env claim is one whose check part starts with `env: `; while not verified it is not
+# reproducible here, whatever words its pass-one reason uses.
+base "$D"; mkdir -p "$D/pass1"
+w "$D/claims.md" '1. [claim:verification] b/T-1 h.md:1: x; check: env: staging; curl s -> g1'
+wp "$D/pass1/g1.md" '## Claims' '- claim 1: not verified, not reproduced; needs a live check: env: staging'
+run "env claim by its check part" 0 "" parts "$D"
+grep -Fqx -- '- claim 1 [verification] h.md:1 -: not reproducible here; finding: none; evidence: needs a live check: env: staging' "$D/report/parts/claims-verdicts.body.md" ||
+	fail "env claim by its check part: no not reproducible here line"
+
 # A heading is compared with its trailing blanks and tabs removed.
 base "$D"; mkdir -p "$D/pass1" "$D/pass2"
 wp "$D/pass1/g1.md" '## Claims ' '- claim 1: true; F-1'

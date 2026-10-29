@@ -108,6 +108,12 @@ function isend(s) {
 	sub(/[ \t]+$/, "", s)
 	return s == "runs:" || s == "runs: none" || s == "consumed:" || s == "consumed: none" || s == "opened:" || s == "opened: none" || s == "status: complete"
 }
+# isenv: a verification claim whose check part, after the first `; check: `, starts with
+# `env: `, as common.md defines an env claim.
+function isenv(num,    p) {
+	p = index(ctx[num], "; check: ")
+	return ck[num] == "verification" && p > 0 && substr(ctx[num], p + 9, 5) == "env: "
+}
 # parse_claim: split a claim line into pk (kind), ptk (ticket), psrc, pln, pref and ptx
 # (text); returns 0 when the line is not in the claim form.
 function parse_claim(line,    hdr, rest, sp, tok, sl, s, pos, p, q, r, r2, region, last, off, i) {
@@ -349,7 +355,7 @@ BEGIN {
 		if (substr(V, 1, 9) == "contested") w = "contested"
 		else if (substr(V, 1, 4) == "true") w = "true"
 		else if (substr(V, 1, 5) == "false") w = "false"
-		else if (index(V, "not verified, not reproduced; needs a live check: env ") == 1) w = "not reproducible here"
+		else if (index(V, "not verified, not reproduced; needs a live check: env ") == 1 || (substr(V, 1, 12) == "not verified" && isenv(num))) w = "not reproducible here"
 		else w = "not verified"
 		p = index(V, "; ")
 		e0 = (p > 0) ? substr(V, p + 2) : "none"

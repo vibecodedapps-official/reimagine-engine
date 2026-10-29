@@ -22,7 +22,7 @@ Take a snapshot before every implementer call, including a check fix.
 5. A path that was already dirty before the call and now differs, or an untracked file whose hash changed, is left as it is and named in the report.
 6. Then end the run `blocked`, naming the call and, for a call past its budget, the subagent budget. A failed call is not a round and not a swap.
 7. When an implementer call returns, including a check fix, write `post-<n>.status` and `post-<n>.hashes` in the record, `<n>` being the call's own `pre-<n>` number. `post-<n>.status` holds the output of `git status --porcelain --untracked-files=all`; `post-<n>.hashes` holds one line per path that status lists outside `.reimagine/`, each path read as item 1 says, the output of `git hash-object --no-filters -- <path>` followed by the path, or `deleted` for a path that is gone. In a parallel batch, write each call's `post-<n>` files after every call of the batch has returned.
-8. A notification for a call that already returned is not a new call. Log it in the report's Log, then compare the checkout with that call's `post-<n>` files. A path whose status line or hash differs, and that no later call, check fix or commit of the run changed, ends the run `blocked` naming the path, with the tree left as it is. Otherwise nothing changes.
+8. A notification for a call that already returned is not a new call. Log it in the report's Log, then compare the checkout with that call's `post-<n>` files, hashing each path as item 7 does, since `pre-<n>.hashes` uses the filtered hash. A path whose status line or hash differs, and that no later call, check fix or commit of the run changed, ends the run `blocked` naming the path, with the tree left as it is. Otherwise nothing changes.
 
 ## Implementer brief
 

@@ -549,5 +549,5 @@ test('R306: the repair of a warning takes the earlier id from passes.json, else 
 });
 
 test('R300: the snapshot items read each path from a status line unquoted and take the new path of a rename', () => {
-  holds('steps/2-fix.md', 'Read each path from a status line unquoted and unescaped when status prints it in double quotes, and for a rename (`old -> new`) take the new path.', 'each path read as item 1 says');
+  holds('steps/2-fix.md', 'Read each path from a status line unquoted and unescaped when status prints it in double quotes, and for a rename (`old -> new`) take the new path.', 'each path read as item 1 says', "compare the checkout with that call's `post-<n>` files, hashing each path as item 7 does, since `pre-<n>.hashes` uses the filtered hash.");
 });

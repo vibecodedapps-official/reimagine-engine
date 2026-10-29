@@ -541,3 +541,7 @@ test('R303: a check whose budget is over the foreground limit runs in the backgr
 test('R317: the Log gives each implementer call its notification duration and the date pair of its call or batch', () => {
   holds('report.md', "each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch");
 });
+
+test('R306: the repair of a warning takes the earlier id from passes.json, else from the reason, else leaves the entry', () => {
+  holds('steps/1-pass.md', 'the earlier id being the one that pass\'s `findings` in `passes.json` already keys the finding under, else the one its reason names; with neither, leave the entry as it is and name it in the Log');
+});

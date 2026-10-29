@@ -35,6 +35,11 @@
 # 28 a configured core.fsmonitor hook is not run
 # 29 touched b.txt next to a blocked `a b.txt`  30 one of two identical config lines removed
 # 32 an unreadable ignored directory
+# 33 a new branch with its remote and merge config
+# 34 a new branch next to an unrelated config key
+# 35 an existing branch that moves
+# 36 a new branch whose name holds a dot, with its config
+# 37 branch config of an existing branch
 #
 # Prints one line per mismatch, then `readonly test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -55,6 +60,8 @@ bad=0
 sha=26a0d2c212dea452164f51c60b31665043bb3b38
 hash_orig=62bbbc5f8f323f1c372e43131e1d3ad8a214adeb
 hash_edit=44e925490cf5a75b8514640ac89751f80066380f
+# The parent of `main` in the fixture: a second commit, different from $sha.
+sha2=bd5d5e1e67a1fc55adeaa1452920245b1d368f7f
 
 mismatch() {
 	echo "readonly test: $*"
@@ -183,7 +190,7 @@ fresh
 snap "$R/b"
 git -C "$A" update-ref refs/heads/x "$sha"
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
-expect "case 7" 1 "blocked refs + $sha commit\trefs/heads/x\n" ''
+expect "case 7" 3 "local-branch + $sha commit\trefs/heads/x\n" ''
 
 # 8. a new remote-tracking ref.
 case_id="case 8"
@@ -270,7 +277,6 @@ add_sub() {
 	}
 }
 
-sha2=bd5d5e1e67a1fc55adeaa1452920245b1d368f7f
 case_id="setup"
 mkrepo "$root/subsrc"
 
@@ -558,6 +564,51 @@ MINGW*|MSYS*|CYGWIN*) ;;
 	fi
 	;;
 esac
+
+# 33. a new branch with its remote and merge config, as `git branch new-x` and two `git config`
+# calls leave them: three local-branch lines in byte order ($sha starts with 2, before b).
+case_id="case 33"
+fresh
+snap "$R/b"
+git -C "$A" update-ref refs/heads/new-x "$sha"
+git -C "$A" config branch.new-x.remote origin
+git -C "$A" config branch.new-x.merge refs/heads/new-x
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 33" 3 "local-branch + $sha commit\trefs/heads/new-x\nlocal-branch + branch.new-x.merge=refs/heads/new-x\nlocal-branch + branch.new-x.remote=origin\n" ''
+
+# 34. a new branch next to an unrelated config key: the key blocks, and its group comes first.
+case_id="case 34"
+fresh
+snap "$R/b"
+git -C "$A" update-ref refs/heads/new-y "$sha"
+git -C "$A" config --local audit.test 1
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 34" 1 "blocked config + audit.test=1\nlocal-branch + $sha commit\trefs/heads/new-y\n" ''
+
+# 35. an existing branch that moves (not the checked-out one): both refs lines are blocked.
+case_id="case 35"
+fresh
+snap "$R/b"
+git -C "$A" update-ref refs/heads/main "$sha2"
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 35" 1 "blocked refs + $sha2 commit\trefs/heads/main\nblocked refs - $sha commit\trefs/heads/main\n" ''
+
+# 36. a new branch whose name holds a dot, with a config key of it.
+case_id="case 36"
+fresh
+snap "$R/b"
+git -C "$A" update-ref refs/heads/release.1 "$sha"
+git -C "$A" config branch.release.1.remote origin
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 36" 3 "local-branch + $sha commit\trefs/heads/release.1\nlocal-branch + branch.release.1.remote=origin\n" ''
+
+# 37. branch config of a branch that is not new: blocked.
+case_id="case 37"
+fresh
+snap "$R/b"
+git -C "$A" config branch.main.remote origin
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 37" 1 'blocked config + branch.main.remote=origin\n' ''
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

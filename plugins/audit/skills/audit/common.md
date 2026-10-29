@@ -78,19 +78,22 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    `readonly.sh`. The orchestrator snapshots every audited repository in stage 1 and
    checks it after every stage. A change to tracked files, untracked files that are not
    ignored, refs, the index, stashes or config, an added or deleted file included, ends
-   the run `blocked`, unless an approved fetch caused it, or a background fetch the user
-   confirmed (a `background-fetch` entry in `approvals`, as the `### Read-only check`
-   section of `SKILL.md` says). A change among ignored files that no logged run accounts
-   for ends it too, unless it is another audit run's or a handoff's file under an audited
-   repository's `<scratch>/audit/`, or under the same path in the main checkout of a
-   primary repository that is a linked worktree, outside this run's directory. The check
-   does not see: an ignored file replaced by one of the same size with its modification
-   time restored; changes inside `.git/` other than refs, stashes and config; a nested
-   repository's refs other than its HEAD, its stashes and its config; a change inside a
-   repository that sits in an ignored directory, such as a linked worktree, other than an
-   entry added or removed at its top level; and changes outside the audited
-   repositories. The user's own edits to an audited repository during a run trip the
-   check as well.
+   the run `blocked`, unless an approved fetch caused it, a background fetch the user
+   confirmed (a `background-fetch` entry in `approvals`), or a new local branch and its
+   `branch.<name>.*` config that the user confirmed as their own work in another
+   worktree (a `local-branch` entry), as the `### Read-only check` section of `SKILL.md`
+   says; refs and config are shared by every worktree of a repository. A deleted or
+   moved branch still ends the run `blocked`. A change among ignored files that no
+   logged run accounts for ends it too, unless it is another audit run's or a handoff's
+   file under an audited repository's `<scratch>/audit/`, or under the same path in the
+   main checkout of a primary repository that is a linked worktree, outside this run's
+   directory. The check does not see: an ignored file replaced by one of the same size
+   with its modification time restored; changes inside `.git/` other than refs, stashes
+   and config; a nested repository's refs other than its HEAD, its stashes and its
+   config; a change inside a repository that sits in an ignored directory, such as a
+   linked worktree, other than an entry added or removed at its top level; and changes
+   outside the audited repositories. The user's own edits to an audited repository
+   during a run trip the check as well.
 3. **No model, agent or tool names** in anything external: commit messages, pull request
    and ticket text, and drafted comments. The report and the run records stay in the run
    directory and may name them.

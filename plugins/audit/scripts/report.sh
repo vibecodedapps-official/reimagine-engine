@@ -513,7 +513,8 @@ cmd_verdicts() {
 		echo "report: cannot read report/parts/claims-verdicts.body.md" >&2
 		exit 2
 	fi
-	d=${run%/}
+	d=$(printf '%s' "$run" | tr '\\' '/')
+	while case $d in */) true ;; *) false ;; esac; do d=${d%/}; done
 	id=${d##*/}
 	tmp=$run/claims-verdicts.md.tmp
 	if [ ! -d "$run/claims-verdicts.md" ] && { {

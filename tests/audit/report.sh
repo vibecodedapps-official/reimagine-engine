@@ -349,6 +349,14 @@ same "claims-verdicts file" "$tmp/got-cv" "$tmp/want-cv"
 sed -n '4p' "$V/claims-verdicts.md" | grep -Eq '^generated: [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' || fail "claims-verdicts: the generated line is '$(sed -n '4p' "$V/claims-verdicts.md")'"
 [ ! -e "$V/claims-verdicts.md.tmp" ] || fail "claims-verdicts: a temp file was left"
 
+# A run directory written with backslashes or ending in two slashes gives the same id.
+B="$tmp/b\\2026-run-x"
+mkdir -p "$B/report/parts"
+cp "$V/report/parts/claims-verdicts.body.md" "$B/report/parts/"
+run "claims-verdicts backslash path" 0 "" claims-verdicts "$B//" "$HEX"
+sed -n '1p' "$B/claims-verdicts.md" | grep -qx '# Claims verdicts: 2026-run-x' ||
+	fail "claims-verdicts backslash path: the title is '$(sed -n '1p' "$B/claims-verdicts.md")'"
+
 # An empty body part: the file ends right after the paragraph.
 : > "$V/report/parts/claims-verdicts.body.md"
 run "claims-verdicts empty body" 0 "" claims-verdicts "$V" "$HEX"

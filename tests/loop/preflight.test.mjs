@@ -138,6 +138,10 @@ test('R76: Step 0.2 resolves the base branch from the request, then the configur
   assert.ok(text.includes('whose base differs from `<b>` ends `blocked`'), 'an open pull request on another base does not end blocked');
 });
 
+test('R81: Step 0.1.2 skips the gate key without reporting it', () => {
+  assert.ok(PREFLIGHT.includes('The `gate` key belongs to the gate plugin and is skipped without a report.'));
+});
+
 test('R88, R116: the merge-base, the deploy judgment and the pull request use <base>, not <default>', () => {
   const BUILD = read('../../plugins/loop/skills/run/steps/4-build.md');
   const PUBLISH = read('../../plugins/loop/skills/run/steps/7-publish.md');

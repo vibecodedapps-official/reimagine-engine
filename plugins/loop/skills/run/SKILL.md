@@ -196,7 +196,7 @@ One mechanic serves every question the run asks: credentials, repository adoptio
 - `models`: the subagent model for each role, one of `sonnet`, `opus`, `haiku`, `fable`.
 - `base`: the base branch Step 0.2 fetches, which the review's merge-base and the pull request use; without it, the remote's default branch. "base <branch>" in the request wins over the key.
 
-Unknown keys and bad values are reported and ignored. A file that does not parse ends preflight `blocked`.
+The `gate` key belongs to the gate plugin and is skipped without a report. Any other unknown key, and every bad value, is reported and ignored. A file that does not parse ends preflight `blocked`.
 
 ## Record
 

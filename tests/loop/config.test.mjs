@@ -30,6 +30,13 @@ test('R81: the configuration block has exactly the keys commit, checks, timeouts
   assert.deepEqual(config.models, { implementer: 'sonnet', reviewer: 'fable', 'fallback-reviewer': 'opus', reader: 'haiku' });
 });
 
+test('R81: SKILL.md and README.md skip the gate key without reporting it', () => {
+  for (const text of [SKILL, README]) {
+    assert.ok(text.includes('The `gate` key belongs to the gate plugin and is skipped without a report.'));
+    assert.ok(!text.includes('Unknown keys and bad values are reported and ignored.'));
+  }
+});
+
 test('R45: the SKILL.md frontmatter names the skill run and its description carries both trigger phrases', () => {
   const match = SKILL.match(/^---\n([\s\S]*?)\n---\n/);
   assert.notEqual(match, null);

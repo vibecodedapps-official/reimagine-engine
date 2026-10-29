@@ -82,7 +82,7 @@ An optional `.reimagine.json` at the repository root. Every key is optional; the
 - `models`: the model for each role. Values are `sonnet`, `opus`, `haiku` or `fable`. This never changes the risk floor or the final review.
 - `base`: the branch the review and the pull request are based on; without it, the repository's default branch. "base <branch>" in the request wins over the key.
 
-Unknown keys and bad values are reported and ignored. A file that does not parse stops the run before it starts.
+The `gate` key belongs to the gate plugin and is skipped without a report. Any other unknown key, and every bad value, is reported and ignored. A file that does not parse stops the run before it starts.
 
 ## How a run ends
 

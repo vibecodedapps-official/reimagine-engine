@@ -9,7 +9,7 @@ You forward this request to the audit skill. Take the steps below in order, and 
 1. Read the words between the markers below. They are what the user typed after the command.
 
 <user-text>
-"$ARGUMENTS"
+$ARGUMENTS
 </user-text>
 
    - Split the words into tokens at spaces.

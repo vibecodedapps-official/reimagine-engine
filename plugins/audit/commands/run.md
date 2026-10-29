@@ -9,10 +9,10 @@ You forward this request to the audit skill. Take the steps below in order, and 
 1. Read the words between the markers below. They are what the user typed after the command.
 
 <user-text>
-"$ARGUMENTS"
+$ARGUMENTS
 </user-text>
 
-   - Split the words into tokens at spaces. Quoted text stays one token.
+   - Split the words into tokens at spaces. Text the user put in quotes stays one token.
    - This command takes no flags. When any token starts with `--`, reject with
      `audit: no flags; say it in words (effort high, budget 30 minutes, adversary on fable)`.
    - The manifest is the first token that ends in `.json` and has no scheme prefix. A scheme

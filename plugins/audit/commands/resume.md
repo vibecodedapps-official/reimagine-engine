@@ -9,10 +9,10 @@ You forward this request to the audit skill. Take the steps below in order, and 
 1. Read the words between the markers below. They are what the user typed after the command.
 
 <user-text>
-"$ARGUMENTS"
+$ARGUMENTS
 </user-text>
 
-   - Split the words into tokens at spaces. Quoted text stays one token.
+   - Split the words into tokens at spaces. Text the user put in quotes stays one token.
    - A flag is a token that starts with `--`. The flags are `--from` and `--live`, each at most
      once, each with one value: the next token, which does not start with `--`. Reject any other
      flag, a repeated flag and a missing value.

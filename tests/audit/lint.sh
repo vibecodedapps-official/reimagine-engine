@@ -14,7 +14,9 @@
 #
 # Checks:
 # - commands/run.md, resume.md, act.md, handoff.md exist; every commands/*.md has
-#   frontmatter keys description, argument-hint, allowed-tools.
+#   frontmatter keys description, argument-hint, allowed-tools; no commands/*.md file
+#   holds the variable inside double quotes, as "$ARGUMENTS" (alone on a line or
+#   anywhere), which would make the user's whole request one token.
 # - agents/digester.md, mapper.md, auditor.md, adversary.md, merger.md exist; every
 #   agents/*.md has frontmatter keys name (equal to the file name), description,
 #   model, tools; every tools entry (YAML list, comma string, or [flow list]) is one
@@ -203,6 +205,8 @@ for c in run resume act handoff; do
 done
 for f in $(listed '^commands/[^/]+\.md$'); do
 	need_keys "$f" description argument-hint allowed-tools
+	grep -nF '"$ARGUMENTS"' "$f" > "$tmp/grep"
+	hits "$f" 'holds "$ARGUMENTS" in double quotes; hold $ARGUMENTS unquoted so the words split into tokens' < "$tmp/grep"
 done
 
 # Agents.

@@ -153,6 +153,8 @@ test('R88, R116: the merge-base, the deploy judgment and the pull request use <b
   }
 });
 
+const ANCESTORS = 'and `CLAUDE.md` and `.claude/CLAUDE.md` in each folder above the repository\'s root, since the session loads those as project instructions, `~/.claude/CLAUDE.md` among them for a repository under the home folder';
+
 test('R55: the user\'s instruction files come from $CLAUDE_CONFIG_DIR when it is set, else ~/.claude, never both, and the permission statement names the directory read', () => {
   const rule = 'in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both';
   const scope = section(SKILL, 'Approval scope');
@@ -164,7 +166,9 @@ test('R55: the user\'s instruction files come from $CLAUDE_CONFIG_DIR when it is
   const lines = step.split('\n');
   const read = lines.find((line) => line.startsWith('1. '));
   assert.ok(read.includes(rule), '0.1.1 does not give the rule');
-  assert.ok(read.includes('loads only that directory\'s instruction files'), '0.1.1 does not give the reason');
+  assert.ok(read.includes('loads only that directory\'s user instruction files'), '0.1.1 does not give the reason');
+  assert.ok(read.includes(ANCESTORS), '0.1.1 does not read the folders above the repository');
+  assert.ok(scopeItem.includes('the instruction files of each folder above it'), 'Approval scope item 1 does not read the folders above the repository');
   const start = lines.findIndex((line) => line.startsWith('5. '));
   const statement = lines.slice(start, lines.findIndex((line) => line.startsWith('```'))).join('\n');
   assert.ok(statement.includes('The instruction directory read, by name'), '0.1.5 does not name the directory read');

@@ -14,6 +14,8 @@ Take a snapshot before every implementer call and every fix call, in the checkou
 4. A path outside the slice that was clean before the call and is now new or changed is restored: a tracked file with `git checkout -- <path>`, an untracked non-ignored file by deleting it. Log each action in `run.md`.
 5. A path that was already dirty or intent-to-add before the call and now differs, or an untracked file whose hash changed, ends the run `blocked`, and the report names the path. Never touch an ignored path or anything under `.reimagine/`.
 6. An implementer tool error ends the run `blocked` once the comparison and restore are done. There is no fallback implementer. A call past the subagent budget gets the same comparison and restore and then ends the run `blocked`, naming the subagent budget; it is not a round.
+7. When an implementer or fix call returns, write `post-<n>.status` and `post-<n>.hashes` in the record, `<n>` being the call's own `pre-<n>` number. `post-<n>.status` holds the output of `git status --porcelain --untracked-files=all`; `post-<n>.hashes` holds one line per path that status lists outside `.reimagine/`, the output of `git hash-object --no-filters -- <path>` followed by the path, or `deleted` for a path that is gone. In a parallel batch, write each call's `post-<n>` files after every call of the batch has returned.
+8. A notification for a call that already returned is not a new call. Log it in `run.md`, then compare the checkout with that call's `post-<n>` files. A path whose status line or hash differs, and that no later call, logged edit or commit of the run changed, ends the run `blocked` naming the path, with the tree left as it is. Otherwise nothing changes.
 
 ## Implementer brief
 

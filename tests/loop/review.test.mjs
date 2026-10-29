@@ -189,6 +189,17 @@ test('R67, R104: an implementer call is judged by its notification, and the brie
   assert.ok(brief.includes('start a background command'));
 });
 
+test('R67: a late notification is judged against its post-<n> files', () => {
+  const snaps = section(BUILD, 'Implementer snapshots');
+  assert.notEqual(snaps, null);
+  assert.ok(snaps.includes('post-<n>.status'));
+  assert.ok(snaps.includes('post-<n>.hashes'));
+  assert.ok(snaps.includes('ends the run `blocked` naming the path'));
+  assert.ok(!SKILL.includes('unless the snapshot comparison finds the tree changed after the first return'));
+  assert.ok(SKILL.includes('post-<n>'));
+  assert.ok(read('record.md').includes('post-<n>'));
+});
+
 test('R63: code-review covers a primary that is the session checkout, and the stand-in covers the rest', () => {
   const ARCH = readFileSync(new URL('../../docs/architecture.md', import.meta.url), 'utf8');
   const MULTI = read('multi-repo.md');

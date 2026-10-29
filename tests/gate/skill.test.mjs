@@ -277,7 +277,7 @@ test('R306: Step 1.6 runs findings.mjs --check after each triage write and the r
   holds('steps/1-pass.md',
     'node "<scripts>/findings.mjs" --check <n> <record>/findings.json',
     'key the finding under the earlier id in the pass\'s `findings` of `passes.json`',
-    'move that finding in the `findings` of that earlier pass in `passes.json` under the earlier id');
+    'key that finding under it in the `findings` of that earlier pass in `passes.json`');
   holds('record.md', '`--check`');
 });
 
@@ -548,7 +548,7 @@ test('R317: the Log gives each implementer call its notification duration and th
 });
 
 test('R306: the repair of a warning takes the earlier id from passes.json, else from the reason, else leaves the entry', () => {
-  holds('steps/1-pass.md', 'the earlier id being the one that pass\'s `findings` in `passes.json` already keys the finding under, else the one its reason names; with neither, leave the entry as it is and name it in the Log');
+  holds('steps/1-pass.md', 'the earlier id being the one that pass\'s `findings` in `passes.json` already keys the finding under, else the one its reason names; with neither, leave the entry as it is and name it in the Log', 'With an earlier id, also key that finding under it in the `findings` of that earlier pass in `passes.json`, and note the repair in the report\'s Log.');
 });
 
 test('R300: the snapshot items read each path from a status line unquoted and take the new path of a rename', () => {

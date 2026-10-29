@@ -194,7 +194,7 @@ Invoking by name approves branch, commit, push, one pull request per repository,
 | orchestrator, judge, slice reviewer | the session model | none; the run stops |
 | implementer | Agent `sonnet`, one per slice, parallel for disjoint slices | none; a tool error ends `blocked` after the snapshot restore |
 | plan reviewer | fresh Agent `fable`, read and report only | once to `opus` on a model or tool error; stays swapped |
-| final reviewer | built-in `code-review` skill, explicit level at most `xhigh`, `<merge-base>...HEAD` as a full sha, one pass | Agent `opus` over a patch file, once, when the skill is not listed or the diff is in a worktree or another repository |
+| final reviewer | built-in `code-review` skill, explicit level at most `xhigh`, `<merge-base>...HEAD` as a full sha, one pass | Agent `opus` over a patch file, once, when the skill is not listed, the primary is not the session's checkout, or the diff is in an additional repository |
 | reader | Agent `haiku` when a read is worth splitting out | the orchestrator reads |
 
 `.reimagine.json` at the primary repository's root:

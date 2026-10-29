@@ -20,7 +20,7 @@ The primary is the session's repository, or its worktree when Step 0.3 made one.
 
 **Steps 1 to 3.** Fetch each ticket from its owning repository. No slice spans repositories. Each repository has its own branch (new or continued), baseline and checks.
 
-**Step 5.** Review only the repositories with a diff: mark new files with `git -C <path> add -N` and test with `git -C <path> diff <merge-base> --stat`. For each additional repository write `<record>/diff-<slug>.patch` from `git -C <path> diff <merge-base>`. `code-review` covers the primary in the session's checkout, and an `opus` stand-in reviews each additional repository (and a primary in a worktree), once per pass, with the `code-review` level as its `effort`.
+**Step 5.** Review only the repositories with a diff: mark new files with `git -C <path> add -N` and test with `git -C <path> diff <merge-base> --stat`. For each additional repository write `<record>/diff-<slug>.patch` from `git -C <path> diff <merge-base>`. `code-review` covers the primary whenever it is the session's checkout, a linked worktree included. An `opus` stand-in reviews the diff when the primary is not the session's checkout, or the diff is in an additional repository, once per pass, with the `code-review` level as its `effort`.
 
 **Step 6 on `other`.** At the end of Step 6, write one body per repository with a diff: the primary's to `pr-body.md` and each other to `pr-body-<slug>.md`, each with the run suffix from run 2 on, as `record.md`, Files, says. On an Azure DevOps remote, also write one `comment-<n>.md` for each repository, numbered in turn, and the report names the repository each one goes with. Each body's "Related pull requests" says the links between the pull requests are added by hand.
 

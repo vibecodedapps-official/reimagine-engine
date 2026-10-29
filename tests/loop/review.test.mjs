@@ -188,3 +188,26 @@ test('R67, R104: an implementer call is judged by its notification, and the brie
   assert.notEqual(brief, null);
   assert.ok(brief.includes('start a background command'));
 });
+
+test('R63: code-review covers a primary that is the session checkout, and the stand-in covers the rest', () => {
+  const ARCH = readFileSync(new URL('../../docs/architecture.md', import.meta.url), 'utf8');
+  const MULTI = read('multi-repo.md');
+  const old = [
+    'the diff is in a worktree or another repository',
+    'the diff is in a worktree or an additional repository',
+    '(and a primary in a worktree)',
+    '(a worktree or an additional repository)',
+  ];
+  const standIn = "the primary is not the session's checkout, or the diff is in an additional repository";
+  const files = { 'SKILL.md': SKILL, 'steps/4-build.md': BUILD, 'multi-repo.md': MULTI, 'steps/1-plan.md': PLAN, 'docs/architecture.md': ARCH };
+  for (const [name, text] of Object.entries(files)) {
+    for (const phrase of old) assert.ok(!text.includes(phrase), `${name} still holds "${phrase}"`);
+    assert.ok(text.includes(standIn), `${name} lacks the stand-in condition`);
+  }
+  const covers = "`code-review` covers the primary whenever it is the session's checkout, a linked worktree included";
+  assert.ok(SKILL.includes(covers));
+  assert.ok(MULTI.includes(covers));
+  const report = read('report.md');
+  assert.ok(!report.includes('(the skill not listed, a worktree, an additional repository)'));
+  assert.ok(report.includes("(the skill not listed, a primary that is not the session's checkout, an additional repository)"));
+});

@@ -11,7 +11,7 @@ Step 3 sends it to the plan reviewer. Step 5 sends it only to the `opus` stand-i
 Give the reviewer:
 
 - The request text of the run, credential-scanned and redacted.
-- The absolute paths of the files to read: `inputs.md` and `plan.md`. For a diff review add the acceptance criteria from `plan.md`, and either the absolute path of a patch file (a worktree or an additional repository) or the instruction to run `git diff <merge-base>` after new files are marked with `git add -N`. Never send an empty diff to review.
+- The absolute paths of the files to read: `inputs.md` and `plan.md`. For a diff review add the acceptance criteria from `plan.md`, and either the absolute path of a patch file (used when the primary is not the session's checkout, or the diff is in an additional repository) or the instruction to run `git diff <merge-base>` after new files are marked with `git add -N`. Never send an empty diff to review.
 - The absolute paths of the repository's instruction files, so the reviewer can hold the change to them.
 - The meaning of blocking, as SKILL.md defines it under Blocking: the change would ship wrong behavior, break an acceptance criterion, or violate a repository rule.
 - For every contract change in the plan (an API, schema, file format or spec that other code reads), the ask to name the code that reads it and confirm the shapes match.

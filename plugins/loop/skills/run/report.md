@@ -73,7 +73,7 @@ State the mode: attended when any action prompted, else unattended. List the pro
 
 - The floor trigger that applied, or `none`. When an edit touched a sensitive area and did not trigger the floor, say why (an incidental edit).
 - The effort hint, the effort in force for reviewers, and the Step 5 level typed to `code-review` or passed to the stand-in as `effort`.
-- The stand-in, when Step 5 or a CI repair pass used one, with the reason (the skill not listed, a worktree, an additional repository). A stand-in pass is not a swap.
+- The stand-in, when Step 5 or a CI repair pass used one, with the reason (the skill not listed, a primary that is not the session's checkout, an additional repository). A stand-in pass is not a swap.
 - Every reviewer swap, with its reason.
 - The `.reimagine.json` model overrides in force, and the values the run reported and ignored.
 

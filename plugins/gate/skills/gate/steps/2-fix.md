@@ -9,7 +9,7 @@ Run `date -u +%Y-%m-%dT%H:%M:%SZ` before and after each implementer call, or bef
 1. Sort the pass's fix bucket into groups so that no file is in two groups: findings that name the same file go in one group, and a finding whose failure scenario spans several files puts all of them in one group, merging the groups it touches.
 2. One implementer per group: an Agent at `models.implementer` (default `sonnet`), passing `model` explicitly. Never use a fork.
 3. Groups with independent files run as parallel Agent calls in one message. When one group's files depend on another's (one imports from the other), run them one at a time. An implementer runs no checks; the checks are yours, below.
-4. Each call has the subagent budget. A call is judged against the subagent budget by the `duration_ms` of its completion notification, and by the `date` outputs only when the notification carries none, since a batch's briefs are written before any call starts. A call that returns past that, or ends in a tool error, is a failed call. A notification for a call the gate did not send, after that call already returned, is not a new call: note it in the Log and change nothing, unless the snapshot comparison finds the tree changed after the first return, which is then handled as a failed call. There is no fallback implementer.
+4. Each call has the subagent budget. A call is judged against the subagent budget by the `duration_ms` of its completion notification, and by the `date` outputs only when the notification carries none, since a batch's briefs are written before any call starts. A call that returns past that, or ends in a tool error, is a failed call. A notification for a call the gate did not send, after that call already returned, is not a new call: Snapshots, item 8, says how it is judged. There is no fallback implementer.
 
 ## Snapshots
 
@@ -21,6 +21,8 @@ Take a snapshot before every implementer call, including a check fix.
 4. Restore every path that was clean before the call and is now new or changed, the group's own files included: a tracked file with `git checkout -- <path>`, an untracked non-ignored file by deleting it; never touch an ignored path or anything under `.reimagine/`.
 5. A path that was already dirty before the call and now differs, or an untracked file whose hash changed, is left as it is and named in the report.
 6. Then end the run `blocked`, naming the call and, for a call past its budget, the subagent budget. A failed call is not a round and not a swap.
+7. When an implementer call returns, including a check fix, write `post-<n>.status` and `post-<n>.hashes` in the record, `<n>` being the call's own `pre-<n>` number. `post-<n>.status` holds the output of `git status --porcelain --untracked-files=all`; `post-<n>.hashes` holds one line per path that status lists outside `.reimagine/`, the output of `git hash-object --no-filters -- <path>` followed by the path, or `deleted` for a path that is gone. In a parallel batch, write each call's `post-<n>` files after every call of the batch has returned.
+8. A notification for a call that already returned is not a new call. Log it in the report's Log, then compare the checkout with that call's `post-<n>` files. A path whose status line or hash differs, and that no later call, check fix or commit of the run changed, ends the run `blocked` naming the path, with the tree left as it is. Otherwise nothing changes.
 
 ## Implementer brief
 

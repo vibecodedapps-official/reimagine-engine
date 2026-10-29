@@ -369,10 +369,22 @@ test('R300: Step 2 judges an implementer call by its notification duration_ms an
   holds('steps/2-fix.md',
     'before and after each implementer call, or before and after a parallel batch, and each check',
     'A call is judged against the subagent budget by the `duration_ms` of its completion notification, and by the `date` outputs only when the notification carries none, since a batch\'s briefs are written before any call starts.',
-    'A notification for a call the gate did not send, after that call already returned, is not a new call: note it in the Log and change nothing, unless the snapshot comparison finds the tree changed after the first return, which is then handled as a failed call.',
+    'A notification for a call the gate did not send, after that call already returned, is not a new call: Snapshots, item 8, says how it is judged.',
     'or start a background command, since one that finishes after the call returns wakes it again',
     'After a failed call (Groups, item 4)');
   holds('report.md', 'its start and end, copied from the `date -u` outputs Step 2 kept, and its `duration_ms` from the completion notification');
+});
+
+test('R300: Step 2 judges a late notification against the call\'s post-<n> files', () => {
+  const text = holds('steps/2-fix.md', '## Snapshots');
+  const start = text.indexOf('## Snapshots');
+  const end = text.indexOf('\n## ', start + 1);
+  const snaps = text.slice(start, end);
+  assert.ok(snaps.includes('post-<n>.status'));
+  assert.ok(snaps.includes('post-<n>.hashes'));
+  assert.ok(snaps.includes('ends the run `blocked` naming the path'));
+  assert.ok(!text.includes('unless the snapshot comparison finds the tree changed after the first return'));
+  holds('record.md', '`post-<n>.status`, `post-<n>.hashes`', '`post-<n>` shares its call\'s number');
 });
 
 test('R300 and R303: Step 2 runs the checks one at a time within the check budget and fixes a failing one at most three times', () => {

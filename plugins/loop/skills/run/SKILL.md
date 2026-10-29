@@ -111,7 +111,7 @@ Invoking by name is the user's opt-in to parallel Agent calls.
 - Agent: implementers, the plan reviewer, the `opus` stand-in and readers.
 - SendMessage: continue an implementer.
 - Skill: `code-review` only.
-- TaskStop: stop a background check that passes its budget.
+- TaskStop: stop a background check that passes its budget, or its timer when the check ends first.
 - MCP tools for ticket reads and comments, when listed.
 
 ## Roles and models

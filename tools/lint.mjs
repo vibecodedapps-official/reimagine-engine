@@ -36,7 +36,7 @@ const CONVERGE = 'plugins/audit/skills/audit/stages/7-converge.md';
 const AUDIT_MANIFEST = 'plugins/audit/.claude-plugin/plugin.json';
 const EXECUTABLES = [
   'plugins/rules/scripts/rules.mjs',
-  ...['readonly', 'handoff', 'ledger', 'working-tree', 'revert-tests', 'live', 'memory', 'work-items', 'collisions', 'run-copies']
+  ...['readonly', 'handoff', 'ledger', 'working-tree', 'revert-tests', 'live', 'memory', 'work-items', 'collisions', 'run-copies', 'report']
     .map((n) => `plugins/audit/scripts/${n}.sh`),
   'plugins/primer/hooks/drift.sh',
   'plugins/primer/hooks/notice.sh',

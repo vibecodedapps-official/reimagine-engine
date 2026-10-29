@@ -229,9 +229,9 @@ when the invocation block says `command: resume`; the rules of
      `common.md`, `audit-evidence.md`, `claims.md`, `groups.md`, `diffs/`, `forge/`,
      `trees/`, `revert/`, `guidelines/`, `domain/`, `scope/`, `pass1/`, `pass2/`,
      `ledger/`, `second-opinion/`, `late/`, `converged/`, `converged.md`, `gate.md`,
-     `report.md`, `claims-verdicts.md`, `work-items.jsonl`, `usage.md`, `tmp/` and
-     `baseline/`. Keep the move records and put them in the `superseded` list of the new
-     stage 1 entry when stage 1 writes it.
+     `report.md`, `report/`, `claims-verdicts.md`, `work-items.jsonl`, `usage.md`,
+     `tmp/` and `baseline/`. Keep the move records and put them in the `superseded`
+     list of the new stage 1 entry when stage 1 writes it.
    `manifest.json`, `stages.json`, `invocations.md`, `superseded/` and the results files
    under `live/` are never moved. Stages before the first rerun stage keep their entries
    and outputs and are reused as they are.

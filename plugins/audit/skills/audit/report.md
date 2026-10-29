@@ -35,6 +35,67 @@ edits the file afterwards. `/audit:act` binds its approval to this line and `liv
 binds a `--live` file to it. A resume that writes a new report gives it a new revision,
 which voids every act approval given against a different revision.
 
+## Parts
+
+The body is joined from part files under `<run dir>/report/parts/`
+(`stages/8-report.md`, step 6), in byte order of name: `00-header.md`, `01-verdict.md`,
+`02-findings.md`, `03-verified.md`, `04-disagreements.md`, `05-next-steps.md`,
+`06-code-fixes.md`, `07-work-item-fixes.md`, `08-decisions.md`, `08-other.md`,
+`09-live.md`, `10-claims.md`, `11-coverage.md` and `12-usage.md`. In the report each section heading reads
+`## <n>. <title>`; the `###` headings below name the same sections. The header part
+opens with `# audit report: <run-id>` instead of a section heading, and every part ends
+with one empty line. `08-decisions.md` and `10-claims.md` are written by
+`scripts/report.sh parts`, and so is `claims-verdicts.body.md`, which is no part of the
+body: it holds the entries of `claims-verdicts.md`, in which a claim whose evidence
+names report items has `finding:` and `evidence:` both set to those items, `C1, C2`
+when it names two. The other parts are written by hand.
+
+Section 8 is `08-decisions.md`, then `08-other.md` under `### Other decisions`. Each
+pass-one entry line is copied as written, followed by its pass-two line, or
+`not challenged`; a claim with no pass-one entry is `not assessed`; a list with no
+claim of its kind is `none`:
+
+```
+## 8. Decisions
+
+### Decision ledger
+
+- claim <n> (<ref>): <pass-one entry as written>
+  pass two: <the challenge line's text after the claim number>
+- claim <n> (<ref>): <pass-one entry as written>
+  pass two: not challenged
+- claim <n>: not assessed
+
+### Raised tickets
+
+- claim <n> (<ref>): <pass-one entry as written>
+  pass two: not challenged
+- claim <n>: not assessed
+
+```
+
+Section 10 has one line per claim of `claims.md`, in claim order, kinds in brackets, and
+` (C<n>, ...)` after the evidence when the evidence names ledger ids that report items
+absorb. A claim whose pass-two line is `overturned to ...` is `contested` with both
+verdicts. A claim with no pass-one line, or a decision or scope claim with no entry, is
+`not verified`. `none` stands when there is no claim. The count line holds the `other`
+sentences:
+
+```
+## 10. Claims
+
+Reproducing a stated result does not show that the build session ran its stated check.
+
+- claim <n> [<kind>]: <verdict>; <evidence>
+- claim <n> [<kind>]: <verdict>; <evidence> (C<n>, C<n>)
+- claim <n> [<kind>]: contested; pass one: <verdict>; <evidence>; pass two: overturned to <verdict>; evidence: <evidence>
+- claim <n> [<kind>]: not verified; no pass-one line
+- claim <n> [<kind>]: not verified; not assessed
+
+Other sentences, counted and not listed: <n>
+
+```
+
 ## Partial and blocked runs
 
 - When a stage failed or the budget expired, the report is still written from what is

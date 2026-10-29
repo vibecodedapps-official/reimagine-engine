@@ -213,11 +213,11 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   });
 
   negative('R219: loop SKILL.md over the 5800-word cap', (dir) => {
-    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(1517) + '\n');
+    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(1513) + '\n');
     bump(dir, 'loop');
   }, 1, ['plugins/loop/skills/run/SKILL.md: 5850 words, over the 5800-word cap']);
   positive('R219: loop SKILL.md at 5800 words passes', (dir) => {
-    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(1467) + '\n');
+    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(1463) + '\n');
     bump(dir, 'loop');
   });
 

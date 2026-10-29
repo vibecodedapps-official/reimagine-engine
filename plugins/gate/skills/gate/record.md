@@ -82,13 +82,13 @@ Each pass entry, and the step that writes it:
 4. `passes`, from a pass number to `{"line", "bucket", "reason", "prior"}`: the line the review gave, the bucket and reason of the triage, and the entry's earlier state, or `null`.
 5. After a match, `match`: `{"of": "<earlier id>", "reason": "<one line>"}`.
 
-`findings.mjs` writes the file and sets `new`, `regressed` (bucket `fix`, for a finding fixed in an earlier pass that returns) and `carried` (bucket `reject`, for a rejected finding that returns, which counts as nothing in `next.mjs`). A deferred finding that returns keeps the state `deferred` and gets the bucket `defer` with the reason of its last defer pass, or `deferred in an earlier pass` when no pass holds one. A regressed entry that returns keeps the state `regressed` and gets no bucket, so the triage sorts it again. It leaves the bucket and reason of a new entry `null`, and prints each new finding with its `candidates`, the same file's settled entries that no review of this pass reported (Step 1.6), which the ledger does not keep.
+`findings.mjs` writes the file and sets `new`, `regressed` (bucket `fix`, for a finding fixed in an earlier pass that returns) and `carried` (bucket `reject`, for a rejected finding that returns, which counts as nothing in `next.mjs`). A deferred finding that returns keeps the state `deferred` and gets the bucket `defer` with the reason of its last defer pass, or `deferred in an earlier pass` when no pass holds one. A regressed entry that returns keeps the state `regressed` and gets no bucket, so the triage sorts it again. It leaves the bucket and reason of a new entry `null`, and prints each new finding with its `candidates`, the same file's settled entries that no review of this pass reported (Step 1.6), which the ledger does not keep. It prints a warning on stderr for an entry new in the latest pass the ledger holds that is `carried` or `regressed` with no `match`, and still exits 0.
 
 You write the rest:
 
 1. The triage fills each `null` bucket and reason in the pass's entry and sets the state: `fix` gives `open` (a `regressed` entry stays `regressed`), `defer` gives `deferred`, `reject` gives `rejected`.
 2. After the fix round's commit exists, each fix-bucket entry of the pass becomes `fixed`.
-3. When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says: add `match` to the new entry, give it the bucket and state the script gives a returning entry of the candidate's state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
+3. When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says: add `match` to the new entry in the same write as the bucket and state the script gives a returning entry of the candidate's state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
 
 ## Write discipline
 

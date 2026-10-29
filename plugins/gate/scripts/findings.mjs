@@ -6,6 +6,7 @@
 //   <review-output>    a host result object when the name ends in .json, any other file is a stand-in reply read as text
 // On success prints the pass summary as JSON on stdout and exits 0. On failure writes nothing and prints nothing on stdout:
 // exit 1 for a bad review or ledger, exit 2 for usage or IO, one line per message on stderr.
+// On success it also prints a warning line on stderr for each carried or regressed entry new in the latest earlier pass with no match.
 // Everything above main() is pure: it takes text and objects.
 import { readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
@@ -118,6 +119,16 @@ function candidatesFor(ledger, n, file, line) {
     });
 }
 
+// A warning line, in id order, for each carried or regressed entry new in the highest pass the ledger holds that has no match;
+// only a match gives a new finding either state.
+function unmatched(ledger) {
+  const latest = Math.max(0, ...Object.values(ledger.findings).flatMap(passKeys));
+  return Object.entries(ledger.findings)
+    .filter(([, e]) => latest >= 1 && e.first_pass === latest && (e.state === 'carried' || e.state === 'regressed') && !isObject(e.match))
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([id, e]) => `findings: warning: ${id} is ${e.state} with no match; write the match of Step 1.6`);
+}
+
 const read = (path, optional) => {
   try {
     return readFileSync(path, 'utf8').replace(/^\ufeff/, '');
@@ -200,6 +211,8 @@ function ingest(argv) {
     }
   }
 
+  const warnings = unmatched(ledger);
+
   const findings = [];
   for (const f of found.values()) {
     let entry = ledger.findings[f.id];
@@ -215,12 +228,12 @@ function ingest(argv) {
   for (const finding of findings) {
     if (finding.state === 'new') finding.candidates = candidatesFor(ledger, n, finding.file, finding.line);
   }
-  return { ledgerPath, ledger: JSON.stringify(ledger, null, 2) + '\n', summary: JSON.stringify({ pass: n, reviews, findings }, null, 2) + '\n' };
+  return { ledgerPath, ledger: JSON.stringify(ledger, null, 2) + '\n', summary: JSON.stringify({ pass: n, reviews, findings }, null, 2) + '\n', warnings };
 }
 
 function main(argv) {
   try {
-    const { ledgerPath, ledger, summary } = ingest(argv);
+    const { ledgerPath, ledger, summary, warnings } = ingest(argv);
     const tmp = ledgerPath + '.tmp';
     try {
       writeFileSync(tmp, ledger);
@@ -230,6 +243,7 @@ function main(argv) {
       throw new Fail(2, `findings: cannot write ${ledgerPath}`);
     }
     process.stdout.write(summary);
+    for (const w of warnings) process.stderr.write(w + '\n');
   } catch (e) {
     if (!(e instanceof Fail)) throw e;
     process.stderr.write(e.message + '\n');

@@ -198,6 +198,11 @@ test('R302: a match takes what the script gives a returning entry of the candida
   assert.ok(!read('record.md').includes('an earlier fixed or rejected entry'), 'record.md still limits a match to fixed or rejected entries');
 });
 
+test('R302 and R306: the match is written with the bucket and state, and a match without its link is warned about', () => {
+  holds('steps/1-pass.md', 'its `match`, `{"of": "<earlier id>", "reason": "<why>"}`, and the bucket and state of item 2 go in this same write', 'findings: warning:');
+  holds('record.md', 'with no `match`');
+});
+
 test('R297: two keys of one pass never share a slug', () => {
   const rule = 'The slugs are given in byte order of key path with the `.` key last, and a slug an earlier key already holds takes `-2`, else `-3`, and so on, the first one free.';
   holds('steps/1-pass.md', rule, 'so `src/root` keeps `src-root` and the `.` key takes `src-root-2`');

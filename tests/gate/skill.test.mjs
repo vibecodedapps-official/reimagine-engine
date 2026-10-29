@@ -127,7 +127,11 @@ test('R289 and R300: the checks phrase is in both grammar lists and ends where a
 test('R289 and R323: the repo phrase is in both grammar lists and is checked as the toplevel of its path', () => {
   assert.ok(SKILL.includes('- "repo <path>": '), 'SKILL.md does not list the repo phrase');
   assert.ok(README.includes('- `repo <path>`: '), 'README.md does not list the repo phrase');
-  assert.ok(SKILL.includes('`git -C <path> rev-parse --show-toplevel` prints that path, compared as absolute paths with forward slashes and no trailing slash, else the target is unresolved'), 'SKILL.md lacks the toplevel check');
+  assert.ok(SKILL.includes('`git -C <path> rev-parse --show-prefix` exits 0 and prints an empty line, else the target is unresolved'), 'SKILL.md lacks the toplevel check');
+  assert.ok(SKILL.includes('The check compares no strings, so a path typed in another case, with `~` or as `/c/...` resolves'), 'SKILL.md lacks the statement that the check compares no strings');
+  assert.ok(SKILL.includes('`git -C <path> rev-parse --show-toplevel` gives the toplevel the Targets line names'), 'SKILL.md does not take the toplevel from --show-toplevel');
+  assert.ok(!SKILL.includes('compared as absolute paths with forward slashes'), 'SKILL.md still compares the path as a string');
+  assert.ok(SKILL.includes('and for "repo <path>" the `git -C <path> rev-parse` calls, which may prompt, since the skill pre-approves only the plain forms'), 'SKILL.md does not list the git -C calls among those made before the reading block');
   assert.ok(SKILL.includes('Beside a pull request or manifest target, "repo <path>" is one unresolved line'), 'SKILL.md lacks the unresolved rule beside a pull request or manifest target');
   assert.ok(SKILL.includes('a branch target named by "repo <path>" shows its resolved toplevel'), 'SKILL.md does not put the toplevel on the Targets line');
 });

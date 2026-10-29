@@ -52,7 +52,7 @@ Write `plan.md`. For each input: scope, acceptance criteria and buildable status
 
 On an existing record, leave the sections of `plan.md` as they are and append a section `## Run <n> slices` holding the open inputs' scope, criteria and buildable status, their slices, and what the parts across inputs gain from them. A prior run's open slice stays in its own section and is built in this run. A slice name is never used twice in one record.
 
-Slice count is a property of the plan. Split when parts touch disjoint files and one agent would otherwise carry more than one area, or more than one subagent budget of work. Never split work that shares a file; slices own disjoint files. The order of work says which slices are independent and may run in parallel.
+Slice count is a property of the plan. Split when parts touch disjoint files and one agent would otherwise carry more than one area, or more than one subagent budget of work. The subagent budget is the one in force for the run, `timeouts.subagent` in `.reimagine.json`, else 20 minutes (SKILL.md, Budgets and rounds). An implementer call past it ends the run `blocked` (`steps/4-build.md`, 4.2), so size each slice to finish well inside it. Never split work that shares a file; slices own disjoint files. The order of work says which slices are independent and may run in parallel.
 
 Judge the risk floor of `risk.md` on the plan. Record the floor, with its trigger or `none`, and the Step 5 level it gives.
 

@@ -168,3 +168,12 @@ test('R135: the Risk section of the report names the Step 5 level and the stand-
 test('R106: Step 4.5 judges the floor alone', () => {
   assert.ok(BUILD.includes('**4.5 Re-evaluation.** Judge the risk floor of `risk.md` on the actual diff from the merge-base.'));
 });
+
+test('R99, R104: Step 2 sizes a slice to the subagent budget, and the brief names it', () => {
+  assert.ok(PLAN.includes('The subagent budget is the one in force for the run, `timeouts.subagent` in `.reimagine.json`, else 20 minutes'));
+  assert.ok(PLAN.includes('An implementer call past it ends the run `blocked`'));
+  const brief = section(BUILD, 'Implementer brief');
+  assert.notEqual(brief, null);
+  assert.ok(brief.includes('7. The subagent budget in force, in minutes, and that a call past it ends the run `blocked`'));
+  assert.ok(brief.includes('8. The reply shape'));
+});

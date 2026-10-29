@@ -26,7 +26,8 @@ Write one brief per slice and pass it as the whole prompt of the implementer. It
 4. The checkout path the implementer edits: the worktree or additional repository path when the slice lives there, else the primary checkout. Every path in the brief is absolute.
 5. The line-ending rule. Run `git ls-files --eol` on the slice's existing files. When a file shows an `eol=` attribute, match it. When `text` or `text=auto` applies with no `eol=`, any ending is fine, since git normalizes it. Otherwise match the majority working-tree ending of the file's directory, else of the repository. The implementer never changes the line endings of a file it edits.
 6. The scope rule: change nothing outside the slice's files and add nothing the brief does not ask for; report instead of editing anything outside; do not commit, push, install anything or run `gh`; leave intent-to-add marks alone.
-7. The reply shape: files changed, checks run with results, and anything it could not do.
+7. The subagent budget in force, in minutes, and that a call past it ends the run `blocked`: report what is not done rather than run on.
+8. The reply shape: files changed, checks run with results, and anything it could not do.
 
 After a `drop` answer to the credential question (Step 0.1a), the brief carries the redacted values only, never the dropped text.
 

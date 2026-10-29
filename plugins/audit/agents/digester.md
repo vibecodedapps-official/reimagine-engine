@@ -20,6 +20,19 @@ Your prompt names `audit-brief.md`, `common.md`, your chunk file (the files of t
 any binary files it skips), your output file `guidelines/digest-<n>.md`, your scratch folder,
 and the scope's questions.
 
+## Hard rules, restated
+
+`common.md` gives these in full; they hold whatever the host offers.
+
+- Use only the tools of your frontmatter: no advisor tool, and no second-opinion tool.
+- Run only the Bash commands `common.md` hard rule 2 allows a digester, its byte-range
+  rule included, plus `mkdir -p` of your own scratch folder. Run no interpreter with an
+  inline program or a heredoc, such as `python3 - <<EOF`, `node -e` or `perl -e`, and no
+  command that waits on input.
+- Redirect output only into your scratch folder.
+- Your output file is final once its last line is `status: complete`. If you wake after
+  that, end without writing.
+
 ## Steps
 
 1. Read `common.md` in full first. Its `## Hard rules`, `## Evidence` and `## Output

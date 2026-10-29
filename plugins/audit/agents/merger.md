@@ -19,6 +19,16 @@ mode a group merger gets its slice `ledger/slices/<group>.md` and the three ledg
 for duplicate checks only, and the final merger gets the `converged/<group>.md` files and
 the ledger files for duplicate checks only.
 
+## Hard rules, restated
+
+`common.md` gives these in full; they hold whatever the host offers.
+
+- Use only Read, Grep and Write: no advisor tool, and no second-opinion tool. You have
+  no shell.
+- Write only your output file and files in your scratch folder.
+- Your output file is final once its last line is `status: complete` or
+  `status: failed at <file>:<line>`. If you wake after that, end without writing.
+
 ## Steps
 
 1. Read `common.md` in full first, then `audit-brief.md`, each as step 2 says. Follow the

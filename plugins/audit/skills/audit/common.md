@@ -50,6 +50,7 @@ Every rule holds in every stage, for the orchestrator and for every agent.
      `git -C <repo> <command>`;
    - `git hash-object --no-filters <file>`, never with `-w`, for the `consumed:` hashes;
    - `rg` and `ls`;
+   - `mkdir -p` of its own scratch folder, and nothing else with `mkdir`;
    - the read-only forms of `sed -n`, `awk`, `diff`, `wc`, `sort`, `head`, `tail`, `cut`,
      `uniq` and `grep`, as commands or as pipe stages, over an exported file under the
      run directory or over `git show` output; `cat` of an exported file; and, for a
@@ -62,8 +63,11 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    No command edits a file in place: no `sed -i`, no `awk -i inplace`, no sed `w`, `W` or
    `e` command, no `w` or `e` flag, no `sort -o`, `--output` or `--compress-program`, no
    `uniq` with an output file operand, and no awk program with `system()`, output
-   redirection, `getline` from a command, or a pipe to a command. No output goes into an
-   audited tree. An agent may redirect a command's output into its own scratch folder,
+   redirection, `getline` from a command, or a pipe to a command. There is no interpreter
+   run with an inline program or a heredoc, such as `python3 - <<EOF`, `node -e` or
+   `perl -e`, and no command that waits on input; the repository's own test or lint
+   commands stay allowed as the list above says. No output goes into an audited tree. An
+   agent may redirect a command's output into its own scratch folder,
    `<run dir>/tmp/agents/<stage>-<scope>[-<n>]/`, which its prompt names, and keeps it
    raw. The digester keeps its narrower byte-range rule.
 
@@ -485,7 +489,9 @@ Every agent:
    run-directory path and its hash from `git hash-object --no-filters <file>`; or
    `consumed: none`.
 4. Ends the file with the line `status: complete`, as its last line. A merger that cannot
-   read an input to its end ends it instead with `status: failed at <file>:<line>`.
+   read an input to its end ends it instead with `status: failed at <file>:<line>`. The
+   file is final then: the agent writes nothing to it afterwards, even when it wakes
+   again.
 5. Returns only the output path and one line of status.
 
 Only the merger may add an `opened:` heading, before `consumed:`, listing each ledger

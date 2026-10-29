@@ -96,6 +96,12 @@
 # - skills/audit/resume.md keeps a finished pass1/ or pass2/ file when stage 4 or 5 is
 #   the first rerun stage because its entry is missing or running, and stages 4 and 5
 #   launch no agent for a scope whose file resume kept; each file is read as one line.
+# - Each of the five agents has a `## Hard rules, restated` section before `## Steps`
+#   that names no advisor or second-opinion tool, its scratch folder and
+#   `status: complete`, and, but for the merger, `mkdir -p`, a heredoc and a command
+#   that waits on input; skills/audit/common.md hard rule 2 allows `mkdir -p` of the
+#   agent's own scratch folder and bars an inline program or a heredoc; SKILL.md says a
+#   late completion notification changes nothing.
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -582,6 +588,42 @@ for f in skills/audit/stages/4-pass-one.md:'Launch no auditor for a scope whose 
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "$s" "$tmp/list" || fail "$f: launches an agent for a scope whose output resume kept"
 done
+# Each agent restates hard rules 2 and 4 in a section before its steps: no second-opinion
+# tool, the Bash rules (the merger has no Bash), redirects inside its scratch folder, and
+# an output that is final at `status: complete`. Each section is read as one line.
+for f in agents/auditor.md agents/adversary.md agents/mapper.md agents/digester.md agents/merger.md; do
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | awk '/^## Hard rules, restated$/ { on = 1; next } /^## / { if (on) exit } on' |
+		tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	[ -s "$tmp/list" ] || {
+		fail "$f: no ## Hard rules, restated section before the next heading"
+		continue
+	}
+	tr -d '\r' < "$f" | awk '/^## Hard rules, restated$/ { r = NR } /^## Steps/ { s = NR } END { exit !(r && s && r < s) }' ||
+		fail "$f: the ## Hard rules, restated section does not come before ## Steps"
+	set -- 'no advisor tool, and no second-opinion tool' 'scratch folder' '`status: complete`'
+	case $f in
+	agents/merger.md) ;;
+	*) set -- "$@" '`mkdir -p`' 'heredoc' 'waits on input' ;;
+	esac
+	for c in "$@"; do
+		grep -qF "$c" "$tmp/list" || fail "$f: the restated rules lack $c"
+	done
+done
+f=skills/audit/common.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF '`mkdir -p` of its own scratch folder' "$tmp/list" ||
+		fail "$f: hard rule 2 does not allow mkdir -p of the agent's own scratch folder"
+	grep -qF 'no interpreter run with an inline program or a heredoc' "$tmp/list" ||
+		fail "$f: hard rule 2 does not bar an inline program or a heredoc"
+fi
+f=skills/audit/SKILL.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'A completion notification for an agent whose stage entry is already `complete` or `failed` changes nothing' "$tmp/list" ||
+		fail "$f: does not say a late completion notification changes nothing"
+fi
 
 if [ "$fails" -gt 0 ]; then
 	exit 1

@@ -180,5 +180,5 @@ test('R135: a block in Step 4 prints the commit and push commands', () => {
   assert.ok(REPORT.includes('`git push <remote> <branch>` when the branch exists on the remote'));
   assert.ok(REPORT.includes('a rerun then finds those slices committed by their files'));
   assert.ok(REPORT.includes('`git add <paths>` with the paths of each slice whose `status` in `steps.json` is `complete`'));
-  assert.ok(REPORT.includes('Each other slice whose edits are in the tree is named as not done, its paths are left out of the commands, and the rerun builds it again'));
+  assert.ok(REPORT.includes("Each other slice whose edits are in the tree is named as not done with its paths, which are left out of the commands; say that the rerun's Step 0.3 stops on them until they are committed, restored or moved out of the tree, and then builds the slice again"));
 });

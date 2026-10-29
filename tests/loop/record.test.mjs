@@ -74,10 +74,11 @@ test('R89: a slice committed outside the loop is found by the hashes of its file
   const steps = section(RECORD, 'steps.json');
   const existing = section(RECORD, 'An existing record');
   assert.ok(steps.includes('git -C <checkout> hash-object --no-filters <path>'));
+  assert.ok(existing.includes('git -C <checkout> cat-file -e <tip>:<path>'));
+  assert.ok(existing.includes('git -C <checkout> rev-parse <tip>:<path>'));
   assert.ok(existing.includes('git -C <checkout> cat-file --filters <tip>:<path> | git hash-object --stdin --no-filters'));
   for (const text of [steps, existing]) {
     assert.ok(!text.includes('hash-object -- <path>'));
-    assert.ok(!text.includes('git rev-parse <tip>:<path>'));
   }
   assert.ok(section(SKILL, 'Final report handling').includes('its `files`'));
 });

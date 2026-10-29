@@ -331,6 +331,7 @@ const COMMAND =
   'cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
 
 test('R305: Step 1 holds the child session command as one fenced line', () => {
+  holds('SKILL.md', 'In every command the skill and its step files show, a placeholder for a path, such as `<path>`, `<repo>`, `<repo root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.');
   holds('steps/1-pass.md', 'every path handed to a command is absolute and in double quotes, since a folder name may hold a space.');
   const text = holds('steps/1-pass.md', 'run_in_background');
   assert.ok(text.startsWith('# Step 1: A pass\n'));

@@ -161,6 +161,12 @@ test('R292: Step 0 fetches the base and the head with the explicit refspec and k
   holds('steps/0-preflight.md', '+refs/heads/<b>:refs/remotes/<r>/<b>', '+refs/heads/<head>:refs/remotes/<r>/<head>', 'git merge-base', 'full sha', 'base <branch>');
 });
 
+test('R292: a branch target takes the request\'s base, then the bundle\'s, then the configuration\'s, then the default', () => {
+  const order = '"base <branch>" in the request, else the manifest bundle\'s `base`, else `.reimagine.json` `base`, else the remote\'s default branch';
+  assert.ok(SKILL.includes(order), 'SKILL.md lacks the base order');
+  holds('steps/0-preflight.md', order);
+});
+
 test('R295: Step 0 checks the clean tree before any checkout and keeps the fetched remote head', () => {
   const text = holds('steps/0-preflight.md', 'git status --porcelain', 'git diff --cached --quiet', 'Never stash, reset or clean', 'git rev-parse refs/remotes/<r>/<head>');
   assert.ok(text.indexOf('git diff --cached --quiet') < text.indexOf('git checkout'), 'the clean tree must come before the checkout');

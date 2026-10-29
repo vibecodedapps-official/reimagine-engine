@@ -88,7 +88,7 @@ You write the rest:
 
 1. The triage fills each `null` bucket and reason in the pass's entry and sets the state: `fix` gives `open` (a `regressed` entry stays `regressed`), `defer` gives `deferred`, `reject` gives `rejected`.
 2. After the fix round's commit exists, each fix-bucket entry of the pass becomes `fixed`.
-3. When you read a `new` finding and an earlier fixed or rejected entry and see one defect worded two ways, you may match them: add `match` to the new entry, give it the matched entry's carried or regressed bucket and state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
+3. When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says: add `match` to the new entry, give it the bucket and state the script gives a returning entry of the candidate's state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
 
 ## Write discipline
 

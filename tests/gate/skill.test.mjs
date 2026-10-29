@@ -194,6 +194,8 @@ test('R297: a pass over split groups by path at the shallowest depth that gives 
 test('R302: a match takes what the script gives a returning entry of the candidate\'s state', () => {
   holds('steps/1-pass.md', '`fix` and `regressed` for a fixed one, `reject` and `carried` for a rejected or carried one, `defer` and `deferred` for a deferred one, and for a regressed one no bucket, its state staying `regressed`');
   holds('record.md', 'A regressed entry that returns keeps the state `regressed` and gets no bucket');
+  holds('record.md', 'When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says');
+  assert.ok(!read('record.md').includes('an earlier fixed or rejected entry'), 'record.md still limits a match to fixed or rejected entries');
 });
 
 test('R297: two keys of one pass never share a slug', () => {

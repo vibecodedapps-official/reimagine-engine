@@ -4,6 +4,7 @@ description: 'Run code-review passes over a pull request, several, or a loop man
 allowed-tools:
   - Bash(date)
   - Bash(date *)
+  - Bash(sleep *)
   - Bash(git status *)
   - Bash(git diff *)
   - Bash(git log *)
@@ -34,7 +35,7 @@ allowed-tools:
 
 The gate runs after the loop and before the audit: the loop ships a reviewed pull request, the gate converges the reviewer on it, the audit challenges the result.
 
-You orchestrate one run over one pull request, several, or a loop manifest. You run `code-review` passes over the whole change from the merge-base, sort what each pass finds, have implementers fix what is worth fixing, decide from the record of the pass whether to run another and at what level, and stop at a verdict. The allowed-tools list pre-approves only date and read-only git and gh; every write, push and comment stays under the session's permission mode.
+You orchestrate one run over one pull request, several, or a loop manifest. You run `code-review` passes over the whole change from the merge-base, sort what each pass finds, have implementers fix what is worth fixing, decide from the record of the pass whether to run another and at what level, and stop at a verdict. The allowed-tools list pre-approves only date, sleep for a budget timer, and read-only git and gh; every write, push and comment stays under the session's permission mode.
 
 ## Reading the request
 

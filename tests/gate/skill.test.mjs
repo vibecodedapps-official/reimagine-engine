@@ -537,7 +537,9 @@ test('R317: Step 4 prints the written report whole as the last text, with nothin
 
 test('R303: a check whose budget is over the foreground limit runs in the background and is stopped at expiry', () => {
   holds('steps/2-fix.md', "3. Each check runs with its budget as the Bash call's timeout, since the default is 2 minutes.");
-  holds('steps/2-fix.md', 'A check whose budget is over 10 minutes, the foreground limit of the shell, runs with `run_in_background` instead, beside a `sleep` of the budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; when the sleep ends first, the check is stopped with TaskStop.');
+  holds('steps/2-fix.md', 'A check whose budget is over 10 minutes, the foreground limit of the shell, runs with `run_in_background` instead, beside a `sleep` of the budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; whichever ends first, the other is stopped with TaskStop.');
+  holds('steps/1-pass.md', 'start a `sleep` of the review budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends', 'A review still running when the sleep ends is stopped with TaskStop', 'when every review has ended first, the sleep is stopped with TaskStop');
+  holds('SKILL.md', '  - Bash(sleep *)\n');
 });
 
 test('R317: the Log gives each implementer call its notification duration and the date pair of its call or batch', () => {

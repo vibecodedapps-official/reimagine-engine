@@ -377,7 +377,7 @@ test('R300: Step 2 judges an implementer call by its notification duration_ms an
     'A notification for a call the gate did not send, after that call already returned, is not a new call: Snapshots, item 8, says how it is judged.',
     'or start a background command, since one that finishes after the call returns wakes it again',
     'After a failed call (Groups, item 4)');
-  holds('report.md', 'its start and end, copied from the `date -u` outputs Step 2 kept, and its `duration_ms` from the completion notification');
+  holds('report.md', "its `duration_ms` from the completion notification");
 });
 
 test('R300: Step 2 judges a late notification against the call\'s post-<n> files', () => {
@@ -536,4 +536,8 @@ test('R317: Step 4 prints the written report whole as the last text, with nothin
 
 test('R303: a check whose budget is over the foreground limit runs in the background and is stopped at expiry', () => {
   holds('steps/2-fix.md', 'A check whose budget is over 10 minutes, the foreground limit of the shell, runs with `run_in_background` and is stopped with TaskStop when the budget expires.');
+});
+
+test('R317: the Log gives each implementer call its notification duration and the date pair of its call or batch', () => {
+  holds('report.md', "each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch");
 });

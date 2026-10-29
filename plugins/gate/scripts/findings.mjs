@@ -128,7 +128,7 @@ const highestPass = (ledger) => Math.max(0, ...Object.values(ledger.findings).fl
 // only a match gives a new finding either state.
 function unmatched(ledger, n) {
   return Object.entries(ledger.findings)
-    .filter(([, e]) => n >= 1 && e.first_pass === n && (e.state === 'carried' || e.state === 'regressed') && !isObject(e.match))
+    .filter(([, e]) => e.first_pass === n && (e.state === 'carried' || e.state === 'regressed') && !isObject(e.match))
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([id, e]) => `findings: warning: ${id} is ${e.state} with no match; write the match of Step 1.6`);
 }
@@ -183,13 +183,14 @@ function readReview(path) {
   return { name, review: { output: name, ...meta, notes: { before: parsed.before, after: parsed.after } }, findings: parsed.findings };
 }
 
-// Merges the reviews into the ledger text; returns { ledger, summary } as the text to write and print.
 // A pass number of 1 or more, else a usage failure.
 const passArg = (arg) => {
   if (!/^[1-9][0-9]*$/.test(arg) || !Number.isSafeInteger(Number(arg))) throw new Fail(2, USAGE);
   return Number(arg);
 };
 
+// Merges the reviews into the ledger text; returns { ledgerPath, ledger, summary, warnings }, the text to write and print
+// and the warning lines.
 function ingest(argv) {
   if (argv.length < 3) throw new Fail(2, USAGE);
   const n = passArg(argv[0]);

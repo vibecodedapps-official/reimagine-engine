@@ -639,9 +639,14 @@ branch to it in the manifest."
       low.
    2. A `code`, `decision` or `verification` claim goes to the group whose files it
       concerns, and to `cross-cutting` for a file there.
-   3. One that names no file goes to its ticket's group when that group exists, else
-      the first group holding a file of its bundle, else the first group.
+   3. One that names no file goes to its ticket's group when that group exists and
+      holds a file; else across the bundle's groups that hold a file, in claim order,
+      one claim per group in turn, starting again at the first; else the first group.
    4. Never a group absent from `groups.md` or without files.
+   5. Once every claim is assigned, a group holding more than 80 claims that name no
+      file keeps the 80 with the lowest numbers, and the rest move in turn across the
+      bundle's other groups that hold a file. A bundle with no other such group keeps
+      them where they are.
    `other` lines get ` -> none`. Check that every `claim` line names `hygiene` or a
    group with at least one file, so stage 4 schedules it, and reassign any other by
    rule 3.
@@ -712,7 +717,8 @@ branch to it in the manifest."
          claim counts by kind, the mapping notes of 0g and the commit notes of step 8;
          `none` when no claims file is a handoff.
        - Claims: that every claim has a scope stage 4 schedules, with counts per kind
-         and per target.
+         and per target, each scope's claim count and each move of step 9 rule 5, by
+         claim number with the group it left and the group it joined.
        - Placement rules: from the user's instruction files in `$CLAUDE_CONFIG_DIR`, else
          `~/.claude` (`CLAUDE.md` and the files it indexes), each rule that says where a
          documented fact goes, quoted with its file and the time read, or `none`. It is a

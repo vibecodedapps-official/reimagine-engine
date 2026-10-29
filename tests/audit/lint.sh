@@ -90,6 +90,9 @@
 # - skills/audit/SKILL.md allowed-tools pre-approves `git ls-tree`, `git cat-file` and
 #   `git branch --list`, each also in its `git -C *` form; the bare `git cat-file` only
 #   with `-t`, `-s` or `-p`, since `--textconv` and `--filters` run configured programs.
+# - skills/audit/stages/1-orient.md, read as one line, spreads a claim that names no
+#   file across the bundle's groups in turn, caps a group at 80 such claims, and has
+#   the brief's Claims section record each scope's claim count and each move.
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -547,6 +550,18 @@ for f in skills/audit/stages/9-act.md skills/audit/common.md; do
 	grep -qF 'the `REVIEW.md` copies `audit-brief.md` records at the base' "$tmp/list" ||
 		fail "$f: the instruction files read before a change do not name the REVIEW.md copies at the base"
 done
+# A claim that names no file spreads across the bundle's groups and no group holds
+# more than 80 of them; the file is read as one line.
+f=skills/audit/stages/1-orient.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "else across the bundle's groups that hold a file, in claim order, one claim per group in turn, starting again at the first" "$tmp/list" ||
+		fail "$f: step 9 does not spread a claim that names no file across the bundle's groups"
+	grep -qF 'a group holding more than 80 claims that name no file keeps the 80 with the lowest numbers' "$tmp/list" ||
+		fail "$f: step 9 does not cap a group at 80 claims that name no file"
+	grep -qF "each scope's claim count and each move of step 9 rule 5" "$tmp/list" ||
+		fail "$f: the brief's Claims section does not record each scope's claim count and each move"
+fi
 
 if [ "$fails" -gt 0 ]; then
 	exit 1

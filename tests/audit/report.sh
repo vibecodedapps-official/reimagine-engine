@@ -49,6 +49,13 @@ w() {
 	printf '%s\n' "$@" > "$f"
 }
 
+# wp <file> <line>...: a finished pass file, the lines then `status: complete`.
+wp() {
+	f=$1
+	shift
+	printf '%s\n' "$@" 'status: complete' > "$f"
+}
+
 T=$(printf '\t')
 H40=0123456789abcdef0123456789abcdef01234567
 H64=fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
@@ -116,7 +123,8 @@ w "$M/pass1/g2.md" \
 	'none' \
 	'## Scope' \
 	'none' \
-	'consumed: none'
+	'consumed: none' \
+	'status: complete'
 w "$M/pass2/p.md" \
 	'## Verified OK challenged' \
 	'- claim 1: upheld; evidence: outside any claims section' \
@@ -126,7 +134,8 @@ w "$M/pass2/p.md" \
 	'## Decisions challenged' \
 	'- claim 6: agree; evidence: the record' \
 	'## Scope challenged' \
-	'none'
+	'none' \
+	'status: complete'
 run "main parts" 0 "" parts "$M"
 
 w "$tmp/want-claims" \
@@ -227,6 +236,20 @@ same "main claims-verdicts.body.md" "$M/report/parts/claims-verdicts.body.md" "$
 # A second run over the same directory gives the same bytes.
 run "main parts again" 0 "" parts "$M"
 same "main again 10-claims.md" "$M/report/parts/10-claims.md" "$tmp/want-claims"
+
+# The same run with CRLF line endings in every input gives the same bytes, LF outputs.
+CR=$tmp/crlf
+rm -rf "$CR"
+cp -r "$M" "$CR"
+rm -f "$CR/report/parts/10-claims.md" "$CR/report/parts/08-decisions.md" "$CR/report/parts/claims-verdicts.body.md"
+for f in "$CR/claims.md" "$CR"/report/parts/*.txt "$CR"/pass1/*.md "$CR"/pass2/*.md; do
+	while IFS= read -r l; do printf '%s\r\n' "$l"; done < "$f" > "$f.cr"
+	mv "$f.cr" "$f"
+done
+run "crlf parts" 0 "" parts "$CR"
+same "crlf 10-claims.md" "$CR/report/parts/10-claims.md" "$tmp/want-claims"
+same "crlf 08-decisions.md" "$CR/report/parts/08-decisions.md" "$tmp/want-decisions"
+same "crlf claims-verdicts.body.md" "$CR/report/parts/claims-verdicts.body.md" "$tmp/want-body"
 
 # Empty claims-files.txt, items.txt and claims.md without claims: the minimal outputs.
 E=$tmp/empty
@@ -393,8 +416,8 @@ base "$D"; w "$D/report/parts/claims-files.txt" "h.md${T}/w/h.md${T}handoff${T}0
 perr "claims-files with an uppercase hash" "$D" "report: report/parts/claims-files.txt:1: malformed line"
 base "$D"; w "$D/report/parts/claims-files.txt" "h.md${T}/w/h.md${T}handoff${T}$H40${T}extra"
 perr "claims-files with five fields" "$D" "report: report/parts/claims-files.txt:1: malformed line"
-base "$D"; w "$D/report/parts/claims-files.txt" "h.md${T}/w/h.md${T}handoff${T}$H40" ''
-perr "claims-files with a blank line" "$D" "report: report/parts/claims-files.txt:2: malformed line"
+base "$D"; w "$D/report/parts/claims-files.txt" "h.md${T}/w/h.md${T}handoff${T}$H40" ' '
+perr "claims-files with a line of one space" "$D" "report: report/parts/claims-files.txt:2: malformed line"
 base "$D"; w "$D/report/parts/claims-files.txt" "h.md${T}/w/h.md${T}handoff${T}$H40" "h.md${T}/w/other.md${T}prose${T}$H64"
 perr "claims-files with a name twice" "$D" "report: report/parts/claims-files.txt:2: h.md listed twice"
 
@@ -440,58 +463,60 @@ base "$D"; w "$D/claims.md" '1. [bogus] b/T-1 h.md:1: x -> g1'
 perr "claims.md with an unknown form" "$D" "report: claims.md:1: not a claim line"
 base "$D"; w "$D/claims.md" '1. [claim:code] b/T-1 h.md:1: x -> g1' '2. [claim:code] b/T-1 gone.md:5: x -> g1'
 perr "claims.md with an unlisted source" "$D" "report: claims.md:2: gone.md is not in report/parts/claims-files.txt"
+base "$D"; w "$D/claims.md" '1. [claim:code] b/T-1 h.md:1: x -> g1' '' '2. [claim:decision] b/T-1 h.md:2 (d1): y -> g1' '2. [claim:code] b/T-1 h.md:3: z -> g1'
+perr "claims.md with a claim number twice" "$D" "report: claims.md:4: claim 2 listed twice"
 
 p1() { base "$D"; mkdir -p "$D/pass1"; }
-p1; w "$D/pass1/g1.md" '## Claims' '- claim x: true'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim x: true'
 perr "pass1 claims entry without a number" "$D" "report: pass1/g1.md:2: malformed claim line"
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 1 true'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1 true'
 perr "pass1 claims entry without a colon" "$D" "report: pass1/g1.md:2: malformed claim line"
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 1: '
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: '
 perr "pass1 claims entry without a rest" "$D" "report: pass1/g1.md:2: malformed claim line"
-p1; w "$D/pass1/g1.md" '## Decisions' '- claim 2: agree'
+p1; wp "$D/pass1/g1.md" '## Decisions' '- claim 2: agree'
 perr "pass1 decisions entry without a ref" "$D" "report: pass1/g1.md:2: malformed claim line"
-p1; w "$D/pass1/g1.md" '## Scope' '- claim 3 (s1): '
+p1; wp "$D/pass1/g1.md" '## Scope' '- claim 3 (s1): '
 perr "pass1 scope entry without a rest" "$D" "report: pass1/g1.md:2: malformed claim line"
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 1: true' '## Scope' '- claim 3 (a)b): x'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: true' '## Scope' '- claim 3 (a)b): x'
 perr "pass1 scope entry with a closing parenthesis in the ref" "$D" "report: pass1/g1.md:4: malformed claim line"
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 7: true'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 7: true'
 perr "pass1 unknown claim" "$D" "report: pass1/g1.md:2: claim 7 is not a claim of claims.md"
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 4: true'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 4: true'
 perr "pass1 entry for an other line" "$D" "report: pass1/g1.md:2: claim 4 is not a claim of claims.md"
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 1: true' 'runs: none'; w "$D/pass1/g2.md" '## Claims' 'none' '- claim 1: false'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: true' 'runs: none'; wp "$D/pass1/g2.md" '## Claims' 'none' '- claim 1: false'
 perr "pass1 claim twice across files" "$D" "report: pass1/g2.md:3: claim 1 listed twice"
-p1; w "$D/pass1/g1.md" '## Decisions' '- claim 2 (d1): a' '- claim 2 (d1): b'
+p1; wp "$D/pass1/g1.md" '## Decisions' '- claim 2 (d1): a' '- claim 2 (d1): b'
 perr "pass1 decision twice" "$D" "report: pass1/g1.md:3: claim 2 listed twice"
-p1; w "$D/pass1/g1.md" '## Decisions' '- claim 1 (d1): a'
+p1; wp "$D/pass1/g1.md" '## Decisions' '- claim 1 (d1): a'
 perr "pass1 decision for a code claim" "$D" "report: pass1/g1.md:2: claim 1 is not a decision claim"
-p1; w "$D/pass1/g1.md" '## Scope' '- claim 2 (s1): a'
+p1; wp "$D/pass1/g1.md" '## Scope' '- claim 2 (s1): a'
 perr "pass1 scope for a decision claim" "$D" "report: pass1/g1.md:2: claim 2 is not a scope claim"
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 1: true' '## Decisions' '- claim 2 (d1): a' '- claim 2 (d1): b'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: true' '## Decisions' '- claim 2 (d1): a' '- claim 2 (d1): b'
 perr "pass1 error in a later section" "$D" "report: pass1/g1.md:5: claim 2 listed twice"
 # The same claim in two kinds of section is not a repeat.
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 2: true' '## Decisions' '- claim 2 (d1): a'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 2: true' '## Decisions' '- claim 2 (d1): a'
 run "pass1 same claim in two sections" 0 "" parts "$D"
 
 p2() { base "$D"; mkdir -p "$D/pass2"; }
-p2; w "$D/pass2/a.md" '## Claims challenged' '- claim 1 upheld'
+p2; wp "$D/pass2/a.md" '## Claims challenged' '- claim 1 upheld'
 perr "pass2 entry without a colon" "$D" "report: pass2/a.md:2: malformed claim line"
-p2; w "$D/pass2/a.md" '## Decisions challenged' '- claim 2 (d1): agree'
+p2; wp "$D/pass2/a.md" '## Decisions challenged' '- claim 2 (d1): agree'
 perr "pass2 entry with a ref" "$D" "report: pass2/a.md:2: malformed claim line"
-p2; w "$D/pass2/a.md" '## Scope challenged' '- claim 8: agree'
+p2; wp "$D/pass2/a.md" '## Scope challenged' '- claim 8: agree'
 perr "pass2 unknown claim" "$D" "report: pass2/a.md:2: claim 8 is not a claim of claims.md"
-p2; w "$D/pass2/a.md" '## Claims challenged' '- claim 1: upheld; evidence: a'; w "$D/pass2/b.md" '## Claims challenged' '- claim 1: upheld; evidence: b'
+p2; wp "$D/pass2/a.md" '## Claims challenged' '- claim 1: upheld; evidence: a'; wp "$D/pass2/b.md" '## Claims challenged' '- claim 1: upheld; evidence: b'
 perr "pass2 claim twice across files" "$D" "report: pass2/b.md:2: claim 1 listed twice"
-p2; w "$D/pass2/a.md" '## Scope challenged' '- claim 3: agree' '- claim 3: agree'
+p2; wp "$D/pass2/a.md" '## Scope challenged' '- claim 3: agree' '- claim 3: agree'
 perr "pass2 scope twice" "$D" "report: pass2/a.md:3: claim 3 listed twice"
 
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 1: false, contradicted; F-1'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: false, contradicted; F-1'
 perr "false claim without a correction" "$D" "report: claims.md:1: claim 1 is false and report/parts/claims-override.txt gives no correction"
 w "$D/report/parts/claims-override.txt" 'claim 1 correction: x is wrong'
 run "false claim with a correction" 0 "" parts "$D"
 
 # A pre-top-up copy of a pass report is not a report: the outputs are the same with it.
-p1; w "$D/pass1/g1.md" '## Claims' '- claim 1: true; F-1'
-mkdir -p "$D/pass2"; w "$D/pass2/g1.md" '## Claims challenged' '- claim 1: upheld; evidence: reran'
+p1; wp "$D/pass1/g1.md" '## Claims' '- claim 1: true; F-1'
+mkdir -p "$D/pass2"; wp "$D/pass2/g1.md" '## Claims challenged' '- claim 1: upheld; evidence: reran'
 run "pre-topup copies absent" 0 "" parts "$D"
 for n in 10-claims.md 08-decisions.md claims-verdicts.body.md; do cp "$D/report/parts/$n" "$tmp/plain-$n"; done
 cp "$D/pass1/g1.md" "$D/pass1/g1.pre-topup.md"
@@ -511,6 +536,56 @@ w "$tmp/want-pt" \
 same "pre-topup 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-pt"
 for n in 10-claims.md 08-decisions.md claims-verdicts.body.md; do same "pre-topup $n" "$D/report/parts/$n" "$tmp/plain-$n"; done
 
+# A pass file whose last line is not `status: complete` is a failed output: it is skipped as
+# if absent, whatever it holds.
+base "$D"; mkdir -p "$D/pass1"
+w "$D/pass1/g1.md" '## Claims' '- claim 1: true, reproduced; F-1'
+run "pass1 without a status line" 0 "" parts "$D"
+w "$tmp/want-nostatus" \
+	'## 10. Claims' \
+	'' \
+	'Reproducing a stated result does not show that the build session ran its stated check.' \
+	'' \
+	'- claim 1 [code]: not verified; no pass-one line' \
+	'- claim 2 [decision]: not verified; not assessed' \
+	'- claim 3 [scope]: not verified; not assessed' \
+	'' \
+	'Other sentences, counted and not listed: 1' \
+	''
+same "pass1 without a status line 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-nostatus"
+base "$D"; mkdir -p "$D/pass1" "$D/pass2"
+w "$D/pass1/g1.md" '## Claims' '- claim x: true' 'consumed: none'
+wp "$D/pass1/g2.md" '## Claims' '- claim 1: true; F-1'
+w "$D/pass2/a.md" '## Claims challenged' '- claim 1: overturned to false, contradicted; evidence: x' '- claim 9: bad'
+run "failed outputs are not read" 0 "" parts "$D"
+same "failed outputs are not read 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-pt"
+
+# A heading is compared with its trailing blanks and tabs removed.
+base "$D"; mkdir -p "$D/pass1" "$D/pass2"
+wp "$D/pass1/g1.md" '## Claims ' '- claim 1: true; F-1'
+wp "$D/pass2/a.md" "## Claims challenged$T" '- claim 1: overturned to false, contradicted; evidence: x'
+run "headings with trailing blanks" 0 "" parts "$D"
+w "$tmp/want-hb" \
+	'## 10. Claims' \
+	'' \
+	'Reproducing a stated result does not show that the build session ran its stated check.' \
+	'' \
+	'- claim 1 [code]: contested; pass one: true; F-1 (C1); pass two: overturned to false, contradicted; evidence: x' \
+	'- claim 2 [decision]: not verified; not assessed' \
+	'- claim 3 [scope]: not verified; not assessed' \
+	'' \
+	'Other sentences, counted and not listed: 1' \
+	''
+same "headings with trailing blanks 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-hb"
+
+# A finished pass file without its claims heading is malformed, a map-correction file is not.
+p1; wp "$D/pass1/g1.md" '## claims' '- claim 1: true; F-1'
+perr "pass1 without a Claims heading" "$D" "report: pass1/g1.md:1: no ## Claims heading"
+p2; wp "$D/pass2/a.md" '## claims challenged' '- claim 1: upheld; evidence: x'
+perr "pass2 without a Claims challenged heading" "$D" "report: pass2/a.md:1: no ## Claims challenged heading"
+p2; wp "$D/pass2/x-topup.md" '# Findings' '- F-9: a new finding'
+run "pass2 map-correction file" 0 "" parts "$D"
+
 # Pass-one evidence that cites several finding ids maps each id; one mapped id is unchanged.
 base "$D"
 w "$D/report/parts/items.txt" 'C1: g1-F1' 'C3: g2-F4'
@@ -519,7 +594,7 @@ w "$D/claims.md" \
 	'2. [claim:code] b/T-1 h.md:2: y -> g1' \
 	'3. [claim:code] b/T-1 h.md:3: z -> g1'
 mkdir -p "$D/pass1"
-w "$D/pass1/g1.md" '## Claims' \
+wp "$D/pass1/g1.md" '## Claims' \
 	'- claim 1: true; g1-F1, g2-F4' \
 	'- claim 2: true; g1-F1 (see the log)' \
 	'- claim 3: true; g2-F4, g1-F1, g2-F4'
@@ -552,6 +627,80 @@ w "$tmp/want-mf-body" \
 	'  text: z' \
 	'  correction: none'
 same "several finding ids body" "$D/report/parts/claims-verdicts.body.md" "$tmp/want-mf-body"
+
+# A blank line in a list is skipped; a list holding only a newline is empty.
+base "$D"
+w "$D/report/parts/items.txt" 'C1: g1-F1' ''
+w "$D/claims.md" '1. [claim:code] b/T-1 h.md:1: x -> g1'
+mkdir -p "$D/pass1"
+wp "$D/pass1/g1.md" '## Claims' '- claim 1: true; g1-F1'
+run "items.txt with a blank line" 0 "" parts "$D"
+w "$tmp/want-bl" \
+	'## 10. Claims' \
+	'' \
+	'Reproducing a stated result does not show that the build session ran its stated check.' \
+	'' \
+	'- claim 1 [code]: true; g1-F1 (C1)' \
+	'' \
+	'Other sentences, counted and not listed: 0' \
+	''
+same "items.txt with a blank line 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-bl"
+base "$D"
+w "$D/report/parts/claims-files.txt" ''
+w "$D/report/parts/items.txt" ''
+w "$D/claims.md" '1. [other] none/none x.md:1: hello -> none'
+run "lists holding only a newline" 0 "" parts "$D"
+same "lists holding only a newline 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-e-claims"
+same "lists holding only a newline 08-decisions.md" "$D/report/parts/08-decisions.md" "$tmp/want-e-dec"
+[ -f "$D/report/parts/claims-verdicts.body.md" ] && [ ! -s "$D/report/parts/claims-verdicts.body.md" ] || fail "lists holding only a newline: the body part is not an empty file"
+base "$D"
+w "$D/claims.md" '1. [claim:code] b/T-1 h.md:1: x -> g1'
+w "$D/report/parts/claims-override.txt" '' 'claim 1: true; by hand' ''
+run "claims-override.txt with blank lines" 0 "" parts "$D"
+w "$tmp/want-ob" \
+	'## 10. Claims' \
+	'' \
+	'Reproducing a stated result does not show that the build session ran its stated check.' \
+	'' \
+	'- claim 1 [code]: true; by hand' \
+	'' \
+	'Other sentences, counted and not listed: 0' \
+	''
+same "claims-override.txt with blank lines 10-claims.md" "$D/report/parts/10-claims.md" "$tmp/want-ob"
+
+# A contested claim's finding is the items its pass-one evidence names, else none.
+base "$D"
+w "$D/report/parts/items.txt" 'C1: g1-F1' 'C3: g2-F4'
+w "$D/claims.md" \
+	'1. [claim:code] b/T-1 h.md:1: x -> g1' \
+	'2. [claim:code] b/T-1 h.md:2: y -> g1' \
+	'3. [claim:code] b/T-1 h.md:3: z -> g1'
+mkdir -p "$D/pass1" "$D/pass2"
+wp "$D/pass1/g1.md" '## Claims' \
+	'- claim 1: true, reproduced; g1-F1' \
+	'- claim 2: true, reproduced; g2-F4, g1-F1' \
+	'- claim 3: true, reproduced; ran it'
+wp "$D/pass2/a.md" '## Claims challenged' \
+	'- claim 1: overturned to false, contradicted; evidence: x' \
+	'- claim 2: overturned to false, contradicted; evidence: y' \
+	'- claim 3: overturned to false, contradicted; evidence: z'
+run "contested claims" 0 "" parts "$D"
+w "$tmp/want-cc-body" \
+	"## /w/h.md (handoff), hash $H40" \
+	'' \
+	'- claim 1 [code] h.md:1 -: contested; finding: C1; evidence: pass one: true, reproduced; g1-F1 (C1); pass two: overturned to false, contradicted; evidence: x' \
+	'  ticket: T-1' \
+	'  text: x' \
+	'  correction: none' \
+	'- claim 2 [code] h.md:2 -: contested; finding: C3, C1; evidence: pass one: true, reproduced; g2-F4, g1-F1 (C3, C1); pass two: overturned to false, contradicted; evidence: y' \
+	'  ticket: T-1' \
+	'  text: y' \
+	'  correction: none' \
+	'- claim 3 [code] h.md:3 -: contested; finding: none; evidence: pass one: true, reproduced; ran it; pass two: overturned to false, contradicted; evidence: z' \
+	'  ticket: T-1' \
+	'  text: z' \
+	'  correction: none'
+same "contested claims body" "$D/report/parts/claims-verdicts.body.md" "$tmp/want-cc-body"
 
 # An existing output survives a failed run unchanged.
 base "$D"; w "$D/claims.md" 'junk' '1. [claim:bad'

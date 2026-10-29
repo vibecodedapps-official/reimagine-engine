@@ -14,11 +14,18 @@
 # `claim <n> correction: <text>`), claims.md, and the `## Claims`, `## Decisions` and
 # `## Scope` sections of pass1/*.md and the `## Claims challenged`, `## Decisions
 # challenged` and `## Scope challenged` sections of pass2/*.md; a *.pre-topup.md copy is
-# not a report and is skipped. A pass-one claims line whose evidence (the text after the
-# verdict's `; `) is a `, ` list takes the first word of each element: every such word
-# that is an id of items.txt adds its item, once, in order of first appearance, as
-# ` (C1, C2)` after the evidence and as the finding and the evidence of the verdicts
-# line. It writes, in report/parts/: 10-claims.md, 08-decisions.md and
+# not a report and is skipped. Every input line is read with one trailing CR removed, and
+# a heading with its trailing blanks and tabs removed. A blank line of the three lists is
+# skipped. A pass file whose last line is not `status: complete` is a failed output and is
+# skipped as if absent. A finished pass-one file without `## Claims`, or a finished
+# pass-two file without `## Claims challenged` that is not a map-correction *-topup.md
+# file, is malformed, as is a claim number that claims.md lists twice. A pass-one claims
+# line whose evidence (the text after the verdict's `; `) is a `, ` list takes the first
+# word of each element: every such word that is an id of items.txt adds its item, once,
+# in order of first appearance, as ` (C1, C2)` after the evidence and as the finding and
+# the evidence of the verdicts line; a contested claim takes the same items as its
+# finding, or `none`, and keeps its pass-one and pass-two text as the evidence. It
+# writes, in report/parts/: 10-claims.md, 08-decisions.md and
 # claims-verdicts.body.md, all three or none. A verdicts line carries the handoff ref
 # bare, without the parentheses of claims.md, and `-` when the claim has none. The
 # report/parts directory exists whenever the run succeeds, because claims-files.txt
@@ -89,7 +96,10 @@ function nofile(rel) {
 function slurp(rel,    path, r, n, line) {
 	path = dir "/" rel
 	n = 0
-	while ((r = (getline line < path)) > 0) L[++n] = line
+	while ((r = (getline line < path)) > 0) {
+		sub(/\r$/, "", line)
+		L[++n] = line
+	}
 	close(path)
 	if (r < 0) return -1
 	return n
@@ -156,18 +166,23 @@ function parse_claim(line,    hdr, rest, sp, tok, sl, s, pos, p, q, r, r2, regio
 	return 1
 }
 # scan: read the three sections of one pass file into E (entry rest) and EL (entry line).
-function scan(rel, which,    n, i, line, fence, sect, k, num, after, rest, p) {
+function scan(rel, which,    n, i, line, fence, sect, k, num, after, rest, p, h, seen) {
 	n = slurp(rel)
 	if (n < 0) nofile(rel)
+	if (n == 0 || L[n] != "status: complete") return
 	fence = 0
 	sect = 0
+	seen = 0
 	for (i = 1; i <= n; i++) {
 		line = L[i]
 		if (line ~ /^[ \t]*```/) { fence = !fence; continue }
 		if (fence) continue
 		if (line ~ /^## /) {
+			h = line
+			sub(/[ \t]+$/, "", h)
 			sect = 0
-			for (k = 1; k <= 3; k++) if (line == H[which, k]) sect = k
+			for (k = 1; k <= 3; k++) if (h == H[which, k]) sect = k
+			if (sect == 1) seen = 1
 			continue
 		}
 		if (isend(line)) { sect = 0; continue }
@@ -191,6 +206,7 @@ function scan(rel, which,    n, i, line, fence, sect, k, num, after, rest, p) {
 		E[which, sect, num] = rest
 		EL[which, sect, num] = line
 	}
+	if (!seen && !(which == 2 && rel ~ /-topup\.md$/)) die(rel, 1, "no " H[which, 1] " heading")
 }
 # ledger: the entries of one kind (decision or scope) of report/parts/08-decisions.md.
 function ledger(kd, sect,    j, num, cnt) {
@@ -222,6 +238,7 @@ BEGIN {
 	if (n < 0) nofile(rel)
 	nf = 0
 	for (i = 1; i <= n; i++) {
+		if (L[i] == "") continue
 		if (split(L[i], a, "\t") != 4 || a[1] == "" || a[2] == "" || (a[3] != "handoff" && a[3] != "prose") || a[4] !~ /^[0-9a-f]+$/ || (length(a[4]) != 40 && length(a[4]) != 64)) die(rel, i, "malformed line")
 		if (a[1] in fidx) die(rel, i, a[1] " listed twice")
 		nf++
@@ -235,6 +252,7 @@ BEGIN {
 	if (n < 0) nofile(rel)
 	for (i = 1; i <= n; i++) {
 		line = L[i]
+		if (line == "") continue
 		if (line !~ /^C[0-9]+: [^ ,]+(, [^ ,]+)*$/) die(rel, i, "malformed line")
 		k = index(line, ":")
 		item = substr(line, 1, k - 1)
@@ -251,6 +269,7 @@ BEGIN {
 	n = slurp(orel)
 	for (i = 1; i <= n; i++) {
 		line = L[i]
+		if (line == "") continue
 		if (line ~ /^claim [0-9]+: ./) {
 			form = "v"
 			k = index(line, ":")
@@ -282,6 +301,7 @@ BEGIN {
 		if (line ~ /^[0-9]+\. \[other\]$/ || line ~ /^[0-9]+\. \[other\] /) { nother++; continue }
 		if (!parse_claim(line)) die(rel, i, "not a claim line")
 		if (!(psrc in fidx)) die(rel, i, psrc " is not in report/parts/claims-files.txt")
+		if (num in ck) die(rel, i, "claim " num " listed twice")
 		nc++
 		ord[nc] = num
 		ck[num] = pk; ctk[num] = ptk; csrc[num] = psrc; cln[num] = pln; cref[num] = pref
@@ -318,7 +338,7 @@ BEGIN {
 			}
 			V = B
 			if (((2, 1, num) in E) && substr(E[2, 1, num], 1, 14) == "overturned to ") V = "contested; pass one: " B "; pass two: " E[2, 1, num]
-			else cM[num] = mp
+			cM[num] = mp
 		} else V = "not verified; no pass-one line"
 		cV[num] = V
 		if (substr(V, 1, 9) == "contested") w = "contested"
@@ -328,7 +348,9 @@ BEGIN {
 		else w = "not verified"
 		p = index(V, "; ")
 		e0 = (p > 0) ? substr(V, p + 2) : "none"
-		if (cM[num] != "") {
+		if (w == "contested") {
+			cF[num] = (cM[num] != "") ? cM[num] : "none"; cE[num] = e0
+		} else if (cM[num] != "") {
 			cF[num] = cM[num]; cE[num] = cM[num]
 		} else if (e0 ~ /^[^ ,]+ \(C[0-9]+\)$/) {
 			t = e0

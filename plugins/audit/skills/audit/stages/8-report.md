@@ -266,6 +266,10 @@ result's text, approver and time; a `result_file` result's text is its copy
         cites an item a `REVIEW.md` rule skipped), and `claim <n> correction: <text>`
         for each claim whose verdict is `false`, since `parts` stops on a `false` claim
         with no correction.
+
+      `report.sh` reads only pass files that end `status: complete`, skips blank list
+      lines, and stops on a repeated claim number or a pass file missing its claims
+      heading.
    3. With the Write tool, write the parts that are yours, each beginning with its
       section heading `## <n>. <title>` (the header part with the
       `# audit report: <run-id>` title instead) and ending with one empty line:

@@ -48,7 +48,9 @@ with one empty line. `08-decisions.md` and `10-claims.md` are written by
 `scripts/report.sh parts`, and so is `claims-verdicts.body.md`, which is no part of the
 body: it holds the entries of `claims-verdicts.md`, in which a claim whose evidence
 names report items has `finding:` and `evidence:` both set to those items, `C1, C2`
-when it names two. The other parts are written by hand.
+when it names two. The script reads only pass files that end `status: complete`, skips
+blank list lines, and stops on a repeated claim number or a pass file missing its claims
+heading. The other parts are written by hand.
 
 Section 8 is `08-decisions.md`, then `08-other.md` under `### Other decisions`. Each
 pass-one entry line is copied as written, followed by its pass-two line, or

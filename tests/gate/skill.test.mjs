@@ -375,7 +375,7 @@ test('R300: Step 2 judges an implementer call by its notification duration_ms an
   holds('steps/2-fix.md',
     'before and after each implementer call, or before and after a parallel batch, and each check',
     'A call is judged against the subagent budget by the `duration_ms` of its completion notification, and by the `date` outputs only when the notification carries none, since a batch\'s briefs are written before any call starts.',
-    'A notification for a call the gate did not send, after that call already returned, is not a new call: Snapshots, item 8, says how it is judged.',
+    'A notification that arrives for an implementer call after that call already returned is not a new call: Snapshots, item 8, says how it is judged. Any other late notification, or one for an agent this run did not launch, is logged and changes nothing.',
     'or start a background command, since one that finishes after the call returns wakes it again',
     'After a failed call (Groups, item 4)');
   holds('report.md', "its `duration_ms` from the completion notification");

@@ -129,7 +129,8 @@ test('R289 and R323: the repo phrase is in both grammar lists and is checked as 
   assert.ok(README.includes('- `repo <path>`: '), 'README.md does not list the repo phrase');
   assert.ok(SKILL.includes('`git -C <path> rev-parse --is-inside-work-tree --show-prefix` exits 0 and prints `true` and then an empty line, else the target is unresolved, since a `.git` folder prints `false` with an empty prefix'), 'SKILL.md lacks the toplevel check');
   assert.ok(!SKILL.includes('`git -C <path> rev-parse --show-prefix` exits 0 and prints an empty line'), 'SKILL.md still accepts a .git folder');
-  assert.ok(SKILL.includes('The check compares no strings, so a path typed in another case, with `~` or as `/c/...` resolves'), 'SKILL.md lacks the statement that the check compares no strings');
+  assert.ok(SKILL.includes('The check compares no strings, so a path typed in another case or as `/c/...` resolves, and a leading `~` is written as `$HOME`, since git does not expand a quoted `~`'), 'SKILL.md lacks the statement that the check compares no strings');
+  assert.ok(!SKILL.includes('with `~` or as `/c/...` resolves'), 'SKILL.md still says a quoted ~ resolves');
   assert.ok(SKILL.includes('`git -C <path> rev-parse --show-toplevel` gives the toplevel the Targets line names'), 'SKILL.md does not take the toplevel from --show-toplevel');
   assert.ok(!SKILL.includes('compared as absolute paths with forward slashes'), 'SKILL.md still compares the path as a string');
   assert.ok(SKILL.includes('and for "repo <path>" the `git -C <path> rev-parse` calls, which may prompt, since the skill pre-approves only the plain forms'), 'SKILL.md does not list the git -C calls among those made before the reading block');

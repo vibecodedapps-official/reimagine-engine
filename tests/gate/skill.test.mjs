@@ -243,6 +243,8 @@ test('R297: a pass over split groups by path at the shallowest depth that gives 
 test('R297: a group still over split is grouped again one segment deeper and its slugs follow the final keys', () => {
   holds('steps/1-pass.md',
     'After grouping, a group still over `split` whose key is a directory is grouped again by the same rule over its own files, its depth starting one segment deeper and growing while all of them share one key, and so on until no group is over `split` or the group over it cannot split, being the `.` key or one file.',
+    'A regrouping that gives a single group, as when every file of the group sits directly in its directory, leaves the group as it was, under its directory key, target and slug.',
+    'a `src/api` group that holds only `src/api/a.ts` and `src/api/b.ts` stays the one group `src/api`, slug `src-api`, target `<merge-base>...HEAD src/api`.',
     'Suppose the `src/api` group is itself over `split` and holds `src/api/v1/x.ts`, `src/api/v2/y.ts` and `src/api/index.ts`: it is grouped again at depth 3 into `src/api/v1` (slug `src-api-v1`), `src/api/v2` (slug `src-api-v2`) and the `.` key holding `src/api/index.ts` (slug `src-api-root`).',
     'The slugs are made from the final keys: a `.` key made by grouping a directory key `<k>` again has the prefix `<k>`, and when several `.` keys remain they come after every directory key, in byte order of their prefixes.');
   const gone = 'A group that alone is over `split` is still one review';

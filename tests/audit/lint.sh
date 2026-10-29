@@ -592,6 +592,13 @@ for f in skills/audit/stages/4-pass-one.md:'Launch no auditor for a scope whose 
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "$s" "$tmp/list" || fail "$f: launches an agent for a scope whose output resume kept"
 done
+# A pass-one report without `## Claims` is a failed output, since report.sh stops on one.
+f=skills/audit/stages/4-pass-one.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'when its last line is not `status: complete`, or when it has no `## Claims` heading' "$tmp/list" ||
+		fail "$f: a pass-one report without ## Claims does not fail"
+fi
 # Each agent restates hard rules 2 and 4 in a section before its steps: no second-opinion
 # tool, the Bash rules (the merger has no Bash), redirects inside its scratch folder, and
 # an output that is final at `status: complete`. Each section is read as one line.

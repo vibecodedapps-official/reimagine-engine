@@ -87,10 +87,11 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
    1. Record the end time, the notification's `subagent_tokens` and `duration_ms`, labeled
       "task notification, subagent_tokens; scope not documented", in the entry and in
       `usage.md`.
-   2. The agent failed when it returned an error, when `pass1/<scope>.md` is missing, or
-      when its last line is not `status: complete`. A `_test` `fail` entry with role
-      `auditor` and this scope or `any` turns the scope's first `times` completions into
-      failures.
+   2. The agent failed when it returned an error, when `pass1/<scope>.md` is missing,
+      when its last line is not `status: complete`, or when it has no `## Claims`
+      heading, which `report.sh` needs in every finished report. A `_test` `fail` entry
+      with role `auditor` and this scope or `any` turns the scope's first `times`
+      completions into failures.
    3. On a failure, follow the ladder (SKILL.md, Roles): relaunch on the same model with
       the same prompt; then relaunch on `fable`, recorded as a swap with role, scope, from,
       to and reason; then the scope fails, with its coverage loss recorded. A relaunch

@@ -63,12 +63,12 @@ Make only the read-only calls that resolve the targets and the engine: `git remo
 ```
 Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-retry, base main
 Mode: fix
-Budget: 120 minutes (default); max-passes 4; split 1500
+Budget: 120 minutes (default); max-passes 4; split 1500; subagent 20, review 30, check 15 minutes (default)
 Engine: subprocess
 Scripts: <the plugin's directory>/scripts
 ```
 
-Targets lists each pull request or branch, how it resolved and its base. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`. Engine is `subprocess`, or the stand-in with the reason for it. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored.
+Targets lists each pull request or branch, how it resolved and its base. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`, then the subagent, review and check budgets in force, each with its source (`gate.timeouts`, root `timeouts`) when it is not the default. Engine is `subprocess`, or the stand-in with the reason for it. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored.
 
 A target that cannot be resolved gets one line in the block and the run continues with the others. When none is left, the run ends `stopped`.
 
@@ -109,7 +109,7 @@ Caps:
 
 - `max-passes` (default 4) bounds the passes of one run. When the passes have reached it, the script still returns the rule's level and marks it `capped`, and you end the run `unconverged`. A later run resumes from that level.
 - The run budget is 120 minutes. "budget <n> minutes" in the request wins, then `.reimagine.json` `gate.budget`, then a session instruction. Question waits are outside it.
-- Each review has 30 minutes, the reviews of a split pass running together within it. Each implementer call has 20 and each check 15.
+- Each review has the review budget, the reviews of a split pass running together within it. Each implementer call has the subagent budget and each check the check budget. The defaults are 30, 20 and 15 minutes; `gate.timeouts` and the root `timeouts` set them as Configuration says.
 - Reaching `max-passes` with a level still to run, the run budget or the review budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends `blocked`. The output of the pass is kept and a pushed commit stays.
 - Never pass silently: a cap that ends the run is named in the report.
 
@@ -125,6 +125,7 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
     "split": 1500,
     "max-passes": 4,
     "budget": 120,
+    "timeouts": { "subagent": 20, "review": 30, "check": 15 },
     "models": { "implementer": "sonnet", "fallback-reviewer": "opus" }
   }
 }
@@ -133,9 +134,10 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 - `split`: the changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
+- `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them. A key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default.
 - `models`: the model of the implementer and of the stand-in reviewer.
 
-`split`, `max-passes` and `budget` are whole numbers of 1 or more. `models` accepts only `sonnet`, `opus`, `haiku` and `fable`. An unknown key or a bad value is reported in the reading block and ignored. A file that does not parse ends `blocked`. The root `base` key applies as Reading the request says.
+`split`, `max-passes` and `budget` are whole numbers of 1 or more. `timeouts` holds positive numbers. `models` accepts only `sonnet`, `opus`, `haiku` and `fable`. An unknown key or a bad value is reported in the reading block and ignored. A file that does not parse ends `blocked`. The root `base` key applies as Reading the request says.
 
 ## Terminal states
 

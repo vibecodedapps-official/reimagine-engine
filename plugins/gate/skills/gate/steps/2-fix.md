@@ -9,7 +9,7 @@ Run `date -u +%Y-%m-%dT%H:%M:%SZ` before and after each implementer call and eac
 1. Sort the pass's fix bucket into groups so that no file is in two groups: findings that name the same file go in one group, and a finding whose failure scenario spans several files puts all of them in one group, merging the groups it touches.
 2. One implementer per group: an Agent at `models.implementer` (default `sonnet`), passing `model` explicitly. Never use a fork.
 3. Groups with independent files run as parallel Agent calls in one message. When one group's files depend on another's (one imports from the other), run them one at a time. An implementer runs no checks; the checks are yours, below.
-4. Each call has 20 minutes. A call that returns past that, or ends in a tool error, is a failed call. There is no fallback implementer.
+4. Each call has the subagent budget. A call that returns past that, or ends in a tool error, is a failed call. There is no fallback implementer.
 
 ## Snapshots
 
@@ -20,7 +20,7 @@ Take a snapshot before every implementer call, including a check fix.
 3. After a failed call, compare the tree with its snapshot: status, diff and hashes. For a parallel batch compare after every call of the batch has returned.
 4. Restore every path that was clean before the call and is now new or changed, the group's own files included: a tracked file with `git checkout -- <path>`, an untracked non-ignored file by deleting it; never touch an ignored path or anything under `.reimagine/`.
 5. A path that was already dirty before the call and now differs, or an untracked file whose hash changed, is left as it is and named in the report.
-6. Then end the run `blocked`, naming the call and, for a call past its budget, the 20-minute budget. A failed call is not a round and not a swap.
+6. Then end the run `blocked`, naming the call and, for a call past its budget, the subagent budget. A failed call is not a round and not a swap.
 
 ## Implementer brief
 
@@ -31,7 +31,7 @@ Write one brief per group and pass it as the whole prompt of the implementer. It
 3. The checkout path the implementer edits. Every path in the brief is absolute.
 4. The repository's line-ending convention. Run `git ls-files --eol` on the group's files. When a file shows an `eol=` attribute, match it. When `text` or `text=auto` applies with no `eol=`, any ending is fine. Otherwise match the majority working-tree ending of the file's directory, else of the repository. The implementer never changes the line endings of a file it edits.
 5. The scope rule: change nothing outside the group's files and add nothing the findings do not ask for; report instead of editing anything else. No git command that writes: do not stage, commit, push, stash, reset or clean. Do not install anything or run `gh`.
-6. The budget: 20 minutes.
+6. The budget: the subagent budget in force, in minutes.
 7. The reply shape: files changed, and anything it could not do.
 
 ## Reading the fix
@@ -50,9 +50,9 @@ A fix round that changed nothing is `[]`.
 
 ## Checks
 
-1. Run the run's checks (SKILL.md, Reading the request) one command at a time, in order, each with 15 minutes. With no source, meaning no phrase, no bundle `checks` and no `checks` key in `.reimagine.json`, nothing runs, the pass's `checks` stays empty and the report says no check ran.
+1. Run the run's checks (SKILL.md, Reading the request) one command at a time, in order, each within the check budget. With no source, meaning no phrase, no bundle `checks` and no `checks` key in `.reimagine.json`, nothing runs, the pass's `checks` stays empty and the report says no check ran.
 2. Record each as `{"command": "<command>", "result": "pass"|"fail"|"denied"}`. A check refused by the permission mode is `denied`: never retry it and never run it another way; go on to the next.
-3. A check past its budget is a failed call: end the run `blocked`, naming the 15-minute budget and the check.
+3. A check past its budget is a failed call: end the run `blocked`, naming the check budget and the check.
 4. A failing check is fixed through the implementer that owns the failing code, in the same round: take a snapshot, send the failure output to that implementer (SendMessage, else a fresh implementer with the failure and its group's current diff), read the fix as above, and run the whole list again. Fix a check at most three times in all; a check still failing after the third ends the run `blocked`, naming the check.
 
 ## The commit

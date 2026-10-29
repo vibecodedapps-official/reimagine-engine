@@ -24,7 +24,7 @@ cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <
 ```
 
 1. `<level>` is the pass's level. `[ <path>]` is the group's target from 1.2 and is absent for an unsplit pass. `MSYS_NO_PATHCONV=1` keeps Git Bash on Windows from rewriting the prompt's leading `/` into a path; elsewhere it changes nothing. `[,Bash(<check>*)...]` adds one entry per command of the run's checks (SKILL.md, Reading the request). Never add `--comment`, `--fix` or `--max-findings`, and never call `code-review` through the Skill tool.
-2. Take `date` before the calls. Wait for each command's completion notice; do not poll. The review budget is 30 minutes, the reviews of a split pass running together within it. A review still running at the budget is stopped with TaskStop, the pass is recorded `failed` (1.5) and the run ends `unconverged`.
+2. Take `date` before the calls. Wait for each command's completion notice; do not poll. The review budget is the one on the reading block's Budget line, the reviews of a split pass running together within it. A review still running at the budget is stopped with TaskStop, the pass is recorded `failed` (1.5) and the run ends `unconverged`.
 3. The redirect saves the output as `review-<n>[-<slug>].json` before anything parses it. Read the saved file's `result`. A result that says the `code-review` skill is not available (the exact wording is not fixed; the signal is that no review ran for want of the skill) moves the run to the stand-in for the rest of the run, and that group is reviewed again by 1.4. Only after this check is a result with no findings array a failed review.
 
 ## 1.4 The stand-in

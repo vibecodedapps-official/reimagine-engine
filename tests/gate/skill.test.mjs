@@ -79,8 +79,32 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   assert.notEqual(readme, undefined, 'README.md has no json block');
   assert.equal(skill.lines.join('\n'), readme.lines.join('\n'));
   assert.deepEqual(JSON.parse(skill.lines.join('\n')), {
-    gate: { split: 1500, 'max-passes': 4, budget: 120, models: { implementer: 'sonnet', 'fallback-reviewer': 'opus' } },
+    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', 'fallback-reviewer': 'opus' } },
   });
+});
+
+test('R313: the timeouts key is described and falls back to the root timeouts in SKILL.md and the README', () => {
+  for (const [name, text] of [['SKILL.md', SKILL], ['README.md', README]]) {
+    for (const key of ['subagent', 'review', 'check']) assert.ok(text.includes(`\`${key}\``), `${name} does not describe timeouts.${key}`);
+    assert.ok(text.includes('takes the root `.reimagine.json` `timeouts` value of the same name, then the default'), `${name} does not state the fallback to the root timeouts`);
+  }
+  assert.ok(SKILL.includes('`split`, `max-passes` and `budget` are whole numbers of 1 or more. `timeouts` holds positive numbers.'), 'SKILL.md does not validate timeouts');
+});
+
+test('R303: the step files state no fixed minutes for a review, an implementer call or a check', () => {
+  for (const rel of supporting().filter((r) => r.startsWith('steps/'))) {
+    const text = read(rel);
+    for (const literal of ['20 minutes', '30 minutes', '15 minutes', '20-minute', '30-minute', '15-minute']) assert.ok(!text.includes(literal), `${rel} still holds: ${literal}`);
+  }
+  holds('steps/1-pass.md', 'The review budget is');
+});
+
+test('R291 and R313: the Budget line names the subagent, review and check budgets after max-passes and split', () => {
+  const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
+  assert.notEqual(block, undefined, 'SKILL.md has no reading block');
+  const line = block.lines.find((l) => l.startsWith('Budget: '));
+  assert.equal(line, 'Budget: 120 minutes (default); max-passes 4; split 1500; subagent 20, review 30, check 15 minutes (default)');
+  assert.ok(SKILL.includes('then the subagent, review and check budgets in force, each with its source (`gate.timeouts`, root `timeouts`) when it is not the default'), 'SKILL.md does not describe the Budget line');
 });
 
 test('R291: the reading block is one fenced block of five lines in a fixed order', () => {
@@ -279,12 +303,14 @@ test('R296: nothing is edited while a review runs', () => {
 });
 
 test('R300: Step 2 takes the three snapshot files before each implementer call and restores only clean paths', () => {
-  const text = holds('steps/2-fix.md', 'pre-<n>.status', 'pre-<n>.patch', 'pre-<n>.hashes', 'models.implementer', '20 minutes', 'never touch an ignored path or anything under `.reimagine/`');
+  const text = holds('steps/2-fix.md', 'pre-<n>.status', 'pre-<n>.patch', 'pre-<n>.hashes', 'models.implementer', 'the subagent budget', 'never touch an ignored path or anything under `.reimagine/`');
   assert.ok(text.startsWith('# Step 2: The fix round\n'));
+  for (const old of ['Each call has 20 minutes', 'the 20-minute budget', 'The budget: 20 minutes']) assert.ok(!text.includes(old), `steps/2-fix.md still holds: ${old}`);
 });
 
-test('R300 and R303: Step 2 runs the checks one at a time for 15 minutes and fixes a failing one at most three times', () => {
-  holds('steps/2-fix.md', 'one command at a time', '15 minutes', 'three times', '`denied`', 'no `checks` key');
+test('R300 and R303: Step 2 runs the checks one at a time within the check budget and fixes a failing one at most three times', () => {
+  const text = holds('steps/2-fix.md', 'one command at a time', 'the check budget', 'three times', '`denied`', 'no `checks` key');
+  for (const old of ['each with 15 minutes', 'the 15-minute budget']) assert.ok(!text.includes(old), `steps/2-fix.md still holds: ${old}`);
 });
 
 test('R300: Step 2 stages each path by name and never stages everything', () => {

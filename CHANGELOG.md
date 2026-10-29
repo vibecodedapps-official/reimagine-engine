@@ -12,7 +12,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## audit 0.1.8 - 2026-10-29
 
-- A claim that names no file goes in turn across its bundle's groups, at most 80 to a group, and the brief records each scope's count and each move, since such claims had all gone to one auditor.
+- A claim that names no file goes in turn across its bundle's groups, and a group holding more than 80 passes the rest to the others in turn, and the brief records each scope's count and each move, since such claims had all gone to one auditor.
 - The read-only check prints a new local branch and its branch config as `local-branch` and asks whether the user's work in another worktree explains it, since refs and config are shared by every worktree and such a branch had stopped runs as blocked.
 - Resume keeps a pass-one or pass-two output that finished, with its inputs unchanged, when stage 4 or 5 never closed, and relaunches only the scopes without one.
 - Each agent definition restates the hard rules: no second-opinion tool, only the allowed commands with `mkdir -p` of its scratch folder, no inline program or heredoc, redirects only into its scratch folder, and an output final at `status: complete`; a late completion notice changes nothing.

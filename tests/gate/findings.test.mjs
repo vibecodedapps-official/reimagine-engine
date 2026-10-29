@@ -12,7 +12,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'plugins', 'gate', 'scripts', 'findings.mjs');
 const fixtureDir = join(root, 'tests', 'gate', 'fixture');
 const concurrency = Math.max(1, availableParallelism() - 1);
-const USAGE = 'usage: node findings.mjs <pass> <findings.json> <review-output>...';
+const USAGE = 'usage: node findings.mjs <pass> <findings.json> <review-output>... | node findings.mjs --check <findings.json>';
 
 let base;
 before(() => {
@@ -707,6 +707,33 @@ describe('a match written without its link', { concurrency }, () => {
     const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried') } }), 'reply.md': 'Everything is fine.\n' });
     failed(await run(dir, '2', 'findings.json', 'reply.md'), 1, ['findings: reply.md: no fenced json array of findings']);
   });
+
+  test('--check warns about a carried entry new in the latest pass with no match and writes nothing', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried', {}, 2) } }) });
+    const before = ledgerText(dir);
+    const r = await run(dir, '--check', 'findings.json');
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, WARNING);
+    assert.equal(ledgerText(dir), before);
+    assert.deepEqual(readdirSync(dir), ['findings.json']);
+  });
+
+  test('--check is silent for a ledger whose entries all hold their match', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried', { match: { of: 'src/share.mjs|other', reason: 'same defect' } }, 2) } }) });
+    const r = await run(dir, '--check', 'findings.json');
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, '');
+  });
+
+  test('--check reads the ledger as it stands, so an entry new before its highest pass is not warned about', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried'), 'src/other.mjs|later': { ...entry('new', {}, 2), file: 'src/other.mjs', summary: 'later' } } }) });
+    const r = await run(dir, '--check', 'findings.json');
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, '');
+  });
 });
 
 describe('usage and read or write errors', { concurrency }, () => {
@@ -716,6 +743,30 @@ describe('usage and read or write errors', { concurrency }, () => {
       failed(await run(dir, ...args), 2, [USAGE], dir);
     });
   }
+
+  for (const args of [['--check'], ['--check', 'findings.json', 'standin.md']]) {
+    test(`usage for arguments [${args.join(' ')}]`, async () => {
+      const dir = kase(['standin.md']);
+      failed(await run(dir, ...args), 2, [USAGE], dir);
+    });
+  }
+
+  test('--check on a ledger that does not exist', async () => {
+    const dir = kase();
+    failed(await run(dir, '--check', 'findings.json'), 2, ['findings: cannot read findings.json'], dir);
+  });
+
+  test('--check on a ledger that is not JSON', async () => {
+    const dir = kase([], { 'findings.json': '{"findings": ' });
+    failed(await run(dir, '--check', 'findings.json'), 1, ['findings: findings.json: not JSON']);
+    assert.equal(ledgerText(dir), '{"findings": ');
+  });
+
+  test('--check on a file that is not a findings ledger', async () => {
+    const dir = kase([], { 'findings.json': '{}' });
+    failed(await run(dir, '--check', 'findings.json'), 1, ['findings: findings.json: not a findings ledger']);
+    assert.equal(ledgerText(dir), '{}');
+  });
 
   test('a review output that cannot be read', async () => {
     const dir = kase();

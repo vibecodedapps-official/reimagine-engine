@@ -7,12 +7,15 @@
 // On success prints the pass summary as JSON on stdout and exits 0. On failure writes nothing and prints nothing on stdout:
 // exit 1 for a bad review or ledger, exit 2 for usage or IO, one line per message on stderr.
 // On success it also prints a warning line on stderr for each carried or regressed entry new in the latest earlier pass with no match.
+// Usage: node findings.mjs --check <findings.json>
+//   prints the same warnings for the ledger as it stands, for the highest pass it holds, writes nothing and prints nothing on stdout;
+//   exit 0, exit 1 for a ledger that is not JSON or not a ledger, exit 2 for usage or a ledger that cannot be read.
 // Everything above main() is pure: it takes text and objects.
 import { readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const USAGE = 'usage: node findings.mjs <pass> <findings.json> <review-output>...';
+export const USAGE = 'usage: node findings.mjs <pass> <findings.json> <review-output>... | node findings.mjs --check <findings.json>';
 const FENCE = '```';
 
 class Fail extends Error {
@@ -138,6 +141,17 @@ const read = (path, optional) => {
   }
 };
 
+const parseLedger = (raw, path) => {
+  let ledger;
+  try {
+    ledger = JSON.parse(raw);
+  } catch {
+    throw new Fail(1, `findings: ${basename(path)}: not JSON`);
+  }
+  if (!validLedger(ledger)) throw new Fail(1, `findings: ${basename(path)}: not a findings ledger`);
+  return ledger;
+};
+
 const count = (v) => (typeof v === 'number' ? v : null);
 
 // Reads one review output into { review, findings }.
@@ -175,15 +189,7 @@ function ingest(argv) {
   const ledgerPath = argv[1];
 
   const ledgerRaw = read(ledgerPath, true);
-  let ledger = { findings: {} };
-  if (ledgerRaw !== null) {
-    try {
-      ledger = JSON.parse(ledgerRaw);
-    } catch {
-      throw new Fail(1, `findings: ${basename(ledgerPath)}: not JSON`);
-    }
-    if (!validLedger(ledger)) throw new Fail(1, `findings: ${basename(ledgerPath)}: not a findings ledger`);
-  }
+  const ledger = ledgerRaw === null ? { findings: {} } : parseLedger(ledgerRaw, ledgerPath);
   const later = Math.max(0, ...Object.values(ledger.findings).flatMap(passKeys));
   if (later > n) throw new Fail(1, `findings: ${basename(ledgerPath)}: holds pass ${later}, later than ${n}`);
 
@@ -231,8 +237,18 @@ function ingest(argv) {
   return { ledgerPath, ledger: JSON.stringify(ledger, null, 2) + '\n', summary: JSON.stringify({ pass: n, reviews, findings }, null, 2) + '\n', warnings };
 }
 
+// The warning lines for the ledger as it stands; writes nothing.
+function check(argv) {
+  if (argv.length !== 2) throw new Fail(2, USAGE);
+  return unmatched(parseLedger(read(argv[1]), argv[1]));
+}
+
 function main(argv) {
   try {
+    if (argv[0] === '--check') {
+      for (const w of check(argv)) process.stderr.write(w + '\n');
+      return;
+    }
     const { ledgerPath, ledger, summary, warnings } = ingest(argv);
     const tmp = ledgerPath + '.tmp';
     try {

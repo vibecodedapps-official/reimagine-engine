@@ -255,6 +255,14 @@ test('R302 and R306: the match is written with the bucket and state, and a match
   holds('record.md', 'with no `match`');
 });
 
+test('R306: Step 1.6 runs findings.mjs --check after each triage write and the repair keys the finding under the earlier id', () => {
+  holds('steps/1-pass.md',
+    'node "<scripts>/findings.mjs" --check <record>/findings.json',
+    'key the finding under the earlier id in the pass\'s `findings` of `passes.json`',
+    'move that finding in the `findings` of that earlier pass in `passes.json` under the earlier id');
+  holds('record.md', '`--check`');
+});
+
 test('R297: two keys of one pass never share a slug', () => {
   const rule = 'The slugs are given in byte order of key path with the `.` key last, and a slug an earlier key already holds takes `-2`, else `-3`, and so on, the first one free.';
   holds('steps/1-pass.md', rule, 'so `src/root` keeps `src-root` and the `.` key takes `src-root-2`');

@@ -304,8 +304,8 @@ test('R294 and R313: Step 0 reads the instruction files and the configuration an
 
 test('R294: the gate reads the instruction files of one directory only and the statement names it', () => {
   const rule = 'in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both';
-  const step = holds('steps/0-preflight.md', rule, 'since the session loads only that directory\'s instruction files', 'the instruction directory read, by name', 'Instruction directory read: ~/.claude.');
-  const skill = holds('SKILL.md', rule);
+  const step = holds('steps/0-preflight.md', rule, 'since the session loads only that directory\'s user instruction files', 'the instruction directory read, by name', 'Instruction directory read: ~/.claude.', 'and `CLAUDE.md` and `.claude/CLAUDE.md` in each folder above the repository\'s root, since the session loads those as project instructions, `~/.claude/CLAUDE.md` among them for a repository under the home folder');
+  const skill = holds('SKILL.md', rule, 'the instruction files of each folder above it');
   for (const text of [step, skill]) {
     assert.ok(!text.includes('(else `~/.claude`)'), 'the old parenthesis is still there');
     assert.ok(!text.includes('in `$CLAUDE_CONFIG_DIR`, else `~/.claude`'), 'the old wording is still there');

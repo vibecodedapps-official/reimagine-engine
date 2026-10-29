@@ -263,6 +263,16 @@ test('R294 and R313: Step 0 reads the instruction files and the configuration an
   }
 });
 
+test('R294: the gate reads the instruction files of one directory only and the statement names it', () => {
+  const rule = 'in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both';
+  const step = holds('steps/0-preflight.md', rule, 'since the session loads only that directory\'s instruction files', 'the instruction directory read, by name', 'Instruction directory read: ~/.claude.');
+  const skill = holds('SKILL.md', rule);
+  for (const text of [step, skill]) {
+    assert.ok(!text.includes('(else `~/.claude`)'), 'the old parenthesis is still there');
+    assert.ok(!text.includes('in `$CLAUDE_CONFIG_DIR`, else `~/.claude`'), 'the old wording is still there');
+  }
+});
+
 test('R290: Step 0 runs several targets one after another and a manifest by bundle', () => {
   holds('steps/0-preflight.md', 'one after another', '`pr` or a `branch`', '`repo`', 'bundle order', 'unresolved', 'comment skipped');
 });

@@ -545,3 +545,7 @@ test('R317: the Log gives each implementer call its notification duration and th
 test('R306: the repair of a warning takes the earlier id from passes.json, else from the reason, else leaves the entry', () => {
   holds('steps/1-pass.md', 'the earlier id being the one that pass\'s `findings` in `passes.json` already keys the finding under, else the one its reason names; with neither, leave the entry as it is and name it in the Log');
 });
+
+test('R300: the snapshot items read each path from a status line unquoted and take the new path of a rename', () => {
+  holds('steps/2-fix.md', 'Read each path from a status line unquoted and unescaped when status prints it in double quotes, and for a rename (`old -> new`) take the new path.', 'each path read as item 1 says');
+});

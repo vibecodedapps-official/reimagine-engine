@@ -127,7 +127,8 @@ test('R289 and R300: the checks phrase is in both grammar lists and ends where a
 test('R289 and R323: the repo phrase is in both grammar lists and is checked as the toplevel of its path', () => {
   assert.ok(SKILL.includes('- "repo <path>": '), 'SKILL.md does not list the repo phrase');
   assert.ok(README.includes('- `repo <path>`: '), 'README.md does not list the repo phrase');
-  assert.ok(SKILL.includes('`git -C <path> rev-parse --show-prefix` exits 0 and prints an empty line, else the target is unresolved'), 'SKILL.md lacks the toplevel check');
+  assert.ok(SKILL.includes('`git -C <path> rev-parse --is-inside-work-tree --show-prefix` exits 0 and prints `true` and then an empty line, else the target is unresolved, since a `.git` folder prints `false` with an empty prefix'), 'SKILL.md lacks the toplevel check');
+  assert.ok(!SKILL.includes('`git -C <path> rev-parse --show-prefix` exits 0 and prints an empty line'), 'SKILL.md still accepts a .git folder');
   assert.ok(SKILL.includes('The check compares no strings, so a path typed in another case, with `~` or as `/c/...` resolves'), 'SKILL.md lacks the statement that the check compares no strings');
   assert.ok(SKILL.includes('`git -C <path> rev-parse --show-toplevel` gives the toplevel the Targets line names'), 'SKILL.md does not take the toplevel from --show-toplevel');
   assert.ok(!SKILL.includes('compared as absolute paths with forward slashes'), 'SKILL.md still compares the path as a string');
@@ -137,9 +138,13 @@ test('R289 and R323: the repo phrase is in both grammar lists and is checked as 
 });
 
 test('R323: a target named by repo runs its commands in the forms of a manifest bundle', () => {
-  const text = holds('steps/0-preflight.md', 'A branch target named by "repo <path>" runs the same way: `git -C <path>`, and `cd <path> && <command>` in one Bash call for gh and the child session, with absolute paths.');
+  const text = holds('steps/0-preflight.md', 'A branch target named by "repo <path>" runs the same way: `git -C <path>`, and `cd <path> && <command>` in one Bash call for gh, the child session and the run\'s checks, with absolute paths.');
   assert.ok(text.includes('Those forms, and a manifest bundle\'s, count as prompts'), 'the permission statement does not count the forms as prompts');
   assert.ok(text.includes('read it with `git -C <path> rev-parse --abbrev-ref HEAD`'), 'the head is not read in the named repository');
+  assert.ok(text.includes('For a manifest bundle or "repo <path>", read the repository\'s instruction files in its `repo` or in `<path>`, not in the session\'s folder'), '0.3 does not read the instruction files in the target');
+  assert.ok(text.includes('for a manifest bundle or "repo <path>", read it in its `repo` or in `<path>`'), '0.3 does not read .reimagine.json in the target');
+  holds('steps/2-fix.md', 'for a manifest bundle or "repo <path>", run each check as `cd <path> && <check>` in one Bash call, with `<path>` the bundle\'s `repo` or the path of "repo <path>"');
+  assert.ok(SKILL.includes('for "repo <path>" it is the `.reimagine.json` of `<path>`, not of the session\'s folder'), 'SKILL.md Configuration reads the session\'s .reimagine.json');
 });
 
 test('R300: the checks come from the request, the manifest bundle or the configuration, in that order', () => {

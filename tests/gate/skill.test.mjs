@@ -188,6 +188,11 @@ test('R297: a pass over split groups by path at the shallowest depth that gives 
   }
 });
 
+test('R302: a match takes what the script gives a returning entry of the candidate\'s state', () => {
+  holds('steps/1-pass.md', '`fix` and `regressed` for a fixed one, `reject` and `carried` for a rejected or carried one, `defer` and `deferred` for a deferred one, and for a regressed one no bucket, its state staying `regressed`');
+  holds('record.md', 'A regressed entry that returns keeps the state `regressed` and gets no bucket');
+});
+
 test('R297: two keys of one pass never share a slug', () => {
   const rule = 'The slugs are given in byte order of key path with the `.` key last, and a slug an earlier key already holds takes `-2`, else `-3`, and so on, the first one free.';
   holds('steps/1-pass.md', rule, 'so `src/root` keeps `src-root` and the `.` key takes `src-root-2`');

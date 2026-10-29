@@ -102,6 +102,9 @@
 #   that waits on input; skills/audit/common.md hard rule 2 allows `mkdir -p` of the
 #   agent's own scratch folder and bars an inline program or a heredoc; SKILL.md says a
 #   late completion notification changes nothing.
+# - skills/audit/stages/9-act.md shows an item's defect before the edit, logs it as
+#   `demonstrate`, lists that action, and carries the before and after results into the
+#   commit body; the file is read as one line.
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -623,6 +626,20 @@ if [ -f "$f" ]; then
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF 'A completion notification for an agent whose stage entry is already `complete` or `failed` changes nothing' "$tmp/list" ||
 		fail "$f: does not say a late completion notification changes nothing"
+fi
+# Act shows an item's defect at baseline before it edits, logs it as `demonstrate`, and
+# carries the before and after results into the commit body; the file is read as one line.
+f=skills/audit/stages/9-act.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF '**Show the defect first.**' "$tmp/list" ||
+		fail "$f: step 7 has no Show the defect first sub-step"
+	grep -qF 'Log the command and its result as `demonstrate`' "$tmp/list" ||
+		fail "$f: step 7 does not log the demonstration as demonstrate"
+	grep -qF '`baseline`, `demonstrate`, `stage`' "$tmp/list" ||
+		fail "$f: the act/log.md actions do not list demonstrate"
+	grep -qF 'the demonstration result before the change and the same command' "$tmp/list" ||
+		fail "$f: the commit body does not carry the before and after results"
 fi
 
 if [ "$fails" -gt 0 ]; then

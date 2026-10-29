@@ -197,6 +197,7 @@ test('R67: a late notification is judged against its post-<n> files', () => {
   assert.ok(snaps.includes('ends the run `blocked` naming the path'));
   assert.ok(snaps.includes('Read each path from a status line unquoted and unescaped when status prints it in double quotes, and for a rename (`old -> new`) take the new path.'));
   assert.ok(snaps.includes('each path read as item 1 says'));
+  assert.ok(snaps.includes("compare the checkout with that call's `post-<n>` files, hashing each path as item 7 does, since `pre-<n>.hashes` uses the filtered hash."));
   assert.ok(!SKILL.includes('unless the snapshot comparison finds the tree changed after the first return'));
   assert.ok(SKILL.includes('post-<n>'));
   assert.ok(read('record.md').includes('post-<n>'));

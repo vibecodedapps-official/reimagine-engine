@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R321; the primer milestones M10 to M19 follow M9, and M20 to M47 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R322; the primer milestones M10 to M19 follow M9, and M20 to M49 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -850,6 +850,52 @@ Check:
 ### After the push
 
 The `## loop 0.1.5 - <date>` and `## audit 0.1.7 - <date>` headings in `CHANGELOG.md`, one bullet per change, the rename bullet of decision 110 in each and the audit's "A run started on 0.1.6 resumes from stage 1" bullet, commit `docs(changelog): add the loop 0.1.5 and audit 0.1.7 headings`, pushed; then `claude plugin tag --push plugins/loop` and `claude plugin tag --push plugins/audit`, each after a yes; items 21 and 22 at the two tags; the acceptance record under a "field feedback 2026-10-23" heading, commit `docs(acceptance): record the field feedback milestones`.
+
+## Field feedback 2026-10-28: M48 and M49
+
+Added 2026-10-29. Requirement R322 and the amended R6, R145, R149, R160, R161, R162, R165, R178, R179, R180, R184, R194, R289, R291, R292, R297, R300, R302, R305, R306, R311, R317 and R318; decisions 143 to 148; acceptance items 55 to 59. Field feedback of 2026-10-28 on gate 0.1.2 and audit 0.1.7, each finding verified on 2026-10-29 against the shipped texts on `main`, two of them by a run as well (decisions 143 and 146). Two sub-milestones under one heading, since the plugins release separately: M48 touches `plugins/gate/` and `tests/gate/`, M49 `plugins/audit/`, `tests/audit/`, `tools/lint.mjs` and `docs/architecture.md`. One release commit moves gate to 0.1.3 and audit to 0.1.8, above `gate--v0.1.2` and `audit--v0.1.7`, with the catalog's `metadata.version` at 0.1.13. Each work item is one finding, fixed as its decision says; each test is written first and seen failing against the untouched text, and each commit runs the area scripts that cover what it touched, each as its own command with its exit code read; `npm test` and lint with the deny tokens run once before the push.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M48 | gate field feedback | the Scripts line, the checks' three sources and the reviewers' notes, a bundle's base, the depth split, the deferred carry and the candidates; gate 0.1.3 | - |
+| M49 | audit field feedback | the spread of claims that name no file, the `local-branch` lines, the kept scope outputs on resume, the restated hard rules, act's demonstration, `scripts/report.sh` with its suite; audit 0.1.8 | - |
+
+M48 and M49 touch no common file but the design documents, the catalog and the changelog, which the first, second and last commits carry.
+
+### M48: gate field feedback
+
+Work items, in this order, after the design commit `docs(design): specify the field feedback of 2026-10-28` and the release commit `release(gate, audit): gate 0.1.3 and audit 0.1.8`:
+
+1. The scripts path (R291, R318): the reading block gains a fifth line, `Scripts: <absolute path of the plugin's scripts directory>`, resolved with no tool call from the skill's base directory the Skill tool prints, two levels above it, then `scripts`; `SKILL.md`, Reading the request, says in its own words that `${CLAUDE_PLUGIN_ROOT}` is not a shell variable and that every Bash command writes the resolved path; Steps 1.5 and 3.3 type the path from the Scripts line; Step 0 names the Scripts line with the block's other headings. `tests/gate/skill.test.mjs`: the heads list gains `Scripts: `, no step file holds `${CLAUDE_PLUGIN_ROOT}`, and `SKILL.md` holds the sentence. Commit: `fix(gate): resolve the scripts path once and print it in the reading block`.
+2. The checks' sources and the reviewers' notes (R289, R300, R305, R311, R317, R145, decision 144): the phrase `checks <command>[; <command>]` in the grammar lists of `SKILL.md` and the README, read as the last phrase; the bundle key `checks`; the order request, bundle, `.reimagine.json`, feeding Step 2's Checks, the `Bash(<check>*)` entries of 1.3, the permission statement of 0.3 and the report's Checks section, which names the source; each `reviews[]` entry gains `"notes"`, written in 1.5.3, printed per review in the report's Log; the `passes.json` literal of `record.md` and of `docs/architecture.md` gains the key on its `reviews` line, so both keep 17 lines. `skill.test.mjs`: the phrase in both grammar lists, the order sentence, the `notes` key in `record.md`'s literal and the Log sentence. Commit: `feat(gate): take the checks from the request, the manifest bundle or the configuration`.
+3. A manifest bundle's base (R292): the order request, bundle `base`, `.reimagine.json` `base`, the remote's default, in `SKILL.md` Reading the request and Step 0.6.1. `skill.test.mjs`: the order sentence in both files. Commit: `fix(gate): read a manifest bundle's base before the configuration`.
+4. The depth split (R297, decision 145): Step 1.2.3 and 1.2.4 take the depth rule and the slugs, with a worked example of a diff under one folder splitting at depth 2; `record.md`'s slug text, `SKILL.md`'s Roles row and `split` sentence and the README's two sentences say "by path at the shallowest depth that gives more than one group". `skill.test.mjs`: the depth sentence and the example. The `split` fixture variant is unchanged. Commit: `feat(gate): split at the shallowest depth that yields more than one group`.
+5. The deferred carry and the candidates (R302, R306, decision 143): `findings.mjs` `reseen` carries a `deferred` entry with the bucket `defer` and the reason of its last defer pass, and every `new` finding of the summary gains `candidates`; Step 1.6.2 reads them and matches against fixed, rejected and deferred entries; `record.md`'s Findings ledger says what the script sets for a returning deferred entry. `tests/gate/findings.test.mjs`, expected output as literals: a reworded finding beside a `rejected` entry two lines away prints `state: new`, `bucket: null` and one candidate at `distance: 2`; a returning deferred identity prints `bucket: defer` with the earlier reason; a `new` finding on a file with no earlier entry prints `candidates: []`; the existing fixtures gain the key where a finding is `new`, each distance derived by hand from the fixture lines. Commit: `feat(gate): carry a deferred finding and name the ledger's candidates for a new one`.
+
+Check:
+
+- `npm run test:gate` on each commit, each new assertion seen failing first, and `node tools/lint.mjs`; the configuration block stays byte-identical in `SKILL.md` and the README (R313).
+- Acceptance items 55, 56 and 57.
+
+### M49: audit field feedback
+
+Work items, in this order, after M48:
+
+1. Claims that name no file (R165, decision 148): Stage 1 step 9 rule 3 assigns in turn across the bundle's groups that hold a file; a new rule 5 caps a group at 80 such claims and moves the rest in turn; the brief's Claims section records each scope's count and each move. Commit: `fix(audit): spread claims that name no file across a bundle's groups`.
+2. A new local branch (R149, R178, R179, decision 146): `readonly.sh check` prints a new `refs/heads/<name>` other than the checkout's branch, and a `+` config line `branch.<name>.<key>=` for it, as `local-branch` and counts it like `remote-ref` for the exit status; the header comment and the output order gain the kind; `SKILL.md` Read-only check judges it with a `local-branch` approval; `common.md` rule 2 names it. `tests/audit/readonly.sh`: case 7 moves to the `local-branch` line and exit 3; new cases for a new ref with its `branch.<new>.remote` and `branch.<new>.merge` config (three `local-branch` lines, exit 3), a new ref beside an unrelated config key (`blocked config`, exit 1), and a moved existing branch (`blocked refs` for both lines, exit 1). Commit: `feat(audit): judge a new local branch apart from a changed checkout`.
+3. Kept scope outputs (R161, decision 146): `resume.md` steps 6 and 7 keep a complete `pass1/` or `pass2/` file whose `consumed:` hashes hold when stage 4 or 5 is the first rerun stage because its entry is missing or `running`; stages 4 and 5 launch no scope with a kept file. Commit: `feat(audit): keep a finished scope's output when its stage never closed`.
+4. The restated hard rules (R162, R180, decision 148): each of the five agent definitions gains a short section after its opening paragraph; `common.md` rule 2 gains `mkdir -p` of the agent's scratch folder and the inline-program and heredoc sentence; `SKILL.md` notes a late completion notice in the stage's check file. `tests/audit/lint.sh`, which already reads the agents' Boundaries text, checks that each agent file restates the rules. Commit: `fix(audit): restate the hard rules and freeze a finished output in each agent definition`.
+5. Act shows the defect first (R194, decision 148): a step 7 sub-step before the edit runs a covering check or the finding's described test at baseline for an item whose evidence is reading, logs it as `demonstrate`, stops on a contradicting result, and the commit body carries the before and after results. Commit: `feat(audit): show an item's defect before act edits`.
+6. `scripts/report.sh` (R322, R160, R184, R6, decision 147) and `tests/audit/report.sh`: a run directory built inline with small literal inputs, each part file compared byte for byte, the `assemble` order, every exit code and message; registered in `tests/audit/sh.test.mjs`'s second list; `tools/lint.mjs`'s executable list gains `report`; `docs/architecture.md`'s tree and scripts sentence name it; stage 8 step 6 writes the orchestrator's parts and lists, runs `parts` and `assemble`, step 8 reassembles after the Coverage line, and step 10 runs `claims-verdicts`; `report.md` fixes the copied sections' shapes. Commit: `feat(audit): build the report's copied sections and claims-verdicts with a script`.
+
+Check:
+
+- `npm run test:audit` on each commit, `npm run test:lint` and `npm run test:release` where a commit touches them, each as its own command with its exit code read; the sh suites once under mawk where one is installed, else recorded as not run; `node tools/lint.mjs`.
+- Acceptance items 58 and 59; item 14 rerun at the tag, which exercises `report.sh`.
+
+### After the push
+
+The `## gate 0.1.3 - <date>` and `## audit 0.1.8 - <date>` headings in `CHANGELOG.md`, one bullet per change and the audit's "A run started on 0.1.7 resumes from stage 1" bullet, commit `docs(changelog): add the gate 0.1.3 and audit 0.1.8 headings`, committed before the pull request; after the merge, by the owner, `claude plugin tag --push plugins/gate` and `claude plugin tag --push plugins/audit`, each after a yes, and the acceptance record of items 55 to 59 under a "field feedback 2026-10-28" heading.
 
 ## Acceptance record
 

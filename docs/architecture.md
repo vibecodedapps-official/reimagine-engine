@@ -33,7 +33,7 @@ reimagine-engine/
 |---|---|---|---|---|---|
 | rules | house rules block, output style | `/rules` | `scripts/rules.mjs` | SessionStart `startup` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
-| audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | ten sh scripts | none | own |
+| audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs` | none | own |
 | primer | project instructions | `/primer`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
 
@@ -295,7 +295,7 @@ plugins/audit/
   skills/audit/handoff.md  live.md  report.md  work-items.md  fault-injection.md  resume.md
   skills/audit/stages/1-orient.md ... 9-act.md
   agents/digester.md  mapper.md  auditor.md  adversary.md  merger.md
-  scripts/readonly.sh  handoff.sh  ledger.sh  working-tree.sh  revert-tests.sh  live.sh  memory.sh  work-items.sh  collisions.sh  run-copies.sh
+  scripts/readonly.sh  handoff.sh  ledger.sh  working-tree.sh  revert-tests.sh  live.sh  memory.sh  work-items.sh  collisions.sh  run-copies.sh  report.sh
 ```
 
 The skill description names "reimagine audit". The four commands forward to the skill: `run` with inputs or a manifest, `resume <run-id> [--from n] [--live file]`, `act <run-id> <item-id...> [--per-item]`, `handoff [--out] [--verdicts] [--memory]`. `run` takes no flags; prose may give effort, budget and model overrides, and the manifest holds everything else.
@@ -316,11 +316,13 @@ Stages 4 to 6 run on the prompt path. Decision 94 defines a second engine, a dyn
 
 ### Scripts and their literals
 
-The ten scripts and their suites embed these strings: `reimagine-handoff: 1`; `reimagine-live: 1`; `# audit report: `; `audit:auditor` and `audit:adversary` in ledger output; identity `audit`, `audit@example.invalid`, `audit: working tree` in `working-tree.sh`; the `second-opinion/` directory and `origin: second-opinion`. Every literal sha and hash in the suites that depends on one of those strings is produced by running the fixture builder once and pasting the observed value; the build plan has that as a work item.
+The eleven scripts and their suites embed these strings: `reimagine-handoff: 1`; `reimagine-live: 1`; `# audit report: `; `audit:auditor` and `audit:adversary` in ledger output; identity `audit`, `audit@example.invalid`, `audit: working tree` in `working-tree.sh`; the `second-opinion/` directory and `origin: second-opinion`. Every literal sha and hash in the suites that depends on one of those strings is produced by running the fixture builder once and pasting the observed value; the build plan has that as a work item.
 
 `jq` is needed by `live.sh`, `work-items.sh` and `collisions.sh`; stage 1 warns when it is missing and names what will not run.
 
 `run-copies.sh` writes the run's `common.md`, header filled, and `audit-evidence.md` from the skill's copies, found from its own path, so neither passes through the model (requirement 283).
+
+`report.sh` builds the report's copied sections from the run directory's files: `parts` writes section 8's decision ledger and raised tickets, section 10 and the body of `claims-verdicts.md` under `report/parts/`, `assemble` joins every part file in name order into `report.body.tmp`, and `claims-verdicts` writes the verdicts file with the revision, so no copy passes through the model (requirement 322).
 
 `revert-tests.sh` reads `REVERT_TESTS_CAP`, `REVERT_TESTS_DEADLINE`, `REVERT_TESTS_WAIT` and `REVERT_TESTS_TICK` from the environment, whole or fractional seconds; its test sets them low, and the shipped defaults are unchanged (requirement 279).
 
@@ -353,9 +355,10 @@ Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-re
 Mode: fix
 Budget: 120 minutes (default); max-passes 4; split 1500
 Engine: subprocess
+Scripts: <the plugin's directory>/scripts
 ```
 
-"PR <n>", "<n> and <m>" and a pull request URL name targets; "the manifest <path>" runs one record per bundle with a `pr` or a `branch`, each in its own repository; "this branch", or nothing, gates the current branch against its base. "no fixes", "budget <n> minutes" and "base <branch>" are the other phrases. A pull request's base is its `baseRefName`; a branch's is the request's, else `.reimagine.json` `base`, else the remote's default. The merge-base is recorded and every review target is the three-dot range from it.
+"PR <n>", "<n> and <m>" and a pull request URL name targets; "the manifest <path>" runs one record per bundle with a `pr` or a `branch`, each in its own repository; "this branch", or nothing, gates the current branch against its base. "no fixes", "budget <n> minutes", "base <branch>" and "checks <command>[; <command>]", read as the last phrase, are the other phrases. A pull request's base is its `baseRefName`; a branch's is the request's, else the manifest bundle's `base`, else `.reimagine.json` `base`, else the remote's default. The checks are the request's, else the bundle's `checks`, else `.reimagine.json` `checks`. The Scripts line is the plugin's scripts directory, resolved from the skill's base directory, since `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell; every script runs by that path. The merge-base is recorded and every review target is the three-dot range from it.
 
 ### Approval scope
 
@@ -366,7 +369,7 @@ Invoking by name approves fix commits on each target's branch, whether or not th
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or one per top-level path over `split` | Agent `opus` over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or one per path group over `split` | Agent `opus` over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run |
 | implementer | Agent `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
 `.reimagine.json` at the repository root, the `gate` key beside the loop's:
@@ -379,11 +382,11 @@ Every value is optional and the values shown are the defaults. The levels a run 
 
 ### Passes and caps
 
-A pass is one review at one typed level, the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Changed lines over `split` (added plus deleted from `git diff --numstat <merge-base>...HEAD`) split the review by top-level path into parallel child sessions, each with the target `<merge-base>...HEAD <path>` and the root group naming its files, and the pass's findings are the union. The orchestrator sorts every finding into fix, defer or reject with a one-line reason before anything is edited; implementers apply the fix bucket, one per disjoint file group after a snapshot; the repository's `checks` run; a pass that changed anything ends with one commit and a push after the remote-head check. `next.mjs` then reads `passes.json` and returns, in this order: stop with `pass` or `pass-with-deferred` when the fix bucket is empty and nothing new was rejected; a stop after a `medium` pass, `unconverged` when that pass still found something to fix; `xhigh` once per run when the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files; `medium` after two `high` passes that each fixed nothing and rejected something new; else `high`. At `max-passes` the level is returned marked `capped` and the run ends `unconverged`; a later run resumes from it. A finding is identified by file path and normalized summary; a fixed finding that returns is a regression and goes to the fix bucket, a rejected one that returns is carried and counts as nothing (decision 126). `max-passes` 4 with a level still to run, a run budget of 120 minutes and 30 minutes per review end a run `unconverged` with every open finding listed; an implementer call past 20 minutes or a check past 15 is a failed call and ends `blocked`. "no fixes" runs pass 1 only and names what a fix run would do.
+A pass is one review at one typed level, the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Changed lines over `split` (added plus deleted from `git diff --numstat <merge-base>...HEAD`) split the review by path at the shallowest depth that gives more than one group into parallel child sessions, each with the target `<merge-base>...HEAD <path>` and the `.` group naming its files, and the pass's findings are the union. The orchestrator sorts every finding into fix, defer or reject with a one-line reason before anything is edited; implementers apply the fix bucket, one per disjoint file group after a snapshot; the repository's `checks` run; a pass that changed anything ends with one commit and a push after the remote-head check. `next.mjs` then reads `passes.json` and returns, in this order: stop with `pass` or `pass-with-deferred` when the fix bucket is empty and nothing new was rejected; a stop after a `medium` pass, `unconverged` when that pass still found something to fix; `xhigh` once per run when the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files; `medium` after two `high` passes that each fixed nothing and rejected something new; else `high`. At `max-passes` the level is returned marked `capped` and the run ends `unconverged`; a later run resumes from it. A finding is identified by file path and normalized summary; a fixed finding that returns is a regression and goes to the fix bucket, a rejected one that returns is carried and counts as nothing (decision 126), a deferred one keeps its deferral, and a new finding lists the same file's earlier entries as candidates with their line distance (decision 143). `max-passes` 4 with a level still to run, a run budget of 120 minutes and 30 minutes per review end a run `unconverged` with every open finding listed; an implementer call past 20 minutes or a check past 15 is a failed call and ends `blocked`. "no fixes" runs pass 1 only and names what a fix run would do.
 
 ### Engine
 
-The child session is the engine (decision 124). It runs from the repository root with `CLAUDECODE` unset, stdin from `/dev/null`, `--permission-mode default` and an allowlist of Read, Grep, Glob, Skill, Agent, TaskStop, the read-only git forms and the repository's `checks` commands, in the background under the Bash foreground cap, and its output is saved before `findings.mjs` parses it. Verified on 2.1.310 (decisions 118 to 121): the result is text whose last part is a fenced JSON array of `{file, line, summary, failure_scenario}` with repository-relative paths and no category tags; the typed level and `--max-findings` reach the review; a `high` review of a ten-line diff takes 80 to 150 s and costs about a dollar, an `xhigh` one 120 s and $1.23, a `max` one 17 minutes and $17; the remembered interactive level is untouched; a bare path target reviews against the repository's default branch, so a split group is always `<merge-base>...HEAD <path>` and the root group names its files; calls outside the allowlist were denied and listed in `permission_denials` without stopping the review, under `acceptEdits` in the spikes. The spikes typed the base as a branch name; the sha form is the loop's verified usage and acceptance item 47 records it in a child session.
+The child session is the engine (decision 124). It runs from the repository root with `CLAUDECODE` unset, stdin from `/dev/null`, `--permission-mode default` and an allowlist of Read, Grep, Glob, Skill, Agent, TaskStop, the read-only git forms and the run's checks, in the background under the Bash foreground cap, and its output is saved before `findings.mjs` parses it. Verified on 2.1.310 (decisions 118 to 121): the result is text whose last part is a fenced JSON array of `{file, line, summary, failure_scenario}` with repository-relative paths and no category tags; the typed level and `--max-findings` reach the review; a `high` review of a ten-line diff takes 80 to 150 s and costs about a dollar, an `xhigh` one 120 s and $1.23, a `max` one 17 minutes and $17; the remembered interactive level is untouched; a bare path target reviews against the repository's default branch, so a split group is always `<merge-base>...HEAD <path>` and the root group names its files; calls outside the allowlist were denied and listed in `permission_denials` without stopping the review, under `acceptEdits` in the spikes. The spikes typed the base as a branch name; the sha form is the loop's verified usage and acceptance item 47 records it in a child session.
 
 ### Record
 

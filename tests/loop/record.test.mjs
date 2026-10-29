@@ -73,7 +73,7 @@ test('R87: the branch tip is the remote head when the branch exists on the remot
 test('R89: a slice committed outside the loop is found by the hashes of its files', () => {
   const steps = section(RECORD, 'steps.json');
   const existing = section(RECORD, 'An existing record');
-  assert.ok(steps.includes('git -C <checkout> hash-object --no-filters <path>'));
+  assert.ok(steps.includes('git -C <checkout> hash-object --no-filters -- <path>'), 'a path starting with - would be read as an option');
   assert.ok(existing.includes('git -C <checkout> cat-file -e <tip>:<path>'));
   assert.ok(existing.includes('git -C <checkout> rev-parse <tip>:<path>'));
   assert.ok(existing.includes('git -C <checkout> cat-file --filters <tip>:<path> | git hash-object --stdin --no-filters'));

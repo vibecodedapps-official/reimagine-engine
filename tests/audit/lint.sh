@@ -104,7 +104,8 @@
 #   late completion notification changes nothing.
 # - skills/audit/stages/9-act.md shows an item's defect before the edit, logs it as
 #   `demonstrate`, lists that action, and carries the before and after results into the
-#   commit body; the file is read as one line.
+#   commit body; step 7 reruns each `demonstrate` command after the change and logs its
+#   result as `demonstrate`; the file is read as one line.
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -640,6 +641,8 @@ if [ -f "$f" ]; then
 		fail "$f: the act/log.md actions do not list demonstrate"
 	grep -qF 'the demonstration result before the change and the same command' "$tmp/list" ||
 		fail "$f: the commit body does not carry the before and after results"
+	grep -qF 'rerun each `demonstrate` command of the group and log its result as `demonstrate`' "$tmp/list" ||
+		fail "$f: step 7 does not rerun the demonstration after the change"
 fi
 
 if [ "$fails" -gt 0 ]; then

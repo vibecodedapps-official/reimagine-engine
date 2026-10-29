@@ -206,7 +206,9 @@ compaction, read the item ids and `--per-item` from the block recorded there.
       staging, confirm with `git -C <repo> ls-files --eol` that each file's index line
       endings are unchanged.
    6. Rerun the checks that cover the change, then the required checks, after each
-      group's staging, applying step 4's rule after every run.
+      group's staging, applying step 4's rule after every run. Then rerun each
+      `demonstrate` command of the group and log its result as `demonstrate`, the after
+      result sub-step 9 puts in the commit body.
    7. Compare each result with the baseline. A check that passed then and fails now is
       **introduced**: say so and offer no commit until the user decides. A failure
       present at baseline is **preexisting**: report it; it is not act's to fix.

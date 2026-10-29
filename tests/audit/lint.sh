@@ -103,7 +103,7 @@
 #   `status: complete`, and, but for the merger, `mkdir -p`, a heredoc and a command
 #   that waits on input; skills/audit/common.md hard rule 2 allows `mkdir -p` of the
 #   agent's own scratch folder and bars an inline program or a heredoc; SKILL.md says a
-#   late completion notification, or one for an agent no stage entry lists, changes
+#   late completion notification, or one for an agent this session did not launch, changes
 #   nothing.
 # - skills/audit/stages/9-act.md shows an item's defect before the edit, logs it as
 #   `demonstrate`, lists that action, and carries the before and after results into the
@@ -646,7 +646,7 @@ if [ -f "$f" ]; then
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF 'A completion notification for an agent whose stage entry is already `complete` or `failed` changes nothing' "$tmp/list" ||
 		fail "$f: does not say a late completion notification changes nothing"
-	grep -qF 'for an agent no stage entry lists, such as one an earlier session launched, also changes nothing' "$tmp/list" ||
+	grep -qF 'for an agent this session did not launch, such as one an earlier session launched, also changes nothing' "$tmp/list" ||
 		fail "$f: does not say a completion notification for an unlisted agent changes nothing"
 fi
 # Act shows an item's defect at baseline before it edits, logs it as `demonstrate`, and

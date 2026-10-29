@@ -184,9 +184,15 @@ function readReview(path) {
 }
 
 // Merges the reviews into the ledger text; returns { ledger, summary } as the text to write and print.
+// A pass number of 1 or more, else a usage failure.
+const passArg = (arg) => {
+  if (!/^[1-9][0-9]*$/.test(arg) || !Number.isSafeInteger(Number(arg))) throw new Fail(2, USAGE);
+  return Number(arg);
+};
+
 function ingest(argv) {
-  if (argv.length < 3 || !/^[1-9][0-9]*$/.test(argv[0]) || !Number.isSafeInteger(Number(argv[0]))) throw new Fail(2, USAGE);
-  const n = Number(argv[0]);
+  if (argv.length < 3) throw new Fail(2, USAGE);
+  const n = passArg(argv[0]);
   const ledgerPath = argv[1];
 
   const ledgerRaw = read(ledgerPath, true);
@@ -240,8 +246,9 @@ function ingest(argv) {
 
 // The warning lines for the ledger as it stands; writes nothing.
 function check(argv) {
-  if (argv.length !== 3 || !/^[1-9][0-9]*$/.test(argv[1]) || !Number.isSafeInteger(Number(argv[1]))) throw new Fail(2, USAGE);
-  return unmatched(parseLedger(read(argv[2]), argv[2]), Number(argv[1]));
+  if (argv.length !== 3) throw new Fail(2, USAGE);
+  const n = passArg(argv[1]);
+  return unmatched(parseLedger(read(argv[2]), argv[2]), n);
 }
 
 function main(argv) {

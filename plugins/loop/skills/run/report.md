@@ -121,6 +121,8 @@ For `prepared`, also give the branch, the commit state, and the exact commands i
 3. `git push -u <remote> <branch>`
 4. `gh pr create --title "<title>" --body-file <absolute path of the body file>`; for a continued branch with one open pull request, `gh pr comment <pr> --body-file <absolute path>` instead, preceded by `gh pr edit <pr> --body-file <absolute path of the body file>` when this loop opened that pull request; on a non-GitHub host, in place of a `gh` command, the title, the absolute path of the body file to paste as the pull request's description, the absolute path of the `comment-<n>.md` file to post as its first comment when there is one (with several repositories, each file with the repository it goes with), and the note that the pull request opens, and its work items are linked, with that host's own tooling.
 
+For a `blocked` run that left slice edits uncommitted in the tree, as after a block in Step 4, also give the exact commands, in the form of `prepared`: `git add <paths>` with the paths of each slice whose files are in the tree, one line per slice; `git commit`; and `git push <remote> <branch>` when the branch exists on the remote, since the rerun's Step 0.2 stops on a local branch ahead of its remote. Say that a rerun then finds those slices committed by their files (`record.md`, An existing record, item 6) and builds nothing again. With several repositories, give the set per repository with `git -C <path>`.
+
 ### Log
 
 The implementer per slice and its model; the rounds used in Steps 3 and 4, and the Step 5 passes; the CI repair cycles; the elapsed time against the run budget, without the question waits. Copy times from the `date -u` output recorded in `run.md`; compute nothing from memory.

@@ -174,3 +174,9 @@ test('R126: the CI poll waits with sleep 30 in the background, since the host bl
   assert.ok(text.includes('do not chain shorter sleeps or loop on `date` in its place.'));
   assert.ok(!text.includes('wait with `sleep 30` in its own Bash call.'));
 });
+
+test('R135: a block in Step 4 prints the commit and push commands', () => {
+  assert.ok(REPORT.includes('For a `blocked` run that left slice edits uncommitted in the tree'));
+  assert.ok(REPORT.includes('`git push <remote> <branch>` when the branch exists on the remote'));
+  assert.ok(REPORT.includes('a rerun then finds those slices committed by their files'));
+});

@@ -533,3 +533,7 @@ test('R317: report.md holds the report header line for line and its seven sectio
 test('R317: Step 4 prints the written report whole as the last text, with nothing after it', () => {
   holds('steps/4-publish.md', 'print the whole text of the report, unchanged, as the last text of this target', 'Nothing follows it: no summary, note or offer.');
 });
+
+test('R303: a check whose budget is over the foreground limit runs in the background and is stopped at expiry', () => {
+  holds('steps/2-fix.md', 'A check whose budget is over 10 minutes, the foreground limit of the shell, runs with `run_in_background` and is stopped with TaskStop when the budget expires.');
+});

@@ -2,6 +2,24 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.3 - 2026-10-29
+
+- The reading block prints a Scripts line with the plugin's resolved scripts directory, and every step types that path, since `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell and the script calls failed.
+- The checks of a run come from the request's `checks` phrase, else the manifest bundle's `checks`, else `.reimagine.json`, and the report names the source, since a user who cannot add that file to a repository got no check at all; each review's notes, where it says what it could not run, go into `passes.json` and the report's Log.
+- A branch target gated through a manifest takes the bundle's `base` before the configuration's, so a release or hotfix branch is diffed against the base its bundle names.
+- A pass over `split` groups the files at the shallowest path depth that gives more than one group, since a change under one folder formed one group and went to one review whatever its size.
+- A deferred finding that returns stays deferred with its reason, and each new finding lists the same file's settled entries nearest first as candidates, so a reworded finding is matched against a short list instead of being triaged again.
+
+## audit 0.1.8 - 2026-10-29
+
+- A claim that names no file goes in turn across its bundle's groups, at most 80 to a group, and the brief records each scope's count and each move, since such claims had all gone to one auditor.
+- The read-only check prints a new local branch and its branch config as `local-branch` and asks whether the user's work in another worktree explains it, since refs and config are shared by every worktree and such a branch had stopped runs as blocked.
+- Resume keeps a pass-one or pass-two output that finished, with its inputs unchanged, when stage 4 or 5 never closed, and relaunches only the scopes without one.
+- Each agent definition restates the hard rules: no second-opinion tool, only the allowed commands with `mkdir -p` of its scratch folder, no inline program or heredoc, redirects only into its scratch folder, and an output final at `status: complete`; a late completion notice changes nothing.
+- Act runs a covering check or the item's described test before it edits an item whose evidence is reading, stops when the result contradicts the premise, and puts the before and after results in the commit body.
+- `report.sh` writes the report's decision ledger, raised tickets, claims section and verdicts file from the run's files and joins the part files into the body, so those copies no longer pass through the model.
+- A run started on 0.1.7 resumes from stage 1.
+
 ## rules 0.1.12 - 2026-10-28
 
 - The Working scratch item records each scratch file, script, worktree or branch as it is made or first changed, by exact name, noting which existed already, and when done offers only what the session made, from the list and the disk; a session had rewritten a file that existed before it started and, once a summary dropped that detail, offered it as safe to delete, and had listed logs as globs that matched another session's files. The rule count stays 35; the block updates through /rules.

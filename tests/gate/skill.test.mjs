@@ -215,6 +215,20 @@ test('R297: a pass over split groups by path at the shallowest depth that gives 
   }
 });
 
+test('R297: a group still over split is grouped again one segment deeper and its slugs follow the final keys', () => {
+  holds('steps/1-pass.md',
+    'After grouping, a group still over `split` whose key is a directory is grouped again by the same rule over its own files, its depth starting one segment deeper and growing while all of them share one key, and so on until no group is over `split` or the group over it cannot split, being the `.` key or one file.',
+    'Suppose the `src/api` group is itself over `split` and holds `src/api/v1/x.ts`, `src/api/v2/y.ts` and `src/api/index.ts`: it is grouped again at depth 3 into `src/api/v1` (slug `src-api-v1`), `src/api/v2` (slug `src-api-v2`) and the `.` key holding `src/api/index.ts` (slug `src-api-root`).',
+    'The slugs are made from the final keys: a `.` key made by grouping a directory key `<k>` again has the prefix `<k>`, and when several `.` keys remain they come after every directory key, in byte order of their prefixes.');
+  const gone = 'A group that alone is over `split` is still one review';
+  for (const [name, text] of [['SKILL.md', SKILL], ['README.md', README], ...supporting().map((rel) => [rel, read(rel)])]) {
+    assert.ok(!text.includes(gone), `${name} still holds: ${gone}`);
+  }
+  holds('record.md', 'a group still over `split` is grouped again one segment deeper');
+  assert.ok(SKILL.includes('a group still over `split` is grouped again one segment deeper'), 'SKILL.md lacks the regrouping');
+  assert.ok(README.includes('a group still over `split` is grouped again one segment deeper'), 'README.md lacks the regrouping');
+});
+
 test('R302: a match takes what the script gives a returning entry of the candidate\'s state', () => {
   holds('steps/1-pass.md', '`fix` and `regressed` for a fixed one, `reject` and `carried` for a rejected or carried one, `defer` and `deferred` for a deferred one, and for a regressed one no bucket, its state staying `regressed`');
   holds('record.md', 'A regressed entry that returns keeps the state `regressed` and gets no bucket');

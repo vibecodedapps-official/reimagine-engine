@@ -81,6 +81,9 @@ test('R89: a slice committed outside the loop is found by the hashes of its file
     assert.ok(!text.includes('hash-object -- <path>'));
   }
   assert.ok(section(SKILL, 'Final report handling').includes('its `files`'));
+  assert.ok(steps.includes('A slice that a run built to `complete` and did not commit also has `files`'));
+  assert.ok(steps.includes('a slice that is `failed` or `running` has none'));
+  assert.ok(section(SKILL, 'Final report handling').includes('built to `complete`'));
 });
 
 test("R90: a run with no new work publishes nothing only when the record's work is published", () => {

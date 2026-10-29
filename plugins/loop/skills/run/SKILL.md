@@ -213,7 +213,7 @@ At every terminal state:
 2. Read `report.md` and fill the report from `run.md`, never from memory.
 3. Before Step 0.5, print the report and write nothing. From Step 0.5 on, write it to the record's `report.md`, rewritten at every terminal state, and print it.
 4. With `commit: true` and state `done`, post the report's external form as one pull request comment, as `record.md`, Commit snapshot, says; it is the run's one comment on the pull request. A run on the no-new-work path of published work posts nothing.
-5. From Step 0.5 on, close the run's entry in `steps.json` (`ended`, `state`), and give each slice this run built and did not commit its `files` (`record.md`, steps.json, item 3).
+5. From Step 0.5 on, close the run's entry in `steps.json` (`ended`, `state`), and give each slice this run built to `complete` and did not commit its `files` (`record.md`, steps.json, item 3).
 
 ## Supporting files
 

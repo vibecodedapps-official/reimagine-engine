@@ -167,6 +167,21 @@ test('R292: a branch target takes the request\'s base, then the bundle\'s, then 
   holds('steps/0-preflight.md', order);
 });
 
+test('R297: a pass over split groups by path at the shallowest depth that gives more than one group', () => {
+  const phrase = 'by path at the shallowest depth that gives more than one group';
+  holds('steps/1-pass.md',
+    phrase,
+    'The depth `d` starts at 1; a file\'s key is its first `d` segments when it has more than `d` segments, else the key `.`; while every file has the same key and some file has more than `d` segments, `d` grows by one.',
+    'the `.` key\'s slug is `root` at depth 1 and `<prefix slug>-root` deeper',
+    'For example, a diff of `src/api/a.ts`, `src/web/b.ts` and `src/index.ts` has the one key `src` at depth 1, so it splits at depth 2 into `src/api` (slug `src-api`), `src/web` (slug `src-web`) and the `.` key holding `src/index.ts` (slug `src-root`).');
+  holds('record.md', phrase);
+  assert.ok(SKILL.includes(phrase), 'SKILL.md lacks the depth phrase');
+  assert.ok(README.includes(phrase), 'README lacks the depth phrase');
+  for (const [name, text] of [['SKILL.md', SKILL], ['README.md', README], ...supporting().map((rel) => [rel, read(rel)])]) {
+    assert.ok(!text.includes('top-level path'), `${name} still splits by top-level path`);
+  }
+});
+
 test('R295: Step 0 checks the clean tree before any checkout and keeps the fetched remote head', () => {
   const text = holds('steps/0-preflight.md', 'git status --porcelain', 'git diff --cached --quiet', 'Never stash, reset or clean', 'git rev-parse refs/remotes/<r>/<head>');
   assert.ok(text.indexOf('git diff --cached --quiet') < text.indexOf('git checkout'), 'the clean tree must come before the checkout');

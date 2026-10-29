@@ -12,8 +12,8 @@ Read this file at the start of every pass. It holds the pass entry, the size and
 
 1. Run `git diff --numstat <merge-base>...HEAD` and sum added plus deleted over every line. A binary file, which prints `-`, counts as no lines.
 2. At or under `split`, the pass has one review, slug `all`, target `<merge-base>...HEAD`, and its files carry no suffix: `review-<n>.json`.
-3. Over `split`, run `git diff --name-only <merge-base>...HEAD` and group the files by the first segment of their path. Files at the root form the group `.`. The pass has one review per group, at the same level, in parallel. A group's target is `<merge-base>...HEAD <path>`; the root group's target names its files one by one, `<merge-base>...HEAD <file> <file>`, because `git diff -- .` selects the whole diff. A group that alone is over `split` is still one review.
-4. A group's slug is its top-level path lowercased with each run of characters outside `[a-z0-9]` replaced by `-` and leading and trailing `-` removed; the root group's slug is `root`. Its files are `review-<n>-<slug>.json` and `diff-<n>-<slug>.patch`.
+3. Over `split`, run `git diff --name-only <merge-base>...HEAD` and group the files by path at the shallowest depth that gives more than one group. The depth `d` starts at 1; a file's key is its first `d` segments when it has more than `d` segments, else the key `.`; while every file has the same key and some file has more than `d` segments, `d` grows by one. The pass has one review per key, at the same level, in parallel. A directory key's target is `<merge-base>...HEAD <key path>`; the `.` key's target names its files one by one, `<merge-base>...HEAD <file> <file>`, because `git diff -- .` selects the whole diff. A group that alone is over `split` is still one review. For example, a diff of `src/api/a.ts`, `src/web/b.ts` and `src/index.ts` has the one key `src` at depth 1, so it splits at depth 2 into `src/api` (slug `src-api`), `src/web` (slug `src-web`) and the `.` key holding `src/index.ts` (slug `src-root`).
+4. A key's slug is its path lowercased with each run of characters outside `[a-z0-9]` replaced by `-` and leading and trailing `-` removed; the `.` key's slug is `root` at depth 1 and `<prefix slug>-root` deeper, `<prefix>` being the segments every file shares. Its files are `review-<n>-<slug>.json` and `diff-<n>-<slug>.patch`.
 
 ## 1.3 The child session
 
@@ -29,7 +29,7 @@ cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <
 
 ## 1.4 The stand-in
 
-1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- <path>` for a split group and the root group's files one by one.
+1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- <key path>` for a split group and the `.` key's files one by one.
 2. Call an Agent at `models.fallback-reviewer` (default `opus`), passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, with the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, repository-relative paths, and `[]` when there are none. A split pass makes its calls in parallel, in one message; the review budget of 1.3 applies.
 3. Save the reply as `review-<n>[-<slug>].md`. Once chosen, the stand-in stays for the run: set `engine` to `stand-in` in `passes.json`.
 

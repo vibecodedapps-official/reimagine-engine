@@ -32,7 +32,7 @@ A pull request must be open, in the repository of the session and not from a for
 
 ## What a run does
 
-- Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed by top-level path, in parallel.
+- Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed by path at the shallowest depth that gives more than one group, in parallel.
 - Each finding is sorted into fix, defer or reject, with a reason. Only the fix bucket leads to code changes; deferred and rejected findings go to the report and the comment, never to code.
 - Implementers fix the findings in the fix bucket. The run's checks run (from the request, the manifest bundle or `.reimagine.json`, in that order), a failing check is fixed at most three times, and a pass that changed anything ends with one commit and a push on the target's branch.
 - The record decides the next level, or the stop, by fixed rules. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
@@ -61,7 +61,7 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 }
 ```
 
-`split` is the number of changed lines above which a pass reviews by top-level path in parallel. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the three are whole numbers of 1 or more. `models` names the model of the implementer and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
+`split` is the number of changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the three are whole numbers of 1 or more. `models` names the model of the implementer and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
 
 ## How a run ends
 

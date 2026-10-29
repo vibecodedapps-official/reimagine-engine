@@ -88,7 +88,7 @@ Invoking this skill by name approves, for this run only: fix commits on each tar
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or one per top-level path over `split` | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; it stays for the run |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; it stays for the run |
 | implementer | an Agent at `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
 The `models` key of the configuration changes the implementer and the stand-in reviewer. The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was; the report says so in one line.
@@ -130,7 +130,7 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 }
 ```
 
-- `split`: the changed lines above which a pass reviews by top-level path in parallel.
+- `split`: the changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
 - `models`: the model of the implementer and of the stand-in reviewer.

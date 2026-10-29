@@ -188,6 +188,12 @@ test('R297: a pass over split groups by path at the shallowest depth that gives 
   }
 });
 
+test('R297: two keys of one pass never share a slug', () => {
+  const rule = 'The slugs are given in byte order of key path with the `.` key last, and a slug an earlier key already holds takes `-2`, else `-3`, and so on, the first one free.';
+  holds('steps/1-pass.md', rule, 'so `src/root` keeps `src-root` and the `.` key takes `src-root-2`');
+  holds('record.md', 'a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on');
+});
+
 test('R295: Step 0 checks the clean tree before any checkout and keeps the fetched remote head', () => {
   const text = holds('steps/0-preflight.md', 'git status --porcelain', 'git diff --cached --quiet', 'Never stash, reset or clean', 'git rev-parse refs/remotes/<r>/<head>');
   assert.ok(text.indexOf('git diff --cached --quiet') < text.indexOf('git checkout'), 'the clean tree must come before the checkout');

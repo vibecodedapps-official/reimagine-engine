@@ -203,15 +203,13 @@ test('R318: the scripts run by the path of the Scripts line, never by the plugin
   holds('steps/3-next.md', 'node "<scripts>/next.mjs"');
 });
 
-test('R309: the record is excluded through git rev-parse --path-format=absolute --git-path info/exclude, never .gitignore', () => {
-  const lookup = 'git rev-parse --path-format=absolute --git-path info/exclude';
-  holds('steps/0-preflight.md', lookup, 'git check-ignore -q .reimagine/', 'append `.reimagine/`', 'never `.gitignore`');
-  holds('record.md', lookup);
-  for (const rel of supporting()) {
-    const bare = read(rel).replaceAll(lookup, '');
-    assert.ok(!bare.includes('--git-path'), `${rel} holds --git-path without --path-format=absolute`);
-  }
-  assert.ok(!SKILL.replaceAll(lookup, '').includes('--git-path'), 'SKILL.md holds --git-path without --path-format=absolute');
+test('R309: the record is excluded through git rev-parse --git-path info/exclude read relative to the repository, never .gitignore', () => {
+  const lookup = 'git rev-parse --git-path info/exclude';
+  const relative = 'read relative to the repository\'s folder when it is not absolute';
+  holds('steps/0-preflight.md', lookup, relative, 'git check-ignore -q .reimagine/', 'append `.reimagine/`', 'never `.gitignore`');
+  holds('record.md', lookup, relative);
+  assert.ok(SKILL.includes(lookup) && SKILL.includes(relative), 'SKILL.md lacks the relative reading of the exclude path');
+  for (const text of [SKILL, ...supporting().map(read)]) assert.ok(!text.includes('--path-format'), 'a gate file still needs --path-format, which git before 2.31 lacks');
 });
 
 test('R292: Step 0 fetches the base and the head with the explicit refspec and keeps the merge-base as a full sha', () => {

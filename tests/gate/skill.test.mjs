@@ -274,7 +274,7 @@ test('R302 and R306: the match is written with the bucket and state, and a match
 
 test('R306: Step 1.6 runs findings.mjs --check after each triage write and the repair keys the finding under the earlier id', () => {
   holds('steps/1-pass.md',
-    'node "<scripts>/findings.mjs" --check <record>/findings.json',
+    'node "<scripts>/findings.mjs" --check <n> <record>/findings.json',
     'key the finding under the earlier id in the pass\'s `findings` of `passes.json`',
     'move that finding in the `findings` of that earlier pass in `passes.json` under the earlier id');
   holds('record.md', '`--check`');

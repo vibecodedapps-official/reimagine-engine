@@ -66,6 +66,19 @@ test('R59: every Bash rule in allowed-tools has at most one *, and only at its e
   }
 });
 
+test('R112: the checks bullets and Step 6.1 say a checks key still leaves the manifests and CI jobs read, and name the uncovered CI jobs', () => {
+  const sentence = 'With a `checks` key those commands are the ones run, and Step 6.1 still reads the manifests and the CI jobs and names each CI job no configured check covers as deferred to CI in `run.md` and the report.';
+  const old = 'With no `checks` key, Step 6.1 discovery applies';
+  const build = read('../../plugins/loop/skills/run/steps/4-build.md');
+  const step61 = build.slice(build.indexOf('1. **6.1 Discovery.**'), build.indexOf('2. **6.2 Not run.**'));
+  const bullet = (text) => text.split('\n').find((line) => line.startsWith('- `checks`:'));
+  assert.ok(step61.length > 0, 'Step 6.1 not found');
+  assert.ok(bullet(SKILL).includes(sentence), 'the SKILL.md checks bullet lacks the sentence');
+  assert.ok(bullet(README).includes(sentence), 'the README checks bullet lacks the sentence');
+  assert.ok(step61.includes(sentence), 'Step 6.1 lacks the sentence');
+  for (const text of [SKILL, README, build]) assert.ok(!text.includes(old));
+});
+
 test('R282: SKILL.md and README.md explain the base key the same way: without it the remote default, and the request phrase wins', () => {
   for (const text of [SKILL, README]) {
     assert.ok(text.includes('- `base`:'), 'no bullet explains the base key');

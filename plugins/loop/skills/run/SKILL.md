@@ -191,7 +191,7 @@ One mechanic serves every question the run asks: credentials, repository adoptio
 ```
 
 - `commit`: with `true`, the run commits a snapshot of the plan and report as `record.md`, Commit snapshot, says.
-- `checks`: the commands Step 6 runs. With no `checks` key, Step 6.1 discovery applies.
+- `checks`: the commands Step 6 runs. With a `checks` key those commands are the ones run, and Step 6.1 still reads the manifests and the CI jobs and names each CI job no configured check covers as deferred to CI in `run.md` and the report.
 - `timeouts`: per-call budgets in minutes (`subagent`, `review`, `check`, `ci`) and the run budget (`run`).
 - `models`: the subagent model for each role, one of `sonnet`, `opus`, `haiku`, `fable`.
 - `base`: the base branch Step 0.2 fetches, which the review's merge-base and the pull request use; without it, the remote's default branch. "base <branch>" in the request wins over the key.

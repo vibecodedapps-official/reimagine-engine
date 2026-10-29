@@ -177,3 +177,14 @@ test('R99, R104: Step 2 sizes a slice to the subagent budget, and the brief name
   assert.ok(brief.includes('7. The subagent budget in force, in minutes, and that a call past it ends the run `blocked`'));
   assert.ok(brief.includes('8. The reply shape'));
 });
+
+test('R67, R104: an implementer call is judged by its notification, and the brief bars background commands', () => {
+  assert.ok(SKILL.includes('An Agent or SendMessage call is judged against its budget by the `duration_ms` of its completion notification'));
+  assert.ok(SKILL.includes('A notification for a call you did not send, after that call already returned, is not a new call'));
+  assert.ok(!SKILL.includes('take `date` before and after the call and treat a return past the budget as expired'));
+  assert.ok(BUILD.includes("each call's `duration_ms` from its completion notification"));
+  assert.ok(BUILD.includes("A call is judged by its notification's `duration_ms`"));
+  const brief = section(BUILD, 'Implementer brief');
+  assert.notEqual(brief, null);
+  assert.ok(brief.includes('start a background command'));
+});

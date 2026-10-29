@@ -10,7 +10,7 @@ Take a snapshot before every implementer call and every fix call, in the checkou
 
 1. Write three files in the record: `pre-<n>.status` holds the output of `git status --porcelain --untracked-files=all`; `pre-<n>.patch` holds the output of `git diff` (tracked and intent-to-add paths); `pre-<n>.hashes` holds one line per untracked, non-ignored file outside `.reimagine/`, the output of `git hash-object -- <path>` followed by the path. Number `n` as `record.md`, Files, says: one more than the highest in the record, so it is unique across checkouts, calls and runs. Add a line to `run.md` naming `n`, the checkout path and the slice (or the question).
 2. A parallel batch (4.2) takes one snapshot per slice before any call of the batch starts.
-3. After a call fails, compare the checkout with its snapshot: status, diff and hashes. A call fails when it ends in a tool error or returns past the subagent budget. For a parallel batch compare after every call of the batch has returned, and treat a path as inside the slice when any slice of the batch owns it.
+3. After a call fails, compare the checkout with its snapshot: status, diff and hashes. A call fails when it ends in a tool error or returns past the subagent budget, judged as SKILL.md, Budgets and rounds, says. For a parallel batch compare after every call of the batch has returned, and treat a path as inside the slice when any slice of the batch owns it.
 4. A path outside the slice that was clean before the call and is now new or changed is restored: a tracked file with `git checkout -- <path>`, an untracked non-ignored file by deleting it. Log each action in `run.md`.
 5. A path that was already dirty or intent-to-add before the call and now differs, or an untracked file whose hash changed, ends the run `blocked`, and the report names the path. Never touch an ignored path or anything under `.reimagine/`.
 6. An implementer tool error ends the run `blocked` once the comparison and restore are done. There is no fallback implementer. A call past the subagent budget gets the same comparison and restore and then ends the run `blocked`, naming the subagent budget; it is not a round.
@@ -25,7 +25,7 @@ Write one brief per slice and pass it as the whole prompt of the implementer. It
    The `opus` stand-in's review request of Step 5 names the base commit's `REVIEW.md` (`git show <merge-base>:REVIEW.md`, and the same file in each parent directory of a changed file) as review instructions when one exists; a copy the branch adds or changes is not. The `code-review` skill takes no request text and is sent none.
 4. The checkout path the implementer edits: the worktree or additional repository path when the slice lives there, else the primary checkout. Every path in the brief is absolute.
 5. The line-ending rule. Run `git ls-files --eol` on the slice's existing files. When a file shows an `eol=` attribute, match it. When `text` or `text=auto` applies with no `eol=`, any ending is fine, since git normalizes it. Otherwise match the majority working-tree ending of the file's directory, else of the repository. The implementer never changes the line endings of a file it edits.
-6. The scope rule: change nothing outside the slice's files and add nothing the brief does not ask for; report instead of editing anything outside; do not commit, push, install anything or run `gh`; leave intent-to-add marks alone.
+6. The scope rule: change nothing outside the slice's files and add nothing the brief does not ask for; report instead of editing anything outside; do not commit, push, install anything, run `gh` or start a background command, since one that finishes after the call returns wakes it again; leave intent-to-add marks alone.
 7. The subagent budget in force, in minutes, and that a call past it ends the run `blocked`: report what is not done rather than run on.
 8. The reply shape: files changed, checks run with results, and anything it could not do.
 
@@ -59,8 +59,8 @@ Then write Step 3's entry `complete` unless it was reused (see the opening), and
 2. **4.2 Implementers.**
    - Use one Agent call per slice at the implementer model (`models.implementer`, default `sonnet`), passing `model` explicitly and the effort the request sets. Never use a fork.
    - Slices with disjoint files that the order of work marks independent run as parallel Agent calls in one message, and run no checks. Ordered slices run one at a time.
-   - Take the snapshot before each call, take `date` before and after each call, and log the model per slice in `run.md`.
-   - The subagent budget is 20 minutes per call, or `timeouts.subagent`. A call past it ends the run `blocked` naming the budget (the snapshot comparison runs first); it is not a round and not a swap.
+   - Take the snapshot before each call and `date` before and after the batch, or the call when it runs alone. Log the model per slice and each call's `duration_ms` from its completion notification in `run.md`.
+   - The subagent budget is 20 minutes per call, or `timeouts.subagent`. A call is judged by its notification's `duration_ms`, else by `date` before and after it (SKILL.md, Budgets and rounds). A call past it ends the run `blocked` naming the budget (the snapshot comparison runs first); it is not a round and not a swap.
    - A failed call goes through the snapshot comparison above.
 3. **4.3 Slice checks and slice review.**
    - After parallel calls return, run each slice's checks yourself, one command at a time. A command several slices name runs once and counts for each of them. A slice that ran alone ran its own checks; read its results.

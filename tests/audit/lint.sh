@@ -93,6 +93,9 @@
 # - skills/audit/stages/1-orient.md, read as one line, spreads a claim that names no
 #   file across the bundle's groups in turn, caps a group at 80 such claims, and has
 #   the brief's Claims section record each scope's claim count and each move.
+# - skills/audit/resume.md keeps a finished pass1/ or pass2/ file when stage 4 or 5 is
+#   the first rerun stage because its entry is missing or running, and stages 4 and 5
+#   launch no agent for a scope whose file resume kept; each file is read as one line.
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -562,6 +565,23 @@ if [ -f "$f" ]; then
 	grep -qF "each scope's claim count and each move of step 9 rule 5" "$tmp/list" ||
 		fail "$f: the brief's Claims section does not record each scope's claim count and each move"
 fi
+# A resume whose first rerun stage is 4 or 5 because its entry is missing or running
+# keeps each finished scope output, and the stage launches no agent for it; each file is
+# read as one line.
+f=skills/audit/resume.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'whose last line is `status: complete` and whose `consumed:` hashes each equal the hash of that file now is kept where it is' "$tmp/list" ||
+		fail "$f: step 7 does not keep a finished pass1 or pass2 file when stage 4 or 5 never closed"
+fi
+for f in skills/audit/stages/4-pass-one.md:'Launch no auditor for a scope whose `pass1/<scope>.md` resume kept' \
+	skills/audit/stages/5-pass-two.md:'Launch no adversary for a scope whose `pass2/<scope>.md` resume kept'; do
+	s=${f#*:}
+	f=${f%%:*}
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "$s" "$tmp/list" || fail "$f: launches an agent for a scope whose output resume kept"
+done
 
 if [ "$fails" -gt 0 ]; then
 	exit 1

@@ -32,7 +32,8 @@ restate the finding schema or the output contract.
    | high | all |
 
    A pass-one scope that failed has no report and gets no adversary; its coverage loss is
-   already recorded.
+   already recorded. Launch no adversary for a scope whose `pass2/<scope>.md` resume kept
+   (`resume.md`, step 7); list that file among the stage's outputs.
 
 3. **What the adversary writes.** In the shapes `common.md` gives (`## Pass-two
    verdicts`, `## Output contract`), checked on completion:

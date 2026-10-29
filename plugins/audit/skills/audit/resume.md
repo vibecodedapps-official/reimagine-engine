@@ -186,10 +186,12 @@ when the invocation block says `command: resume`; the rules of
      reruns stage 1;
    - stage 1, for a `head: working-tree` bundle in any mode, when the `flagged` lines of
      the step 3 build differ from the paths the brief lists as flagged at audit time.
-   A `not_applicable` stage whose inputs have not changed is reused. When the first stage
-   to rerun is not 1, or nothing needs a rerun, remove every
-   `forge/<bundle>/pr.json.new` now. When nothing needs a rerun and no `--from` was
-   given, say the run is current, print its report path and terminal state, and stop.
+   A `not_applicable` stage whose inputs have not changed is reused. When the first rerun
+   stage is 4 or 5 because its entry is missing or `running`, step 7 keeps its finished
+   scope outputs. When the first stage to rerun is not 1, or nothing needs a rerun,
+   remove every `forge/<bundle>/pr.json.new` now. When nothing needs a rerun and no
+   `--from` was given, say the run is current, print its report path and terminal state,
+   and stop.
 
 7. **Supersede.** Every stage from the first rerun stage through stage 8 reruns. First
    compute `<k>` once, before anything moves: one more than the highest number under
@@ -205,12 +207,21 @@ when the invocation block says `command: resume`; the rules of
      `superseded/`; the results files stay, so every approval's source still resolves. A
      nonzero exit stops resume, with the script's lines, before anything is superseded.
    - Then, for each rerun stage that has an entry, in order: move each of its outputs
-     that exists to `superseded/<k>/<path>`, keeping the run-relative path (so
-     `ledger/5.md` goes to `superseded/<k>/ledger/5.md`); then rewrite its entry with
-     status `superseded` and one record per moved output in its `superseded` list:
-     `path`, `moved_to` and `time`. Stage 5's outputs include `ledger/5.md`, stage 6's
-     `ledger/6.md` and the `second-opinion/` files, stage 7's `ledger/7.md`. The files
-     `forge/<bundle>/pr.json.new` are never moved; a stage 1 rerun reuses them.
+     that exists and is not kept by the next item to `superseded/<k>/<path>`, keeping the
+     run-relative path (so `ledger/5.md` goes to `superseded/<k>/ledger/5.md`); then
+     rewrite its entry with status `superseded` and one record per moved output in its
+     `superseded` list: `path`, `moved_to` and `time`. Stage 5's outputs include
+     `ledger/5.md`, stage 6's `ledger/6.md` and the `second-opinion/` files, stage 7's
+     `ledger/7.md`. The files `forge/<bundle>/pr.json.new` are never moved; a stage 1
+     rerun reuses them.
+   - Keep a finished scope's output. When the first rerun stage is 4 or 5 because its
+     entry is missing or `running`, and none of its recorded inputs changed, a
+     `pass1/<scope>.md` (stage 4) or `pass2/<scope>.md` (stage 5) whose last line is
+     `status: complete` and whose `consumed:` hashes each equal the hash of that file now
+     is kept where it is, from `git hash-object --no-filters <file>`: it is not moved and
+     gets no record in the `superseded` list. A file that fails either test moves as
+     above. The rerun stage launches only the scopes with no kept file and lists the kept
+     files among its outputs.
    - When the first rerun stage is 1 and its entry is missing or `running`, supersede the
      stage 1 outputs that exist the same way.
    - When `stages.json` is missing, no entry lists outputs, so walk the run directory and

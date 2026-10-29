@@ -183,9 +183,9 @@ test('R67, R104: an implementer call is judged by its notification, and the brie
   assert.ok(SKILL.includes('A notification that arrives for an implementer or fix call after that call already returned is not a new call'));
   assert.ok(SKILL.includes('Any other late notification, or one for an agent this run did not launch, is logged in `run.md` and changes nothing.'));
   assert.ok(SKILL.includes('The allowed-tools list pre-approves only read-only git and gh, date, and sleep for the CI poll and a budget timer;'));
-  assert.ok(BUILD.includes('A check past 10 minutes runs in the background beside the `sleep` timer SKILL.md gives with the budgets, whichever ends first stopping the other.'));
+  assert.ok(BUILD.includes('A check whose budget is over 10 minutes runs in the background beside the `sleep` timer SKILL.md gives with the budgets, whichever ends first stopping the other.'));
   assert.ok(SKILL.split('\n').includes('- TaskStop: stop a background check that passes its budget, or its timer when the check ends first.'));
-  assert.ok(SKILL.includes('a check longer than that runs with `run_in_background` beside a `sleep` of its budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; whichever ends first, the other is stopped with TaskStop.'));
+  assert.ok(SKILL.includes('a check whose budget is over that runs with `run_in_background` beside a `sleep` of its budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; whichever ends first, the other is stopped with TaskStop.'));
   assert.ok(!SKILL.includes('take `date` before and after the call and treat a return past the budget as expired'));
   assert.ok(BUILD.includes("each call's `duration_ms` from its completion notification"));
   assert.ok(BUILD.includes("A call is judged by its notification's `duration_ms`"));

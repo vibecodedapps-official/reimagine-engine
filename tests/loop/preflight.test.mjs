@@ -152,3 +152,24 @@ test('R88, R116: the merge-base, the deploy judgment and the pull request use <b
     assert.ok(!file.includes('the default branch'), 'a step file still reads the default branch as the base');
   }
 });
+
+test('R55: the user\'s instruction files come from $CLAUDE_CONFIG_DIR when it is set, else ~/.claude, never both, and the permission statement names the directory read', () => {
+  const rule = 'in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both';
+  const scope = section(SKILL, 'Approval scope');
+  assert.notEqual(scope, null);
+  const scopeItem = scope.split('\n').find((line) => line.startsWith('1. '));
+  assert.ok(scopeItem && scopeItem.includes(rule), 'Approval scope item 1 does not give the rule');
+  const step = section(PREFLIGHT, '0.1 Instruction files, configuration, credential scan, permission statement');
+  assert.notEqual(step, null);
+  const lines = step.split('\n');
+  const read = lines.find((line) => line.startsWith('1. '));
+  assert.ok(read.includes(rule), '0.1.1 does not give the rule');
+  assert.ok(read.includes('loads only that directory\'s instruction files'), '0.1.1 does not give the reason');
+  const start = lines.findIndex((line) => line.startsWith('5. '));
+  const statement = lines.slice(start, lines.findIndex((line) => line.startsWith('```'))).join('\n');
+  assert.ok(statement.includes('The instruction directory read, by name'), '0.1.5 does not name the directory read');
+  for (const text of [SKILL, PREFLIGHT]) {
+    assert.ok(!text.includes('(else `~/.claude`)'));
+    assert.ok(!text.includes('in `$CLAUDE_CONFIG_DIR`, else `~/.claude`'));
+  }
+});

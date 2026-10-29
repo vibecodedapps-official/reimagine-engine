@@ -87,7 +87,34 @@ function reseen(entry, n, line) {
     entry.state = 'carried';
     return { line, bucket: 'reject', reason: reject && reject.reason != null ? reject.reason : 'rejected in an earlier pass', prior };
   }
+  if (prior === 'deferred') {
+    const defer = lastIn(entry, 'defer');
+    return { line, bucket: 'defer', reason: defer && defer.reason != null ? defer.reason : 'deferred in an earlier pass', prior };
+  }
   return { line, bucket: null, reason: null, prior };
+}
+
+const CANDIDATE_STATES = ['fixed', 'rejected', 'carried', 'deferred', 'regressed'];
+
+// The line of an entry's latest pass, or null.
+const latestLine = (entry) => {
+  const [k] = passKeys(entry);
+  const pass = k === undefined ? undefined : entry.passes[k];
+  return isObject(pass) && pass.line !== undefined ? pass.line : null;
+};
+
+// The settled entries on the same file as a new finding, nearest line first, a null distance last, then by id.
+function candidatesFor(ledger, id, file, line) {
+  return Object.entries(ledger.findings)
+    .filter(([otherId, e]) => otherId !== id && e.file === file && CANDIDATE_STATES.includes(e.state))
+    .map(([otherId, e]) => {
+      const at = latestLine(e);
+      return { id: otherId, state: e.state, line: at, distance: Number.isInteger(line) && Number.isInteger(at) ? Math.abs(line - at) : null };
+    })
+    .sort((a, b) => {
+      if (a.distance !== b.distance) return a.distance === null ? 1 : b.distance === null ? -1 : a.distance - b.distance;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
 }
 
 const read = (path, optional) => {
@@ -183,6 +210,9 @@ function ingest(argv) {
     }
     const { bucket, reason } = entry.passes[n];
     findings.push({ id: f.id, file: f.file, line: f.line, summary: f.summary, failure_scenario: f.failure_scenario, outputs: f.outputs, state: entry.state, bucket, reason });
+  }
+  for (const finding of findings) {
+    if (finding.state === 'new') finding.candidates = candidatesFor(ledger, finding.id, finding.file, finding.line);
   }
   return { ledgerPath, ledger: JSON.stringify(ledger, null, 2) + '\n', summary: JSON.stringify({ pass: n, reviews, findings }, null, 2) + '\n' };
 }

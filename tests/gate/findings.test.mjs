@@ -149,6 +149,7 @@ const standinFindings = (state, bucket, reason) => [
     state,
     bucket,
     reason,
+    candidates: [],
   },
   {
     id: IDS.evict,
@@ -160,6 +161,7 @@ const standinFindings = (state, bucket, reason) => [
     state,
     bucket,
     reason,
+    candidates: [],
   },
 ];
 
@@ -174,8 +176,8 @@ describe('review outputs', { concurrency }, () => {
       pass: 1,
       reviews: [{ output: 'spike1b.json', is_error: false, duration_ms: 80221, total_cost_usd: 0.81797925, denials: 2, notes: { before: '', after: '' } }],
       findings: [
-        { id: IDS.pct, file: 'src/stats.mjs', line: 23, summary: SUMMARIES.pct, failure_scenario: SCENARIOS.pct, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null },
-        { id: IDS.pkg, file: 'package.json', line: 1, summary: SUMMARIES.pkg, failure_scenario: SCENARIOS.pkg, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null },
+        { id: IDS.pct, file: 'src/stats.mjs', line: 23, summary: SUMMARIES.pct, failure_scenario: SCENARIOS.pct, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
+        { id: IDS.pkg, file: 'package.json', line: 1, summary: SUMMARIES.pkg, failure_scenario: SCENARIOS.pkg, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
       ],
     });
     assert.equal(
@@ -206,9 +208,9 @@ describe('review outputs', { concurrency }, () => {
       },
     ]);
     assert.deepEqual(summary.findings, [
-      { id: IDS.guard4d, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.guard4d, failure_scenario: SCENARIOS.guard4d, outputs: ['spike4d.json'], state: 'new', bucket: null, reason: null },
-      { id: IDS.test4d, file: 'src/stats.mjs', line: 22, summary: SUMMARIES.test4d, failure_scenario: SCENARIOS.test4d, outputs: ['spike4d.json'], state: 'new', bucket: null, reason: null },
-      { id: IDS.divisor4d, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.divisor4d, failure_scenario: SCENARIOS.divisor4d, outputs: ['spike4d.json'], state: 'new', bucket: null, reason: null },
+      { id: IDS.guard4d, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.guard4d, failure_scenario: SCENARIOS.guard4d, outputs: ['spike4d.json'], state: 'new', bucket: null, reason: null, candidates: [] },
+      { id: IDS.test4d, file: 'src/stats.mjs', line: 22, summary: SUMMARIES.test4d, failure_scenario: SCENARIOS.test4d, outputs: ['spike4d.json'], state: 'new', bucket: null, reason: null, candidates: [] },
+      { id: IDS.divisor4d, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.divisor4d, failure_scenario: SCENARIOS.divisor4d, outputs: ['spike4d.json'], state: 'new', bucket: null, reason: null, candidates: [] },
     ]);
   });
 
@@ -233,9 +235,9 @@ describe('review outputs', { concurrency }, () => {
       { output: 'group-2.json', is_error: false, duration_ms: 101753, total_cost_usd: 0.9521445, denials: 2, notes: { before: '', after: '' } },
     ]);
     assert.deepEqual(summary.findings, [
-      { id: IDS.guard4b, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.guard4b, failure_scenario: SCENARIOS.guard4b, outputs: ['spike4b.json', 'group-2.json'], state: 'new', bucket: null, reason: null },
-      { id: IDS.test4b, file: 'tests/stats.test.mjs', line: 3, summary: SUMMARIES.test4b, failure_scenario: SCENARIOS.test4b, outputs: ['spike4b.json'], state: 'new', bucket: null, reason: null },
-      { id: IDS.testGroup2, file: 'src/stats.mjs', line: 22, summary: SUMMARIES.testGroup2, failure_scenario: SCENARIOS.testGroup2, outputs: ['group-2.json'], state: 'new', bucket: null, reason: null },
+      { id: IDS.guard4b, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.guard4b, failure_scenario: SCENARIOS.guard4b, outputs: ['spike4b.json', 'group-2.json'], state: 'new', bucket: null, reason: null, candidates: [] },
+      { id: IDS.test4b, file: 'tests/stats.test.mjs', line: 3, summary: SUMMARIES.test4b, failure_scenario: SCENARIOS.test4b, outputs: ['spike4b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
+      { id: IDS.testGroup2, file: 'src/stats.mjs', line: 22, summary: SUMMARIES.testGroup2, failure_scenario: SCENARIOS.testGroup2, outputs: ['group-2.json'], state: 'new', bucket: null, reason: null, candidates: [] },
     ]);
     assert.equal(
       ledgerText(dir),
@@ -367,7 +369,7 @@ describe('the ledger across passes', { concurrency }, () => {
     const summary = succeeded(await run(dir, '2', 'findings.json', 'spike1b.json'));
     assert.deepEqual(summary.findings, [
       { id: IDS.pct, file: 'src/stats.mjs', line: 23, summary: SUMMARIES.pct, failure_scenario: SCENARIOS.pct, outputs: ['spike1b.json'], state: 'regressed', bucket: 'fix', reason: 'regression: fixed in pass 1' },
-      { id: IDS.pkg, file: 'package.json', line: 1, summary: SUMMARIES.pkg, failure_scenario: SCENARIOS.pkg, outputs: ['spike1b.json'], state: 'deferred', bucket: null, reason: null },
+      { id: IDS.pkg, file: 'package.json', line: 1, summary: SUMMARIES.pkg, failure_scenario: SCENARIOS.pkg, outputs: ['spike1b.json'], state: 'deferred', bucket: 'defer', reason: 'pre-existing script, not introduced by the change' },
     ]);
     assert.equal(
       ledgerText(dir),
@@ -378,7 +380,7 @@ describe('the ledger across passes', { concurrency }, () => {
             state: 'regressed',
             passes: { ...PCT_ENTRY_FIXED.passes, 2: { line: 23, bucket: 'fix', reason: 'regression: fixed in pass 1', prior: 'fixed' } },
           },
-          [IDS.pkg]: { ...PKG_ENTRY_DEFERRED, passes: { ...PKG_ENTRY_DEFERRED.passes, 2: { line: 1, bucket: null, reason: null, prior: 'deferred' } } },
+          [IDS.pkg]: { ...PKG_ENTRY_DEFERRED, passes: { ...PKG_ENTRY_DEFERRED.passes, 2: { line: 1, bucket: 'defer', reason: 'pre-existing script, not introduced by the change', prior: 'deferred' } } },
         },
       }),
     );
@@ -426,6 +428,116 @@ describe('the ledger across passes', { concurrency }, () => {
     assert.equal(ledger.findings[IDS.guard4d].first_pass, 2);
   });
 
+  test('a finding deferred in an earlier pass that returns stays deferred in the defer bucket with its reason, again and again', async () => {
+    const dir = kase(['ledger-fixed.json', 'spike1b.json']);
+    copyFileSync(join(dir, 'ledger-fixed.json'), join(dir, 'findings.json'));
+    const reason = 'pre-existing script, not introduced by the change';
+    for (const pass of ['2', '3']) {
+      const summary = succeeded(await run(dir, pass, 'findings.json', 'spike1b.json'));
+      assert.deepEqual(summary.findings[1], { id: IDS.pkg, file: 'package.json', line: 1, summary: SUMMARIES.pkg, failure_scenario: SCENARIOS.pkg, outputs: ['spike1b.json'], state: 'deferred', bucket: 'defer', reason });
+    }
+    assert.deepEqual(JSON.parse(ledgerText(dir)).findings[IDS.pkg], {
+      ...PKG_ENTRY_DEFERRED,
+      passes: { ...PKG_ENTRY_DEFERRED.passes, 2: { line: 1, bucket: 'defer', reason, prior: 'deferred' }, 3: { line: 1, bucket: 'defer', reason, prior: 'deferred' } },
+    });
+  });
+
+  test('a reworded finding beside a rejected entry is new and names that entry as its one candidate', async () => {
+    const rejected = { file: 'src/a.mjs', summary: 'The loop skips the last item.', first_pass: 1, state: 'rejected', passes: { 1: { line: 10, bucket: 'reject', reason: 'the last item is a sentinel', prior: null } } };
+    const reply =
+      '```json\n[' +
+      '{"file": "src/a.mjs", "line": 12, "summary": "The final element is never visited by the loop.", "failure_scenario": "items [1, 2, 3] sum to 3"},' +
+      '{"file": "src/b.mjs", "line": 5, "summary": "The timeout is never cleared.", "failure_scenario": "the process stays up for 30 s"}' +
+      ']\n```\n';
+    const dir = kase([], { 'findings.json': text({ findings: { 'src/a.mjs|the loop skips the last item': rejected } }), 'reply.md': reply });
+    const summary = succeeded(await run(dir, '2', 'findings.json', 'reply.md'));
+    assert.deepEqual(summary.findings, [
+      {
+        id: 'src/a.mjs|the final element is never visited by the loop',
+        file: 'src/a.mjs',
+        line: 12,
+        summary: 'The final element is never visited by the loop.',
+        failure_scenario: 'items [1, 2, 3] sum to 3',
+        outputs: ['reply.md'],
+        state: 'new',
+        bucket: null,
+        reason: null,
+        candidates: [{ id: 'src/a.mjs|the loop skips the last item', state: 'rejected', line: 10, distance: 2 }],
+      },
+      {
+        id: 'src/b.mjs|the timeout is never cleared',
+        file: 'src/b.mjs',
+        line: 5,
+        summary: 'The timeout is never cleared.',
+        failure_scenario: 'the process stays up for 30 s',
+        outputs: ['reply.md'],
+        state: 'new',
+        bucket: null,
+        reason: null,
+        candidates: [],
+      },
+    ]);
+    assert.equal(
+      ledgerText(dir),
+      text({
+        findings: {
+          'src/a.mjs|the loop skips the last item': rejected,
+          'src/a.mjs|the final element is never visited by the loop': created('src/a.mjs', 'The final element is never visited by the loop.', 2, 12),
+          'src/b.mjs|the timeout is never cleared': created('src/b.mjs', 'The timeout is never cleared.', 2, 5),
+        },
+      }),
+    );
+  });
+
+  test("the candidates are the same file's settled entries at their latest line, nearest first, a null distance last, then by id", async () => {
+    const entry = (state, passes) => ({ file: 'src/a.mjs', summary: 's', first_pass: 1, state, passes });
+    const p = (line, bucket, prior = null) => ({ line, bucket, reason: 'r', prior });
+    const ledger = {
+      findings: {
+        'src/a.mjs|a': entry('fixed', { 1: p(20, 'fix') }),
+        'src/a.mjs|b': entry('deferred', { 1: p(14, 'defer') }),
+        'src/a.mjs|c': entry('regressed', { 1: p(30, 'fix'), 2: p(11, 'fix', 'fixed') }),
+        'src/a.mjs|d': entry('carried', { 1: p(null, 'reject'), 2: p(null, 'reject', 'rejected') }),
+        'src/a.mjs|e': entry('rejected', { 2: p(10, 'reject') }),
+        'src/a.mjs|f': entry('new', { 2: p(12, null) }),
+        'src/a.mjs|g': entry('open', { 2: p(12, null) }),
+        'src/b.mjs|h': { ...entry('fixed', { 1: p(12, 'fix') }), file: 'src/b.mjs' },
+      },
+    };
+    const reply =
+      '```json\n[' +
+      '{"file": "src/a.mjs", "line": 12, "summary": "One", "failure_scenario": "x"},' +
+      '{"file": "src/a.mjs", "line": "12-14", "summary": "Two", "failure_scenario": "y"}' +
+      ']\n```\n';
+    const dir = kase([], { 'findings.json': text(ledger), 'reply.md': reply });
+    const summary = succeeded(await run(dir, '3', 'findings.json', 'reply.md'));
+    assert.deepEqual(
+      summary.findings.map((f) => [f.id, f.candidates]),
+      [
+        [
+          'src/a.mjs|one',
+          [
+            { id: 'src/a.mjs|c', state: 'regressed', line: 11, distance: 1 },
+            { id: 'src/a.mjs|b', state: 'deferred', line: 14, distance: 2 },
+            { id: 'src/a.mjs|e', state: 'rejected', line: 10, distance: 2 },
+            { id: 'src/a.mjs|a', state: 'fixed', line: 20, distance: 8 },
+            { id: 'src/a.mjs|d', state: 'carried', line: null, distance: null },
+          ],
+        ],
+        [
+          'src/a.mjs|two',
+          [
+            { id: 'src/a.mjs|a', state: 'fixed', line: 20, distance: null },
+            { id: 'src/a.mjs|b', state: 'deferred', line: 14, distance: null },
+            { id: 'src/a.mjs|c', state: 'regressed', line: 11, distance: null },
+            { id: 'src/a.mjs|d', state: 'carried', line: null, distance: null },
+            { id: 'src/a.mjs|e', state: 'rejected', line: 10, distance: null },
+          ],
+        ],
+      ],
+    );
+  });
+
   test('a new finding is appended beside the existing entries, which stay as they are', async () => {
     const dir = kase(['ledger-fixed.json', 'standin.md']);
     copyFileSync(join(dir, 'ledger-fixed.json'), join(dir, 'findings.json'));
@@ -447,6 +559,7 @@ describe('the ledger across passes', { concurrency }, () => {
   test('the reasons fall back when no earlier pass holds a bucket', async () => {
     const fixed = fixtureJson('ledger-fixed.json');
     fixed.findings[IDS.pct].passes[1].bucket = null;
+    fixed.findings[IDS.pkg].passes[1].bucket = null;
     const rejected = fixtureJson('ledger-rejected.json');
     rejected.findings[IDS.divisor4d].passes[1].bucket = null;
     const dirFixed = kase(['spike1b.json'], { 'findings.json': text(fixed) });
@@ -454,6 +567,8 @@ describe('the ledger across passes', { concurrency }, () => {
     const [a, b] = await Promise.all([run(dirFixed, '2', 'findings.json', 'spike1b.json'), run(dirRejected, '2', 'findings.json', 'spike4d.json')]);
     const regressed = succeeded(a).findings[0];
     assert.deepEqual([regressed.state, regressed.bucket, regressed.reason], ['regressed', 'fix', 'regression: fixed in an earlier pass']);
+    const deferred = succeeded(a).findings[1];
+    assert.deepEqual([deferred.state, deferred.bucket, deferred.reason], ['deferred', 'defer', 'deferred in an earlier pass']);
     const carried = succeeded(b).findings[2];
     assert.deepEqual([carried.state, carried.bucket, carried.reason], ['carried', 'reject', 'rejected in an earlier pass']);
   });

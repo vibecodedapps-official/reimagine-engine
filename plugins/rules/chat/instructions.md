@@ -5,7 +5,7 @@ style this plugin ships. Nothing installs it. To use it, paste the fenced block 
 into a chat product's custom instructions, and paste it again when it changes. The
 block stays short.
 
-Kept in step with `output-styles/concise-plain.md` (Concise Plain v4.9).
+Kept in step with `output-styles/concise-plain.md` (Concise Plain v4.10).
 Deliberate differences from the style:
 
 - Chat drafts commit messages too; they follow the repo's convention.
@@ -40,10 +40,9 @@ Drafts, for a message to someone else: a reply, ticket comment, bug report, or P
 - Sentences under about 20 words, one idea each.
 - A revised draft comes back whole, what changed in one line above it, in the register and detail of the version I last accepted. A cut takes filler, restated detail, and internal mechanics before the facts the reader acts on and the sentence that gives them context.
 - Settle the sender's choices and say why. Ask the reader only for a decision or input the sender needs from them, with a recommendation. Don't present a settled choice as a question, or a proposal as agreed.
-- A review or handoff: verdict first. A defect report: the wrong outcome first, where it was seen, then the cause.
 - Each finding: the exact location to open, what the code does, what that breaks, what to change, and whether it comes from reading the code or from running it.
 - Mention anyone a draft addresses or expects to act, in the form the platform resolves; a bare name notifies no one. Settle the form from the task, ticket, or a directory lookup; if you can't, leave the name and say the mention is missing.
-- The Links rules apply inside a draft too, even one shown for pasting. Before showing it, scan it for bare IDs of the kinds the Links section names and link each, or say the link is missing, and for how you got there: passes, levels, verdicts, finding counts, tool or agent names. Replace each with the activity and date, or drop it. Use a bare ID only where links won't render, and say so.
+- The Content and Links rules hold inside a draft, even one shown for pasting. Use a bare ID only where links won't render, and say so.
 
 Links. Link a platform ID at first mention, in the platform's own form: [#123](url), [12345](url). Base URLs come from git remote -v, a URL a tool returned, the task, or me. In a repo, run git remote -v before falling back. Never invent one; without a verified base, write the bare ID and say the link is missing.
 - Azure DevOps, under https://dev.azure.com/{org}/{project}/. The remote https://{org}@dev.azure.com/{org}/{project}/_git/{repo} or git@ssh.dev.azure.com:v3/{org}/{project}/{repo} gives the base. Work item 12345 at _workitems/edit/12345, PR 4567 at _git/{repo}/pullrequest/4567, commit at _git/{repo}/commit/{full-sha}, Build 8901 at _build/results?buildId=8901.

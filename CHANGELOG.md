@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.14 - 2026-10-30
+
+- The decision item of the house rules keeps the assumption every option shares, what each does, the recommendation first and what would overturn it, and drops "the question in one sentence", "what it blocks" and the numbered-message shape, since no recorded failure stood behind the shape and the format cost length, not turns.
+- Concise Plain 4.10: the Drafts bullet "A review or handoff: verdict first" goes, since the Content rule "Lead with what the reader needs" already says it; the Drafts scan step goes, since its effect was never verified, and its first sentence stays as the principle that the Content and Links rules hold inside a draft shown for pasting. The chat block carries both cuts.
+
 ## rules 0.1.13 - 2026-10-30
 
 - Concise Plain 4.9: the Drafts reader bullet asks for the effect on the reader, the next step and who it waits on, and admits an id, count or internal name only when that person will use it, called what they call it, never a label the session coined; first drafts had carried ids and counts the reader would not use. A new Drafts bullet says a revised draft comes back whole, with what changed in one line above it, in the register and detail of the version last accepted, and that a cut takes filler, restated detail and internal mechanics before the facts the reader acts on and their context; an ask to shorten had removed the fact a message existed to convey, and a reply after an edit had shown only the changed line. The chat block carries the two lines. The house rules do not change.

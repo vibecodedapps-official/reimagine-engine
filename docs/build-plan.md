@@ -961,6 +961,31 @@ Check:
 
 The `## loop 0.1.10 - <date>`, `## gate 0.1.4 - <date>` and `## audit 0.1.9 - <date>` headings in `CHANGELOG.md`, one bullet per change, what and why, commit `docs(changelog): add the loop 0.1.10, gate 0.1.4 and audit 0.1.9 headings`, committed before the pull request; after the merge, by the owner, `claude plugin tag --push` for the three plugins, each after a yes, and the acceptance record of items 60 to 68.
 
+## Field feedback 2026-10-29: M53 and M54
+
+Added 2026-10-30. No requirement changes: R112 and R323 already say what the runs of acceptance items 61 and 65 at loop 0.1.10 and gate 0.1.4 did not do, and each fix puts the rule where the step that runs the command reads it. Acceptance item 60's setup is rewritten, since an implementer call stopped past its budget has its slice restored and leaves nothing to commit. M53 touches `plugins/loop/` and `tests/loop/`, M54 `plugins/gate/` and `tests/gate/`. One release commit, `release(loop, gate): loop 0.1.11 and gate 0.1.5`, moves the two above `loop--v0.1.10` and `gate--v0.1.4` with `node tools/release.mjs`, and the catalog's `metadata.version` to 0.1.15 by hand. Each test is written first and seen failing against the untouched text.
+
+| # | Milestone | Adds | Depends on |
+|---|---|---|---|
+| M53 | loop checks from the key | the `checks` rule at the head of Step 6.1 and in the plan; loop 0.1.11 | - |
+| M54 | gate commands of a repo target | the forms of a bundle or repo target in each later step file; gate 0.1.5 | - |
+
+### M53: loop checks from the key
+
+1. The plan's checks (R112, issue 48): Step 6.1 opens with the rule that a `checks` key's commands are the run's checks alone, in its order, with no manifest command or CI job added by a plan or a review, and Step 2's `plan.md` paragraph takes its checks from 6.1, naming a CI job no configured check covers as deferred to CI. `tests/loop/config.test.mjs`: both sentences. Commit: `fix(loop): run only the configured checks when a checks key is set`.
+
+Check: `npm run test:loop`; acceptance item 61.
+
+### M54: gate commands of a repo target
+
+1. The forms in the later steps (R290, R323, issue 47): `steps/1-pass.md`, `steps/2-fix.md` and `steps/3-next.md` each say in their opening paragraph that for a manifest bundle or "repo <path>" every git command the file names runs as `git -C "<path>" <command>` and every other command as `cd "<path>" && <command>`, since the rule stood only in Step 0.2 and a run's fix round sent the plain forms. `tests/gate/skill.test.mjs`: the sentence in the three files. Commit: `fix(gate): restate the commands of a repo target in each later step`.
+
+Check: `npm run test:gate`; acceptance item 65.
+
+### After the push
+
+The `## loop 0.1.11 - <date>` and `## gate 0.1.5 - <date>` headings in `CHANGELOG.md`, committed before the pull request; after the merge, by the owner, `claude plugin tag --push` for the two plugins, each after a yes, and the acceptance record of items 60, 61 and 65.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

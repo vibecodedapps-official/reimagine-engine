@@ -1,6 +1,6 @@
 # Step 2: The fix round
 
-Read this file when Step 1 ends with a non-empty fix bucket in a run that is not "no fixes". SKILL.md stays in force: its Approval scope, Roles, Levels and caps and Terminal states apply to every item here. Nothing is edited while a review runs, and nothing before this step.
+Read this file when Step 1 ends with a non-empty fix bucket in a run that is not "no fixes". SKILL.md stays in force: its Approval scope, Roles, Levels and caps and Terminal states apply to every item here. Nothing is edited while a review runs, and nothing before this step. For a manifest bundle or "repo <path>", every git command this file names runs as `git -C "<path>" <command>`, and every other command as `cd "<path>" && <command>` in one Bash call, with `<path>` the bundle's `repo` or the path of "repo <path>" (Step 0.2, item 2).
 
 Run `date -u +%Y-%m-%dT%H:%M:%SZ` before and after each implementer call, or before and after a parallel batch, and each check, and keep the output for the report's Log. Every write of `passes.json` and `findings.json` follows `record.md`, the write discipline. Every file named here without a directory lives in the record. Every ending `blocked` below records the pass `failed` with its `ended`, writes the `changes` and `checks` known so far, leaves `next` null, and then ends the run (SKILL.md, Terminal states).
 

@@ -1,6 +1,6 @@
 # Step 3: The next level
 
-Read this file from Step 2 when its commit and push are done, from Step 1 when the pass's fix bucket is empty or the run is "no fixes", and from Step 0 for the section Resume when the record already holds passes. Every write of `passes.json` follows `record.md`, Write discipline.
+Read this file from Step 2 when its commit and push are done, from Step 1 when the pass's fix bucket is empty or the run is "no fixes", and from Step 0 for the section Resume when the record already holds passes. Every write of `passes.json` follows `record.md`, Write discipline. For a manifest bundle or "repo <path>", every git command this file names runs as `git -C "<path>" <command>`, and every other command as `cd "<path>" && <command>` in one Bash call, with `<path>` the bundle's `repo` or the path of "repo <path>" (Step 0.2, item 2).
 
 ## Decide
 

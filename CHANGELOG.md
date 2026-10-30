@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.11 - 2026-10-30
+
+- With a `checks` key, Step 6.1 and the plan take its commands as the run's checks alone, and a CI job no configured check covers is named as deferred to CI, since a plan had added the build script as a check and so deferred nothing.
+
+## gate 0.1.5 - 2026-10-30
+
+- Each step after preflight says that a manifest bundle or "repo <path>" runs git as `git -C "<path>"` and every other command as `cd "<path>" && <command>`, since the rule stood only in Step 0.2 and a fix round sent the plain forms.
+
 ## loop 0.1.10 - 2026-10-29
 
 - The `gate` key of `.reimagine.json` is skipped without a report, since it belongs to the gate plugin and was reported as unknown.

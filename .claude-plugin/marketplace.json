@@ -2,7 +2,7 @@
   "name": "reimagine-engine",
   "owner": { "name": "vibecodedapps.net" },
   "metadata": {
-    "version": "0.1.16",
+    "version": "0.1.17",
     "description": "A suite of Claude Code plugins: house rules, a ticket-to-pull-request loop, a read-only audit of finished pull requests, a review gate, and instruction-file maintenance."
   },
   "plugins": [
@@ -10,7 +10,7 @@
       "name": "rules",
       "source": "./plugins/rules",
       "description": "House rules for Claude Code sessions: one block in your CLAUDE.md, kept current, plus the Concise Plain output style.",
-      "version": "0.1.13"
+      "version": "0.1.14"
     },
     {
       "name": "loop",

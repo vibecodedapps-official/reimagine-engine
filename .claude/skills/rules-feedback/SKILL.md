@@ -15,5 +15,6 @@ Done when the user has a list of proposed changes, each with file and lines, ord
 
 - Principles over rules. The fewest words that still get the job done.
 - Each edit is deliberate, surgical, and meaningful; a point with no failure behind it is a note, not a change.
-- The rules stay general: nothing names a repository, team, platform, or session.
+- The rules stay general: nothing names a repository, team, or session.
+- The record states the failure and the fix at a level that names no setting, role, host or quoted words; counts stay only where the argument turns on them.
 - Each change names its requirement, its decision entry and whether the chat block mirrors it.

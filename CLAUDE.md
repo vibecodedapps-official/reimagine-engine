@@ -12,7 +12,8 @@ One repository and one marketplace, `reimagine-engine`, holding five Claude Code
 
 ## Constraints
 
-- Every file is written for this suite: none imports history, links to another project, or records a run made elsewhere.
+- Every file is written for this suite: none imports history, links to another project, or records an acceptance run made elsewhere.
+- A changelog or decision entry records the failure and the fix; nothing in it says where, for whom or with whom a session ran: no setting, host, edition, stack, reader's role, person's words or session dates.
 - No file references `${user_config.*}`, and `package.json` has no dependencies.
 - Commit messages, pull request text and ticket comments never name a model, agent type or tool.
 - Commits read `type(scope): subject` in lowercase with a body that says why; a bare `@token` in a subject or pull request text goes in backticks.

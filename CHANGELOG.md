@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.13 - 2026-10-30
+
+- Concise Plain 4.9: the Drafts reader bullet asks for the effect on the reader, the next step and who it waits on, and admits an id, count or internal name only when that person will use it, called what they call it, never a label the session coined; first drafts to managers had carried ticket ids, build numbers and test counts. A new Drafts bullet says a revised draft comes back whole, with what changed in one line above it, in the register and detail of the version last accepted, and that a cut takes filler, restated detail and internal mechanics before the facts the reader acts on and their context; an ask to shorten had removed the fact a message existed to convey, and a reply after an edit had shown only the changed line. The chat block carries the two lines. The house rules do not change.
+
 ## loop 0.1.11 - 2026-10-30
 
 - With a `checks` key, Step 6.1 and the plan take its commands as the run's checks alone, and a CI job no configured check covers is named as deferred to CI, since a plan had added the build script as a check and so deferred nothing.

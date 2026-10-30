@@ -79,6 +79,13 @@ test('R112: the checks bullets and Step 6.1 say a checks key still leaves the ma
   for (const text of [SKILL, README, build]) assert.ok(!text.includes(old));
 });
 
+test('R112: with a checks key the plan and Step 6.1 run its commands alone', () => {
+  const build = read('../../plugins/loop/skills/run/steps/4-build.md');
+  const plan = read('../../plugins/loop/skills/run/steps/1-plan.md');
+  assert.ok(build.includes('1. **6.1 Discovery.** With a `checks` key, the run\'s checks are its commands alone, in its order: no manifest command or CI job joins them, and neither does a plan or a review. Without one, build the list in this order and drop duplicates.'), 'Step 6.1 does not lead with the checks key');
+  assert.ok(plan.includes('The plan\'s checks are those of Step 6.1 (`steps/4-build.md`): with a `checks` key, its commands alone, and a CI job no configured check covers is named as deferred to CI, not added as a check.'), 'Step 2 does not take the plan\'s checks from the checks key');
+});
+
 test('R282: SKILL.md and README.md explain the base key the same way: without it the remote default, and the request phrase wins', () => {
   for (const text of [SKILL, README]) {
     assert.ok(text.includes('- `base`:'), 'no bullet explains the base key');

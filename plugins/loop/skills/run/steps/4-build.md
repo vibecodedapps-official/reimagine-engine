@@ -91,7 +91,7 @@ Write Step 5's entry `complete` and go to Step 6.
 
 ## Step 6 Checks
 
-1. **6.1 Discovery.** Build the list in this order and drop duplicates.
+1. **6.1 Discovery.** With a `checks` key, the run's checks are its commands alone, in its order: no manifest command or CI job joins them, and neither does a plan or a review. Without one, build the list in this order and drop duplicates.
    - The `.reimagine.json` `checks` list.
    - Commands the manifests define for test, lint, typecheck and build: package scripts named `test`, `lint`, `typecheck` and `build`; Makefile targets of those names; pyproject sections that imply pytest, ruff and mypy; `cargo test` and `cargo clippy`; `go test ./...` and `go vet ./...`; `gradlew check`, or `gradlew.bat check` on Windows.
    - CI jobs whose steps run one of these commands.

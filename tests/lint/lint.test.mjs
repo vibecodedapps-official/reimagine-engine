@@ -423,10 +423,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', '\nname: Concise Plain\n', '\nname: Plain\n');
     bump(dir, 'rules');
   }, 1, ['plugins/rules/output-styles/concise-plain.md: name is not Concise Plain']);
-  negative('R43: <file>: description does not end in v4.8.', (dir) => {
-    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.8.', 'procedures.');
+  negative('R43: <file>: description does not end in v4.9.', (dir) => {
+    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.9.', 'procedures.');
     bump(dir, 'rules');
-  }, 1, ['plugins/rules/output-styles/concise-plain.md: description does not end in v4.8.']);
+  }, 1, ['plugins/rules/output-styles/concise-plain.md: description does not end in v4.9.']);
   negative('R43: <file>: keep-coding-instructions is not true', (dir) => {
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'keep-coding-instructions: true', 'keep-coding-instructions: false');
     bump(dir, 'rules');

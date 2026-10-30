@@ -149,6 +149,12 @@ test('R323: a target named by repo runs its commands in the forms of a manifest 
   assert.ok(SKILL.includes('for "repo <path>" it is the `.reimagine.json` of `<path>`, not of the session\'s folder'), 'SKILL.md Configuration reads the session\'s .reimagine.json');
 });
 
+test('R323: each later step that runs git restates the forms of a bundle or repo target', () => {
+  for (const rel of ['steps/1-pass.md', 'steps/2-fix.md', 'steps/3-next.md']) {
+    holds(rel, 'For a manifest bundle or "repo <path>", every git command this file names runs as `git -C "<path>" <command>`, and every other command as `cd "<path>" && <command>` in one Bash call, with `<path>` the bundle\'s `repo` or the path of "repo <path>" (Step 0.2, item 2).');
+  }
+});
+
 test('R300: the checks come from the request, the manifest bundle or the configuration, in that order', () => {
   const order = "the request's \"checks\" phrase, else the manifest bundle's `checks`, else `.reimagine.json` `checks`";
   assert.ok(SKILL.includes(order), "SKILL.md lacks the order of the checks' sources");

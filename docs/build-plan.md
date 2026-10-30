@@ -969,6 +969,7 @@ Added 2026-10-30. No requirement changes: R112 and R323 already say what the run
 |---|---|---|---|
 | M53 | loop checks from the key | the `checks` rule at the head of Step 6.1 and in the plan; loop 0.1.11 | - |
 | M54 | gate commands of a repo target | the forms of a bundle or repo target in each later step file; gate 0.1.5 | - |
+| M55 | drafts for other people | Concise Plain 4.9 and the chat block; rules 0.1.13 | - |
 
 ### M53: loop checks from the key
 
@@ -985,6 +986,21 @@ Check: `npm run test:gate`; acceptance item 65.
 ### After the push
 
 The `## loop 0.1.11 - <date>` and `## gate 0.1.5 - <date>` headings in `CHANGELOG.md`, committed before the pull request; after the merge, by the owner, `claude plugin tag --push` for the two plugins, each after a yes, and the acceptance record of items 60, 61 and 65.
+
+## Field feedback 2026-10-29: M55
+
+Added 2026-10-30. Feedback on drafts for other people across rules 0.1.1 to 0.1.12 (decision 156). M55 touches `plugins/rules/output-styles/`, `plugins/rules/chat/`, `tools/lint.mjs` and `tests/lint/`; `core.md` does not change, so the shipped digest literals stay.
+
+### M55: drafts for other people
+
+Work items, in this order:
+
+1. The design documents: the amended R43 in `docs/requirements.md`, decision 156 in `docs/decisions.md`, and this section. Commit: `docs(design): specify concise plain 4.9`.
+2. `node tools/release.mjs rules 0.1.13`, with the catalog `metadata.version` raised by one and the version literals of `tests/rules/rules.test.mjs` moved to 0.1.13. Commit: `release(rules): 0.1.13`.
+3. `plugins/rules/output-styles/concise-plain.md`: the reader bullet and the revision bullet of decision 156, at 4.9; `plugins/rules/chat/instructions.md`: the same two lines and the version note; `tools/lint.mjs` and `tests/lint/lint.test.mjs`: the R43 literal at 4.9. Commit: `feat(rules): write a draft for the person who will use it, revise it whole`.
+4. The `## rules 0.1.13 - <date>` heading in `CHANGELOG.md`, committed before the pull request; after the merge, by the owner, `claude plugin tag --push plugins/rules` after a yes, and the acceptance record of item 5.
+
+Check: `npm run test:rules` and `npm run test:lint` on the branch head, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 
 ## Acceptance record
 

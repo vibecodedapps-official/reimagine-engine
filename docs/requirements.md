@@ -37,6 +37,8 @@ Amended 2026-10-26: the gate's comment (decision 135) amends requirement 314.
 
 Amended 2026-10-27: house-rule edit fifteen and Concise Plain 4.8 (decision 141) add requirement 321 among the edits, amend 11, 43 and 118, and move requirement 43 to version 4.8.
 
+Amended 2026-10-30: Concise Plain 4.9 (decision 156) moves requirement 43 to version 4.9.
+
 Amended 2026-10-26: the host's attribution trailer (decision 136) amends requirement 11.
 
 Amended 2026-10-27: CI concurrency (decision 137) amends requirement 222.
@@ -111,7 +113,7 @@ Amended 2026-10-29: the second batch of field feedback of 2026-10-28, on loop 0.
 
 ### Output style and chat block
 
-43. **Output style file.** `plugins/rules/output-styles/concise-plain.md` is the agreed text, version 4.8, with frontmatter `name: Concise Plain`, a description ending in `v4.8.`, and `keep-coding-instructions: true`. It appears in the picker as `rules:Concise Plain`. Nothing in the suite edits `settings.json`. Check: lint (frontmatter); acceptance (picker name).
+43. **Output style file.** `plugins/rules/output-styles/concise-plain.md` is the agreed text, version 4.9, with frontmatter `name: Concise Plain`, a description ending in `v4.9.`, and `keep-coding-instructions: true`. It appears in the picker as `rules:Concise Plain`. Nothing in the suite edits `settings.json`. Check: lint (frontmatter); acceptance (picker name).
 44. **Chat block.** `plugins/rules/chat/instructions.md` holds exactly one fenced block for pasting into a chat product's custom instructions. Nothing installs it, and it names no vendor or product. Check: lint.
 
 ## The `loop` plugin

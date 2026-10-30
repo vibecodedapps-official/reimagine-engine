@@ -1002,6 +1002,21 @@ Work items, in this order:
 
 Check: `npm run test:rules` and `npm run test:lint` on the branch head, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 
+## Record review 2026-10-30: M56
+
+Added 2026-10-30. A review of the design documents, the changelog and the rules for what locates a session and for prescription (decisions 157 and 158). M56 touches `docs/`, `CHANGELOG.md`, `CLAUDE.md`, `.claude/skills/rules-feedback/`, `plugins/rules/rules/core.md`, `plugins/rules/output-styles/`, `plugins/rules/chat/`, `tools/lint.mjs`, `tests/rules/` and `tests/lint/`; `core.md` changes, so the shipped digest literals move.
+
+### M56: the record and the rules
+
+Work items, in this order:
+
+1. The design documents: the rewritten lines of decisions 46, 58, 111, 112, 141 and 156, decisions 157 and 158, the amended requirements 1, 43, 44 and 233, the hub constraint, the skill principle, the changelog line for rules 0.1.13, and this section. Commit: `docs(design): record the failure and the fix, specify house-rule edit seventeen`.
+2. `node tools/release.mjs rules 0.1.14`, with the catalog `metadata.version` raised by one and the version literals of `tests/rules/rules.test.mjs` moved to 0.1.14. Commit: `release(rules): 0.1.14`.
+3. `plugins/rules/rules/core.md`: the decision item of decision 158; `plugins/rules/output-styles/concise-plain.md`: the two cuts, at 4.10; `plugins/rules/chat/instructions.md`: the same two lines and the version note; `tools/lint.mjs` and `tests/lint/lint.test.mjs`: the R43 literal at 4.10; `tests/rules/rules.test.mjs`: the R233 literal and the digest literals. Commit: `feat(rules): raise a decision by its substance, drop two drafts bullets`.
+4. The `## rules 0.1.14 - <date>` heading in `CHANGELOG.md`, committed before the pull request; after the merge, by the owner, `claude plugin tag --push plugins/rules` after a yes, and the acceptance record of items 2 and 5.
+
+Check: `npm run test:rules` and `npm run test:lint` on the branch head, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

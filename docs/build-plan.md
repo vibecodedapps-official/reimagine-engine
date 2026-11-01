@@ -1258,17 +1258,17 @@ Work items, in this order:
 
 1. The design documents: decisions 160 to 164, R325, this section and the cut of M58. Commit: `docs(design): specify the agent-read prose cuts`.
 2. repo-1 to repo-5, repo-7 and repo-8 with the three corrections: the release skill's flow (repo-6), its two omitted edits and hub line 18 behind R11. repo-1's cut and the split of the hub's first sentence are one edit, since the split keeps R238's two sentences, and repo-6 and repo-7 overlap on the CI parenthetical. Commit: `docs(repo): cut what the hub, the plugins rule and the skills repeat`.
-3. Before any audit cut, items 14 and 15 at 0.1.9, and items 37, 42 and 58, whose records are older than 0.1.9. Item 15 under 18 of 20 stops the audit part (decision 161).
-4. `node tools/release.mjs audit 0.1.10`, with the catalog `metadata.version` raised by one. Commit: `release(audit): 0.1.10`.
-5. audit-1 to audit-13, with their pins: the nine-line lead of `common.md` that `tests/audit/run-copies.sh` reads by position (audit-8), the `plugin_version` line of `SKILL.md` that `tests/release/release.test.mjs` reads by index (audit-2), the `lint.sh` loops, the `scripts/ledger.sh:150` comment, `docs/architecture.md:292` and `tests/audit/fixture/expected.md:636` (audit-9), `lint.sh:559` (audit-5). Commits: `refactor(audit): ...`, one per cohesive group.
-6. The `## audit 0.1.10 - <date>` heading. Commit: `docs(changelog): add the audit 0.1.10 heading`.
-7. `node tools/release.mjs gate 0.1.6` with the catalog raised; before it, items 47, 49, 57 and 66 and 51 at 0.1.5, whose records are older. Commit: `release(gate): 0.1.6`.
-8. gate-7 and gate-8, with `docs/architecture.md` where it copies the record. Commit: `refactor(gate): cut what record.md repeats from its steps`. Then the heading, as item 6.
-9. `node tools/release.mjs rules 0.1.16`, with the catalog raised and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.16`.
-10. `tests/rules/rules.test.mjs` first: an absence assertion for R325, seen failing against the unchanged `core.md`; then rules-1 in `core.md` and the shipped digest literals, moved by running the suite and pasting the observed values (decision 11). Commit: `feat(rules): drop the sentence the unverified-cause item holds`.
-11. rules-4, rules-5 and rules-7. Commit: `refactor(rules): cut what the skill and the chat block repeat`. Then the heading, as item 6.
+3. `node tools/release.mjs rules 0.1.16`, with the catalog raised and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.16`.
+4. `tests/rules/rules.test.mjs` first: an absence assertion for R325, seen failing against the unchanged `core.md`; then rules-1 in `core.md` and the shipped digest literals, moved by running the suite and pasting the observed values (decision 11). Commit: `feat(rules): drop the sentence the unverified-cause item holds`.
+5. rules-4, rules-5 and rules-7. Commit: `refactor(rules): cut what the skill and the chat block repeat`.
+6. `node tools/release.mjs gate 0.1.6` with the catalog raised; before it, items 47, 49, 57 and 66 and 51 at 0.1.5, whose records are older. Commit: `release(gate): 0.1.6`.
+7. gate-7 and gate-8, with `docs/architecture.md` where it copies the record. Commit: `refactor(gate): cut what record.md repeats from its steps`. Then the two headings: `docs(changelog): add the gate 0.1.6 and rules 0.1.16 headings`.
+8. Before any audit cut, items 14 and 15 at 0.1.9, and items 37, 42 and 58, whose records are older than 0.1.9. Item 15 under 18 of 20 stops the audit part (decision 161).
+9. `node tools/release.mjs audit 0.1.10`, with the catalog `metadata.version` raised by one. Commit: `release(audit): 0.1.10`.
+10. audit-1 to audit-13, with their pins: the nine-line lead of `common.md` that `tests/audit/run-copies.sh` reads by position (audit-8), the `plugin_version` line of `SKILL.md` that `tests/release/release.test.mjs` reads by index (audit-2), the `lint.sh` loops, the `scripts/ledger.sh:150` comment, `docs/architecture.md:292` and `tests/audit/fixture/expected.md:636` (audit-9), `lint.sh:559` (audit-5). Commits: `refactor(audit): ...`, one per cohesive group.
+11. The `## audit 0.1.10 - <date>` heading. Commit: `docs(changelog): add the audit 0.1.10 heading`.
 12. The after-runs: for audit items 14, 15, 37, 42, 58 and 68, for gate items 47, 49, 51, 57 and 66, for rules items 2 and 4; items 22 and 39 for the releases and item 30 for the hub, its text moved to the current marketplace name. Each is compared with its before-run. Commit: `docs(acceptance): record the agent-read prose cuts`.
-13. After the merge, by the owner: the three tags after a yes; then item 21 on the merge commit and item 38 if it is not recorded for the head. Items that need another machine are recorded as not run with the reason.
+13. After the merge, by the owner: the three tags after a yes; then item 21 on the merge commit. Items that need another machine are recorded as not run with the reason.
 
 Check: the area scripts that cover each commit, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 

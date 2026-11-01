@@ -597,6 +597,15 @@ for f in skills/audit/stages/4-pass-one.md:'Launch no auditor for a scope whose 
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "$s" "$tmp/list" || fail "$f: launches an agent for a scope whose output resume kept"
 done
+# The adversary never reads the auditor body, so the bar on a lead sits in audit-evidence.md.
+for f in skills/audit/audit-evidence.md:'becomes a finding only when it names the regression the test would miss' \
+	agents/adversary.md:'`### Leads a finding must clear`'; do
+	s=${f#*:}
+	f=${f%%:*}
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "$s" "$tmp/list" || fail "$f: the adversary has no bar on a lead"
+done
 # A pass report without its claims heading is a failed output, which report.sh skips: the
 # stage fails it and resume does not keep it.
 for f in skills/audit/stages/4-pass-one.md:'when its last line is not `status: complete`, or when it has no `## Claims` heading' \

@@ -42,7 +42,8 @@ and your scratch folder.
    `## Output contract` sections. Then read `audit-evidence.md` in full and follow its
    `## Finding schema`, `## Claims list`, `## Decisions`, `## Scope`,
    `## Ledger parse rules`, `### Reverted test runs`, `### Rerun of a run-once script`,
-   `## Outward trace` and `## Outward trace challenged` sections.
+   `### Leads a finding must clear`, `## Outward trace` and `## Outward trace challenged`
+   sections.
 2. Read `audit-brief.md`, then only the trees it maps for you and the run-directory files it
    names. Read the pass-one report you were given, every `## Top-up` section included.
 3. For each finding, open every citation at the sha it names and confirm that the quoted

@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## audit 0.1.10 - 2026-11-01
 
-- The shared files shrink, since every launch pays for them: four sections of `audit-evidence.md` no step names go, the orchestrator's read-only check and counting rules leave `common.md`, and the finding schema and its neighbors move to `audit-evidence.md`, so a digester, mapper or merger launch no longer reads them.
+- The shared files shrink, since every launch pays for them: four sections of `audit-evidence.md` no step names go, with a short section keeping the bars on a finding that the adversary and the second opinion would otherwise lose, the orchestrator's read-only check and counting rules leave `common.md`, and the finding schema and its neighbors move to `audit-evidence.md`, so a digester, mapper or merger launch no longer reads them.
 - The auditor and adversary bodies stop restating the scope file's checklists, the shared files' rules and the request's asks. The second-opinion launch reads the rule files once, from the sentinel copies, so the sentinels cover them. The merger no longer takes the brief, which no step of it uses.
 - Three command descriptions and the five agent descriptions shed the words that route nothing, which every session pays for.
 

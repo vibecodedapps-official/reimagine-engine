@@ -12,7 +12,7 @@ All names are relative to the record directory. Times in every file are copied f
 
 | File | Written | Holds |
 |---|---|---|
-| `passes.json` | Step 0, then Steps 1 to 3 | The completion record (see the next section) |
+| `passes.json` | Step 0, then Steps 1 to 4 | The completion record (see the next section) |
 | `findings.json` | Step 1 by `findings.mjs`, then the triage and Step 2 | The identity ledger across passes (see Findings ledger) |
 | `report.md` | Every terminal state | The report, compiled from the record. Rewritten in place |
 | `review-<n>[-<slug>].json` or `.md` | Step 1, after each review | The review's saved output: `.json` from a child session, `.md` from the stand-in. `<n>` is the pass number, which counts across runs. An unsplit pass has no `-<slug>`; a pass over `split` groups its files by path at the shallowest depth that gives more than one group, a group still over `split` is grouped again one segment deeper, and a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on (Step 1.2) |
@@ -68,7 +68,7 @@ Step 0 writes the top level and the run entry, Step 1 appends the pass entry and
 
 When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says: add `match` to the new entry in the same write as its bucket and state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
 
-A warning for an entry new in the latest pass that is `carried` or `regressed` with no `match` goes to stderr and the exit stays 0. Its `--check` mode, `findings.mjs --check <pass> <ledger>`, prints the same warnings for the ledger as it stands, writes nothing, and runs after each triage (Step 1.6).
+`findings.mjs` sends a warning for an entry new in the latest pass that is `carried` or `regressed` with no `match` to stderr, and its exit stays 0. Its `--check` mode, `findings.mjs --check <pass> <ledger>`, prints the same warnings for the ledger as it stands, writes nothing, and runs after each triage (Step 1.6).
 
 ## Write discipline
 

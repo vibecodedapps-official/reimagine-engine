@@ -133,6 +133,21 @@ path, so the script runs again on every install that ran it at its merge-base pa
   tier lets pass two attack Verified OK items, such an item is among the riskiest and is
   held to this section.
 
+### Leads a finding must clear
+
+Whichever agent files it:
+
+- A weak-test flag becomes a finding only when it names the regression the test would
+  miss, with the test quoted.
+- A test account with more rights than the test uses is flagged only with a quoted grant
+  or role definition, or with a pointer to the rights (code outside the tests that writes
+  as the account, or a name that says writer, owner or admin), labeled `unverified
+  assumption` with a `live check`. With neither, it is not flagged.
+- A matcher finding needs quoted reads at head and base showing that an incompatible
+  producer survives integration.
+- An open pull request candidate is a lead. A `cut` row, a `cut-list` row or `open PRs
+  not read` is a gap in what could be checked, never a finding.
+
 ## Finding schema
 
 Every finding is exactly this block:
@@ -360,7 +375,7 @@ Widened inputs and their decision points:
   decision point: the decisions that act on its answer are listed instead. Code that does
   not use the widened part is not a decision point and is not counted. The decision rules
   apply to consumers in product code; a test that reads the widened input is judged by
-  the tests checklist.
+  `### Leads a finding must clear`.
 - `decisions:` follows `consumers:` and is `none` when `consumers` is none. The decision
   points of every consumer go on `  - decision` lines under the entry. They are not
   entries: they count toward neither the 15 entries of a scope nor the 10 consumers of a

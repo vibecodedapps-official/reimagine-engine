@@ -4,9 +4,9 @@ Stage 8 fills this template into `<run dir>/report.md` from what is on disk:
 `converged.md`, the ledger files, the `pass1/` and `pass2/` files, `claims.md`,
 `stages.json`, `usage.md` and the live files. Everything between `<` and `>` is filled
 in, and every section is present, with `none` when it is empty. Finding and item shapes
-are those of `common.md` and `audit-evidence.md`. `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/8-report.md` says
-where each part comes from and how the counts and the verdict are computed; this file
-fixes the layout.
+are those of the ledger files and `converged.md`.
+`${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/8-report.md` says where each part comes from
+and how the counts and the verdict are computed; this file fixes the layout.
 
 The items come from `converged.md` when its check passed (the stage 7 entry records
 `"converged_check": "pass"`), else from the ledger files with every gate recomputed by

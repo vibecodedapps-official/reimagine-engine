@@ -5,7 +5,8 @@ A section or hard rule named below without a file is in this file or in `common.
 ## Evidence
 
 These rules add to the "Evidence" section of `common.md` for the cases that only the
-auditor and the adversary meet: reverted test runs and run-once scripts.
+auditor and the adversary meet: reverted test runs, run-once scripts and the leads
+below.
 
 ### Reverted test runs
 
@@ -144,13 +145,13 @@ Whichever agent files it:
   questions it goes under `Q2`; with a custom list, under the question closest to test
   coverage, else the first, and the finding says so.
 - A test account with more rights than the test uses is flagged only with a quoted grant
-  or role definition, labeled as `## Evidence` says, or with a pointer to the rights
-  (code outside the tests that writes as the account, or a name that says writer, owner
-  or admin), labeled `unverified assumption` with a `live check`. With neither, it is not
-  flagged. The flag goes on the test that picks the account, not on a shared step that
-  takes the role as a parameter, with one finding per account naming each test. With the
-  default questions it goes under `Q1`; with a custom list, under the question closest to
-  best practice, else the first, and the finding says so.
+  or role definition, labeled as `## Evidence` in `common.md` says, or with a pointer to
+  the rights (code outside the tests that writes as the account, or a name that says
+  writer, owner or admin), labeled `unverified assumption` with a `live check`. With
+  neither, it is not flagged. The flag goes on the test that picks the account, not on a
+  shared step that takes the role as a parameter, with one finding per account naming
+  each test. With the default questions it goes under `Q1`; with a custom list, under the
+  question closest to best practice, else the first, and the finding says so.
 - A matcher finding needs quoted reads at head and base showing that an incompatible
   producer survives integration. When the brief says the base was not fetched, the
   finding says the base read may be stale. A change on the base is not a deleted feature.

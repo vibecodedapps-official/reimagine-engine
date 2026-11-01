@@ -600,7 +600,7 @@ done
 # The adversary never reads the auditor body, so the bar on a lead sits in audit-evidence.md.
 for f in skills/audit/audit-evidence.md:'becomes a finding only when it names the regression the test would miss' \
 	agents/adversary.md:'`### Leads a finding must clear`' \
-	skills/audit/audit-evidence.md:'is flagged only with a quoted grant or role definition, labeled as `## Evidence` says' \
+	skills/audit/audit-evidence.md:'is flagged only with a quoted grant or role definition, labeled as `## Evidence` in `common.md` says' \
 	skills/audit/audit-evidence.md:'A change on the base is not a deleted feature' \
 	skills/audit/audit-evidence.md:'Journal keys that differ, shown by quoted runner lines, clear it' \
 	skills/audit/stages/4-pass-one.md:'with any rows it names written out in full' \

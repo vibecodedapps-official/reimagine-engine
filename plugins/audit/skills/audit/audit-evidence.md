@@ -137,16 +137,20 @@ path, so the script runs again on every install that ran it at its merge-base pa
 
 Whichever agent files it:
 
-- A weak-test flag becomes a finding only when it names the regression the test would
-  miss, with the test quoted. With the default questions it goes under `Q2`; with a
-  custom list, under the question closest to test coverage, else the first, and the
-  finding says so.
+- A test is flagged as weak when it asserts the code's own constant or a value computed
+  the way the code computes it, pins text without running the code that makes it, or
+  accepts a wrong outcome among those it allows. The flag becomes a finding only when it
+  names the regression the test would miss, with the test quoted. With the default
+  questions it goes under `Q2`; with a custom list, under the question closest to test
+  coverage, else the first, and the finding says so.
 - A test account with more rights than the test uses is flagged only with a quoted grant
   or role definition, labeled as `## Evidence` says, or with a pointer to the rights
   (code outside the tests that writes as the account, or a name that says writer, owner
   or admin), labeled `unverified assumption` with a `live check`. With neither, it is not
-  flagged. With the default questions it goes under `Q1`; with a custom list, under the
-  question closest to best practice, else the first, and the finding says so.
+  flagged. The flag goes on the test that picks the account, not on a shared step that
+  takes the role as a parameter, with one finding per account naming each test. With the
+  default questions it goes under `Q1`; with a custom list, under the question closest to
+  best practice, else the first, and the finding says so.
 - A matcher finding needs quoted reads at head and base showing that an incompatible
   producer survives integration. When the brief says the base was not fetched, the
   finding says the base read may be stale. A change on the base is not a deleted feature.

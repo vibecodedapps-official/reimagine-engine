@@ -603,12 +603,14 @@ for f in skills/audit/audit-evidence.md:'becomes a finding only when it names th
 	skills/audit/audit-evidence.md:'is flagged only with a quoted grant or role definition, labeled as `## Evidence` says' \
 	skills/audit/audit-evidence.md:'A change on the base is not a deleted feature' \
 	skills/audit/audit-evidence.md:'Journal keys that differ, shown by quoted runner lines, clear it' \
+	skills/audit/stages/4-pass-one.md:'with any rows it names written out in full' \
+	skills/audit/audit-evidence.md:'not on a shared step that takes the role as a parameter' \
 	agents/auditor.md:'`### Leads a finding must clear`'; do
 	s=${f#*:}
 	f=${f%%:*}
 	[ -f "$f" ] || continue
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF "$s" "$tmp/list" || fail "$f: the adversary has no bar on a lead"
+	grep -qF "$s" "$tmp/list" || fail "$f: the bar on a lead or a named row is gone"
 done
 # A pass report without its claims heading is a failed output, which report.sh skips: the
 # stage fails it and resume does not keep it.

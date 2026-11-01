@@ -1,6 +1,6 @@
 ---
 name: auditor
-description: Stage 4 of an audit run, and the top-ups of stages 4 and 5: audits one scope and reports findings with evidence. Launched only by the audit skill.
+description: "Stage 4 of an audit run, and the top-ups of stages 4 and 5: audits one scope and reports findings with evidence. Launched only by the audit skill."
 model: opus
 tools:
   - Read
@@ -38,8 +38,9 @@ to `Q4` or a custom list.
    `## Ids and origin tags`, `## Claim kinds` and `## Output contract` sections. Then read
    `audit-evidence.md` in full and follow its `## Finding schema`, `## Verified OK list`,
    `## Claims list`, `## Decisions`, `## Scope`, `## Ledger parse rules`,
-   `### Reverted test runs`, `### Rerun of a run-once script` and `## Outward trace`
-   sections. Use no other shape and no other id form.
+   `### Reverted test runs`, `### Rerun of a run-once script`,
+   `### Leads a finding must clear` and `## Outward trace` sections. Use no other shape
+   and no other id form.
 2. Read `audit-brief.md`: the bundles, the head, base and merge-base shas, the stack
    order, the source order, the tier, and the read path of each tree. Read only the trees
    the brief maps for you and the run-directory files it names.

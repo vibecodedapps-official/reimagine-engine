@@ -1,6 +1,6 @@
 ---
 name: adversary
-description: Stages 5 to 7 of an audit run: challenges a pass-one report, the late ids, or one second-opinion request batch. Launched only by the audit skill.
+description: "Stages 5 to 7 of an audit run: challenges a pass-one report, the late ids, or one second-opinion request batch. Launched only by the audit skill."
 model: opus
 tools:
   - Read

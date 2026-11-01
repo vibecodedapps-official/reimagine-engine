@@ -1,6 +1,6 @@
 ---
 name: digester
-description: Stage 2 of an audit run: turns one chunk of a document corpus into a cited rule list. Launched only by the audit skill.
+description: "Stage 2 of an audit run: turns one chunk of a document corpus into a cited rule list. Launched only by the audit skill."
 model: haiku
 tools:
   - Read

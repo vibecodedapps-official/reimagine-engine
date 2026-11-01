@@ -1,6 +1,6 @@
 ---
 name: mapper
-description: Stage 3 of an audit run: answers the per-ticket questions against one code base. Launched only by the audit skill.
+description: "Stage 3 of an audit run: answers the per-ticket questions against one code base. Launched only by the audit skill."
 model: sonnet
 tools:
   - Read

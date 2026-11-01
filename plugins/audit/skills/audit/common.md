@@ -72,8 +72,8 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    or `rg` over `git ls-files`, misses the untracked files that belong to the head.
 
    This is instruction, not enforcement: nothing blocks Bash mechanically. `readonly.sh`
-   checks every audited repository after every stage, and a write it finds ends the run
-   `blocked`. The user's own edits during a run trip it too.
+   checks every audited repository after every stage, and a write that check does not
+   accept ends the run `blocked`. The user's own edits during a run trip it too.
 3. **No model, agent or tool names** in anything external: commit messages, pull request
    and ticket text, and drafted comments. The report and the run records stay in the run
    directory and may name them.

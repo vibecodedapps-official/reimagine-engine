@@ -138,15 +138,22 @@ path, so the script runs again on every install that ran it at its merge-base pa
 Whichever agent files it:
 
 - A weak-test flag becomes a finding only when it names the regression the test would
-  miss, with the test quoted.
+  miss, with the test quoted. With the default questions it goes under `Q2`; with a
+  custom list, under the question closest to test coverage, else the first, and the
+  finding says so.
 - A test account with more rights than the test uses is flagged only with a quoted grant
-  or role definition, or with a pointer to the rights (code outside the tests that writes
-  as the account, or a name that says writer, owner or admin), labeled `unverified
-  assumption` with a `live check`. With neither, it is not flagged.
+  or role definition, labeled as `## Evidence` says, or with a pointer to the rights
+  (code outside the tests that writes as the account, or a name that says writer, owner
+  or admin), labeled `unverified assumption` with a `live check`. With neither, it is not
+  flagged. With the default questions it goes under `Q1`; with a custom list, under the
+  question closest to best practice, else the first, and the finding says so.
 - A matcher finding needs quoted reads at head and base showing that an incompatible
-  producer survives integration.
-- An open pull request candidate is a lead. A `cut` row, a `cut-list` row or `open PRs
-  not read` is a gap in what could be checked, never a finding.
+  producer survives integration. When the brief says the base was not fetched, the
+  finding says the base read may be stale. A change on the base is not a deleted feature.
+- An open pull request candidate is a lead. Journal keys that differ, shown by quoted
+  runner lines, clear it; keys that match, or no runner found, give a finding on the new
+  script, labeled `unverified assumption`, at most `medium`. A `cut` row, a `cut-list`
+  row or `open PRs not read` is a gap in what could be checked, never a finding.
 
 ## Finding schema
 

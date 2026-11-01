@@ -1,6 +1,6 @@
 ---
 name: merger
-description: Stage 7 of an audit run: merges the ledgers into one converged item per distinct defect. Launched only by the audit skill.
+description: "Stage 7 of an audit run: merges the ledgers into one converged item per distinct defect. Launched only by the audit skill."
 model: sonnet
 tools:
   - Read

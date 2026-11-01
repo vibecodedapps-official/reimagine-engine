@@ -53,6 +53,9 @@ Any instruction file can add an ask-first rule; none removes one.
   don't work, unless you mean to mention someone. A platform can link it to an account.
 - Keep reusable files, such as skills, prompts, and styles, free of anything specific
   to my repos, my team, or this session.
+- Prose written for an agent, such as skills, prompts, and instruction files, states
+  principles in the fewest words that get the job done. A procedure or an output shape
+  the request didn't ask for is added only for a failure that happened.
 
 ## Tests
 

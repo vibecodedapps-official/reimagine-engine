@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R323; the primer milestones M10 to M19 follow M9, and M20 to M52 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R324; the primer milestones M10 to M19 follow M9, and M20 to M57 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -1014,6 +1014,21 @@ Work items, in this order:
 2. `node tools/release.mjs rules 0.1.14`, with the catalog `metadata.version` raised by one and the version literals of `tests/rules/rules.test.mjs` moved to 0.1.14. Commit: `release(rules): 0.1.14`.
 3. `plugins/rules/rules/core.md`: the decision item of decision 158; `plugins/rules/output-styles/concise-plain.md`: the two cuts, at 4.10; `plugins/rules/chat/instructions.md`: the same two lines and the version note; `tools/lint.mjs` and `tests/lint/lint.test.mjs`: the R43 literal at 4.10; `tests/rules/rules.test.mjs`: the R233 literal and the digest literals. Commit: `feat(rules): raise a decision by its substance, drop two drafts bullets`.
 4. The `## rules 0.1.14 - <date>` heading in `CHANGELOG.md`, committed before the pull request; after the merge, by the owner, `claude plugin tag --push plugins/rules` after a yes, and the acceptance record of items 2 and 5.
+
+Check: `npm run test:rules` and `npm run test:lint` on the branch head, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
+
+## House-rule edit eighteen: M57
+
+Added 2026-10-31. R324 and decision 159: one Code item on prose written for an agent, resting on the prescriptive residue decisions 113, 115 and 158 found in the house rules. M57 touches `docs/`, `CHANGELOG.md`, `.claude/skills/rules-feedback/`, `.claude-plugin/marketplace.json`, `plugins/rules/.claude-plugin/plugin.json`, `plugins/rules/rules/core.md` and `tests/rules/`; `core.md` changes, so the shipped digest literals and the rule count move. The chat block does not change, since it carries no Code item. No other plugin changes.
+
+### M57: the agent-read prose item
+
+Work items, in this order:
+
+1. The design documents: R324 in `docs/requirements.md`, decision 159 in `docs/decisions.md`, this section, and the rules-feedback skill's Principles section, which keeps its two bullets on the record and on what each change names and names the house-rule items for the rest. Commit: `docs(design): specify house-rule edit eighteen`.
+2. `node tools/release.mjs rules 0.1.15`, with the catalog `metadata.version` raised by one and the version literals of `tests/rules/rules.test.mjs` moved to 0.1.15. Commit: `release(rules): 0.1.15`.
+3. `tests/rules/rules.test.mjs` first: an `items.includes` assertion for R324, seen failing against the unchanged `core.md`; then `plugins/rules/rules/core.md`: the item of R324 after the reusable-files item, wrapped like its neighbors; then the shipped digest literals for `core` and `core,windows` and the rule-count literals, moved by running the suite and pasting the observed values (decision 11). Commit: `feat(rules): add the agent-read prose item`.
+4. The `## rules 0.1.15 - <date>` heading in `CHANGELOG.md`, committed before the pull request; after the merge, by the owner, `claude plugin tag --push plugins/rules` after a yes, and the acceptance record of items 2, 4 and 5.
 
 Check: `npm run test:rules` and `npm run test:lint` on the branch head, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 

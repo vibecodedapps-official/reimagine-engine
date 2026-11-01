@@ -52,8 +52,8 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
    - the brief's `REVIEW.md` rules whose copy governs a file of the scope, each quoted
      with its `<path>:<line>`: each always-check rule as a checklist row, asked of
      every file of the scope the copy governs, and each require-evidence rule, so a
-     finding of its class cites a quote or a run (`common.md`, "When a finding
-     counts"); or `none`. Severity calibration and do-not-report rules are not listed:
+     finding of its class cites a quote or a run (`common.md`, "REVIEW.md
+     rules"); or `none`. Severity calibration and do-not-report rules are not listed:
      the report applies them.
 
    | Role | Checklist |
@@ -63,7 +63,7 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
    | tests-hygiene | Both rows above. |
    | interactions | Contracts, schemas and APIs changed in one bundle and used in another; the stack order and the combined state the brief states. |
    | combined | The group review of every changed file with its outward trace, plus the tests and hygiene rows, in one report. |
-   | decision (every scope assigned a `decision` claim) | The decision ledger for each `decision` claim of the scope (`## Decisions` in `common.md`): three dimensions, class, reversibility, recommendation. |
+   | decision (every scope assigned a `decision` claim) | The decision ledger for each `decision` claim of the scope (`## Decisions` in `audit-evidence.md`): three dimensions, class, reversibility, recommendation. |
 
    At low tier the report's Coverage says that one auditor covered the tickets, the tests
    and work-item hygiene with this checklist.

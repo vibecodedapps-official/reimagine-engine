@@ -82,8 +82,8 @@
 #   `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and `REVIEW.md` in that
 #   order, and says `REVIEW.md` is read at the pinned base with `git show <base>:<path>`;
 #   skills/audit/stages/9-act.md names the two directories and `REVIEW.md` at the base
-#   among the sources of the required checks; it and skills/audit/common.md name the
-#   rules in `.claude/rules/` that apply to a file, the skills in `.claude/skills/` and
+#   among the sources of the required checks; it and skills/audit/audit-evidence.md name
+#   the rules in `.claude/rules/` that apply to a file, the skills in `.claude/skills/` and
 #   the `REVIEW.md` copies the brief records at the base among the instruction files
 #   read before a change; each file is read as one line.
 # - skills/audit/common.md says every agent reports and labels a finding as if
@@ -559,7 +559,7 @@ if [ -f "$f" ]; then
 	grep -qF 'every agent reports and labels a finding as if those rules were absent' "$tmp/list" ||
 		fail "$f: does not say every agent reports as if REVIEW.md's severity and do-not-report rules were absent"
 fi
-for f in skills/audit/stages/9-act.md skills/audit/common.md; do
+for f in skills/audit/stages/9-act.md skills/audit/audit-evidence.md; do
 	[ -f "$f" ] || continue
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF 'the rules in `.claude/rules/` that apply to it (one with no `paths`, or one whose `paths` match it)' "$tmp/list" &&
@@ -603,7 +603,7 @@ for f in skills/audit/stages/4-pass-one.md:'when its last line is not `status: c
 	skills/audit/stages/5-pass-two.md:'its last line is not `status: complete`, it has no `## Claims challenged` heading' \
 	skills/audit/resume.md:'or has no `## Claims` (stage 4) or `## Claims challenged` (stage 5) heading, moves as above' \
 	skills/audit/common.md:'and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
-	skills/audit/common.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
+	skills/audit/audit-evidence.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
 	agents/auditor.md:'with no claim assigned, the heading and the one line `none`'; do
 	s=${f#*:}
 	f=${f%%:*}

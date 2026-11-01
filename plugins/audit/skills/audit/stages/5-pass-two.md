@@ -47,7 +47,7 @@ restate the finding schema or the output contract.
    - `## Coverage gaps`; for a report with `## Outward trace` it also holds
      `outward trace: <repo>:<path>:<symbol> not traced` for each changed symbol the report
      neither traces nor lists on its `not traced:` line, and for each symbol on that line;
-   - new findings in the `common.md` schema, each with `origin: pass2` and an id
+   - new findings in the `audit-evidence.md` schema, each with `origin: pass2` and an id
      `<scope>-P<n>`;
    - `## Map corrections`: map file, line, what is wrong, and the source quote at its sha
      that shows it, or `none`;

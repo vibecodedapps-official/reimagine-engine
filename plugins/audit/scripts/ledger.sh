@@ -147,7 +147,7 @@
 # A complete record's file must also end, at its last nonblank line, with exactly
 # `status: complete`; the inventory alone does not make a file complete.
 #
-# Parsing (skills/audit/common.md, output contract). A finding block starts at
+# Parsing (skills/audit/audit-evidence.md, "Ledger parse rules"). A finding block starts at
 # `### <id>: <title>`, a verdict block at `### verdict on <id>: <verdict>`. A block ends
 # at the next line starting `## ` or `### `, or at a line that is exactly `runs:`,
 # `runs: none`, `consumed:`, `consumed: none`, `opened:`, `opened: none`, or `status:

@@ -82,7 +82,7 @@ an input you could not open as "not read: <path>".
    each decision that reads the widened part, checked against the ticket and claims text
    the brief names. The trace is for your own search; do not write it out. Then give up
    to ten findings no reviewer raised, from the trace or anywhere else, each in the
-   finding schema of common.md under a heading "### X<n>: <title>" with the line
+   finding schema of audit-evidence.md under a heading "### X<n>: <title>" with the line
    "- origin: second-opinion", numbered from X<first free number>.
 5. Severity recalibration: any finding whose severity you would change, from and to,
    with the reason.

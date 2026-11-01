@@ -35,11 +35,11 @@ to `Q4` or a custom list.
 ## Steps
 
 1. Read `common.md` in full first, and follow its `## Hard rules`, `## Evidence`,
-   `## Finding schema` (with `### Ids and origin tags`), `## Verified OK list`,
-   `## Claim kinds`, `## Claims list`, `## Decisions`, `## Scope` and `## Output contract`
-   sections. Then read `audit-evidence.md` in full and follow its `### Reverted test runs`,
-   `### Rerun of a run-once script` and `## Outward trace` sections. Use no other shape
-   and no other id form.
+   `## Ids and origin tags`, `## Claim kinds` and `## Output contract` sections. Then read
+   `audit-evidence.md` in full and follow its `## Finding schema`, `## Verified OK list`,
+   `## Claims list`, `## Decisions`, `## Scope`, `## Ledger parse rules`,
+   `### Reverted test runs`, `### Rerun of a run-once script` and `## Outward trace`
+   sections. Use no other shape and no other id form.
 2. Read `audit-brief.md`: the bundles, the head, base and merge-base shas, the stack
    order, the source order, the tier, and the read path of each tree. Read only the trees
    the brief maps for you and the run-directory files it names.
@@ -152,7 +152,8 @@ A group or `combined` scope runs these on its files in every tree mode, with `gi
 1. Matchers. For each literal string or data shape the change adds or alters a match on (a
    pattern, a prefix, a key, a field), find its producer with `git grep` and read it with
    `git -C <repo> show <sha>:<path>` at the head sha and at the base sha the brief records.
-   `git log <merge-base>..<base> -- <producer path>` gives leads. A finding needs evidence
+   `git log <merge-base>..<base> -- <producer path>` gives leads, never commits picked by
+   author date. A finding needs evidence
    that an incompatible producer survives integration: the head leaves the producer as it
    is, and the base's version produces a form the change does not match. Quote both reads.
    Skip a matcher the change leaves alone. When the brief says the base was not fetched
@@ -186,7 +187,8 @@ A group or `combined` scope runs these on its files in every tree mode, with `gi
    the runner applies one script and skips the other, or fails). Label it
    `unverified assumption`, at most `medium`, with a `live check` on which pull request
    merges first and, when no runner was found, how the runner keys its journal. A `cut`
-   line, or `open PRs not read`, is a gap in what could be checked, never a finding.
+   line, a `cut-list` line, or `open PRs not read` is a gap in what could be checked,
+   never a finding.
 
 ## Top-up mode
 
@@ -200,7 +202,7 @@ A top-up prompt names a digest or map and the group.
    findings numbered after the file's highest `<scope>-F<n>`, your `runs:`, and a
    `consumed:` list with the digest's or map's hash. End with `status: complete`.
 3. After a map correction, write `pass2/<scope>-topup.md` as your own file. Number and tag
-   each finding as `### Ids and origin tags` says for a map-correction top-up, and list the
+   each finding as `## Ids and origin tags` says for a map-correction top-up, and list the
    corrected map with its hash under `consumed:`.
 
 ## Traps

@@ -32,7 +32,7 @@ the ledger files for duplicate checks only.
 ## Steps
 
 1. Read `common.md` in full first, then `audit-brief.md`, each as step 2 says. Follow the
-   `## Hard rules`, `### Ids and origin tags`, `## Pass-two verdicts` and
+   `## Hard rules`, `## Ids and origin tags`, `## Pass-two verdicts` and
    `## Output contract` sections.
 2. Read `ledger/5.md`, `ledger/6.md`, `ledger/7.md` where it exists, `gate.md`, and, when
    your prompt names them, `live/findings.md`, the files under `live/carried/` and an

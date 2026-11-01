@@ -633,7 +633,7 @@ the head and in a copy of the merge-base with `tests/` at its head state.
   `pass test_deactivate_rejects_bad_id` and `pass test_deactivate_keeps_row` before
   `test_migration_adds_last_login` fails, since `migrations/002_add_last_login.sh` is
   absent there (exit 127 under bash, 2 under dash). The two passing lines show P18 by a
-  run: under `common.md`'s "Reverted test runs", a changed test that passes by name in
+  run: under `audit-evidence.md`'s "Reverted test runs", a changed test that passes by name in
   the reverted copy passes without the change, whatever the file's verdict.
 
 ### Verify

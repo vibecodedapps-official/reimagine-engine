@@ -60,7 +60,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
       hold it. Under `## Claims challenged`, one line per claim that `live/claims.md`
       derives `true, reproduced`, `upheld` or `overturned` with evidence, judged as any
       claim the report marks true (`common.md`, "Pass-two verdicts"). A defect it finds
-      itself is written in the `common.md` schema as `### L<n>: <title>` with
+      itself is written in the `audit-evidence.md` schema as `### L<n>: <title>` with
       `origin: late`, numbered after the highest carried `L<n>` (a carried id is
       reserved); such a finding never counts on this run, since no review follows it.
       The file ends with `runs:` and `status: complete`.
@@ -98,7 +98,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
    - evidence: <as cited>
    ```
 
-   Then the agent's `### L<n>:` additions in the `common.md` schema with `origin: late`,
+   Then the agent's `### L<n>:` additions in the `audit-evidence.md` schema with `origin: late`,
    each marked provisional. With no late adversary, the file holds the one line
    `No late adversary at low tier; late additions stay provisional.` At low with live
    files, that line comes first and the live ids' sections follow. When the late

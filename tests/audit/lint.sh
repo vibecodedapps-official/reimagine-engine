@@ -605,7 +605,12 @@ for f in skills/audit/audit-evidence.md:'becomes a finding only when it names th
 	skills/audit/audit-evidence.md:'Journal keys that differ, shown by quoted runner lines, clear it' \
 	skills/audit/stages/4-pass-one.md:'with any rows it names written out in full' \
 	skills/audit/audit-evidence.md:'not on a shared step that takes the role as a parameter' \
-	agents/auditor.md:'`### Leads a finding must clear`'; do
+	agents/auditor.md:'`### Leads a finding must clear`' \
+	agents/auditor.md:'A specialist or `combined` scope applies the checklist rows' \
+	skills/audit/audit-evidence.md:'the head leaves the producer as it is, and the base' \
+	skills/audit/audit-evidence.md:'states the forge fact' \
+	skills/audit/audit-evidence.md:'asks which pull request merges first' \
+	skills/audit/audit-evidence.md:'names the account, where its rights come from'; do
 	s=${f#*:}
 	f=${f%%:*}
 	[ -f "$f" ] || continue

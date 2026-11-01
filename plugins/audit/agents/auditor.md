@@ -106,10 +106,10 @@ to `Q4` or a custom list.
 
 ## Specialist scopes
 
-A specialist scope applies the checklist rows of its scope file across every bundle the
-prompt assigns, on top of steps 1 to 11. At low tier, say at the top of your output that
-one auditor covered the group, the tests and work-item hygiene. A GitHub ticket's
-`<ticket>.md` gives its parent as `github:<repo>#<number>`, `none` or `not read`;
+A specialist or `combined` scope applies the checklist rows of its scope file across
+every bundle the prompt assigns, on top of steps 1 to 11. At low tier, say at the top of
+your output that one auditor covered the group, the tests and work-item hygiene. A GitHub
+ticket's `<ticket>.md` gives its parent as `github:<repo>#<number>`, `none` or `not read`;
 `not read` is a gap in what could be checked, never a mismatch.
 
 ## Matcher and run-once checks

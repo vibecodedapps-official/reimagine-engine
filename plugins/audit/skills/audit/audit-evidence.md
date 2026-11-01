@@ -150,15 +150,24 @@ Whichever agent files it:
   writer, owner or admin), labeled `unverified assumption` with a `live check`. With
   neither, it is not flagged. The flag goes on the test that picks the account, not on a
   shared step that takes the role as a parameter, with one finding per account naming
-  each test. With the default questions it goes under `Q1`; with a custom list, under the
-  question closest to best practice, else the first, and the finding says so.
+  each test. The finding names the account, where its rights come from and the narrower
+  role the test needs. The `live check` of a pointer queries the account's grants and
+  whether a read-only role exists, per environment the test runs in. With the default
+  questions it goes under `Q1`; with a custom list, under the question closest to best
+  practice, else the first, and the finding says so.
 - A matcher finding needs quoted reads at head and base showing that an incompatible
-  producer survives integration. When the brief says the base was not fetched, the
-  finding says the base read may be stale. A change on the base is not a deleted feature.
+  producer survives integration: the head leaves the producer as it is, and the base's
+  version produces a form the change does not match. When the brief says the base was
+  not fetched, the finding says the base read may be stale. A change on the base is not a
+  deleted feature.
 - An open pull request candidate is a lead. Journal keys that differ, shown by quoted
   runner lines, clear it; keys that match, or no runner found, give a finding on the new
-  script, labeled `unverified assumption`, at most `medium`. A `cut` row, a `cut-list`
-  row or `open PRs not read` is a gap in what could be checked, never a finding.
+  script, labeled `unverified assumption`, at most `medium`. The finding states the forge
+  fact, the other pull request's URL and path, apart from its effect, that where both
+  merge the runner applies one script and skips the other, or fails. Its `live check`
+  asks which pull request merges first and, when no runner was found, how the runner keys
+  its journal. A `cut` row, a `cut-list` row or `open PRs not read` is a gap in what could
+  be checked, never a finding.
 
 ## Finding schema
 

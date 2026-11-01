@@ -1,5 +1,5 @@
 ---
-description: "Resume an audit run by its id, from the first stage that is incomplete or whose inputs changed, or from a named stage, optionally with a file of approved live check results. A new audit starts with /audit:run, which also answers to the prose request \"reimagine audit ...\"."
+description: "Resume an audit run by its id, from the first stage that is incomplete or whose inputs changed, or from a named stage, optionally with a file of approved live check results."
 argument-hint: '<run-id> [--from <stage>] [--live <file>]'
 allowed-tools: Read, Skill
 ---

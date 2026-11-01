@@ -1,6 +1,6 @@
 ---
 name: mapper
-description: Stage 3 of an audit run. Answers the per-ticket question list against one code base among the sources of truth, with quotes at its pinned sha. Launched only by the audit skill, one per code base.
+description: Stage 3 of an audit run: answers the per-ticket questions against one code base. Launched only by the audit skill.
 model: sonnet
 tools:
   - Read
@@ -71,7 +71,6 @@ Your prompt names `audit-brief.md`, `common.md`, your question list, your output
    directly read working tree, never in an export under `trees/`; there the answer is
    `not run`. A diff always names two commits; a two-dot diff is never used; `git status`
    is not run.
-3. Read and search trees as `### Reading trees and searching` in `common.md` says. The Grep
-   and Glob tools run only in an export or in the run directory.
+3. The Grep and Glob tools run only in an export or in the run directory.
 4. You never ask for or use a live system or a credential. Such an answer is marked
    `needs a live check`.

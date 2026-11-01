@@ -183,7 +183,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
 6. **Normal mode.** Launch one `audit:merger` by the same launch rules: the merger
    role's model from a prose override, else the manifest, else `sonnet`; scope
    `converged`; scratch folder `<run dir>/tmp/agents/7-converged/`. The prompt holds
-   the paths of `audit-brief.md`, `common.md`, `ledger/5.md`, `ledger/6.md`,
+   the paths of `common.md`, `ledger/5.md`, `ledger/6.md`,
    `ledger/7.md` and `gate.md`, with the instruction to take each item's gate from
    `gate.md`; `live/findings.md` and each carried file when they exist; a complete
    `converged.md` already on disk for the same ledger files, when there is one; the
@@ -284,10 +284,9 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
 
    3. Launch one merger per group or part, scope `<group>` (or `<group>-<k>`), scratch
       folder `<run dir>/tmp/agents/7-<group>/`. The prompt holds the paths of
-      `audit-brief.md`, `common.md`, its slice, the three ledger files "for duplicate
-      checks only", the line count of `audit-brief.md`, `common.md` and the slice as in
-      step 6, and the output path `converged/<group>.md` (or
-      `converged/<group>-<k>.md`). It reads its slice and opens a ledger section, found
+      `common.md`, its slice, the three ledger files "for duplicate checks only", the
+      line count of `common.md` and the slice as in step 6, and the output path
+      `converged/<group>.md` (or `converged/<group>-<k>.md`). It reads its slice and opens a ledger section, found
       with Grep, only to settle a suspected duplicate inside the slice, recording each
       section it opened and why under its own `opened:` heading, apart from `runs:`.
       Each item holds the defect, its sources, each position's severity and label, the
@@ -296,7 +295,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
       file ends with `status: complete`.
 
    4. Launch the final merger, scope `converged`, scratch folder
-      `<run dir>/tmp/agents/7-converged/`, with the paths of `audit-brief.md`,
+      `<run dir>/tmp/agents/7-converged/`, with the paths of
       `common.md`, every `converged/<group>.md` and part, `gate.md`, the ledger files
       "for duplicate checks only", the line count of each file but the ledger files as
       in step 6, and the output path `converged.md`. It assigns the `C<n>` ids, merges

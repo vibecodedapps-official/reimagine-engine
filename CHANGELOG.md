@@ -2,6 +2,16 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.6 - 2026-11-01
+
+- `record.md` no longer describes each `passes.json` field and each ledger write again after the step that writes them, since its copy of the change kinds had already fallen behind Step 2; Step 0.8.4 now names both branches of a slug collision, which only `record.md` said.
+
+## rules 0.1.16 - 2026-11-01
+
+- House-rule edit nineteen: the bug item drops "If you can't reproduce it, run a check that confirms or rejects your explanation.", since the unverified-cause item after it says what to do when a cause cannot be shown.
+- `/rules` no longer runs `status` only to say what its report prints first, and two bullets and two sentences that repeated other text go; `status` stays a verb of the script.
+- The chat block's Mention bullet gains "repo,", left out from when the block assumed no repository.
+
 ## rules 0.1.15 - 2026-10-31
 
 - A Code item of the house rules asks prose written for an agent, such as skills, prompts and instruction files, to state principles in the fewest words that get the job done, and to add a procedure or an output shape the request did not ask for only for a failure that happened, since procedures and output shapes with no failure behind them had cost the house rules length and fixed nothing three times. The chat block carries no Code item and does not change.

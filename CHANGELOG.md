@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.15 - 2026-10-31
+
+- A Code item of the house rules asks prose written for an agent, such as skills, prompts and instruction files, to state principles in the fewest words that get the job done, and to add a procedure or an output shape the request did not ask for only for a failure that happened, since procedures and output shapes with no failure behind them had cost the house rules length and fixed nothing three times. The chat block carries no Code item and does not change.
+
 ## rules 0.1.14 - 2026-10-30
 
 - The decision item of the house rules keeps the assumption every option shares, what each does, the recommendation first and what would overturn it, and drops "the question in one sentence", "what it blocks" and the numbered-message shape, since no recorded failure stood behind the shape and the format cost length, not turns.

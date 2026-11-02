@@ -1268,7 +1268,8 @@ Work items, in this order:
 10. audit-1 to audit-13, with their pins: the nine-line lead of `common.md` that `tests/audit/run-copies.sh` reads by position (audit-8), the `plugin_version` line of `SKILL.md` that `tests/release/release.test.mjs` reads by index (audit-2), the `lint.sh` loops, the `scripts/ledger.sh:150` comment, `docs/architecture.md:292` and `tests/audit/fixture/expected.md:636` (audit-9), `lint.sh:559` (audit-5). Commits: `refactor(audit): ...`, one per cohesive group.
 11. The `## audit 0.1.10 - <date>` heading. Commit: `docs(changelog): add the audit 0.1.10 heading`.
 12. The after-runs: for audit items 14, 15, 37, 42, 58 and 68, for gate items 47, 49, 51, 57 and 66, for rules items 2 and 4; items 22 and 39 for the releases and item 30 for the hub, its text moved to the current marketplace name. Each is compared with its before-run. Commit: `docs(acceptance): record the agent-read prose cuts`.
-13. After the merge, by the owner: the three tags after a yes; then item 21 on the merge commit. Items that need another machine are recorded as not run with the reason.
+13. A review of the whole change, with its fixes as `fix(...)` commits, then the after-runs again at the final text: audit items 14, 15, 37, 42, 58 and 68, gate items 47 and 49, and item 39. Commit: `docs(acceptance): record the reruns at the final text`.
+14. After the merge, by the owner: the three tags after a yes; then item 21 on the merge commit. Items that need another machine are recorded as not run with the reason.
 
 Check: the area scripts that cover each commit, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 

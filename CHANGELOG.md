@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.17 - 2026-11-02
+
+- `/rules:refactor` reviews a whole repository against the house rules and the repository's own instruction files and reports the findings in bundles, one loop run each, so a tree that drifted from the rules, or never used the suite, gets the same review a pull request does; on a yes it writes one ticket file per bundle and prints the loop line to ship it, and it runs only when the user types it.
+
 ## primer 0.1.2 - 2026-11-02
 
 - `/primer:fold` reviews a repository against the Claude Code documentation as it reads that day and reports where a documented practice or mechanism can be folded in, with the page, the file and the destination of each, so the instruction files and the plugin keep up with the docs; it writes nothing and runs only when the user types it.

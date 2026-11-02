@@ -108,7 +108,16 @@ test('R333: refactor keeps each reviewer brief in the prompt, never in a file', 
 });
 
 test('R333: refactor asks its one question only when there is a bundle', () => {
-  assert.ok(readRefactor().includes('When the report has at least one bundle, ask one question: write the ticket files.'));
+  assert.ok(readRefactor().includes('When the report has at least one bundle, find the ticket directory'));
+});
+
+test('R333: refactor checks the ticket directory before its question and names it there', () => {
+  const text = readRefactor();
+  const check = text.indexOf('checked with `git check-ignore` on its path with a trailing slash');
+  const question = text.indexOf('Then ask one question: write the ticket files there, naming the directory.');
+  assert.notEqual(check, -1);
+  assert.notEqual(question, -1);
+  assert.ok(check < question);
 });
 
 test('R332: each refactor finding gives what the change costs', () => {

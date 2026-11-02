@@ -2,7 +2,7 @@
 
 A suite of five Claude Code plugins, built on three ideas: achieve more with less; say how, not what; take work from development to production in bulk.
 
-- `rules`: house rules as one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style.
+- `rules`: house rules as one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style and a refactor review against them.
 - `loop`: plan, build, review and publish a bundle of tickets as one reviewed pull request per repository, resuming on the same branch when run again.
 - `audit`: a read-only, adversarial audit of finished pull requests that stops at a report, with an act step for approved items.
 - `gate`: code-review passes over a pull request, several, or a loop manifest, fixing what each pass finds until a pass finds nothing left to fix.
@@ -34,6 +34,7 @@ Each plugin works alone. After installing `rules`, run `/rules` (also reachable 
 
 ## Use
 
+- Rules refactor: run `/rules:refactor` in a repository for a read-only review of the whole tree against the house rules, grouped into bundles; on your yes it writes one ticket file per bundle and prints the `reimagine loop` line for each.
 - Loop: say `reimagine loop #12 and #15` or `run the loop on AB#4567, plan only`, or type `/loop:run` followed by the same words. There are no flags; the skill prints how it read your request before it does anything. The bare `/loop` is Claude Code's own interval skill, not this one.
 - Audit: say `reimagine audit PR 123 and 124 in app, tickets AB#4567 and AB#4580`, or pass the manifest a loop run wrote.
 - Gate: say `reimagine gate PR 73`, `gate this branch` or `gate the manifest <path>`, or type `/gate` followed by the same words. There are no flags.

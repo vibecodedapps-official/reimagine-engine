@@ -32,7 +32,7 @@ reimagine-engine/
 
 | Plugin | Installs | Entry points | Scripts | Hooks | Version line |
 |---|---|---|---|---|---|
-| rules | house rules block, output style | `/rules` | `scripts/rules.mjs` | SessionStart `startup` | own |
+| rules | house rules block, output style, a rule-driven refactor review | `/rules`, `/rules:refactor` | `scripts/rules.mjs` | SessionStart `startup` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs` | none | own |
@@ -83,6 +83,7 @@ Skills are user-invocable and carry their trigger phrases in `description` (veri
 - The review skill's bare path target reviews the path's diff from the merge-base with the repository's default branch, read from `refs/remotes/origin/HEAD` with `main` as the fallback, and has no base flag; a `<base>...HEAD` target carries the base, and `<base>...HEAD <path>` reaches the review as its target text and is honored by the reviewer, which runs `git diff <base>...HEAD -- <path>` (verified, decision 121).
 - `/code-review ultra` is the host's cloud review, user-triggered and billed, offered only when a server flag, a first-party API and a local session coincide; the model cannot launch it, and a child session that types it falls back to a local `max` review with a notice, which on a ten-line diff ran 17 minutes and cost $17 (verified, decision 122). The suite never types `max` or `ultra`.
 - On 2.1.316, a plugin with a second skill directory passes `claude plugin validate --strict` and `claude -p "/context"` lists both skills; a skill with `disable-model-invocation: true` has no line in the skills table, where the same skill without it takes about 50 tokens; `allowed-tools: WebFetch(domain:code.claude.com)` passes `validate --strict`, which does not exercise the grant; the index `https://code.claude.com/docs/llms.txt` lists every page as a `.md` URL and the pages fetch, the hooks reference at 284k characters and the skills page at 119k, so a reader pages through them with the fetch tool's offset (verified, decision 166); a subagent launch while 20 run is refused with `Concurrent subagent limit reached`, and the error says not to retry (verified, item 69). That the bare `/primer` still reaches `primer:primer` beside a sibling, and whether a subagent's WebFetch prompts under the default mode, since a skill's `allowed-tools` pre-approve only the invoking turn, are acceptance items 71 and 72.
+- On 2.1.316, the installed `rules:rules` skill, which sets `disable-model-invocation: true`, has no line in the skills table either (verified, item 39). That the loop reads a refactor ticket file as a ticket of its file form and takes the checks it names is acceptance item 75.
 
 ## The `rules` plugin
 
@@ -91,6 +92,7 @@ plugins/rules/
   .claude-plugin/plugin.json
   LICENSE  README.md
   skills/rules/SKILL.md          /rules; disable-model-invocation: true
+  skills/refactor/SKILL.md       /rules:refactor; disable-model-invocation: true; reads core.md live; writes ticket files only on a yes
   scripts/rules.mjs              status | plan [--adopt] [--options a,b] | apply | remove | decline | session-start
   hooks/hooks.json               SessionStart startup -> node rules.mjs session-start ${CLAUDE_PLUGIN_DATA}
   rules/core.md                  the house rules
@@ -148,6 +150,10 @@ The skill `/rules` runs the script, shows its output, asks before `apply`, and e
 ### Output style and chat block
 
 `output-styles/concise-plain.md` ships verbatim with `keep-coding-instructions: true` and its version in the description; the host lists it as `rules:Concise Plain`. Nothing in the suite edits `settings.json`. `chat/instructions.md` holds one fenced block for pasting into a chat product's custom instructions and names no vendor.
+
+### Refactor
+
+`/rules:refactor` reviews a whole repository against `core.md` as shipped and the repository's own instruction files (R331), and ends in a report of findings grouped into bundles, one loop run each (R332). Subagents review one area each against the items that describe a file, a test or a diff, and a second pass challenges each finding. On one yes it writes a ticket file per bundle in the repository's ignored scratch directory, else the plugin data directory, and prints `reimagine loop <path>, thorough` for each; it never runs the loop (R333, decision 167).
 
 ## The `loop` plugin
 

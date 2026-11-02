@@ -1298,7 +1298,7 @@ Work items, in this order:
 2. `node tools/release.mjs primer 0.1.2`, with the catalog `metadata.version` raised to 0.1.22. Commit: `release(primer): 0.1.2`.
 3. `tests/primer/skill.test.mjs` first: the fold skill's frontmatter, tools, directory and cap, and the corrected placement sentence, each seen failing; then `skills/fold/SKILL.md`, the sentence in `placement.md`, and one line each in the root and the plugin `README.md`. Commit: `feat(primer): add the fold skill`.
 4. The `## primer 0.1.2 - <date>` heading, which also covers the marketplace rename of the untagged 0.1.1. Commit: `docs(changelog): add the primer 0.1.2 heading`.
-5. Items 69 to 72, each run's tokens and minutes recorded, and the release items 22, 39 and 44; 71 and 72 run interactively. Item 38 rests on its last run, since no description it asserts on changes and prose cannot invoke fold. Commit: `docs(acceptance): record primer 0.1.2`.
+5. Items 69 to 72, each run's tokens and minutes recorded, and the release items 22, 39 and 44; 71 and 72 run interactively. A fix a run calls for is its own `fix(primer)` commit, and the item runs again after it. Item 38 rests on its last run, since no description it asserts on changes and prose cannot invoke fold. Commit: `docs(acceptance): record primer 0.1.2`.
 6. After the merge, by the owner: the tag after a yes, then item 21 on the merge commit.
 
 Check: `npm run test:primer` after each commit that touches it; `npm test` and `npm run lint` with the deny tokens before the push.

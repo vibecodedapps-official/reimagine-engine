@@ -74,3 +74,19 @@ test('R330: the refactor skill holds no numbered step list', () => {
   const numbered = readRefactor().split(/\r?\n/).filter((l) => /^\d+\. /.test(l));
   assert.deepEqual(numbered, []);
 });
+
+test('R331: refactor launches its reviewers as agents, never as a workflow', () => {
+  assert.ok(readRefactor().includes('with the Agent tool, never as a workflow'));
+});
+
+test('R331: refactor keeps reviewers and refuters together at most 20 at a time', () => {
+  assert.ok(readRefactor().includes('The run\'s reviewers and refuters together stay at most 20 at a time because the host refuses more'));
+});
+
+test('R332: refactor bundles only recommended findings that quote a rule', () => {
+  assert.ok(readRefactor().includes('Group the surviving recommended findings that quote a rule into bundles.'));
+});
+
+test('R331: refactor recommends by the core.md item and quotes no rule', () => {
+  assert.ok(readRefactor().includes('by the `core.md` item on finding issues and proposing changes'));
+});

@@ -75,6 +75,15 @@ Hand-run checks for the suite. Each milestone adds its items; items 27 to 36 wer
 
 ## Record of runs
 
+### 2026-11-02: agent-read prose cuts on `main`
+
+macOS 27.0.1, Claude Code 2.1.316, gh 2.103.2, git 2.54.0 (Apple Git).
+
+- **Merged and tagged.** Pull request 56 merged as 33d6df8 and pull request 57 as cdc5dea, each with a merge commit; the tree of cdc5dea is the tree of e44698c, the head the record of 2026-11-01 checked. `claude plugin tag --push` created and pushed the annotated tags `audit--v0.1.10`, `gate--v0.1.6` and `rules--v0.1.16` at cdc5dea; `git diff --quiet <tag> -- plugins/<plugin>` exit 0 for each, and `npm run lint` exit 0 after the tags, `lint: ok (175 files, 5 plugins)`.
+- **Item 21 passed.** Run 41403206793 on the push of cdc5dea: test on ubuntu, macOS and Windows, mawk, and validate all green; run 41403188859 on the push of 33d6df8 green too.
+- **Item 38 rests on the run of 2026-11-01 at 5544969.** No skill `description` changed between it and cdc5dea.
+- **Not run.** Lint with `LINT_DENY_TOKENS` set to the owner's list, since the list was not in the environment; the Windows items of the record of 2026-11-01.
+
 ### 2026-11-01: agent-read prose cuts milestone
 
 macOS 27.0.1, 10 logical CPUs, Claude Code 2.1.316, gh 2.103.2, Node 26.4.0, git 2.54.0 (Apple Git). The branch `m59-prose-cuts-2026-11-01` at 5544969, and at c0492db for the bullet "Rerun at the final text", not merged and not tagged; `audit--v0.1.10`, `gate--v0.1.6` and `rules--v0.1.16` wait for the merge. Each kept-behavior item ran at the version before and at the version after (decision 160), from copies archived at the tags and at 5544969 and 2740d2a, the plugin loaded by `--plugin-dir`. These sessions ran on the owner's login with `--setting-sources project,local`, so no user settings, user `CLAUDE.md`, output style or installed plugin applied, with `--model opus`, stream-json logs and `--dangerously-skip-permissions`, or `--permission-mode auto` for items 42 and 58. They ran from the owner's profile because a scratch profile is not logged in on this machine; the login was not copied. Items 2, 4 and 39 ran on scratch profiles with no login. `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` was set, since otherwise the host ends background agents ten minutes after the last turn in print mode. The gate reads `CLAUDE.md` in the config directory and its ask-first rules stop the first commit, so gate sessions carried `--append-system-prompt` stating the owner's approval for the throwaway fixture. Items 47, 49 and 51 used one private throwaway repository and one pull request, a commit restoring the fixture tree before each run and a fresh clone each time; the `carried` and `split` fixtures ran as local branch targets with a bare `origin`.

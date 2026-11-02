@@ -9,7 +9,7 @@ One repository, one marketplace, five plugins that a user installs separately an
 ```
 reimagine-engine/
   .claude-plugin/marketplace.json   catalog: name, owner, five entries
-  .github/workflows/ci.yml          lint, test, mawk, validate
+  .github/workflows/ci.yml          lint, test, mawk, validate, commit messages
   .gitattributes                    LF for shipped text
   .gitignore
   CHANGELOG.md                      one file, one heading per plugin release
@@ -24,6 +24,7 @@ reimagine-engine/
   plugins/gate/                     code-review passes over a pull request until nothing is left to fix
   plugins/primer/                   project instructions in the host's forms, memory promotion, two hooks
   tests/                            node:test suites and the audit sh suites
+  tools/commit-messages.mjs         the commit message check of a pull request
   tools/lint.mjs                    repository rules
   tools/release.mjs                 version bump per plugin
   tools/semver.mjs                  the semver rule lint and release share

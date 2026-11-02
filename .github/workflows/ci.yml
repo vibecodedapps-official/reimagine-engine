@@ -1,4 +1,5 @@
-# Lint and tests on three systems, the audit awk suites under mawk, and manifest validation with a pinned Claude Code.
+# Lint and tests on three systems, the audit awk suites under mawk, manifest validation with a pinned Claude Code,
+# and on a pull request the commit message check.
 name: ci
 
 on:
@@ -54,6 +55,23 @@ jobs:
         run: awk -W version 2>&1 | head -1 | grep -q mawk && awk -W version 2>&1 | head -1
       - name: audit suites
         run: node --test tests/audit/sh.test.mjs
+
+  commit-messages:
+    name: commit messages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: check the pull request's range
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: node tools/commit-messages.mjs "$BASE" "$HEAD"
 
   validate:
     name: validate manifests

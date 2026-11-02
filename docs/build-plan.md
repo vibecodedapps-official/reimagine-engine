@@ -1273,6 +1273,19 @@ Work items, in this order:
 
 Check: the area scripts that cover each commit, each run as its own command with its exit code read; `npm test` and lint with the deny tokens before the push.
 
+## Commit message check: M60
+
+Added 2026-11-02. Decision 165 and R222 as amended: CI fails a pull request whose commit messages hold a session attribution line. M60 touches `.github/workflows/ci.yml`, `tools/`, `tests/lint/` and `docs/`, and no plugin, so it has no release.
+
+### M60: the check
+
+Work items, in this order:
+
+1. The design documents, then `tests/lint/commit-messages.test.mjs`, seen failing with no script, then `tools/commit-messages.mjs` and the job in `.github/workflows/ci.yml`. Commit: `ci(repo): fail a pull request on a session attribution line`.
+2. The record of M59's merge, its tags and item 21 on the merge commit. Commit: `docs(acceptance): record audit 0.1.10, gate 0.1.6 and rules 0.1.16`.
+
+Check: `npm run test:lint`; the script run against the range of a branch that held the line exits 1, and against the same branch without it exits 0; `npm test` and `npm run lint` before the push; item 21 on the pull request's own run.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

@@ -208,6 +208,10 @@ test('R326 and R240: the fold SKILL.md is within its cap of 150 lines', () => {
   assert.ok(n <= 150, `fold SKILL.md has ${n} lines`);
 });
 
+test('R327: fold launches at most 20 page readers at a time', () => {
+  assert.ok(readFold().includes('at most 20 at a time since the host refuses more'));
+});
+
 test('Decision 166: placement says a skill with disable-model-invocation is not listed at launch', () => {
   assert.ok(!PLACEMENT.includes('A skill\'s description is always listed.'));
   assert.ok(PLACEMENT.includes('- A skill\'s description is listed at launch unless the skill sets `disable-model-invocation: true`; then only the user invokes it. Its body loads when the skill is invoked or judged relevant. A skill with `paths` stays hidden until a matching file is touched.'));

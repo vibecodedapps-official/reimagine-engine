@@ -31,7 +31,7 @@ The documentation is read live on every run and this file holds none of it. The 
 
 Tell the situation from the files:
 
-- A tool for Claude: a plugin manifest, a `skills/`, `hooks/`, `agents/` or `workflows/` tree outside `.claude/`, or a marketplace.
+- A tool for Claude: a plugin manifest, a marketplace, or a `skills/`, `hooks/`, `agents/` or `workflows/` tree outside `.claude/` that holds Claude Code components: a `SKILL.md`, a `hooks.json`, an agent Markdown file with `name` and `description` frontmatter, or a workflow script that exports `meta`.
 - A repository worked on with Claude Code: `CLAUDE.md` or `AGENTS.md`, `.claude/`, or hooks or permissions in settings.
 - Both.
 
@@ -53,6 +53,7 @@ Map what the subagents return onto the repository, and judge each practice again
 
 - Where `shapes.md` or `placement.md` says what the docs no longer say, the destination is primer.
 - Where a doc practice and a suite choice differ, such as a primer cap, the suite's choice stands and the item is a note.
+- Where `shapes.md` or `placement.md` and the docs disagree about what the host does, the item names both texts, and its change is the check that would settle it; primer's file is edited only after that check.
 - Recommend an item only when it affects correctness or risk, or costs more to leave than to fold. The rest are notes.
 
 ## Report

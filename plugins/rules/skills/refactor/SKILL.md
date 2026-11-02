@@ -32,6 +32,10 @@ Check an instruction file for truth against the code and against the item on pro
 
 Quote no rule from memory. Every rule a finding cites is quoted from the file it lives in.
 
+## Ticket directory
+
+Find the ticket directory before launching any subagent, since the grant above covers only this turn and a subagent's return starts a new one. It is the repository's ignored scratch directory: one that git ignores, checked with `git check-ignore` on its path with a trailing slash, and that the repository uses for scratch, such as `.scratch/`. When there is none, it is `${CLAUDE_PLUGIN_DATA}/refactor/<key>/`, where `<key>` is the main worktree's root path with every character outside `A-Za-z0-9` replaced by `-`. `${CLAUDE_PLUGIN_DATA}` is not a shell variable, so write its resolved path.
+
 ## Reviewers
 
 Split the repository into areas, each a cohesive part: a package, a plugin, a top-level directory, or the tests of one area. Areas hold tracked files only, as `git ls-files` lists them. Launch one read-only subagent per area with the Agent tool, never as a workflow, at model `sonnet`. The run's reviewers and refuters together stay at most 20 at a time because the host refuses more, the next launched as one finishes.
@@ -58,11 +62,11 @@ Group the surviving recommended findings that quote a rule into bundles. A bundl
 - the change
 - whether it comes from reading the code or from running it
 
-An item with no rule behind it is a note, apart from the bundles. A rule the run could not apply, or applied with doubt, is listed once as feedback for the house rules.
+An item with no rule behind it is a note, apart from the bundles. A finding whose change is to an instruction file names `/primer` and stays out of the bundles. A rule the run could not apply, or applied with doubt, is listed once as feedback for the house rules.
 
 ## After the report
 
-When the report has at least one bundle, find the ticket directory in this turn, since the grant above does not cover the turn of the yes. It is the repository's ignored scratch directory: one that git ignores, checked with `git check-ignore` on its path with a trailing slash, and that the repository uses for scratch, such as `.scratch/`. When there is none, it is `${CLAUDE_PLUGIN_DATA}/refactor/<key>/`, where `<key>` is the main worktree's root path with every character outside `A-Za-z0-9` replaced by `-`. `${CLAUDE_PLUGIN_DATA}` is not a shell variable, so write its resolved path. Then ask one question: write the ticket files there, naming the directory.
+When the report has at least one bundle, ask one question: write the ticket files to the ticket directory, naming it.
 
 On a yes, write one file per bundle in that directory. Name each ticket file `refactor-<time>-<n>.md`, where `<time>` is the output of `date -u +%Y%m%d-%H%M%S`, which may prompt once, and `<n>` is the bundle's number, so no earlier run's ticket has its path.
 

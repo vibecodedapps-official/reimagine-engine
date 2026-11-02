@@ -1,6 +1,6 @@
 # rules
 
-House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style.
+House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style and a refactor review against them.
 
 ## What it installs
 

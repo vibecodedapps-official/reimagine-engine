@@ -2,7 +2,7 @@
 
 A suite of five Claude Code plugins, built on three ideas: achieve more with less; say how, not what; take work from development to production in bulk.
 
-- `rules`: house rules as one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style.
+- `rules`: house rules as one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style and a refactor review against them.
 - `loop`: plan, build, review and publish a bundle of tickets as one reviewed pull request per repository, resuming on the same branch when run again.
 - `audit`: a read-only, adversarial audit of finished pull requests that stops at a report, with an act step for approved items.
 - `gate`: code-review passes over a pull request, several, or a loop manifest, fixing what each pass finds until a pass finds nothing left to fix.

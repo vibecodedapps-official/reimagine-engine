@@ -1,6 +1,7 @@
 # Audit evidence rules for this run
 
-A section or hard rule named below without a file is in this file or in `common.md`.
+A section or hard rule named below without a file is in this file or in `common.md`;
+"Evidence" alone is the section in `common.md`.
 
 ## Evidence
 
@@ -145,20 +146,21 @@ Whichever agent files it:
   questions it goes under `Q2`; with a custom list, under the question closest to test
   coverage, else the first, and the finding says so.
 - A test account with more rights than the test uses is flagged only with a quoted grant
-  or role definition, labeled as `## Evidence` in `common.md` says, or with a pointer to
-  the rights (code outside the tests that writes as the account, or a name that says
-  writer, owner or admin), labeled `unverified assumption` with a `live check`. With
-  neither, it is not flagged. The flag goes on the test that picks the account, not on a
-  shared step that takes the role as a parameter, with one finding per account naming
-  each test. The finding names the account, where its rights come from and the narrower
-  role the test needs. The `live check` of a pointer queries the account's grants and
-  whether a read-only role exists, per environment the test runs in. With the default
-  questions it goes under `Q1`; with a custom list, under the question closest to best
-  practice, else the first, and the finding says so.
+  or role definition, labeled as `## Evidence` in `common.md` says, a demonstrated grant
+  giving `verified fact`, or with a pointer to the rights (code outside the tests that
+  writes as the account, or a name that says writer, owner or admin), labeled
+  `unverified assumption` with a `live check`. With neither, it is not flagged. The flag
+  goes on the test that picks the account, not on a shared step that takes the role as a
+  parameter, with one finding per account naming each test. The finding names the
+  account, where its rights come from and the narrower role the test needs. The
+  `live check` of a pointer queries the account's grants and whether a read-only role
+  exists, per environment the test runs in. With the default questions it goes under `Q1`; with a custom list, under
+  the question closest to best practice, else the first, and the finding says so.
 - A matcher finding needs quoted reads at head and base showing that an incompatible
   producer survives integration: the head leaves the producer as it is, and the base's
-  version produces a form the change does not match. When the brief says the base was
-  not fetched, the finding says the base read may be stale. A change on the base is not a
+  version produces a form the change does not match. The leads are the merge-base-to-base
+  commit range, never commits picked by author date. When the brief says the base was not
+  fetched, the finding says the base read may be stale. A change on the base is not a
   deleted feature.
 - An open pull request candidate is a lead. Journal keys that differ, shown by quoted
   runner lines, clear it; keys that match, or no runner found, give a finding on the new

@@ -71,10 +71,11 @@ and your scratch folder.
    the line, what is wrong, and the source quote at its sha that shows it; or `none`.
 10. Write `## Claims challenged`, `## Decisions challenged`, `## Scope challenged` and
     `## Brief errata` at every tier, as `## Pass-two verdicts` and `audit-evidence.md`
-    give them. Reproduce each true `verification` claim yourself; redo the three
-    dimensions of each `## Decisions` entry; check each `## Scope` entry against the
-    merge-base and the sources. A defect an entry shows that no finding names is a new
-    finding (step 8).
+    give them. Reproduce each true `verification` claim yourself; for each `## Decisions`
+    entry, open the records it cites, redo its three dimensions and class it by the order
+    in `## Decisions`, as `agree, <class>` or `disagree, <class>`; check each `## Scope`
+    entry against the merge-base and the sources. A defect an entry shows that no finding
+    names is a new finding (step 8).
 11. Close the file as `## Output contract` says.
 12. Write the whole output file in one Write call, then return the output path and one line
     of status.

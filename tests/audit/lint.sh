@@ -610,7 +610,12 @@ for f in skills/audit/audit-evidence.md:'becomes a finding only when it names th
 	skills/audit/audit-evidence.md:'the head leaves the producer as it is, and the base' \
 	skills/audit/audit-evidence.md:'states the forge fact' \
 	skills/audit/audit-evidence.md:'asks which pull request merges first' \
-	skills/audit/audit-evidence.md:'names the account, where its rights come from'; do
+	skills/audit/audit-evidence.md:'names the account, where its rights come from' \
+	skills/audit/audit-evidence.md:'a demonstrated grant giving `verified fact`' \
+	skills/audit/audit-evidence.md:'never commits picked by author date' \
+	skills/audit/audit-evidence.md:'"Evidence" alone is the section in `common.md`' \
+	agents/adversary.md:'open the records it cites, redo its three dimensions' \
+	skills/audit/SKILL.md:'except in second opinion, where it is an input copy'; do
 	s=${f#*:}
 	f=${f%%:*}
 	[ -f "$f" ] || continue

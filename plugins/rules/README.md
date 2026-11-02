@@ -34,6 +34,8 @@ Run `/rules` (also reachable as `/rules:rules`). It shows the change as a diff a
 
 Any other argument is refused, and nothing runs.
 
+Run `/rules:refactor` in a repository for a read-only review of the whole tree against the house rules and the repository's own instruction files, with findings grouped into bundles; on your yes it writes one ticket file per bundle and prints the `reimagine loop` line to ship each one.
+
 ## What the block looks like
 
 The block sits between two marker lines:

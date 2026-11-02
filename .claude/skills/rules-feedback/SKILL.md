@@ -1,12 +1,12 @@
 ---
 name: rules-feedback
-description: Fold feedback into the house rules, the output style or the chat block. Use when the user says "rules update", "fold this feedback into the rules" or pastes feedback about core.md, concise-plain.md or instructions.md.
+description: '"rules update", "fold this feedback into the rules" or pasted feedback about core.md, concise-plain.md or instructions.md. Folds feedback into the house rules, the output style or the chat block.'
 ---
 # rules-feedback
 
 Done when the user has a list of proposed changes, each with file and lines, ordered by confidence, and nothing is written.
 
-1. Read `docs/requirements.md` under "House rules" and the last decisions on house-rule edits in `docs/decisions.md`.
+1. Read `docs/requirements.md` under "House rules" except "Mechanism", and the last decisions on house-rule edits in `docs/decisions.md`.
 2. Pass one: for each point in the feedback, find the failure behind it and the line that already covers it, if any.
 3. Pass two, adversarial: challenge every pass-one proposal; keep only what a recorded failure supports and no existing line already states.
 4. Converge, then present the list.

@@ -180,7 +180,7 @@ An agent fails when it returns an error, when the last line of its output file i
 1. Launch every agent with the Agent tool, `subagent_type: audit:<role>`, in the background. Never a fork, never a general-purpose agent.
 2. Pass `model` on every launch: the prose override `<role> on <model>`, else the manifest `models` key, else the role's default, or the ladder's model on a relaunch. Record it as the requested model. You never learn the effective model, so records and the report say "requested", never "used".
 3. Before each launch, create the agent's scratch folder `<run dir>/tmp/agents/<stage>-<scope>[-<n>]/`, unique per launch, with `<n>` for a top-up, a relaunch or a batch. Every agent gets one, the merger included. `sed -i` is barred; agents may use read-only pipe stages and log them under a `runs:` heading.
-4. Keep the prompt short: the absolute paths of `audit-brief.md`, `common.md`, the scope file or list, the output file and the scratch folder, the scope's questions, and the items the stage file names. An auditor's or adversary's prompt, in every mode, also names `audit-evidence.md`. The agent definition holds the standing instructions; do not restate them.
+4. Keep the prompt short: the absolute paths of `audit-brief.md`, `common.md`, the scope file or list, the output file and the scratch folder, the scope's questions, and the items the stage file names. An auditor's or adversary's prompt also names `audit-evidence.md`, except in second opinion, whose prompt names the request in place of the brief and both rule files. The agent definition holds the standing instructions; do not restate them. A merger's prompt holds only what stage 7 names.
 5. Each agent returns its output path and one line. Read the file to judge it.
 6. On each completion notification, add to the stage's `agents` list: `type`, `model` (requested), `scope`, `started`, `ended`, `tokens` from the notification's `subagent_tokens` field (`null` when absent), `tokens_scope` `"task notification, subagent_tokens; scope not documented"`, `duration_ms`, and `result` (`complete` or `failed: <reason>`). A completion notification for an agent whose stage entry is already `complete` or `failed` changes nothing: note it with the agent, its scope and the time in that stage's check file, `baseline/<stage>-check.md`, and leave `stages.json` and the agent's output as they are. A completion notification for an agent this session did not launch, such as one an earlier session launched, also changes nothing: note it the same way in the check file of the stage then running, or of the last stage when none runs, and leave `stages.json` as it is.
 
@@ -310,7 +310,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 ```json
 {
-  "plugin_version": "0.1.9",
+  "plugin_version": "0.1.10",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],
@@ -441,6 +441,6 @@ Read each file at its point and not before. A sentence that only says where a ru
 - `live.md`: for `resume` with `live`, and when a stage reads live files. It is a skill document, not a run file: the run's live inputs are under `live/`, and the Live checks blocks are in `report.md`.
 - `fault-injection.md`: only when the manifest has `_test`.
 - `handoff.md`: for `handoff`.
-- `audit-evidence.md`: never read by you; stage 1 copies it and auditor and adversary prompts name it.
+- `audit-evidence.md`: never read by you; stage 1 copies it and auditor and adversary prompts name it, except in second opinion, where it is an input copy.
 
 All are under `${CLAUDE_PLUGIN_ROOT}/skills/audit/`. In the run directory: `invocations.md`, `audit-brief.md` and `stages.json`, after a compaction and at resume and act.

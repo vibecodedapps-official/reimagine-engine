@@ -1,5 +1,5 @@
 ---
-description: "Write a typed handoff from a build session, for an audit to read as claims, optionally applying a claims verdicts file and listing memory files to reconcile. A new audit starts with /audit:run, which also answers to the prose request \"reimagine audit ...\"."
+description: "Write a typed handoff from a build session, for an audit to read as claims, optionally applying a claims verdicts file and listing memory files to reconcile."
 argument-hint: '[--out <path>] [--verdicts <claims-verdicts.md>] [--memory <dir>]'
 allowed-tools: Read, Skill
 ---

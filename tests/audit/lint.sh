@@ -82,8 +82,8 @@
 #   `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and `REVIEW.md` in that
 #   order, and says `REVIEW.md` is read at the pinned base with `git show <base>:<path>`;
 #   skills/audit/stages/9-act.md names the two directories and `REVIEW.md` at the base
-#   among the sources of the required checks; it and skills/audit/common.md name the
-#   rules in `.claude/rules/` that apply to a file, the skills in `.claude/skills/` and
+#   among the sources of the required checks; it and skills/audit/audit-evidence.md name
+#   the rules in `.claude/rules/` that apply to a file, the skills in `.claude/skills/` and
 #   the `REVIEW.md` copies the brief records at the base among the instruction files
 #   read before a change; each file is read as one line.
 # - skills/audit/common.md says every agent reports and labels a finding as if
@@ -559,7 +559,7 @@ if [ -f "$f" ]; then
 	grep -qF 'every agent reports and labels a finding as if those rules were absent' "$tmp/list" ||
 		fail "$f: does not say every agent reports as if REVIEW.md's severity and do-not-report rules were absent"
 fi
-for f in skills/audit/stages/9-act.md skills/audit/common.md; do
+for f in skills/audit/stages/9-act.md skills/audit/audit-evidence.md; do
 	[ -f "$f" ] || continue
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF 'the rules in `.claude/rules/` that apply to it (one with no `paths`, or one whose `paths` match it)' "$tmp/list" &&
@@ -597,13 +597,38 @@ for f in skills/audit/stages/4-pass-one.md:'Launch no auditor for a scope whose 
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "$s" "$tmp/list" || fail "$f: launches an agent for a scope whose output resume kept"
 done
+# The adversary never reads the auditor body, so the bar on a lead sits in audit-evidence.md.
+for f in skills/audit/audit-evidence.md:'becomes a finding only when it names the regression the test would miss' \
+	agents/adversary.md:'`### Leads a finding must clear`' \
+	skills/audit/audit-evidence.md:'is flagged only with a quoted grant or role definition, labeled as `## Evidence` in `common.md` says' \
+	skills/audit/audit-evidence.md:'A change on the base is not a deleted feature' \
+	skills/audit/audit-evidence.md:'Journal keys that differ, shown by quoted runner lines, clear it' \
+	skills/audit/stages/4-pass-one.md:'with any rows it names written out in full' \
+	skills/audit/audit-evidence.md:'not on a shared step that takes the role as a parameter' \
+	agents/auditor.md:'`### Leads a finding must clear`' \
+	agents/auditor.md:'A specialist or `combined` scope applies the checklist rows' \
+	skills/audit/audit-evidence.md:'the head leaves the producer as it is, and the base' \
+	skills/audit/audit-evidence.md:'states the forge fact' \
+	skills/audit/audit-evidence.md:'asks which pull request merges first' \
+	skills/audit/audit-evidence.md:'names the account, where its rights come from' \
+	skills/audit/audit-evidence.md:'a demonstrated grant giving `verified fact`' \
+	skills/audit/audit-evidence.md:'never commits picked by author date' \
+	skills/audit/audit-evidence.md:'"Evidence" alone is the section in `common.md`' \
+	agents/adversary.md:'open the records it cites, redo its three dimensions' \
+	skills/audit/SKILL.md:'except in second opinion, where it is an input copy'; do
+	s=${f#*:}
+	f=${f%%:*}
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "$s" "$tmp/list" || fail "$f: the bar on a lead or a named row is gone"
+done
 # A pass report without its claims heading is a failed output, which report.sh skips: the
 # stage fails it and resume does not keep it.
 for f in skills/audit/stages/4-pass-one.md:'when its last line is not `status: complete`, or when it has no `## Claims` heading' \
 	skills/audit/stages/5-pass-two.md:'its last line is not `status: complete`, it has no `## Claims challenged` heading' \
 	skills/audit/resume.md:'or has no `## Claims` (stage 4) or `## Claims challenged` (stage 5) heading, moves as above' \
 	skills/audit/common.md:'and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
-	skills/audit/common.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
+	skills/audit/audit-evidence.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
 	agents/auditor.md:'with no claim assigned, the heading and the one line `none`'; do
 	s=${f#*:}
 	f=${f%%:*}

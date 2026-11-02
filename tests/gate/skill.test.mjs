@@ -375,7 +375,7 @@ test('R296: nothing is edited while a review runs', () => {
 });
 
 test('R300: Step 2 takes the three snapshot files before each implementer call and restores only clean paths', () => {
-  const text = holds('steps/2-fix.md', 'pre-<n>.status', 'pre-<n>.patch', 'pre-<n>.hashes', 'models.implementer', 'the subagent budget', 'never touch an ignored path or anything under `.reimagine/`');
+  const text = holds('steps/2-fix.md', 'pre-<n>.status', 'pre-<n>.patch', 'pre-<n>.hashes', 'models.implementer', 'the subagent budget', 'never touch an ignored path or anything under `.reimagine/`', 'every shell argument that names one is its absolute path');
   assert.ok(text.startsWith('# Step 2: The fix round\n'));
   for (const old of ['Each call has 20 minutes', 'the 20-minute budget', 'The budget: 20 minutes']) assert.ok(!text.includes(old), `steps/2-fix.md still holds: ${old}`);
 });

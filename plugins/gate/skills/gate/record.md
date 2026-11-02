@@ -4,10 +4,7 @@ Read this file when Step 0 sets up the record directory; you return to it whenev
 
 ## Location
 
-1. The record directory is `.reimagine/gate/<branch-slug>/` in the target repository's root: for a manifest bundle, that bundle's `repo`; for a branch target named by "repo <path>", that path. The branch and `<branch-slug>` are set as SKILL.md, Record, says.
-2. `passes.json` keeps the exact branch name. A record whose `passes.json` branch differs from this run's branch is a slug collision and ends preflight `blocked`, naming both branches.
-3. `.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, run in the target's repository and read relative to the repository's folder when it is not absolute, never into `.gitignore`. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
-4. Every shell argument that names a record file is its absolute path.
+`.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, run in the target's repository and read relative to the repository's folder when it is not absolute, never into `.gitignore`. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
 
 ## Files
 
@@ -15,10 +12,10 @@ All names are relative to the record directory. Times in every file are copied f
 
 | File | Written | Holds |
 |---|---|---|
-| `passes.json` | Step 0, then Steps 1 to 3 | The completion record (see the next section) |
+| `passes.json` | Step 0, then Steps 1 to 4 | The completion record (see the next section) |
 | `findings.json` | Step 1 by `findings.mjs`, then the triage and Step 2 | The identity ledger across passes (see Findings ledger) |
 | `report.md` | Every terminal state | The report, compiled from the record. Rewritten in place |
-| `review-<n>[-<slug>].json` or `.md` | Step 1, after each review | The review's saved output: `.json` from a child session, `.md` from the stand-in. `<n>` is the pass number, which counts across runs. An unsplit pass has no `-<slug>`; a pass over `split` groups its files by path at the shallowest depth that gives more than one group and a group still over `split` is grouped again one segment deeper, and a group's slug is its key's path lowercased, each run of characters outside `[a-z0-9]` replaced by `-`, leading and trailing `-` removed, and for the `.` key `root` at depth 1 or `<prefix slug>-root` deeper (the prefix of a `.` key made by regrouping the directory key `<k>` is `<k>`), and a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on (Step 1.2) |
+| `review-<n>[-<slug>].json` or `.md` | Step 1, after each review | The review's saved output: `.json` from a child session, `.md` from the stand-in. `<n>` is the pass number, which counts across runs. An unsplit pass has no `-<slug>`; a pass over `split` groups its files by path at the shallowest depth that gives more than one group, a group still over `split` is grouped again one segment deeper, and a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on (Step 1.2) |
 | `diff-<n>[-<slug>].patch` | Step 1, before a stand-in review | The stand-in's input; `<n>` and `<slug>` as for `review-<n>` |
 | `pre-<n>.status`, `pre-<n>.patch`, `pre-<n>.hashes` | Step 2, before each implementer call | `git status`, a patch and file hashes, for restoring after a failed call. `<n>` is one more than the highest number among the record's `pre-*.status` files, or 1 when there is none; a parallel batch takes one snapshot per file group before any call of the batch starts |
 | `post-<n>.status`, `post-<n>.hashes` | Step 2, when an implementer call returns | `git status` and file hashes of the checkout as the call left it, for comparing the checkout after a late notification for that call. `<n>` is the call's own `pre-<n>` number |
@@ -53,25 +50,9 @@ No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`,
 }
 ```
 
-The second pass in the literal is shortened to show a pass that has only started; Step 1 writes every field of a pass entry when it appends it, with the values of the next list. The values `...` and `<sha>` stand for a time and a full sha.
+The second pass in the literal is shortened to show a pass that has only started; Step 1 writes every field of a pass entry when it appends it. The values `...` and `<sha>` stand for a time and a full sha.
 
-Top level, written by Step 0 when the file is absent:
-
-1. `branch` is the exact branch name. `base` is the base branch and `merge_base` the full sha of the merge-base with it. `targets` lists the pull request as `github:<owner>/<repo>#<n>`, or the branch name for a branch target.
-2. `engine` is `subprocess` or `stand-in`; Step 1 rewrites it to `stand-in` when the run moves to the stand-in.
-3. `runs` has one entry per run: `n`, `started`, `ended` (`null` while the run is open) and `state` (`running`, then the terminal state, or `interrupted` when a later Step 0 finds it still `running`). Step 0 appends `{"n": <run>, "started": <utc>, "ended": null, "state": "running"}` with `<run>` one more than the highest `n` in `runs`; at a terminal state the run's entry gets `ended` and its `state`.
-4. `passes` has one entry per pass, in order of `n`, which counts across runs: pass 3 may be run 2's first pass.
-
-Each pass entry, and the step that writes it:
-
-1. `n`, `run`, `level` (`xhigh`, `high` or `medium`), `status`, `started`, `ended`, `reviews`, `findings`, `changes`, `commit`, `head`, `checks` and `next`. Step 1 appends `{"n": <n>, "run": <run>, "level": "<level>", "status": "running", "started": <utc>, "ended": null, "reviews": [], "findings": {}, "changes": [], "commit": null, "head": null, "checks": [], "next": null}` before the first review starts.
-2. `status` is `running`, `complete` or `failed`.
-3. `reviews` is filled by Step 1 after each review with `{"slug", "target", "output", "duration_ms", "total_cost_usd", "denials", "notes"}`. `slug` is `all` for an unsplit pass, else the group's slug; `target` is the exact range typed; `output` is the saved file's name; the last three come from the summary `findings.mjs` printed. `notes` is the text before the fence from that summary (`notes.before`), where the reviewer says what it could not run.
-4. `findings` maps each finding id of the pass to `{"bucket": "fix"|"defer"|"reject", "reason": "<one line>"}`. Step 1 writes every finding of the pass after the triage and before any edit. A finding the orchestrator matches to an earlier entry (Findings ledger) is recorded under the earlier id.
-5. `changes` lists every kind that applies to the files the fix round changed, judged against the files of `git diff --name-only <merge-base>...<head at the pass's start>`, the diff the pass reviewed: `inside-diff` (every changed file is in it), `outside-diff` (at least one is not), `exported-signature` (an exported function, class, type or public API signature changed), `schema-or-migration` (a schema or migration file changed), `over-quarter` (the fix round changed more than a quarter of that diff's files). An empty fix round is `[]`. These five words are the only ones `next.mjs` accepts. Step 2 writes it.
-6. `commit` is the fix round's sha, or `null` when the pass changed nothing. `head` is the branch head when the pass ended. `checks` lists `{"command": "<command>", "result": "pass"|"fail"|"denied"}` for each command run; with no source of checks (SKILL.md, Reading the request) the list is empty and the report says no check ran. Step 2 writes `changes`, `checks`, `commit` and `head` after the push, the pass still `running`. When a pass has an empty fix bucket, or the run is "no fixes", Step 2 does not run and Step 3 writes `head` from `git rev-parse HEAD` in the write of item 7.
-7. `next` holds `{"level": "<level>", "rule": "<rule>"}` or `{"stop": "<verdict>", "rule": "<rule>"}`, plus `"capped": "<cap>"` when a cap ended the run on it. The rules are `nothing-to-fix`, `after-medium`, `wide-fix`, `rejects-at-high` and `otherwise` from `next.mjs`, and `no-fixes` from the orchestrator. The caps are `max-passes`, from `next.mjs`, and `budget`, from the orchestrator. Step 3 writes `next`, `ended` and `"status": "complete"` together in one write.
-8. A failed pass gets `"status": "failed"` and `ended`; `next` stays `null`.
+Step 0 writes the top level and the run entry, Step 1 appends the pass entry and fills `reviews` and `findings`, Step 2 writes `changes`, `checks`, `commit` and `head`, Step 3 writes `next`, `ended` and `status`, and Step 4 closes the run entry, each as its step shows. A run's `state` is `running`, then the terminal state, or `interrupted` when a later Step 0 finds it still `running`. A pass's `status` is `running`, `complete` or `failed`, and `n` counts across runs, so pass 3 may be run 2's first pass. A failed pass has `ended` and a `next` of `null`.
 
 ## Findings ledger
 
@@ -83,13 +64,11 @@ Each pass entry, and the step that writes it:
 4. `passes`, from a pass number to `{"line", "bucket", "reason", "prior"}`: the line the review gave, the bucket and reason of the triage, and the entry's earlier state, or `null`.
 5. After a match, `match`: `{"of": "<earlier id>", "reason": "<one line>"}`.
 
-`findings.mjs` writes the file and sets `new`, `regressed` (bucket `fix`, for a finding fixed in an earlier pass that returns) and `carried` (bucket `reject`, for a rejected finding that returns, which counts as nothing in `next.mjs`). A deferred finding that returns keeps the state `deferred` and gets the bucket `defer` with the reason of its last defer pass, or `deferred in an earlier pass` when no pass holds one. A regressed entry that returns keeps the state `regressed` and gets no bucket, so the triage sorts it again. It leaves the bucket and reason of a new entry `null`, and prints each new finding with its `candidates`, the same file's settled entries that no review of this pass reported (Step 1.6), which the ledger does not keep. It prints a warning on stderr for an entry new in the latest pass the ledger holds that is `carried` or `regressed` with no `match`, and still exits 0. Its `--check` mode, `findings.mjs --check <pass> <ledger>`, prints the same warnings for the ledger as it stands, for the entries new in `<pass>`, and writes nothing, and Step 1.6 runs it after each triage.
+`findings.mjs` writes the file and prints each `new` finding with its `candidates`, which the ledger does not keep (Step 1.6). A regressed entry that returns keeps the state `regressed` and gets no bucket, so the triage sorts it again. The triage and Step 2 write the rest, as Steps 1.6 and 2 say.
 
-You write the rest:
+When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says: add `match` to the new entry in the same write as its bucket and state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
 
-1. The triage fills each `null` bucket and reason in the pass's entry and sets the state: `fix` gives `open` (a `regressed` entry stays `regressed`), `defer` gives `deferred`, `reject` gives `rejected`.
-2. After the fix round's commit exists, each fix-bucket entry of the pass becomes `fixed`.
-3. When a `new` finding and one of its `candidates` are one defect worded two ways, you may match them as Step 1.6 says: add `match` to the new entry in the same write as the bucket and state the script gives a returning entry of the candidate's state, and record the finding in `passes.json` under the earlier id. Say in `reason` why they are one defect.
+`findings.mjs` sends a warning for an entry new in the latest pass that is `carried` or `regressed` with no `match` to stderr, and its exit stays 0. Its `--check` mode, `findings.mjs --check <pass> <ledger>`, prints the same warnings for the ledger as it stands, writes nothing, and runs after each triage (Step 1.6).
 
 ## Write discipline
 

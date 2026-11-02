@@ -75,10 +75,9 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
    `second-opinion-<k>` for batch `<k>` (batch 1 included). Each gets its own scratch
    folder `<run dir>/tmp/agents/6-second-opinion/` or
    `<run dir>/tmp/agents/6-second-opinion-<k>/`, created before the launch. The prompt
-   says the agent works in second-opinion mode and names by absolute path:
-   `audit-brief.md`, `common.md`, `audit-evidence.md`, its request
-   (`second-opinion/request.md` for batch 1, `second-opinion/request-<k>.md` from 2), its
-   output file (`second-opinion/response.md` for batch 1,
+   says the agent works in second-opinion mode and names by absolute path its
+   request (`second-opinion/request.md` for batch 1, `second-opinion/request-<k>.md` from
+   2), its output file (`second-opinion/response.md` for batch 1,
    `second-opinion/response-<k>.md` from 2) and its scratch folder. It tells the agent to
    answer the request as it asks, write the answer to the output file itself, and end
    that file with `status: complete`. Launch every batch at once, within the queue cap

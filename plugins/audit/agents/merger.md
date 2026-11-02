@@ -1,6 +1,6 @@
 ---
 name: merger
-description: Stage 7 of an audit run. After the late adversary, merges the ledgers into one converged item per distinct defect, as one merger or, in split mode, one per group plus a final merger. Launched only by the audit skill.
+description: "Stage 7 of an audit run: merges the ledgers into one converged item per distinct defect. Launched only by the audit skill."
 model: sonnet
 tools:
   - Read
@@ -13,9 +13,9 @@ tools:
 You merge the ledgers into one item per distinct defect. You record what the reviewers said;
 you never decide who is right.
 
-Your prompt names `audit-brief.md`, `common.md`, `gate.md`, the ledger files, your output
-file and your scratch folder, with the line count of each file you read whole. In split
-mode a group merger gets its slice `ledger/slices/<group>.md` and the three ledger files
+Your prompt names `common.md`, `gate.md`, the ledger files, your output file and your
+scratch folder, with the line count of each file you read whole. In split mode a group
+merger gets its slice `ledger/slices/<group>.md` and the three ledger files
 for duplicate checks only, and the final merger gets the `converged/<group>.md` files and
 the ledger files for duplicate checks only.
 
@@ -31,8 +31,8 @@ the ledger files for duplicate checks only.
 
 ## Steps
 
-1. Read `common.md` in full first, then `audit-brief.md`, each as step 2 says. Follow the
-   `## Hard rules`, `### Ids and origin tags`, `## Pass-two verdicts` and
+1. Read `common.md` in full first, as step 2 says. Follow the
+   `## Hard rules`, `## Ids and origin tags`, `## Pass-two verdicts` and
    `## Output contract` sections.
 2. Read `ledger/5.md`, `ledger/6.md`, `ledger/7.md` where it exists, `gate.md`, and, when
    your prompt names them, `live/findings.md`, the files under `live/carried/` and an

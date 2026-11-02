@@ -1,16 +1,13 @@
 # Audit evidence rules for this run
 
-Stage 1 copies this file into the run directory as `audit-evidence.md`, next to
-`common.md`. Only the auditor and the adversary read it, in every mode the adversary has:
-pass two, the late adversary, and the second opinion. The digester, the mapper and the
-merger do not. Every rule of `common.md` applies here as well, and a section, rule or hard
-rule named below without a file is the one in `common.md`.
+A section or hard rule named below without a file is in this file or in `common.md`;
+"Evidence" alone is the section in `common.md`.
 
 ## Evidence
 
 These rules add to the "Evidence" section of `common.md` for the cases that only the
-auditor and the adversary meet: reverted test runs, run-once scripts, matched literals,
-open pull requests, and tests.
+auditor and the adversary meet: reverted test runs, run-once scripts and the leads
+below.
 
 ### Reverted test runs
 
@@ -138,81 +135,207 @@ path, so the script runs again on every install that ran it at its merge-base pa
   tier lets pass two attack Verified OK items, such an item is among the riskiest and is
   held to this section.
 
-### Producers at head and base
+### Leads a finding must clear
 
-A group scope or the `combined` scope checks every literal string or data shape the
-change adds or alters a match on (a pattern, a prefix, a key, a field), with `git show`,
-`git log` and `git grep` only. Find the code that produces it with `git grep`, and read
-that producer with `git -C <repo> show <sha>:<path>` at the head sha and at the base sha
-the brief records. The leads are the commits of the range from the merge-base to the
-base, `git log <merge-base>..<base> -- <producer path>`, never commits picked by author
-date. A finding needs evidence that the incompatible producer survives integration: the
-head leaves the producer as it is, and the base's version produces a form the change does
-not match. Quote both reads. A matcher the change leaves as it is is skipped. When the
-brief says the base was not fetched (`base: local ref, refresh declined`), the finding
-says the base read may be stale. A change on the base is not a deleted feature: the check
-asks whether the changed code still matches what the merged result produces.
+Whichever agent files it:
 
-### Open pull request collisions
+- A test is flagged as weak when it asserts the code's own constant or a value computed
+  the way the code computes it, pins text without running the code that makes it, or
+  accepts a wrong outcome among those it allows. The flag becomes a finding only when it
+  names the regression the test would miss, with the test quoted. With the default
+  questions it goes under `Q2`; with a custom list, under the question closest to test
+  coverage, else the first, and the finding says so.
+- A test account with more rights than the test uses is flagged only with a quoted grant
+  or role definition, labeled as `## Evidence` in `common.md` says, a demonstrated grant
+  giving `verified fact`, or with a pointer to the rights (code outside the tests that
+  writes as the account, or a name that says writer, owner or admin), labeled
+  `unverified assumption` with a `live check`. With neither, it is not flagged. The flag
+  goes on the test that picks the account, not on a shared step that takes the role as a
+  parameter, with one finding per account naming each test. The finding names the
+  account, where its rights come from and the narrower role the test needs. The
+  `live check` of a pointer queries the account's grants and whether a read-only role
+  exists, per environment the test runs in. With the default questions it goes under `Q1`;
+  with a custom list, under the question closest to best practice, else the first, and
+  the finding says so.
+- A matcher finding needs quoted reads at head and base showing that an incompatible
+  producer survives integration: the head leaves the producer as it is, and the base's
+  version produces a form the change does not match. The leads are the merge-base-to-base
+  commit range, never commits picked by author date. When the brief says the base was not
+  fetched, the finding says the base read may be stale. A change on the base is not a
+  deleted feature.
+- An open pull request candidate is a lead. Journal keys that differ, shown by quoted
+  runner lines, clear it; keys that match, or no runner found, give a finding on the new
+  script, labeled `unverified assumption`, at most `medium`. The finding states the forge
+  fact, the other pull request's URL and path, apart from its effect, that where both
+  merge the runner applies one script and skips the other, or fails. Its `live check`
+  asks which pull request merges first and, when no runner was found, how the runner keys
+  its journal. A `cut` row, a `cut-list` row or `open PRs not read` is a gap in what could
+  be checked, never a finding.
 
-For a bundle whose pull request is on GitHub and whose run-once list gives a new path
-(an `A` entry, or the new path of an `R` or `C`), stage 1 reads the first 100 open pull
-requests and runs `collisions.sh` over them. Its rows reach the brief:
+## Finding schema
 
-- `collision`: another open pull request adds or moves a file into the same directory
-  with the same file name (`same name`) or the same leading version token
-  (`same version`). It is a candidate, and a candidate is a lead, not a finding.
-- `cut`: the forge returned fewer files of that pull request than it has.
-- `cut-list`: the list may hold more open pull requests than were read.
+Every finding is exactly this block:
 
-For each candidate, find how the runner keys its journal, as "Rerun of a run-once script"
-says, and compare the keys of both paths, whatever the row's kind. Keys that differ,
-shown by quoted runner lines, clear the candidate: say so in the output with the quote.
-Keys that match, or no runner found, give a finding on the new script. It states the
-forge fact apart from its effect: the other pull request's URL and path, and that the
-brief read the list in stage 1; then the effect, that where both merge, the runner
-applies one script and skips the other, or fails. The label is `unverified assumption`,
-so the severity is at most `medium`, and the `live check` asks which pull request merges
-first and, when no runner was found, how the runner keys its journal. A `cut` row, a
-`cut-list` row, or `open PRs not read` is a gap in what could be checked, never a
-finding.
+```
+### <scope>-F<n>: <one-line title>
+- severity: blocker | high | medium | low | note
+- question: Q1 | Q2 | Q3 | Q4 | <custom id>
+- label: verified fact | unverified assumption | convention
+- claims: <claim numbers tested, or none>
+- evidence: <quote, search, or run, per Evidence>
+- demonstrated: <what the evidence shows>
+- inferred: <what follows from it but is not shown>
+- what the code does:
+- what breaks, and for whom:
+- recommended change: <repo> <path> <change>
+- alternatives: <each weighed, and the one recommended>
+- live check: <query>; <where it runs>; <what each result changes>; or none
+- work-item impact: <ticket, acceptance criterion, or none>
+```
 
-### Weak tests
+The report splits the `live check` field at its semicolons, so the query, the place and
+the results hold no semicolon of their own; outcomes are joined with periods.
 
-The scope whose checklist covers tests reads each added or changed test and flags one
-that asserts the code's own constant or a value computed the way the code computes it,
-pins text without running the code that produces it, or accepts a wrong outcome among
-those it allows. A flag is a lead. It becomes a finding only when the agent names the
-regression the test would miss, with the test quoted. With the default questions it is
-filed under `Q2`: the change is not shown to do what the ticket says, since its test
-passes without it. With a custom question list it is filed under the question closest to
-test coverage, or the first question when none fits, and the finding says so. This check
-reads the tests; it does not run them.
+When a `recommended change` adds or moves a documented fact (a rationale, a history note,
+a decision, a how-to, a ticket number), its author first reads the instruction files that
+apply to the target file: the repository's `AGENTS.md` and `CLAUDE.md` and the files they
+index, at the root and in each directory on the file's path (a nested file governs its
+subtree), the rules in `.claude/rules/` that apply to it (one with no `paths`, or one
+whose `paths` match it) and the skills in `.claude/skills/`, as the tree read for the
+audit holds them, the `REVIEW.md` copies `audit-brief.md` records at the base, and the
+placement rules `audit-brief.md` records from the user's own instruction files. Where
+those files give the fact a home (commit messages, a docs file, a changelog), the
+recommendation names that home, with a pointer from the code where it helps, and never a
+place they exclude.
 
-### Test accounts
+## Verified OK list
 
-Apart from the weak-test check, and whether or not a test's assertions are adequate,
-the same scope flags an added or changed test, step or scenario that runs as an account,
-role or credential with write or admin rights when everything it does as that account
-only reads. The flag goes on the test that picks the account, not on a shared step that
-takes the role as a parameter.
+Each item checked and found sound, with its evidence:
 
-- A grant or a role definition shows the rights. With one quoted, the finding is
-  labeled by the rules of "Evidence", and a demonstrated grant gives `verified fact`.
-- Code outside the tests that writes as the account (found with `git grep` on its name),
-  or a name that says writer, owner or admin, only points to the rights. With only a
-  pointer, the label is `unverified assumption`, and the `live check` queries the
-  account's grants, and whether a read-only role exists, in each environment the test
-  runs in.
-- With neither a grant nor a pointer, the account is not flagged: an accounts file entry
-  holds a name and a secret reference, not rights.
+```
+## Verified OK
+- <scope>-OK<n>: <what was checked>; evidence: <quote, search, or run>
+```
 
-The finding names the account, where its rights come from, and the narrower role the test
-needs, such as a read-only role a sibling test already uses. One finding per account,
-naming each test. With the default questions it is filed under `Q1`: the test holds more
-rights than it uses. With a custom question list it is filed under the question closest
-to best practice, or the first question when none fits, and the finding says so. This
-check reads only.
+## Claims list
+
+Each claim assigned to the scope in `claims.md` gets one line. A scope with no claim
+assigned writes the heading and the one line `none`.
+
+```
+## Claims
+- claim <n>: true | false | not verified; <finding id, or evidence>
+```
+
+A `not verified` line gives the reason, such as "needs a live check". A `verification`
+claim takes one of these lines instead:
+
+```
+- claim <n>: true, reproduced; <the run or quote that reproduces the stated result>
+- claim <n>: false, contradicted; <evidence>
+- claim <n>: not verified, not reproduced; <why: not run, no access, needs a live check, budget expired, exported tree, or setup differs>
+```
+
+A `verification` claim is `true, reproduced` only when the agent reproduced the stated
+result itself: by a run, or by a quote when the stated result is a fact of the code at
+the pinned sha. A quote of other text saying the check was done is not a reproduction.
+`false, contradicted` needs counter-evidence. A run under a setup other than the one the
+stated check needs (another directory, a missing environment variable, service or
+account, another environment than the one named) is not counter-evidence: the claim is
+`not verified, not reproduced`, and the reason names what differs. A reproduced result
+does not show that the session under audit ran its stated check; the report says so once,
+in its Claims section.
+
+## Decisions
+
+Every scope writes `## Decisions` after `## Claims`: one line for every `decision` claim
+assigned to it, by claim number, or `none` when it has none.
+
+```
+## Decisions
+- claim <n> (<handoff ref or none>): <class>; resolution: <taken | open deferral | settled later by <record>>; alternatives weighed: <yes, <evidence> | no>; authority: <person: <name> | role: <role> | checkpoint | not recorded>; tracked by: <where | nothing>; work depends on it: <yes, <why> | no>; reversibility: <reversible | hard to reverse | contract change>; recommendation: <text>; finding: <finding id or none>
+```
+
+Three dimensions are read from the record; the class follows from them.
+
+- Resolution: `taken` (status `taken` or `default taken`); `open deferral` (status
+  `deferred` or `deferred to <owner>`); or `settled later`, a deferral that a later
+  commit, comment, ticket field or document shows was decided, treated as `taken` with
+  that record as `recorded_at`.
+- Authority: `person: <name>`, `role: <role>`, `checkpoint`, or `not recorded`. For a
+  deferral, the owner in `deferred to <owner>`, judged the same way.
+- Alternatives weighed: yes when a record the agent can open (a commit body in a bundle,
+  a ticket or pull request comment in the forge data, a document at a pinned sha) states
+  at least one alternative and why it was not taken. The handoff's own `rejected: ...;
+  why:` lines are claims, not such a record: a `recorded_at` the agent opened and found
+  to support them counts. A `checkpoint:` pointer or `not recorded` cannot be opened, so
+  the entry says `alternatives weighed: no (not in a readable record)`.
+
+Reversibility is `reversible`, `hard to reverse` (undoing it needs a data migration or
+coordinated work), or `contract change` (it alters what another system or user relies
+on).
+
+The class is the first of these that holds:
+
+1. `stale deferral`: an open deferral with no `person:` owner, or one that nothing in the
+   forge data or the repositories tracks (no ticket, comment or document names it as
+   open).
+2. `needs <owner>`: an open deferral with a `person:` owner that the record tracks; or a
+   taken decision that is `hard to reverse` or a `contract change` and whose authority is
+   not `person:`. `<owner>` is the deferral's owner, else the person or role the tickets
+   or comments name for it, else `owner (not recorded)`.
+3. `default taken`: a taken decision without alternatives weighed.
+4. `evidenced`: a taken decision with alternatives weighed.
+
+Every decision lands in exactly one class: an open deferral in 1 or 2, a taken decision
+in 2, 3 or 4. The decision sentences of a prose claims file are classed the same way, from
+what the record shows.
+
+## Scope
+
+A scope that holds `hygiene` claims (`hygiene`, `tests-hygiene`, `combined`) also writes
+`## Scope` after `## Decisions`: one line for every `scope` claim, or `none`.
+
+```
+## Scope
+- claim <n> (<handoff ref or none>): introduced by the bundle: <yes | no | partly>, <evidence against the merge-base>; fix inside the bundle's repos: <yes | no, <repo>>; cost: <small | medium | large>, <why>; recommendation: <include | defer>, <reason>; handoff ranking: <rank and confidence, or none>; facts disagree with the handoff: <yes, <what the handoff states that the evidence contradicts> | no>; recommendation differs from the handoff: <yes | no>; finding: <finding id or none>
+```
+
+Decision and scope entries are report items, not findings. They never enter
+`ledger/5.md`, `ledger/6.md` or `ledger/7.md`, pass no review gate, and never change the
+verdict counts. An entry the auditor did not write is `not assessed`, and one the
+adversary gave no line is `not challenged`; neither fails a scope, and the agents still
+write every entry and line. When an entry shows a defect (a `stale deferral` or
+`needs <owner>` that the bundle's work depends on, or a scope fact that ships a
+regression), the agent files a separate `Q4` finding and names it in the entry's
+`finding:` field. A defect the adversary finds first is a pass-two addition,
+`<scope>-P<n>`. Those findings pass the gate like any other.
+
+## Ledger parse rules
+
+`ledger.sh` parses every output it reads by these rules:
+
+- A finding block starts at a line `### <id>: <title>`, and a verdict block at a line
+  `### verdict on <id>: <verdict>`.
+- A block ends at the next line that starts with `## ` or `### `, or at a line that is
+  exactly `runs:`, `runs: none`, `consumed:`, `consumed: none`, `opened:`,
+  `opened: none` or `status: complete`. Any other line that starts with one of those
+  words is body text.
+- A fence line is one whose first characters other than blanks are three backticks.
+  Lines between two fence lines never start or end a block, and a file that ends inside
+  a fence is an error.
+- An id is `<scope>-F<n>`, `<scope>-P<n>`, `<scope>-T<n>`, `X<n>` or `L<n>`, and is
+  case-sensitive: an id heading in the wrong case is an error. A position line of a
+  second-opinion answer may start with a list number (`1. <id>: ...`).
+- A finding block has exactly one `- severity:` line and one `- label:` line, each with
+  an allowed value. A verdict block has exactly one verdict word and one `- severity:`,
+  one `- label:` and one nonempty `- evidence:` line.
+- A complete file ends with `status: complete`, and the script checks it against the
+  inventory.
+
+A duplicate id, two verdicts for one id, a verdict for an id with no finding, a pass-one
+finding without a verdict in a complete pass-two file, and a malformed block are errors:
+the script prints them, and the stage that ran it fails.
 
 ## Outward trace
 
@@ -276,7 +399,7 @@ Widened inputs and their decision points:
   decision point: the decisions that act on its answer are listed instead. Code that does
   not use the widened part is not a decision point and is not counted. The decision rules
   apply to consumers in product code; a test that reads the widened input is judged by
-  the tests checklist.
+  `### Leads a finding must clear`.
 - `decisions:` follows `consumers:` and is `none` when `consumers` is none. The decision
   points of every consumer go on `  - decision` lines under the entry. They are not
   entries: they count toward neither the 15 entries of a scope nor the 10 consumers of a
@@ -321,7 +444,7 @@ Results:
 Entry lines are `- ` list lines, and a decision line is an indented `  - ` line under its
 entry, with no id. No `### ` line, and no line that is only `runs:` or `status: complete`,
 appears inside the section, so no trace line reads as a finding, a verdict, or the end of
-a block under the parsing rules of the output contract.
+a block under the ledger parse rules.
 
 ## Outward trace challenged
 

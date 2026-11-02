@@ -1,5 +1,5 @@
 ---
-description: "Act on items of a finished audit report that the user names by id, such as C1 and C4: after approval and checks, the skill makes local commits for those fixes, one per item with --per-item. A new audit starts with /audit:run, which also answers to the prose request \"reimagine audit ...\"."
+description: "Act on items of a finished audit report that the user names by id, such as C1 and C4: after approval and checks, the skill makes local commits for those fixes, one per item with --per-item."
 argument-hint: '<run-id> <item-id...> [--per-item]'
 allowed-tools: Read, Skill
 ---

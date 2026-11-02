@@ -79,7 +79,7 @@ result's text, approver and time; a `result_file` result's text is its copy
       included, and `<rule>` the rule as quoted with its `(<path>:<line>)`. An item two
       rules cover is counted in the first one's line.
    2. Require evidence: an item of the rule's class that does not meet it (`common.md`,
-      "When a finding counts") is held: the report shows its gate as `provisional`, with
+      "REVIEW.md rules") is held: the report shows its gate as `provisional`, with
       the gate it had and `held by REVIEW.md: <rule>`, and it never counts. An item
       that meets it says `REVIEW.md evidence met: <rule>`.
    3. Severity calibration: the rule sets the severity of each item it covers, and of
@@ -110,7 +110,7 @@ result's text, approver and time; a `result_file` result's text is its copy
    - `provisional`: never counts, whatever its disposition.
 
    A label of `unverified assumption` caps a severity at `medium` (`common.md`,
-   "Finding schema"). The report shows the counts so a reader can check the verdict.
+   "Evidence"). The report shows the counts so a reader can check the verdict.
 
 5. **Decide the verdict.**
    - A `partial` run: `audit incomplete`, with the counts so far; never `ready to

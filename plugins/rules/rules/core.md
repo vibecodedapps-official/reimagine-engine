@@ -23,8 +23,7 @@ Any instruction file can add an ask-first rule; none removes one.
   correctness or risk, or costs more to leave than to fix, inside the request or not,
   each with its evidence and the two costs; the rest are notes.
 - For a bug, show the failure before you fix it, then show the regression check failing
-  for that defect without the fix and passing with it. If you can't reproduce it, run a
-  check that confirms or rejects your explanation.
+  for that defect without the fix and passing with it.
 - Before you name a cause or act on one, run the check that could rule it out: a run
   that changes only the suspected factor. If you can't, say which check and what blocked
   it, and call the cause unverified.

@@ -2,10 +2,10 @@
 
 Stage 1 copies this file into the run directory as `common.md` and fills in the header
 below. Every agent of the run reads it, and the orchestrator follows it too. It is the one
-home of the hard rules, the evidence rules, the finding schema and the output contract;
-the stage files and the agent definitions cite its sections by name and do not restate
-them. The rules that only the auditor and the adversary need are in `audit-evidence.md`,
-next to this file, and the sections below that belong to them point there.
+home of the hard rules, the evidence rules and the output contract; the stage files cite
+its sections by name, and each agent definition restates hard rules 2 and 4. The rules
+that only the auditor and the adversary need, the finding schema among them, are in
+`audit-evidence.md`, next to this file.
 
 ```
 run id: <run-id>
@@ -14,11 +14,6 @@ tier: low | medium | high
 questions:
 - <id>: <question>
 ```
-
-The default questions are four: `Q1` best practice, `Q2` semantic drift (the change does
-more or less than the ticket asks), `Q3` technical debt, and `Q4` decision quality. The
-manifest `questions` key replaces them, or adds to them when it holds `extends: default`.
-The header lists the questions this run asks.
 
 ## Hard rules
 
@@ -74,30 +69,11 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    A diff always names two commits. A `git diff` against the working tree refreshes the
    index even with `--no-optional-locks`, so it never runs. In a bundle with
    `head: working-tree`, `git grep` always names the head sha, since a plain `git grep`,
-   or `rg` over `git ls-files`, misses the untracked files that belong to the head. The
-   orchestrator runs status as `git -C <repo> --no-optional-locks status ...`, and
-   `readonly.sh` sets `GIT_OPTIONAL_LOCKS=0`, so no status check rewrites the index.
+   or `rg` over `git ls-files`, misses the untracked files that belong to the head.
 
-   This is instruction, not enforcement: nothing blocks Bash mechanically. Detection is
-   `readonly.sh`. The orchestrator snapshots every audited repository in stage 1 and
-   checks it after every stage. A change to tracked files, untracked files that are not
-   ignored, refs, the index, stashes or config, an added or deleted file included, ends
-   the run `blocked`, unless an approved fetch caused it, a background fetch the user
-   confirmed (a `background-fetch` entry in `approvals`), or a new local branch and its
-   `branch.<name>.*` config that the user confirmed as their own work in another
-   worktree (a `local-branch` entry), as the `### Read-only check` section of `SKILL.md`
-   says; refs and config are shared by every worktree of a repository. A deleted or
-   moved branch still ends the run `blocked`. A change among ignored files that no
-   logged run accounts for ends it too, unless it is another audit run's or a handoff's
-   file under an audited repository's `<scratch>/audit/`, or under the same path in the
-   main checkout of a primary repository that is a linked worktree, outside this run's
-   directory. The check does not see: an ignored file replaced by one of the same size
-   with its modification time restored; changes inside `.git/` other than refs, stashes
-   and config; a nested repository's refs other than its HEAD, its stashes and its
-   config; a change inside a repository that sits in an ignored directory, such as a
-   linked worktree, other than an entry added or removed at its top level; and changes
-   outside the audited repositories. The user's own edits to an audited repository
-   during a run trip the check as well.
+   This is instruction, not enforcement: nothing blocks Bash mechanically. `readonly.sh`
+   checks every audited repository after every stage, and a write that check does not
+   accept ends the run `blocked`. The user's own edits during a run trip it too.
 3. **No model, agent or tool names** in anything external: commit messages, pull request
    and ticket text, and drafted comments. The report and the run records stay in the run
    directory and may name them.
@@ -189,54 +165,7 @@ the sha it is pinned at. How to read depends on the brief's mode for the tree.
 - **The output of `wc` is compared as a number** (`-eq`, or arithmetic), never as a
   string, since some `wc` builds pad the count with spaces.
 
-### Reverted test runs
-
-The rules for reading `revert/<bundle>.md`, the result of stage 1's reverted test runs,
-are in `audit-evidence.md` under the same heading. Only the auditor and the adversary use
-them.
-
-### Rerun of a run-once script
-
-The rules for a run-once script that the diff shows with status `R` or `C` are in
-`audit-evidence.md` under the same heading. Only the auditor and the adversary use them.
-
-## Finding schema
-
-Every finding is exactly this block:
-
-```
-### <scope>-F<n>: <one-line title>
-- severity: blocker | high | medium | low | note
-- question: Q1 | Q2 | Q3 | Q4 | <custom id>
-- label: verified fact | unverified assumption | convention
-- claims: <claim numbers tested, or none>
-- evidence: <quote, search, or run, per Evidence>
-- demonstrated: <what the evidence shows>
-- inferred: <what follows from it but is not shown>
-- what the code does:
-- what breaks, and for whom:
-- recommended change: <repo> <path> <change>
-- alternatives: <each weighed, and the one recommended>
-- live check: <query>; <where it runs>; <what each result changes>; or none
-- work-item impact: <ticket, acceptance criterion, or none>
-```
-
-The report splits the `live check` field at its semicolons, so the query, the place and
-the results hold no semicolon of their own; outcomes are joined with periods.
-
-When a `recommended change` adds or moves a documented fact (a rationale, a history note,
-a decision, a how-to, a ticket number), its author first reads the instruction files that
-apply to the target file: the repository's `AGENTS.md` and `CLAUDE.md` and the files they
-index, at the root and in each directory on the file's path (a nested file governs its
-subtree), the rules in `.claude/rules/` that apply to it (one with no `paths`, or one
-whose `paths` match it) and the skills in `.claude/skills/`, as the tree read for the
-audit holds them, the `REVIEW.md` copies `audit-brief.md` records at the base, and the
-placement rules `audit-brief.md` records from the user's own instruction files. Where
-those files give the fact a home (commit messages, a docs file, a changelog), the
-recommendation names that home, with a pointer from the code where it helps, and never a
-place they exclude.
-
-### Ids and origin tags
+## Ids and origin tags
 
 The id says where a finding comes from. Ids are case-sensitive.
 
@@ -253,22 +182,6 @@ The id says where a finding comes from. Ids are case-sensitive.
 
 A scope is a group or a specialist scope; its id holds no space and no colon. Every
 finding with an `- origin:` line is a **late addition**.
-
-## Verified OK list
-
-Each item checked and found sound, with its evidence:
-
-```
-## Verified OK
-- <scope>-OK<n>: <what was checked>; evidence: <quote, search, or run>
-```
-
-## Outward trace
-
-A group scope and the `combined` scope write `## Outward trace` after `## Verified OK` and
-before `## Claims`; no other scope writes it. Its entry form and rules, and the pass-two
-`## Outward trace challenged` section, are in `audit-evidence.md` under the same heading.
-Only the auditor and the adversary use them.
 
 ## Claim kinds
 
@@ -287,35 +200,6 @@ that fits it:
 A claim targets a group id from `groups.md`, or `hygiene`. Every `scope` and `status`
 claim targets `hygiene`; the stage files say which scope receives them.
 
-## Claims list
-
-Each claim assigned to the scope in `claims.md` gets one line. A scope with no claim
-assigned writes the heading and the one line `none`.
-
-```
-## Claims
-- claim <n>: true | false | not verified; <finding id, or evidence>
-```
-
-A `not verified` line gives the reason, such as "needs a live check". A `verification`
-claim takes one of these lines instead:
-
-```
-- claim <n>: true, reproduced; <the run or quote that reproduces the stated result>
-- claim <n>: false, contradicted; <evidence>
-- claim <n>: not verified, not reproduced; <why: not run, no access, needs a live check, budget expired, exported tree, or setup differs>
-```
-
-A `verification` claim is `true, reproduced` only when the agent reproduced the stated
-result itself: by a run, or by a quote when the stated result is a fact of the code at
-the pinned sha. A quote of other text saying the check was done is not a reproduction.
-`false, contradicted` needs counter-evidence. A run under a setup other than the one the
-stated check needs (another directory, a missing environment variable, service or
-account, another environment than the one named) is not counter-evidence: the claim is
-`not verified, not reproduced`, and the reason names what differs. A reproduced result
-does not show that the session under audit ran its stated check; the report says so once,
-in its Claims section.
-
 ## Env claims
 
 An env claim is a `verification` claim whose check part, the text after the first
@@ -327,71 +211,6 @@ against another environment. Pass one writes the claim as
 from a run here. The report lists each env claim by number in its Live checks section,
 with its environment and command, and `claims-verdicts.md` gives it the verdict
 `not reproducible here` until a live result settles it (`live.md`).
-
-## Decisions
-
-Every scope writes `## Decisions` after `## Claims`: one line for every `decision` claim
-assigned to it, by claim number, or `none` when it has none.
-
-```
-## Decisions
-- claim <n> (<handoff ref or none>): <class>; resolution: <taken | open deferral | settled later by <record>>; alternatives weighed: <yes, <evidence> | no>; authority: <person: <name> | role: <role> | checkpoint | not recorded>; tracked by: <where | nothing>; work depends on it: <yes, <why> | no>; reversibility: <reversible | hard to reverse | contract change>; recommendation: <text>; finding: <finding id or none>
-```
-
-Three dimensions are read from the record; the class follows from them.
-
-- Resolution: `taken` (status `taken` or `default taken`); `open deferral` (status
-  `deferred` or `deferred to <owner>`); or `settled later`, a deferral that a later
-  commit, comment, ticket field or document shows was decided, treated as `taken` with
-  that record as `recorded_at`.
-- Authority: `person: <name>`, `role: <role>`, `checkpoint`, or `not recorded`. For a
-  deferral, the owner in `deferred to <owner>`, judged the same way.
-- Alternatives weighed: yes when a record the agent can open (a commit body in a bundle,
-  a ticket or pull request comment in the forge data, a document at a pinned sha) states
-  at least one alternative and why it was not taken. The handoff's own `rejected: ...;
-  why:` lines are claims, not such a record: a `recorded_at` the agent opened and found
-  to support them counts. A `checkpoint:` pointer or `not recorded` cannot be opened, so
-  the entry says `alternatives weighed: no (not in a readable record)`.
-
-Reversibility is `reversible`, `hard to reverse` (undoing it needs a data migration or
-coordinated work), or `contract change` (it alters what another system or user relies
-on).
-
-The class is the first of these that holds:
-
-1. `stale deferral`: an open deferral with no `person:` owner, or one that nothing in the
-   forge data or the repositories tracks (no ticket, comment or document names it as
-   open).
-2. `needs <owner>`: an open deferral with a `person:` owner that the record tracks; or a
-   taken decision that is `hard to reverse` or a `contract change` and whose authority is
-   not `person:`. `<owner>` is the deferral's owner, else the person or role the tickets
-   or comments name for it, else `owner (not recorded)`.
-3. `default taken`: a taken decision without alternatives weighed.
-4. `evidenced`: a taken decision with alternatives weighed.
-
-Every decision lands in exactly one class: an open deferral in 1 or 2, a taken decision
-in 2, 3 or 4. The decision sentences of a prose claims file are classed the same way, from
-what the record shows.
-
-## Scope
-
-A scope that holds `hygiene` claims (`hygiene`, `tests-hygiene`, `combined`) also writes
-`## Scope` after `## Decisions`: one line for every `scope` claim, or `none`.
-
-```
-## Scope
-- claim <n> (<handoff ref or none>): introduced by the bundle: <yes | no | partly>, <evidence against the merge-base>; fix inside the bundle's repos: <yes | no, <repo>>; cost: <small | medium | large>, <why>; recommendation: <include | defer>, <reason>; handoff ranking: <rank and confidence, or none>; facts disagree with the handoff: <yes, <what the handoff states that the evidence contradicts> | no>; recommendation differs from the handoff: <yes | no>; finding: <finding id or none>
-```
-
-Decision and scope entries are report items, not findings. They never enter
-`ledger/5.md`, `ledger/6.md` or `ledger/7.md`, pass no review gate, and never change the
-verdict counts. An entry the auditor did not write is `not assessed`, and one the
-adversary gave no line is `not challenged`; neither fails a scope, and the agents still
-write every entry and line. When an entry shows a defect (a `stale deferral` or
-`needs <owner>` that the bundle's work depends on, or a scope fact that ships a
-regression), the agent files a separate `Q4` finding and names it in the entry's
-`finding:` field. A defect the adversary finds first is a pass-two addition,
-`<scope>-P<n>`. Those findings pass the gate like any other.
 
 ## Pass-two verdicts
 
@@ -435,31 +254,10 @@ and may add any other claim the adversary finds misjudged. `## Decisions challen
 challenge under it. A `disagree` line names the class or the field it disputes. Challenge
 lines are not findings and never enter the ledger files.
 
-## When a finding counts
-
-A finding counts toward the verdict only after a fresh adversary other than its author
-challenged it and the second opinion saw it. `ledger.sh gate` decides this mechanically,
-with fixed reason strings:
-
-- At `medium` and above, a stage 6 position on the finding is required.
-- At `low` and `note`, a complete stage 6 that requested it suffices.
-- An `X<n>` counts once the late adversary gave it a verdict.
-- An `L<n>` never counts, except a carried one under the live rule (`live.md`).
-- When stage 6 failed, nothing passes on its account.
-
-A converged item whose disposition is `contested` counts at one severity:
-
-- Equal severities count at that severity.
-- With one `dropped` position, the item counts only when the position that keeps it is
-  `verified fact`.
-- Otherwise the higher severity counts when its position is `verified fact`, else the
-  lower one.
-
-An item whose gate is `provisional`, and an item that is `dismissed`, never counts.
+## REVIEW.md rules
 
 A require-evidence rule of a `REVIEW.md` that `audit-brief.md` records raises the gate of
-its class to what a finding already needs here: an item of that class counts only when
-the position it counts at is `verified fact` with a quote `repo@sha:path:line` or a run
+its class: an item of that class counts only when the position it counts at is `verified fact` with a quote `repo@sha:path:line` or a run
 as its evidence. The report holds any other item of the class (`stages/8-report.md`,
 step 2); `gate.md` stays as the script wrote it. Nothing in a `REVIEW.md` turns a lead
 into a finding or makes a finding count.
@@ -511,27 +309,3 @@ consumed:
 - guidelines/digest-1.md 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432
 status: complete
 ```
-
-`ledger.sh` parses every output it reads by these rules:
-
-- A finding block starts at a line `### <id>: <title>`, and a verdict block at a line
-  `### verdict on <id>: <verdict>`.
-- A block ends at the next line that starts with `## ` or `### `, or at a line that is
-  exactly `runs:`, `runs: none`, `consumed:`, `consumed: none`, `opened:`,
-  `opened: none` or `status: complete`. Any other line that starts with one of those
-  words is body text.
-- A fence line is one whose first characters other than blanks are three backticks.
-  Lines between two fence lines never start or end a block, and a file that ends inside
-  a fence is an error.
-- An id is `<scope>-F<n>`, `<scope>-P<n>`, `<scope>-T<n>`, `X<n>` or `L<n>`, and is
-  case-sensitive: an id heading in the wrong case is an error. A position line of a
-  second-opinion answer may start with a list number (`1. <id>: ...`).
-- A finding block has exactly one `- severity:` line and one `- label:` line, each with
-  an allowed value. A verdict block has exactly one verdict word and one `- severity:`,
-  one `- label:` and one nonempty `- evidence:` line.
-- A complete file ends with `status: complete`, and the script checks it against the
-  inventory.
-
-A duplicate id, two verdicts for one id, a verdict for an id with no finding, a pass-one
-finding without a verdict in a complete pass-two file, and a malformed block are errors:
-the script prints them, and the stage that ran it fails.

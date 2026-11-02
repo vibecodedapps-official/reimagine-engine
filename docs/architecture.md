@@ -289,8 +289,8 @@ plugins/audit/
   LICENSE  README.md
   commands/run.md  resume.md  act.md  handoff.md
   skills/audit/SKILL.md            orchestrator: roles, queue, budget, stages.json, registry lock, read-only boundary
-  skills/audit/common.md           the eight hard rules, evidence kinds, schemas, output contract
-  skills/audit/audit-evidence.md   auditor and adversary rules only
+  skills/audit/common.md           the eight hard rules, evidence kinds, ids, output contract
+  skills/audit/audit-evidence.md   auditor and adversary rules, the finding schema among them
   skills/audit/second-opinion-request.md
   skills/audit/handoff.md  live.md  report.md  work-items.md  fault-injection.md  resume.md
   skills/audit/stages/1-orient.md ... 9-act.md

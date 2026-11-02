@@ -1,6 +1,6 @@
 ---
 name: digester
-description: Stage 2 of an audit run. Turns one chunk of a document corpus among the sources of truth into a cited rule list. Launched only by the audit skill, one per chunk.
+description: "Stage 2 of an audit run: turns one chunk of a document corpus into a cited rule list. Launched only by the audit skill."
 model: haiku
 tools:
   - Read
@@ -91,7 +91,6 @@ and the scope's questions.
    `wc -c`, and number lines with the one `awk` program of step 4. No other pipe stage, no
    other `sed` or `awk` use, and no test or lint run. A diff always names two commits; a
    two-dot diff is never used; `git status` is not run.
-3. Read and search trees as `### Reading trees and searching` in `common.md` says. The Grep
-   and Glob tools run only in an export or in the run directory.
+3. The Grep and Glob tools run only in an export or in the run directory.
 4. You never ask for or use a live system or a credential. A rule that only a live system
    could settle is marked `needs a live check`.

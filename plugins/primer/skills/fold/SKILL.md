@@ -53,7 +53,7 @@ Map what the subagents return onto the repository, and judge each practice again
 
 - Where `shapes.md` or `placement.md` says what the docs no longer say, the destination is primer.
 - Where a doc practice and a suite choice differ, such as a primer cap, the suite's choice stands and the item is a note.
-- Where `shapes.md` or `placement.md` and the docs disagree about what the host does, the item names both texts, and its change is the check that would settle it, not an edit of primer's file.
+- Where `shapes.md` or `placement.md` and the docs disagree about what the host does, the item names both texts, and its change is the check that would settle it; primer's file is edited only after that check.
 - Recommend an item only when it affects correctness or risk, or costs more to leave than to fold. The rest are notes.
 
 ## Report

@@ -164,6 +164,11 @@ function readFold() {
   return readFileSync(new URL('SKILL.md', FOLD_DIR), 'utf8');
 }
 
+test('R237: the plugin holds the fold and primer skills only', () => {
+  const skills = new URL('../../plugins/primer/skills/', import.meta.url);
+  assert.deepEqual(readdirSync(skills).sort(), ['fold', 'primer']);
+});
+
 test('R326: the fold skill directory holds SKILL.md only', () => {
   assert.deepEqual(readdirSync(FOLD_DIR), ['SKILL.md']);
 });
@@ -216,8 +221,8 @@ test('R327: fold counts a tree as a tool for Claude only when it holds Claude Co
   assert.ok(readFold().includes('that holds Claude Code components: a `SKILL.md`, a `hooks.json`, an agent Markdown file with `name` and `description` frontmatter, or a workflow script that exports `meta`'));
 });
 
-test('R328: a host disagreement with the docs is settled by a check, not an edit of primer\'s files', () => {
-  assert.ok(readFold().includes('the item names both texts, and its change is the check that would settle it, not an edit of primer\'s file'));
+test('R328: a host disagreement with the docs is settled by a check before primer\'s files are edited', () => {
+  assert.ok(readFold().includes('the item names both texts, and its change is the check that would settle it; primer\'s file is edited only after that check'));
 });
 
 test('Decision 166: placement says a skill with disable-model-invocation is not listed at launch', () => {

@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R329; the primer milestones M10 to M19 follow M9, and M20 to M61 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R333; the primer milestones M10 to M19 follow M9, and M20 to M62 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -1302,6 +1302,23 @@ Work items, in this order:
 6. After the merge, by the owner: the tag after a yes, then item 21 on the merge commit.
 
 Check: `npm run test:primer` after each commit that touches it; `npm test` and `npm run lint` with the deny tokens before the push.
+
+## Rule-driven refactor skill: M62
+
+Added 2026-11-02. Decision 167 and R330 to R333: `/rules:refactor` in rules 0.1.17. M62 touches `docs/`, `CHANGELOG.md`, `README.md`, `.claude-plugin/marketplace.json`, `plugins/rules/` and `tests/rules/`. It builds on the pull request of M61 and merges after it. Tags wait for the owner's merge.
+
+### M62: the refactor skill
+
+Work items, in this order:
+
+1. The design documents. Commit: `docs(design): specify the rules refactor skill`.
+2. `node tools/release.mjs rules 0.1.17`, with the catalog `metadata.version` raised to 0.1.23 and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.17`.
+3. `tests/rules/skill.test.mjs` first: the refactor skill's frontmatter, tools, directory and cap, each seen failing; then `skills/refactor/SKILL.md` and one line each in the root and the plugin `README.md`. Commit: `feat(rules): add the refactor skill`.
+4. The `## rules 0.1.17 - <date>` heading. Commit: `docs(changelog): add the rules 0.1.17 heading`.
+5. Items 73 to 75, each run's tokens and minutes recorded, and the release items 22, 39 and 44. A fix a run calls for is its own `fix(rules)` commit, and the item runs again after it. Items 2 and 4 rest on their runs at 0.1.16, since `core.md`, the script and `/rules` do not change; item 38 rests as in M61. Commit: `docs(acceptance): record rules 0.1.17`.
+6. After the merge, by the owner: the tag after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:rules` after each commit that touches it; `npm test` and `npm run lint` with the deny tokens before the push.
 
 ## Acceptance record
 

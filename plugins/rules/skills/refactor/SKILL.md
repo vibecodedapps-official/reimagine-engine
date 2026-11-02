@@ -34,7 +34,7 @@ Quote no rule from memory. Every rule a finding cites is quoted from the file it
 
 ## Ticket directory
 
-Find the ticket directory before launching any subagent, since the grant above covers only this turn and a subagent's return starts a new one. It is the repository's ignored scratch directory: one that git ignores, checked with `git check-ignore` on its path with a trailing slash, and that the repository uses for scratch, such as `.scratch/`. When there is none, it is `${CLAUDE_PLUGIN_DATA}/refactor/<key>/`, where `<key>` is the main worktree's root path with every character outside `A-Za-z0-9` replaced by `-`. `${CLAUDE_PLUGIN_DATA}` is not a shell variable, so write its resolved path.
+Find the ticket directory before launching any subagent, since the skill's `allowed-tools` cover only this turn and a subagent's return starts a new one. It is the repository's ignored scratch directory: one that git ignores, checked with `git check-ignore` on its path with a trailing slash, and that the repository uses for scratch, such as `.scratch/`. When there is none, it is `${CLAUDE_PLUGIN_DATA}/refactor/<key>/`, where `<key>` is the main worktree's root path with every character outside `A-Za-z0-9` replaced by `-`. `${CLAUDE_PLUGIN_DATA}` is not a shell variable, so write its resolved path.
 
 ## Reviewers
 

@@ -7,7 +7,7 @@ House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept curren
 - The house rules block, in `$CLAUDE_CONFIG_DIR/CLAUDE.md` when that variable is set, else `~/.claude/CLAUDE.md`. Nothing is written until you answer yes to a diff.
 - The output style `rules:Concise Plain`.
 - A chat block, in `chat/instructions.md` inside the plugin. It is for pasting into a chat product's custom instructions. Nothing installs it.
-- The skill `/rules:refactor`, which you invoke yourself. It reviews a repository against the house rules and the repository's own instruction files and, on your yes, writes one ticket file per bundle to the repository's ignored scratch directory.
+- The skill `/rules:refactor`, which you invoke yourself. It reviews a repository against the house rules and the repository's own instruction files and, on your yes, writes one ticket file per bundle to the repository's ignored scratch directory, else to the plugin's data directory.
 
 The plugin never edits `settings.json`.
 

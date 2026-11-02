@@ -79,6 +79,10 @@ test('R331: refactor launches its reviewers as agents, never as a workflow', () 
   assert.ok(readRefactor().includes('with the Agent tool, never as a workflow'));
 });
 
+test('R331: refactor reviews tracked files only', () => {
+  assert.ok(readRefactor().includes('Areas hold tracked files only, as `git ls-files` lists them.'));
+});
+
 test('R331: refactor keeps reviewers and refuters together at most 20 at a time', () => {
   assert.ok(readRefactor().includes('The run\'s reviewers and refuters together stay at most 20 at a time because the host refuses more'));
 });
@@ -91,8 +95,8 @@ test('R331: refactor recommends by the core.md item and quotes no rule', () => {
   assert.ok(readRefactor().includes('by the `core.md` item on finding issues and proposing changes'));
 });
 
-test('R333: refactor names each ticket file by the run\'s date and time and the bundle\'s number', () => {
-  assert.ok(readRefactor().includes('Name each ticket file with the run\'s date and time to the second and the bundle\'s number, so no earlier run\'s ticket has its path.'));
+test('R333: refactor names each ticket file from the clock in a fixed format', () => {
+  assert.ok(readRefactor().includes('Name each ticket file `refactor-<time>-<n>.md`, where `<time>` is the output of `date +%Y%m%d-%H%M%S`, which may prompt once, and `<n>` is the bundle\'s number, so no earlier run\'s ticket has its path.'));
 });
 
 test('R333: refactor checks the scratch directory with a trailing slash', () => {

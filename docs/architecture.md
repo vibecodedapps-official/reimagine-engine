@@ -36,7 +36,7 @@ reimagine-engine/
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs` | none | own |
-| primer | project instructions | `/primer`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
+| primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
 
 ## Layers on a machine
 
@@ -82,6 +82,7 @@ Skills are user-invocable and carry their trigger phrases in `description` (veri
 - A plugin skill named `gate` answers as `/gate` and `/gate:gate`; no bundled skill owns the name (verified, decision 120, on 2.1.310).
 - The review skill's bare path target reviews the path's diff from the merge-base with the repository's default branch, read from `refs/remotes/origin/HEAD` with `main` as the fallback, and has no base flag; a `<base>...HEAD` target carries the base, and `<base>...HEAD <path>` reaches the review as its target text and is honored by the reviewer, which runs `git diff <base>...HEAD -- <path>` (verified, decision 121).
 - `/code-review ultra` is the host's cloud review, user-triggered and billed, offered only when a server flag, a first-party API and a local session coincide; the model cannot launch it, and a child session that types it falls back to a local `max` review with a notice, which on a ten-line diff ran 17 minutes and cost $17 (verified, decision 122). The suite never types `max` or `ultra`.
+- On 2.1.316, a plugin with a second skill directory passes `claude plugin validate --strict` and `claude -p "/context"` lists both skills; a skill with `disable-model-invocation: true` has no line in the skills table, where the same skill without it takes about 50 tokens; `allowed-tools: WebFetch(domain:code.claude.com)` passes `validate --strict`, which does not exercise the grant; the index `https://code.claude.com/docs/llms.txt` lists every page as a `.md` URL and the pages fetch, the hooks reference at 284k characters and the skills page at 119k, so a reader pages through them with the fetch tool's offset (verified, decision 166); a subagent launch while 20 run is refused with `Concurrent subagent limit reached`, and the error says not to retry (verified, item 69). That the bare `/primer` still reaches `primer:primer` beside a sibling, and whether a subagent's WebFetch prompts under the default mode, since a skill's `allowed-tools` pre-approve only the invoking turn, are acceptance items 71 and 72.
 
 ## The `rules` plugin
 
@@ -440,6 +441,7 @@ plugins/primer/
   skills/primer/SKILL.md           /primer; modes init, adopt, maintain; the proposal format
   skills/primer/placement.md       the eleven placement items and the tasks test
   skills/primer/shapes.md          hub, nested file, rule and skill templates with their caps
+  skills/fold/SKILL.md             /primer:fold; disable-model-invocation: true; reads the docs live, writes nothing
   hooks/hooks.json                 PreToolUse Bash|PowerShell -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"
                                    SessionStart startup -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"
   hooks/drift.sh                   the commit check
@@ -468,7 +470,7 @@ The skill's description names "turn this into a skill", "we keep doing this", "a
 | root `CLAUDE.md` or `AGENTS.md`, the hub | line 1 `<!-- primer -->`; `# <name>` and two or three sentences, with one sentence per long document to read before a kind of work; `## Commands`; `## Constraints` | 60 lines | every session |
 | `<subdir>/CLAUDE.md` | the hub's three parts, no marker | 60 lines | when a file under it is read or edited |
 | `.claude/rules/<topic>.md` | prose; optional `paths` frontmatter, a YAML list or a comma string | 200 lines | at launch without `paths`; on a matching touch with it |
-| `.claude/skills/<name>/SKILL.md` | `name`, `description` with the phrases first, optional `disable-model-invocation`, `paths`, `allowed-tools`; one sentence for done, numbered steps, checks, what to report | 150 lines | description always; body when invoked, judged relevant, or a `paths` match |
+| `.claude/skills/<name>/SKILL.md` | `name`, `description` with the phrases first, optional `disable-model-invocation`, `paths`, `allowed-tools`; one sentence for done, numbered steps, checks, what to report | 150 lines | description at launch unless `disable-model-invocation`; body when invoked, judged relevant, or a `paths` match |
 | `docs/*.md` | long-form for people and for the hub's sentences | none | when named |
 
 The marker is an HTML comment because the host strips those before the content reaches context (verified, decision 74). A count is the lines the file has, frontmatter and blank lines included. A file over its cap is split by topic; no real constraint is deleted to fit. `shapes.md` holds a template for each row; `placement.md` holds the eleven items of requirement 241 with the tasks test and one example per item.
@@ -500,6 +502,10 @@ With one it reads the hub, every tracked nested `CLAUDE.md`, every tracked `.cla
 ### Notice
 
 SessionStart at `startup`, the same construction. It finds `<config>` from the grandparent of the input's `transcript_path`, `<key>` from the parent of `git rev-parse --git-common-dir` (the working directory outside a repository), and the hub as the drift hook does. With the marker present it counts the topic files `MEMORY.md` lists whose `type` is `feedback` or `project` and whose `modified` is later than the stamp, every such file when no stamp exists, and prints `{"systemMessage":"primer: auto memory has <n> notes since the last review; run /primer"}` when the count is above zero; otherwise nothing. It writes nothing; the stamp is the skill's, which a headless session writes under `auto` and refuses under `acceptEdits` (decision 76).
+
+### Fold
+
+`/primer:fold` reviews one repository against the documentation as it reads that day and ends in a report in the reply; it writes nothing (R329). It tells the situation from the files, a tool for Claude, a repository worked on with Claude Code, or both, reads the index at `https://code.claude.com/docs/llms.txt` and the starting pages of R327 with one subagent per page, and maps what each returns onto the repository. Each item names the page and section, the file and line, what the docs say, what the repository does and the destination by `placement.md` (R328). A gap in `shapes.md` or `placement.md` is a primer item, a disagreement with the docs about what the host does is an item whose change is the check that would settle it, with primer's file edited only after it (R328), a fold into an instruction file names `/primer`, and one into code or configuration is written as a loop description. `disable-model-invocation: true` keeps its description out of the startup context (decision 166).
 
 ### Migration from repo-docs
 

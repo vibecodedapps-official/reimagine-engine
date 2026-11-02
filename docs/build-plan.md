@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R325; the primer milestones M10 to M19 follow M9, and M20 to M59 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R329; the primer milestones M10 to M19 follow M9, and M20 to M61 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -1285,6 +1285,23 @@ Work items, in this order:
 2. The record of M59's merge, its tags and item 21 on the merge commit. Commit: `docs(acceptance): record audit 0.1.10, gate 0.1.6 and rules 0.1.16`.
 
 Check: `npm run test:lint`; the script run against the range of a branch that held the line exits 1, and against the same branch without it exits 0; `npm test` and `npm run lint` before the push; item 21 on the pull request's own run.
+
+## Docs fold-back skill: M61
+
+Added 2026-11-02. Decision 166, R326 to R329 and R237 as amended: `/primer:fold` in primer 0.1.2, with the placement sentence on skill descriptions corrected. M61 touches `docs/`, `CHANGELOG.md`, `README.md`, `.claude-plugin/marketplace.json`, `plugins/primer/` and `tests/primer/`. Tags wait for the owner's merge.
+
+### M61: the fold skill
+
+Work items, in this order:
+
+1. The design documents. Commit: `docs(design): specify the primer fold skill`.
+2. `node tools/release.mjs primer 0.1.2`, with the catalog `metadata.version` raised to 0.1.22. Commit: `release(primer): 0.1.2`.
+3. `tests/primer/skill.test.mjs` first: the fold skill's frontmatter, tools, directory and cap, and the corrected placement sentence, each seen failing; then `skills/fold/SKILL.md`, the sentence in `placement.md`, and one line each in the root and the plugin `README.md`. Commit: `feat(primer): add the fold skill`.
+4. The `## primer 0.1.2 - <date>` heading, which also covers the marketplace rename of the untagged 0.1.1. Commit: `docs(changelog): add the primer 0.1.2 heading`.
+5. Items 69 to 72, each run's tokens and minutes recorded, and the release items 22, 39 and 44; 71 and 72 run interactively. A fix a run calls for is its own `fix(primer)` commit, and the item runs again after it. Item 38 rests on its last run, since no description it asserts on changes and prose cannot invoke fold. Commit: `docs(acceptance): record primer 0.1.2`.
+6. After the merge, by the owner: the tag after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:primer` after each commit that touches it; `npm test` and `npm run lint` with the deny tokens before the push.
 
 ## Acceptance record
 

@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.2 - 2026-11-02
+
+- `/primer:fold` reviews a repository against the Claude Code documentation as it reads that day and reports where a documented practice or mechanism can be folded in, with the page, the file and the destination of each, so the instruction files and the plugin keep up with the docs; it writes nothing and runs only when the user types it.
+- `placement.md` no longer says a skill's description is always listed: a skill with `disable-model-invocation: true` is not listed at launch.
+- The README and manifest name the renamed marketplace, `reimagine-engine`, a change made in 0.1.1, which was not tagged.
+
 ## audit 0.1.10 - 2026-11-01
 
 - The shared files shrink, since every launch pays for them: four sections of `audit-evidence.md` no step names go, with a short section keeping the bars on a finding that the adversary and the second opinion would otherwise lose, the orchestrator's read-only check and counting rules leave `common.md`, and the finding schema and its neighbors move to `audit-evidence.md`, so a digester, mapper or merger launch no longer reads them.

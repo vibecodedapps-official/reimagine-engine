@@ -157,3 +157,75 @@ test('R241 and R252: placement holds the eleven items in order and the personal-
   assert.deepEqual(numbers, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   assert.ok(PLACEMENT.includes('- <file>:<line>: <text>: belongs in <CLAUDE.local.md | your own CLAUDE.md | the rules plugin\'s house rules block>'));
 });
+
+const FOLD_DIR = new URL('../../plugins/primer/skills/fold/', import.meta.url);
+
+function readFold() {
+  return readFileSync(new URL('SKILL.md', FOLD_DIR), 'utf8');
+}
+
+test('R237: the plugin holds the fold and primer skills only', () => {
+  const skills = new URL('../../plugins/primer/skills/', import.meta.url);
+  assert.deepEqual(readdirSync(skills).sort(), ['fold', 'primer']);
+});
+
+test('R326: the fold skill directory holds SKILL.md only', () => {
+  assert.deepEqual(readdirSync(FOLD_DIR), ['SKILL.md']);
+});
+
+test('R326: the fold frontmatter names the skill, sets the flag, takes no arguments and lists read-only tools', () => {
+  const lines = readFold().split(/\r?\n/);
+  assert.equal(lines[0], '---');
+  const end = lines.indexOf('---', 1);
+  assert.ok(end > 1, 'the frontmatter has a closing ---');
+  const front = lines.slice(1, end);
+  assert.ok(front.includes('name: fold'));
+  const description = front.find((l) => l.startsWith('description:'));
+  assert.ok(description, 'a description line exists');
+  assert.ok(description.slice('description:'.length).trim() !== '', 'the description has a value');
+  assert.ok(front.includes('disable-model-invocation: true'));
+  assert.ok(!front.some((l) => l.startsWith('argument-hint:')), 'no argument-hint line');
+  const at = front.findIndex((l) => l.startsWith('allowed-tools:'));
+  assert.ok(at >= 0, 'an allowed-tools line exists');
+  const tools = [];
+  for (const l of front.slice(at + 1)) {
+    if (!l.startsWith('  ')) break;
+    tools.push(l.replace(/^ {2}- /, ''));
+  }
+  assert.deepEqual(tools, [
+    'Read',
+    'Grep',
+    'Glob',
+    'Bash(git status *)',
+    'Bash(git diff *)',
+    'Bash(git log *)',
+    'Bash(git show *)',
+    'Bash(git rev-parse *)',
+    'Bash(git ls-files *)',
+    'Bash(git check-ignore *)',
+    'Bash(git grep *)',
+    'WebFetch(domain:code.claude.com)',
+  ]);
+});
+
+test('R326 and R240: the fold SKILL.md is within its cap of 150 lines', () => {
+  const n = lineCount(readFold());
+  assert.ok(n <= 150, `fold SKILL.md has ${n} lines`);
+});
+
+test('R327: fold launches at most 20 page readers at a time', () => {
+  assert.ok(readFold().includes('at most 20 at a time since the host refuses more'));
+});
+
+test('R327: fold counts a tree as a tool for Claude only when it holds Claude Code components', () => {
+  assert.ok(readFold().includes('that holds Claude Code components: a `SKILL.md`, a `hooks.json`, an agent Markdown file with `name` and `description` frontmatter, or a workflow script that exports `meta`'));
+});
+
+test('R328: a host disagreement with the docs is settled by a check before primer\'s files are edited', () => {
+  assert.ok(readFold().includes('the item names both texts, and its change is the check that would settle it; primer\'s file is edited only after that check'));
+});
+
+test('Decision 166: placement says a skill with disable-model-invocation is not listed at launch', () => {
+  assert.ok(!PLACEMENT.includes('A skill\'s description is always listed.'));
+  assert.ok(PLACEMENT.includes('- A skill\'s description is listed at launch unless the skill sets `disable-model-invocation: true`; then only the user invokes it. Its body loads when the skill is invoked or judged relevant. A skill with `paths` stays hidden until a matching file is touched.'));
+});

@@ -212,6 +212,14 @@ test('R327: fold launches at most 20 page readers at a time', () => {
   assert.ok(readFold().includes('at most 20 at a time since the host refuses more'));
 });
 
+test('R327: fold counts a tree as a tool for Claude only when it holds Claude Code components', () => {
+  assert.ok(readFold().includes('that holds Claude Code components: a `SKILL.md`, a `hooks.json`, an agent Markdown file with `name` and `description` frontmatter, or a workflow script that exports `meta`'));
+});
+
+test('R328: a host disagreement with the docs is settled by a check, not an edit of primer\'s files', () => {
+  assert.ok(readFold().includes('the item names both texts, and its change is the check that would settle it, not an edit of primer\'s file'));
+});
+
 test('Decision 166: placement says a skill with disable-model-invocation is not listed at launch', () => {
   assert.ok(!PLACEMENT.includes('A skill\'s description is always listed.'));
   assert.ok(PLACEMENT.includes('- A skill\'s description is listed at launch unless the skill sets `disable-model-invocation: true`; then only the user invokes it. Its body loads when the skill is invoked or judged relevant. A skill with `paths` stays hidden until a matching file is touched.'));

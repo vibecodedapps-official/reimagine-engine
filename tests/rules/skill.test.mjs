@@ -90,3 +90,27 @@ test('R332: refactor bundles only recommended findings that quote a rule', () =>
 test('R331: refactor recommends by the core.md item and quotes no rule', () => {
   assert.ok(readRefactor().includes('by the `core.md` item on finding issues and proposing changes'));
 });
+
+test('R333: refactor names each ticket file so no file in the directory has it', () => {
+  assert.ok(readRefactor().includes('Give each ticket file a name that no file in the directory already has.'));
+});
+
+test('R333: refactor checks the scratch directory with a trailing slash', () => {
+  assert.ok(readRefactor().includes('checked with `git check-ignore` on its path with a trailing slash'));
+});
+
+test('R333: refactor keeps each reviewer brief in the prompt, never in a file', () => {
+  assert.ok(readRefactor().includes('Each brief goes in the Agent prompt, never in a file.'));
+});
+
+test('R333: refactor asks its one question only when there is a bundle', () => {
+  assert.ok(readRefactor().includes('When the report has at least one bundle, ask one question: write the ticket files.'));
+});
+
+test('R332: each refactor finding gives what the change costs', () => {
+  assert.ok(readRefactor().includes('- what the change costs'));
+});
+
+test('R331: refactor reads imported and nested instruction files', () => {
+  assert.ok(readRefactor().includes('nested `CLAUDE.md` and `AGENTS.md` files, the files they import,'));
+});

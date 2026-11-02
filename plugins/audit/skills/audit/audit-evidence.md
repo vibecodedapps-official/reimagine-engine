@@ -154,8 +154,9 @@ Whichever agent files it:
   parameter, with one finding per account naming each test. The finding names the
   account, where its rights come from and the narrower role the test needs. The
   `live check` of a pointer queries the account's grants and whether a read-only role
-  exists, per environment the test runs in. With the default questions it goes under `Q1`; with a custom list, under
-  the question closest to best practice, else the first, and the finding says so.
+  exists, per environment the test runs in. With the default questions it goes under `Q1`;
+  with a custom list, under the question closest to best practice, else the first, and
+  the finding says so.
 - A matcher finding needs quoted reads at head and base showing that an incompatible
   producer survives integration: the head leaves the producer as it is, and the base's
   version produces a form the change does not match. The leads are the merge-base-to-base

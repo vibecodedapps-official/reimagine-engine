@@ -34,7 +34,7 @@ Quote no rule from memory. Every rule a finding cites is quoted from the file it
 
 ## Reviewers
 
-Split the repository into areas, each a cohesive part: a package, a plugin, a top-level directory, or the tests of one area. Launch one read-only subagent per area with the Agent tool at model `sonnet`, at most 20 at a time because the host refuses more, the next as one finishes.
+Split the repository into areas, each a cohesive part: a package, a plugin, a top-level directory, or the tests of one area. Launch one read-only subagent per area with the Agent tool, never as a workflow, at model `sonnet`, at most 20 at a time because the host refuses more, the next as one finishes.
 
 Each brief quotes verbatim the applicable items from `core.md` and the instruction files that cover the area, names its paths, and asks for findings with evidence: file and line, and what the code does. A reviewer changes nothing.
 
@@ -48,7 +48,7 @@ Recommend what affects correctness or risk, or costs more to leave than to fix. 
 
 ## The report
 
-Group the surviving findings into bundles. A bundle is one cohesive refactor sized for one loop run. Order the bundles by the cost of leaving them. Each finding gives:
+Group the surviving findings that quote a rule into bundles. A bundle is one cohesive refactor sized for one loop run. Order the bundles by the cost of leaving them. Each finding gives:
 
 - the location to open
 - the rule item, quoted from `core.md` or the instruction file

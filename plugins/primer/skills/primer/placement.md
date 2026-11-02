@@ -23,7 +23,7 @@ Place each piece once. A piece that two destinations both hold is duplicated, an
 - The hub and unscoped rules load in every session at launch.
 - A path-scoped rule loads when a matching file is read or edited.
 - A nested `CLAUDE.md` loads when a file under its directory is read or edited.
-- A skill's description is always listed. Its body loads when the skill is invoked or judged relevant. A skill with `paths` stays hidden until a matching file is touched.
+- A skill's description is listed at launch unless the skill sets `disable-model-invocation: true`; then only the user invokes it. Its body loads when the skill is invoked or judged relevant. A skill with `paths` stays hidden until a matching file is touched.
 - A `docs/` page loads only when something names it and a task reads it.
 
 A destination that loads too widely costs every task that did not need the piece. A destination that loads too narrowly lets a task miss a piece it must obey.

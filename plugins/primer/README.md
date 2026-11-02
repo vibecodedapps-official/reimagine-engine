@@ -29,6 +29,8 @@ Name a mode to force it:
 
 The skill also answers to "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files".
 
+Run `/primer:fold` for a read-only report of where the current Claude Code documentation describes a practice or mechanism the repository could fold in, each item with the page, the file and the destination; it writes nothing.
+
 A repository kept by repo-docs converts in one `/primer` run in adopt mode: the hub gets the marker, each spoke pointer becomes a rule, a skill, a nested `CLAUDE.md` or a sentence in the hub, and the index goes.
 
 ## The hub

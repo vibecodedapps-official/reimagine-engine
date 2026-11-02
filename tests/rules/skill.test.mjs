@@ -96,7 +96,7 @@ test('R331: refactor recommends by the core.md item and quotes no rule', () => {
 });
 
 test('R333: refactor names each ticket file from the clock in a fixed format', () => {
-  assert.ok(readRefactor().includes('Name each ticket file `refactor-<time>-<n>.md`, where `<time>` is the output of `date +%Y%m%d-%H%M%S`, which may prompt once, and `<n>` is the bundle\'s number, so no earlier run\'s ticket has its path.'));
+  assert.ok(readRefactor().includes('Name each ticket file `refactor-<time>-<n>.md`, where `<time>` is the output of `date -u +%Y%m%d-%H%M%S`, which may prompt once, and `<n>` is the bundle\'s number, so no earlier run\'s ticket has its path.'));
 });
 
 test('R333: refactor checks the scratch directory with a trailing slash', () => {

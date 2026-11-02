@@ -64,7 +64,7 @@ An item with no rule behind it is a note, apart from the bundles. A rule the run
 
 When the report has at least one bundle, ask one question: write the ticket files.
 
-On a yes, write one file per bundle. The directory is the repository's ignored scratch directory: one that git ignores, checked with `git check-ignore` on its path with a trailing slash, and that the repository uses for scratch, such as `.scratch/`. When there is none, use `${CLAUDE_PLUGIN_DATA}/refactor/<key>/`, where `<key>` is the main worktree's root path with every character outside `A-Za-z0-9` replaced by `-`. `${CLAUDE_PLUGIN_DATA}` is not a shell variable, so write its resolved path. Give each ticket file a name that no file in the directory already has.
+On a yes, write one file per bundle. The directory is the repository's ignored scratch directory: one that git ignores, checked with `git check-ignore` on its path with a trailing slash, and that the repository uses for scratch, such as `.scratch/`. When there is none, use `${CLAUDE_PLUGIN_DATA}/refactor/<key>/`, where `<key>` is the main worktree's root path with every character outside `A-Za-z0-9` replaced by `-`. `${CLAUDE_PLUGIN_DATA}` is not a shell variable, so write its resolved path. Name each ticket file with the run's date and time to the second and the bundle's number, so no earlier run's ticket has its path.
 
 A ticket is Markdown and self-contained, so the loop needs nothing else. It holds the bundle's goal; each finding with its location, the quoted rule, what the code does and the change; the done condition; and the repository's checks by command, taken from its instruction files or manifest.
 

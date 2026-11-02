@@ -91,8 +91,8 @@ test('R331: refactor recommends by the core.md item and quotes no rule', () => {
   assert.ok(readRefactor().includes('by the `core.md` item on finding issues and proposing changes'));
 });
 
-test('R333: refactor names each ticket file so no file in the directory has it', () => {
-  assert.ok(readRefactor().includes('Give each ticket file a name that no file in the directory already has.'));
+test('R333: refactor names each ticket file by the run\'s date and time and the bundle\'s number', () => {
+  assert.ok(readRefactor().includes('Name each ticket file with the run\'s date and time to the second and the bundle\'s number, so no earlier run\'s ticket has its path.'));
 });
 
 test('R333: refactor checks the scratch directory with a trailing slash', () => {

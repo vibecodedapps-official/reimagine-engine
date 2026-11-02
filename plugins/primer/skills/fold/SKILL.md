@@ -43,7 +43,7 @@ Do not read admin, gateway, cloud, desktop or Agent SDK pages.
 
 ## Reading
 
-Launch one read-only subagent per page with the Agent tool, model `sonnet`, all in parallel. Give it the page URL. It returns the page's practices and mechanisms, each with its section and the quoted or closely paraphrased text. Some pages are very long, so it pages through with the fetch tool's offset until the page ends. Its fetch may prompt for permission; that is expected.
+Launch one read-only subagent per page with the Agent tool, model `sonnet`, in parallel, at most 20 at a time since the host refuses more, each later one launched as an earlier one finishes. Give it the page URL. It returns the page's practices and mechanisms, each with its section and the quoted or closely paraphrased text. Some pages are very long, so it pages through with the fetch tool's offset until the page ends. Its fetch may prompt for permission; that is expected.
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/primer/placement.md` and `${CLAUDE_PLUGIN_ROOT}/skills/primer/shapes.md` yourself. They place each fold, and the docs are the check on them.
 

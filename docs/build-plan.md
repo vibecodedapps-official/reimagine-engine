@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R333; the primer milestones M10 to M19 follow M9, and M20 to M62 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R333; the primer milestones M10 to M19 follow M9, and M20 to M63 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -1319,6 +1319,19 @@ Work items, in this order:
 6. After the merge, by the owner: the tag after a yes, then item 21 on the merge commit.
 
 Check: `npm run test:rules` after each commit that touches it; `npm test` and `npm run lint` with the deny tokens before the push.
+
+## Growth test clock: M63
+
+Added 2026-11-02. Decision 168 and issue 45: the growth test of `units` and `imports` reads CPU time. M63 touches `tests/rules/` and `docs/`, and no plugin, so it has no release.
+
+### M63: the clock
+
+Work items, in this order:
+
+1. The design documents, then `tests/rules/rules.test.mjs`: `timed` reads `process.cpuUsage()`, each side is its median batch, and a batch runs at least 100 ms; the threshold stays 10. Commit: `test(rules): time the growth test by cpu, not the wall clock`.
+2. The record of the merges of M61 and M62, their tags and item 21 on each merge commit. Commit: `docs(acceptance): record primer 0.1.2, rules 0.1.17 and the growth test clock`.
+
+Check: the changed test fails on a quadratic function and passes on `units` and `imports`; `npm test` several times, where the old test failed; `npm run test:rules` and `npm run lint` before the push; item 21 on the pull request's own run, Windows included.
 
 ## Acceptance record
 

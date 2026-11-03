@@ -1444,25 +1444,29 @@ test('R35: a backslash escapes only an opening backtick; a closing run pairs and
 
 test('units and imports grow about linearly: four times the input takes under ten times as long', () => {
   // Linear growth gives a ratio near 4 and quadratic code near 16, so 10 sits between.
-  // Each side is its best batch, taken after warm-up, so a slow patch must hit every batch to count.
+  // Each side is its median batch, taken after warm-up, so a slow patch must hit most batches to count.
+  // CPU time, not wall time, so time spent waiting while other test files run does not count;
+  // a batch runs at least 100 ms because Windows can count CPU time in steps of about 16 ms.
   const timed = (run, text, count) => {
-    const t0 = performance.now();
+    const t0 = process.cpuUsage();
     for (let i = 0; i < count; i++) run(text);
-    return performance.now() - t0;
+    const t = process.cpuUsage(t0);
+    return (t.user + t.system) / 1000;
   };
   const grows = (name, make, run, n) => {
     const [small, large] = [make(n), make(4 * n)];
     run(small);
     run(large);
     let count = 1;
-    while (count < 256 && timed(run, small, count) < 50) count *= 2;
+    while (count < 256 && timed(run, small, count) < 100) count *= 2;
     const more = Math.max(1, Math.floor(count / 4));
     const [a, b] = [[], []];
     for (let k = 0; k < 5; k++) {
       a.push(timed(run, small, count) / count);
       b.push(timed(run, large, more) / more);
     }
-    const ratio = Math.min(...b) / Math.min(...a);
+    const median = (list) => [...list].sort((x, y) => x - y)[Math.floor(list.length / 2)];
+    const ratio = median(b) / median(a);
     const ms = (list) => list.map((x) => x.toFixed(2)).join(', ');
     return [ratio < 10, `${name}: ratio ${ratio.toFixed(2)}; ms per run, small [${ms(a)}], large [${ms(b)}]`];
   };

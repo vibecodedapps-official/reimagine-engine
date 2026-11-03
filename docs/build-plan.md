@@ -1364,7 +1364,7 @@ Work items, in this order:
 3. The tests first, each seen failing; then primer's `SKILL.md` and the audit's `stages/9-act.md`. Commits: `fix(primer): keep the host's attribution trailer` and `fix(audit): keep the host's attribution trailer`.
 4. The `## primer 0.1.4 - <date>` and `## audit 0.1.11 - <date>` headings. Commit: `docs(changelog): add the primer 0.1.4 and audit 0.1.11 headings`.
 5. The record of M64's merge, its tag and item 21 on the merge commit. Commit: `docs(acceptance): record the primer 0.1.3 merge`.
-6. The release items 22, 39 and 44, items 28 and 29, which rerun when the primer skill or adopt changes, and items 15 and 16, which rerun when act changes. Commit: `docs(acceptance): record primer 0.1.4 and audit 0.1.11`.
+6. The release items 22, 39 and 44, items 28 and 29, which rerun when the primer skill or adopt changes, item 15, which reruns when act changes, and item 16, which reruns when resume changes, as the release changes the version `resume.md` carries. Commit: `docs(acceptance): record primer 0.1.4 and audit 0.1.11`.
 7. After the merge, by the owner: the tags after a yes, then item 21 on the merge commit.
 
 Check: `npm run test:primer` and `npm run test:audit` before and after item 3; `npm test` and `npm run lint` with the deny tokens before the push.

@@ -112,7 +112,7 @@ test('R253 to R255: propose reads four sources in order, never proposes the neve
   assert.ok(SKILL.includes('   - the instruction files: a numbered list or a "to do X" section in the hub, a rule, a nested file or `README.md`;'));
   assert.ok(SKILL.includes('   - the repository: a script or build target whose use takes more than one command or a setup step, a runbook under `docs/`, a procedure in `CONTRIBUTING.md`;'));
   assert.ok(SKILL.includes('   - auto memory: a `feedback` or `project` note that says how to do something.'));
-  assert.ok(SKILL.includes('Never propose a skill for one command, for a fact, or for a procedure a skill already holds, and never run a skill or change one this run did not raise.'));
+  assert.ok(SKILL.includes('Never propose a skill for one command, for a fact, or for a procedure a skill already holds, and never run a skill or change one this run did not raise, except by a line step 3 promotes.'));
   assert.ok(SKILL.includes('A written skill takes the skill shape of `shapes.md` at `.claude/skills/<name>/SKILL.md`.'));
   assert.ok(SKILL.includes('A procedure from an instruction file leaves that file in the same commit, a memory note is then offered for deletion as Proposals says, and a procedure from the repository changes nothing else.'));
   assert.ok(SKILL.includes('On its yes, write it; `adopt` and `maintain` commit it, and `init` leaves it uncommitted.'));
@@ -156,6 +156,25 @@ test('R241 and R252: placement holds the eleven items in order and the personal-
   }
   assert.deepEqual(numbers, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   assert.ok(PLACEMENT.includes('- <file>:<line>: <text>: belongs in <CLAUDE.local.md | your own CLAUDE.md | the rules plugin\'s house rules block>'));
+});
+
+test('R241: placement item 2 sends a stopped or asked tool call and a host trailer to the settings key that enforces it', () => {
+  const lines = PLACEMENT.split(/\r?\n/);
+  const start = lines.indexOf('## Items');
+  assert.ok(start >= 0, 'an Items heading exists');
+  let stop = lines.findIndex((l, i) => i > start && l.startsWith('## '));
+  if (stop < 0) stop = lines.length;
+  const item = lines.slice(start + 1, stop).find((l) => l.startsWith('2. '));
+  assert.ok(item, 'item 2 exists');
+  assert.ok(item.includes('A tool call that must be stopped or asked about in every task, or a trailer the host adds, goes to the settings key that enforces it: permissions deny or ask, attribution.'));
+  assert.ok(item.includes('The plan proposes the hook or the key to the user. Primer never writes it. Until it exists, place the piece by the items below.'));
+});
+
+test('R241 and R257: a failure seen only when a skill runs goes into the step that fails', () => {
+  const lines = PLACEMENT.split(/\r?\n/);
+  const fact = lines.indexOf('- A fact stays a rule even when a skill uses it. The skill reads the rule and does not copy it.');
+  assert.ok(fact >= 0, 'the fact bullet exists');
+  assert.equal(lines[fact + 1], '- A failure seen only when the skill runs, and its fix, goes into the step that fails. Only that skill\'s runs need it, so the tasks test puts it there.');
 });
 
 const FOLD_DIR = new URL('../../plugins/primer/skills/fold/', import.meta.url);

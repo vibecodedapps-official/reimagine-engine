@@ -9,5 +9,10 @@
         "repo": "vibecodedapps-official/reimagine-engine"
       }
     }
+  },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
   }
 }

@@ -9,11 +9,12 @@
 //   LINT_DENY_TOKENS=a,b node tools/lint.mjs   also fails on any file holding one of the tokens (case-insensitive)
 // Prints "lint: ok (<files> files, <plugins> plugins)" and exits 0, or "lint: N failure(s)", one "- <message>" per failure, and exits 1.
 import { execFile, spawnSync } from 'node:child_process';
-import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { LITERAL, SEMVER, SEMVER_CORE, compareSemver } from './semver.mjs';
+import { listFiles } from './files.mjs';
+import { SEMVER, SEMVER_CORE, compareSemver, literalsIn } from './semver.mjs';
 
 const run = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -142,26 +143,10 @@ function git(args) {
   return r.error ? { status: -1, stdout: '' } : { status: r.status, stdout: r.stdout };
 }
 
-const isRegular = (rel) => lstatSync(join(root, rel), { throwIfNoEntry: false })?.isFile() === true;
-
-function walk(dir) {
-  const out = [];
-  for (const e of readdirSync(join(root, dir), { withFileTypes: true })) {
-    if (e.name === '.git' || e.name === 'node_modules') continue;
-    const rel = dir ? `${dir}/${e.name}` : e.name;
-    if (e.isDirectory()) out.push(...walk(rel));
-    else out.push(rel);
-  }
-  return out;
-}
-
 function loadContext() {
   const inside = git(['rev-parse', '--is-inside-work-tree']);
   const isWork = inside.status === 0 && inside.stdout.trim() === 'true';
-  const listed = isWork
-    ? git(['ls-files', '-z', '--cached', '--others', '--exclude-standard']).stdout.split('\0').filter(Boolean)
-    : walk('');
-  const files = [...new Set(listed)].filter(isRegular).sort();
+  const files = listFiles(root);
   const fileSet = new Set(files);
   const shallow = isWork && git(['rev-parse', '--is-shallow-repository']).stdout.trim() === 'true';
   const cache = new Map();
@@ -595,13 +580,10 @@ function pluginVersionFailures(ctx) {
   const version = ctx.json(AUDIT_MANIFEST)?.version;
   let found = 0;
   for (const file of ctx.shipped.filter((f) => f.startsWith('plugins/audit/'))) {
-    ctx.text(file).split('\n').forEach((line, i) => {
-      if (!line.includes('plugin_version')) return;
-      for (const m of line.matchAll(LITERAL)) {
-        found++;
-        if (typeof version === 'string' && m[0] !== version) out.push(`${file}:${i + 1}: plugin_version literal ${m[0]} differs from the audit manifest ${version}`);
-      }
-    });
+    for (const l of literalsIn(ctx.text(file))) {
+      found++;
+      if (typeof version === 'string' && l.value !== version) out.push(`${file}:${l.line}: plugin_version literal ${l.value} differs from the audit manifest ${version}`);
+    }
   }
   if (!found) out.push('plugins/audit: no plugin_version literal');
   return out;

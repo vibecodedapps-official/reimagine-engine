@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.4 - 2026-11-02
+
+- Primer's commits keep the attribution trailer the host's setting adds, as the loop's and the gate's do, where they had dropped a `Co-Authored-By` trailer; a user who wants none turns the setting off.
+
+## audit 0.1.11 - 2026-11-02
+
+- The act stage's commits keep the attribution trailer the host's setting adds, as the loop's and the gate's do, where they had dropped one that names a model; a user who wants none turns the setting off.
+
 ## primer 0.1.3 - 2026-11-02
 
 - Placement item 2 sends a tool call that must be stopped or asked about in every task, or a trailer the host adds, to the settings key that enforces it, permissions deny or ask or attribution, so a fold that names a setting has an item to land in; primer proposes the key and never writes it.

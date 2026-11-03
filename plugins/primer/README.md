@@ -42,7 +42,7 @@ The hub is the root `CLAUDE.md`, or the root `AGENTS.md` when the repository kee
 - `## Commands`: the commands that verify work.
 - `## Constraints`: the hard constraints every task follows.
 
-The other files have caps too: a nested `CLAUDE.md` at most 60 lines, a rule 200, a `SKILL.md` 150. Every line of the file counts.
+The other files have caps too: a nested `CLAUDE.md` at most 60 lines, a rule 200, a `SKILL.md` 150. Every line of the file counts. A nested `CLAUDE.md` and a rule are also capped at 40,000 characters: Claude Code gives only the start of a nested `CLAUDE.md` or a rule with `paths` that is longer, and the cap covers every rule, so a rule that gains `paths` is already within it.
 
 ## Drift hook
 
@@ -51,6 +51,7 @@ Before each `git commit` that Claude Code runs through its Bash or PowerShell to
 It blocks the commit, with the reason, when:
 
 - the hub or a nested `CLAUDE.md` is over 60 lines, a rule is over 200, or a `SKILL.md` is over 150;
+- a nested `CLAUDE.md` or a rule is over 40,000 characters;
 - a path in backticks in the hub's opening paragraph does not exist, spelled exactly;
 - a rule's or skill's `paths` cannot be read;
 - a `paths` glob matches no tracked file;

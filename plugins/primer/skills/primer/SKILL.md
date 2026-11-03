@@ -80,7 +80,7 @@ A rule or a nested `CLAUDE.md` takes the skill form with its own first line, `<n
 ## Adopt
 
 1. State the mode.
-2. Inventory every instruction and documentation file, tracked, untracked and ignored: `CLAUDE.md`, `AGENTS.md` and `CLAUDE.local.md` at any depth, `.claude/CLAUDE.md`, `.claude/rules/**`, `.claude/skills/**`, `README.md`, `CONTRIBUTING.md` and Markdown under `docs/`, with each file's line count and every `@path` import and what it names. List other tools' rule files, such as `.cursor/rules/` or `.github/copilot-instructions.md`, and leave them alone.
+2. Inventory every instruction and documentation file, tracked, untracked and ignored: `CLAUDE.md`, `AGENTS.md` and `CLAUDE.local.md` at any depth, `.claude/CLAUDE.md`, `.claude/rules/**`, `.claude/skills/**`, `README.md`, `CONTRIBUTING.md` and Markdown under `docs/`, with each file's line and character count and every `@path` import and what it names. List other tools' rule files, such as `.cursor/rules/` or `.github/copilot-instructions.md`, and leave them alone.
 3. Refactor a file only when it is over its cap, holds content for two scopes, or duplicates another. Every other file stays as it is.
 4. Never move a pinned file: one an `@` import names, one a file that is not documentation references (code, configuration, CI, a package manifest), or one with a name other tools read (`README.md`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `LICENSE`, anything under `.github/`). A link from a documentation file does not pin.
 5. Place each piece by `placement.md` into the shapes of `shapes.md`:

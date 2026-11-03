@@ -141,6 +141,7 @@ test('R237: every skill file SKILL.md names exists', () => {
 
 test('R238 and R262: the shapes file opens the hub template with the marker and names the caps', () => {
   assert.ok(SHAPES.includes('- Hub: 60 lines. Nested `CLAUDE.md`: 60 lines. Rule: 200 lines. `SKILL.md`: 150 lines. `docs/` pages: no cap.'));
+  assert.ok(SHAPES.includes('- Nested `CLAUDE.md` and rule: also 40,000 characters: the host gives only the start of a nested `CLAUDE.md` or a rule with `paths` that is over that, and the cap covers every rule, so a rule that gains `paths` is already within it.'));
   assert.ok(SHAPES.replace(/\r\n/g, '\n').includes('```\n<!-- primer -->\n# <repository name>\n'));
 });
 

@@ -1,10 +1,23 @@
 // The semver rule tools/lint.mjs and tools/release.mjs share: the version pattern, the order of two versions,
-// and the plugin_version literal.
+// and the plugin_version literals of a text.
 const ID = '(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)';
 export const SEMVER_CORE = `(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-${ID}(?:\\.${ID})*)?`;
 export const SEMVER = new RegExp(`^${SEMVER_CORE}$`);
 
-export const LITERAL = /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]*[0-9A-Za-z])?/g;
+const LITERAL = /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]*[0-9A-Za-z])?/g;
+
+// The version literals on the lines of text that hold plugin_version: line number, value and character span.
+export function literalsIn(text) {
+  const found = [];
+  let offset = 0;
+  text.split('\n').forEach((line, i) => {
+    if (line.includes('plugin_version')) {
+      for (const m of line.matchAll(LITERAL)) found.push({ line: i + 1, value: m[0], span: [offset + m.index, offset + m.index + m[0].length] });
+    }
+    offset += line.length + 1;
+  });
+  return found;
+}
 
 function parseSemver(v) {
   const dash = v.indexOf('-');

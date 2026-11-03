@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.18 - 2026-11-03
+
+- `/rules:refactor`'s second pass also refutes a finding that a test or a recorded decision holds, or whose quoted rule does not cover the case when no other item does, since a run had kept such findings and their tickets would have sent loop runs at defects that were not there.
+
+## primer 0.1.5 - 2026-11-03
+
+- A nested `CLAUDE.md` and a rule are capped at 40,000 characters as well as by lines, and the drift hook denies a commit that puts one over it, since Claude Code gives only the start of a file that loads on demand when it is longer, and a rule of long lines passed the 200-line cap.
+
 ## primer 0.1.4 - 2026-11-02
 
 - Primer's commits keep the attribution trailer the host's setting adds, as the loop's and the gate's do, where they had dropped a `Co-Authored-By` trailer; a user who wants none turns the setting off.
@@ -154,7 +162,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## rules 0.1.10 - 2026-10-25
 
-- The Working item that asks for one report ends after "when the next step turns on my answer"; the clause "no progress notes unless I ask for them" goes. It restated the bound the first clause already sets, and the owner read it as pushing replies toward under-reporting. The rule count stays 35; the block updates through /rules.
+- The Working item that asks for one report ends after "when the next step turns on my answer"; the clause "no progress notes unless I ask for them" goes. It restated the bound the first clause already sets. The rule count stays 35; the block updates through /rules.
 
 ## rules 0.1.9 - 2026-10-25
 

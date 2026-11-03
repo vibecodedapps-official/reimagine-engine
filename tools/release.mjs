@@ -3,10 +3,11 @@
 // changes nothing else, then runs tools/lint.mjs. It does not tag and does not edit the changelog.
 // Usage: node tools/release.mjs <plugin> <version>
 import { spawnSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LITERAL, SEMVER, compareSemver } from './semver.mjs';
+import { listFiles } from './files.mjs';
+import { SEMVER, compareSemver, literalsIn } from './semver.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const CATALOG = '.claude-plugin/marketplace.json';
@@ -130,36 +131,6 @@ function onlySpansDiffer(original, edited, edits, replacement) {
   return edited.slice(to) === original.slice(from);
 }
 
-// The files git sees under dir, tracked or untracked but not ignored, as lint lists them; a walk where git cannot list.
-function auditFiles(dir) {
-  const listed = spawnSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', dir], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 });
-  if (listed.error || listed.status !== 0) return walk(dir);
-  return listed.stdout.split('\0').filter(Boolean).filter((rel) => statSync(join(root, rel), { throwIfNoEntry: false })?.isFile() === true);
-}
-
-function walk(dir) {
-  const out = [];
-  for (const e of readdirSync(join(root, dir), { withFileTypes: true })) {
-    if (e.name === '.git' || e.name === 'node_modules') continue;
-    const rel = `${dir}/${e.name}`;
-    if (e.isDirectory()) out.push(...walk(rel));
-    else if (e.isFile()) out.push(rel);
-  }
-  return out;
-}
-
-function literalsIn(text) {
-  const found = [];
-  let offset = 0;
-  text.split('\n').forEach((line, i) => {
-    if (line.includes('plugin_version')) {
-      for (const m of line.matchAll(LITERAL)) found.push({ line: i + 1, value: m[0], span: [offset + m.index, offset + m.index + m[0].length] });
-    }
-    offset += line.length + 1;
-  });
-  return found;
-}
-
 function plan(plugin, version) {
   const manifestPath = `plugins/${plugin}/.claude-plugin/plugin.json`;
   const manifestText = readText(manifestPath);
@@ -180,7 +151,7 @@ function plan(plugin, version) {
 
   const files = [];
   if (plugin === 'audit') {
-    for (const file of auditFiles('plugins/audit').sort()) {
+    for (const file of listFiles(root, 'plugins/audit')) {
       const text = readText(file);
       const literals = literalsIn(text);
       const bad = literals.find((l) => l.value !== current);

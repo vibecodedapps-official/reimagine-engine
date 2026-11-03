@@ -44,7 +44,7 @@ Each brief quotes verbatim the applicable items from `core.md` and the instructi
 
 ## Second pass
 
-A first reading can find a case held only by the text it proposes to cut. For each area's findings, launch a fresh read-only subagent at model `sonnet` that tries to refute every one: the case the cited text holds, the caller that uses the option, the instruction that permits it. A finding it refutes is dropped and not shown.
+A first reading can find a case held only by the text it proposes to cut. For each area's findings, launch a fresh read-only subagent at model `sonnet` that tries to refute every one: the case the cited text holds, the caller that uses the option, a test that already holds the case, the instruction or recorded decision that permits or chose it, and a quoted rule that does not cover the case when no other item does. A finding it refutes is dropped and not shown.
 
 ## What to recommend
 

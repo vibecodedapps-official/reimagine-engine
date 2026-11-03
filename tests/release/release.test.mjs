@@ -145,9 +145,15 @@ test('R221: audit 0.1.0 also sets the plugin_version literals', () => {
     ' M plugins/audit/skills/audit/resume.md',
     ' M plugins/audit/skills/audit/stages/1-orient.md',
   ]);
-  assert.equal(read(dir, skill).split('\n')[312], '  "plugin_version": "0.1.0",');
-  assert.equal(read(dir, resume).split('\n')[155], '   - `plugin_version`, compared with the literal `"0.1.0"`; any other recorded value');
-  assert.equal(read(dir, orient).split('\n')[281], '      `mv -f`, with `plugin_version` `0.1.0`, empty `approvals`, and a stage 1 entry');
+  for (const [path, line] of [
+    [skill, '  "plugin_version": "0.1.0",'],
+    [resume, '   - `plugin_version`, compared with the literal `"0.1.0"`; any other recorded value'],
+    [orient, '      `mv -f`, with `plugin_version` `0.1.0`, empty `approvals`, and a stage 1 entry'],
+  ]) {
+    const held = read(dir, path).split('\n');
+    assert.equal(held.filter((l) => l === line).length, 1, `${path} does not hold the line ${line} exactly once`);
+    assert.deepEqual(held.filter((l) => l.includes('0.1.0-alpha.1')), [], `${path} still holds the old version 0.1.0-alpha.1`);
+  }
 });
 
 test('R221: an ignored file under plugins/audit is not read for literals', () => {
@@ -227,13 +233,10 @@ refuses('R221: refuses a manifest and catalog that disagree', (dir) => {
 'release: rules manifest has 0.1.0-alpha.1, the catalog has 0.1.0-alpha.9; fix that first');
 
 refuses('R221: refuses an audit literal that differs from the version', (dir) => {
-  const lines = read(dir, resume).split('\n');
-  assert.ok(lines[155].includes('0.1.0-alpha.1'));
-  lines[155] = lines[155].replace('0.1.0-alpha.1', '0.1.0-alpha.9');
-  put(dir, resume, lines.join('\n'));
+  put(dir, 'plugins/audit/skills/audit/notes.md', '# Notes\n\nThe "plugin_version" is "0.1.0-alpha.9".\n');
   commit(dir);
 }, ['audit', '0.1.0'], 1,
-'release: plugins/audit/skills/audit/resume.md:156: plugin_version literal 0.1.0-alpha.9 differs from 0.1.0-alpha.1');
+'release: plugins/audit/skills/audit/notes.md:3: plugin_version literal 0.1.0-alpha.9 differs from 0.1.0-alpha.1');
 
 test('R221: runs lint afterwards and exits with its status', () => {
   const dir = caseDir();

@@ -5,8 +5,9 @@
 # the tracked nested CLAUDE.md files, rules and skills, `git ls-files` for their globs and the
 # changed file list; never reads git history and never writes a file. Prints at most one JSON
 # object and always exits 0:
-#   deny:    a file is over its line cap, the hub names a missing path, a paths value cannot
-#            be read or matches no tracked file, or a skill has no description
+#   deny:    a file is over its line cap, a nested CLAUDE.md or rule is over its character cap,
+#            the hub names a missing path, a paths value cannot be read or matches no tracked
+#            file, or a skill has no description
 #   advise:  additionalContext names rules, skills and nested files that cover changed
 #            paths and are not changed
 #   nothing: not a commit, no opted-in hub, or no finding
@@ -250,6 +251,16 @@ lines_over() {
 	fi
 }
 
+# chars_over <file> <cap>: adds a finding when the file on disk has more than <cap> UTF-8
+# characters, counted as the bytes left after deleting continuation bytes.
+chars_over() {
+	co_n=$(LC_ALL=C tr -d '\200-\277' <"$root/$1" 2>/dev/null | wc -c)
+	co_n=${co_n#"${co_n%%[! ]*}"}
+	if [ "$co_n" -gt "$2" ] 2>/dev/null; then
+		addf "$1 has $co_n characters, over its cap of $2"
+	fi
+}
+
 # tracked <pathspec>: the tracked files of the pathspec in path order.
 tracked() {
 	git -C "$root" -c core.quotepath=off ls-files -- "$1" 2>/dev/null | LC_ALL=C sort
@@ -474,6 +485,7 @@ EOF
 	while IFS= read -r f; do
 		[ -n "$f" ] && [ -f "$root/$f" ] || continue
 		lines_over "$f" 60
+		chars_over "$f" 40000
 		ncov="$ncov$f$TAB${f%CLAUDE.md}$NL"
 		havecov=1
 	done <<EOF
@@ -484,6 +496,7 @@ EOF
 	while IFS= read -r f; do
 		[ -n "$f" ] && [ -f "$root/$f" ] || continue
 		lines_over "$f" 200
+		chars_over "$f" 40000
 		check_front "$f" ""
 	done <<EOF
 $rules

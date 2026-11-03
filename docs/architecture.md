@@ -26,9 +26,10 @@ reimagine-engine/
   plugins/primer/                   project instructions in the host's forms, memory promotion, two hooks
   tests/                            node:test suites and the audit sh suites
   tools/commit-messages.mjs         the commit message and description checks of a pull request
+  tools/files.mjs                   the file listing lint and release share
   tools/lint.mjs                    repository rules
   tools/release.mjs                 version bump per plugin
-  tools/semver.mjs                  the semver rule lint and release share
+  tools/semver.mjs                  the semver rule and literal scan lint and release share
 ```
 
 | Plugin | Installs | Entry points | Scripts | Hooks | Version line |
@@ -475,12 +476,12 @@ The skill's description names "turn this into a skill", "we keep doing this", "a
 | File | Parts | Cap | Loads |
 |---|---|---|---|
 | root `CLAUDE.md` or `AGENTS.md`, the hub | line 1 `<!-- primer -->`; `# <name>` and two or three sentences, with one sentence per long document to read before a kind of work; `## Commands`; `## Constraints` | 60 lines | every session |
-| `<subdir>/CLAUDE.md` | the hub's three parts, no marker | 60 lines | when a file under it is read or edited |
-| `.claude/rules/<topic>.md` | prose; optional `paths` frontmatter, a YAML list or a comma string | 200 lines | at launch without `paths`; on a matching touch with it |
+| `<subdir>/CLAUDE.md` | the hub's three parts, no marker | 60 lines and 40,000 characters | when a file under it is read or edited |
+| `.claude/rules/<topic>.md` | prose; optional `paths` frontmatter, a YAML list or a comma string | 200 lines and 40,000 characters | at launch without `paths`; on a matching touch with it |
 | `.claude/skills/<name>/SKILL.md` | `name`, `description` with the phrases first, optional `disable-model-invocation`, `paths`, `allowed-tools`; one sentence for done, numbered steps, checks, what to report | 150 lines | description at launch unless `disable-model-invocation`; body when invoked, judged relevant, or a `paths` match |
 | `docs/*.md` | long-form for people and for the hub's sentences | none | when named |
 
-The marker is an HTML comment because the host strips those before the content reaches context (verified, decision 74). A count is the lines the file has, frontmatter and blank lines included. A file over its cap is split by topic; no real constraint is deleted to fit. `shapes.md` holds a template for each row; `placement.md` holds the eleven items of requirement 241 with the tasks test and one example per item.
+The marker is an HTML comment because the host strips those before the content reaches context (verified, decision 74). A count is the lines the file has, frontmatter and blank lines included; the character cap counts UTF-8 characters (requirement 240). A file over its cap is split by topic; no real constraint is deleted to fit. `shapes.md` holds a template for each row; `placement.md` holds the eleven items of requirement 241 with the tasks test and one example per item.
 
 Imports: the hub holds none but `@AGENTS.md`; a rule or skill names a `docs/` file in words, since the host does not expand `@path` inside `.claude/rules/` (verified, decision 82). A root `AGENTS.md` is the hub when the repository keeps one, with no `CLAUDE.md` written; a root `CLAUDE.local.md` stops the host reading it, so adopt then proposes the one-line `@AGENTS.md` file (decision 75).
 
@@ -502,7 +503,7 @@ Auto memory is read at `<config>/projects/<key>/memory/`, where `<config>` is `$
 
 ### Drift hook
 
-PreToolUse on `Bash|PowerShell`, POSIX sh with sed, awk, grep and `test`, no `jq`. It reads stdin, extracts `tool_input.command`, and returns at once unless the command runs `git commit` (the grammar of requirement 260). It resolves the repository the commit runs in (decision 50) and finds the hub: the root `CLAUDE.md`, the `AGENTS.md` a one-line `@AGENTS.md` names, or the root `AGENTS.md` when there is no `CLAUDE.md`. Without a hub whose first line is `<!-- primer -->` it prints nothing.
+PreToolUse on `Bash|PowerShell`, POSIX sh with sed, awk, sort, tr, wc and `test`, no `jq`. It reads stdin, extracts `tool_input.command`, and returns at once unless the command runs `git commit` (the grammar of requirement 260). It resolves the repository the commit runs in (decision 50) and finds the hub: the root `CLAUDE.md`, the `AGENTS.md` a one-line `@AGENTS.md` names, or the root `AGENTS.md` when there is no `CLAUDE.md`. Without a hub whose first line is `<!-- primer -->` it prints nothing.
 
 With one it reads the hub, every tracked nested `CLAUDE.md`, every tracked `.claude/rules/**/*.md` and `.claude/skills/*/SKILL.md`, and the changed set of decision 56. It denies, in the JSON deny form with `primer: ` and the findings joined by `; `, on a cap overrun, a backticked token of the hub's opening paragraph that looks like a path (holds a `/` or ends in `.md`, with no space, `<`, `>`, `*`, `{` or `?`) and does not exist spelled exactly, a `paths` value that is neither a list nor a comma string, a `paths` glob that matches no tracked file, or a `SKILL.md` without `description`. A glob is matched with `git ls-files -- ':(glob)<pattern>'` after the hook expands brace groups and prefixes `**/` to a pattern without a slash (verified against the host's matching, decision 80). When nothing denies, a changed file that matches a rule's or skill's `paths` or sits under a nested `CLAUDE.md` whose file is not itself changed puts that file in `additionalContext` as one to recheck (reaches the model under auto mode, decision 85). It never reads git history and never writes.
 
@@ -528,7 +529,7 @@ Each plugin has its own version, starting at 0.1.0, in its manifest and its cata
 
 `package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `gate`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per milestone before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
 
-`tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's three cases, planned under `tests/gate/evals/` with their own command since they need the runner's scaffold and tool grants, were dropped when the runner refused the first of them (decision 133); acceptance items 47, 49 and 54 stand for them, run against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes (requirement 319).
+`tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's three cases, planned under `tests/gate/evals/` with their own command since they need the runner's scaffold and tool grants, were dropped when the runner refused the first of them (decision 133); acceptance items 47, 49 and 54 stand for them, run against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes.
 
 ## Security and permissions
 

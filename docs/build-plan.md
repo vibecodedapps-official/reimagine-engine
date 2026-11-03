@@ -1341,7 +1341,7 @@ Added 2026-11-02. Decision 169 and R241, R246, R255 and R257 as amended: placeme
 
 Work items, in this order:
 
-1. `tests/primer/skill.test.mjs` first: the settings key sentences of item 2, the skill failure bullet, the maintain exception and the Every mode line on what item 2 proposes, each seen failing; then `placement.md` and `SKILL.md`. Commit: `feat(primer): place enforced settings keys and skill-run failures`.
+1. `tests/primer/skill.test.mjs` first: the settings key sentences of item 2, the skill failure bullet and the maintain exception, each seen failing; then `placement.md` and `SKILL.md`. Commit: `feat(primer): place enforced settings keys and skill-run failures`.
 2. The design documents. Commit: `docs(design): record the settings key and skill failure placements`.
 3. `node tools/release.mjs primer 0.1.3`, with the catalog `metadata.version` raised to 0.1.24. Commit: `release(primer): 0.1.3`.
 4. The `## primer 0.1.3 - <date>` heading. Commit: `docs(changelog): add the primer 0.1.3 heading`.

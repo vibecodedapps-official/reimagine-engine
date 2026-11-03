@@ -1369,6 +1369,19 @@ Work items, in this order:
 
 Check: `npm run test:primer` and `npm run test:audit` before and after item 3; `npm test` and `npm run lint` with the deny tokens before the push.
 
+## Pull request description check: M66
+
+Added 2026-11-02. Decision 171, issue 66 and R222 as amended: CI fails a pull request whose description holds a session attribution line, and checks it again when the description is edited. M66 touches `.github/workflows/`, `tools/`, `tests/lint/` and `docs/`, and no plugin, so it has no release.
+
+### M66: the check
+
+Work items, in this order:
+
+1. The design documents, then the tests in `tests/lint/commit-messages.test.mjs` and `tests/lint/ci.test.mjs`, seen failing, then the `--description` mode of `tools/commit-messages.mjs` and `.github/workflows/pr-description.yml`. Commit: `ci(repo): fail a pull request on a session link in its description`.
+2. The record of M65's merge, its tags and item 21 on the merge commit. Commit: `docs(acceptance): record the primer 0.1.4 and audit 0.1.11 merge`.
+
+Check: `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push; item 21 on the pull request's own run, the description check included.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

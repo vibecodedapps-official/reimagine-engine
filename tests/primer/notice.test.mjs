@@ -20,7 +20,7 @@ let seq = 0;
 const git = (cwd, ...args) => {
   const r = spawnSync(
     'git',
-    ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false', '-c', 'init.defaultBranch=main', ...args],
+    ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false', '-c', 'init.defaultBranch=main', '-c', 'maintenance.auto=false', '-c', 'gc.auto=0', ...args],
     { cwd, env: gitEnv, encoding: 'utf8' },
   );
   assert.equal(r.status, 0, `git ${args.join(' ')} in ${cwd}\n${r.stderr}`);

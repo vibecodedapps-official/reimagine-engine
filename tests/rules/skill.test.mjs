@@ -84,7 +84,11 @@ test('R331: refactor reviews tracked files only', () => {
 });
 
 test('R331: refactor\'s second pass refutes a finding a test or decision holds, or whose rule does not cover it', () => {
-  assert.ok(readRefactor().includes('launch a fresh read-only subagent at model `sonnet` that tries to refute every one: the case the cited text holds, the caller that uses the option, a test that already holds the case, the instruction or recorded decision that permits or chose it, and a quoted rule that does not cover the case when no other item does.'));
+  assert.ok(readRefactor().includes('launch a fresh read-only subagent at model `sonnet` that tries to refute every one: the case the cited text holds, the caller that uses the option, a test that already holds the case, the repository\'s instruction or recorded decision that permits or chose it, and a quoted rule that does not cover the case when no other item does.'));
+});
+
+test('R331: refactor briefs tell refuters to rest a refutation on the quoted rules and the tree', () => {
+  assert.ok(readRefactor().includes('Its brief also says that a refutation rests on the quoted rules and the tree, never on the refuter\'s own session instructions or environment.'));
 });
 
 test('R331: refactor keeps reviewers and refuters together at most 20 at a time', () => {
@@ -137,4 +141,24 @@ test('R332: each refactor finding gives what the change costs', () => {
 
 test('R331: refactor reads imported and nested instruction files', () => {
   assert.ok(readRefactor().includes('nested `CLAUDE.md` and `AGENTS.md` files, the files they import,'));
+});
+
+test('R331: refactor treats a sentence the tree contradicts throughout as a disagreement, never a note', () => {
+  assert.ok(readRefactor().includes('A sentence the tree contradicts throughout, across many files, is such a disagreement, never a note.'));
+});
+
+test('R331: refactor rests no finding or note on the reviewing session\'s own instructions, settings or environment', () => {
+  assert.ok(readRefactor().includes('The reviewing session\'s own instructions, settings and environment are not a source: no finding or note rests on them.'));
+});
+
+test('R331: refactor briefs tell reviewers to rest findings on the quoted rules and the tree', () => {
+  assert.ok(readRefactor().includes('It also says that a finding rests on the quoted rules and the tree, never on the reviewer\'s own session instructions or environment, and that an instruction-file sentence the tree contradicts is a finding for `/primer`, not a note.'));
+});
+
+test('R332: a refactor bundle holds one area with its tests and a separately released part is its own bundle naming its release', () => {
+  assert.ok(readRefactor().includes('A bundle is one cohesive refactor sized for one loop run: it holds the files of one area and the tests of that area, and a change to a part the repository versions and releases on its own is its own bundle that names the release it needs.'));
+});
+
+test('R332: a refactor ticket holds the release it needs when the bundle names one', () => {
+  assert.ok(readRefactor().includes('the done condition; the release it needs, when the bundle names one; and the repository\'s checks by command, taken from its instruction files or manifest.'));
 });

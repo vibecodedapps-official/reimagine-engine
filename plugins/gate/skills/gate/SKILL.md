@@ -1,6 +1,6 @@
 ---
 name: gate
-description: 'Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict when a pass finds nothing left to fix. Use when the user says "reimagine gate", "gate this branch", "gate PR <n>" or "gate the manifest <path>".'
+description: 'Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict when a pass finds nothing left to fix. Use when the user says "reimagine gate", "gate this branch", "gate PR [n]" or "gate the manifest [path]".'
 allowed-tools:
   - Bash(date)
   - Bash(date *)

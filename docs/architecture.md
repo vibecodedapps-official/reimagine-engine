@@ -354,7 +354,7 @@ plugins/gate/
   scripts/next.mjs                 the next level or the stop, from passes.json
 ```
 
-The skill is named `gate`, like its plugin, so it answers as `/gate` and `/gate:gate` (verified, decision 120). Its description: "Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict when a pass finds nothing left to fix. Use when the user says "reimagine gate", "gate this branch", "gate PR <n>" or "gate the manifest <path>"." There is no command and no hook. The gate runs after the loop and before the audit, and the audit's manifest carries its result.
+The skill is named `gate`, like its plugin, so it answers as `/gate` and `/gate:gate` (verified, decision 120). Its description: "Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict when a pass finds nothing left to fix. Use when the user says "reimagine gate", "gate this branch", "gate PR [n]" or "gate the manifest [path]"." There is no command and no hook. The gate runs after the loop and before the audit, and the audit's manifest carries its result.
 
 ### Reading the request
 

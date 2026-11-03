@@ -145,6 +145,10 @@ test('R238 and R262: the shapes file opens the hub template with the marker and 
   assert.ok(SHAPES.replace(/\r\n/g, '\n').includes('```\n<!-- primer -->\n# <repository name>\n'));
 });
 
+test('R254: a written skill description holds no angle bracket', () => {
+  assert.ok(SHAPES.includes('- A written `description` holds no `<` or `>`: the skill list shows them as `&lt;` and `&gt;`, so write a placeholder as `[name]`.'));
+});
+
 test('R241 and R252: placement holds the eleven items in order and the personal-content form', () => {
   const lines = PLACEMENT.split(/\r?\n/);
   const start = lines.indexOf('## Items');
@@ -246,6 +250,10 @@ test('R327: fold counts a tree as a tool for Claude only when it holds Claude Co
 
 test('R328: a host disagreement with the docs is settled by a check before primer\'s files are edited', () => {
   assert.ok(readFold().includes('the item names both texts, and its change is the check that would settle it; primer\'s file is edited only after that check'));
+});
+
+test('R328: the reviewing session\'s own instructions, settings and environment are neither side of an item', () => {
+  assert.ok(readFold().includes('An item needs evidence from both sides: the docs text and the repository file and line, or the fact that nothing holds it. The reviewing session\'s own instructions, settings and environment are neither side: no item rests on them.'));
 });
 
 test('Decision 166: placement says a skill with disable-model-invocation is not listed at launch', () => {

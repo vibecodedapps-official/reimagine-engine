@@ -877,20 +877,28 @@ mode_carry() {
 		CARRY_ID=$cid awk '
 			BEGIN { pre = "### " ENVIRON["CARRY_ID"] ": " }
 			{
-				if (!on && !done && index($0, pre) == 1) {
+				t = $0
+				sub(/^[ \t]+/, "", t)
+				fence = 0
+				if (index(t, "```") == 1) {
+					inf = !inf
+					fence = 1
+				} else if (inf) fence = 1
+				if (!fence && !on && !done && index($0, pre) == 1) {
 					on = 1
-					print
+					buf[++n] = $0
 					next
 				}
 				if (on) {
-					if (substr($0, 1, 3) == "## " || $0 ~ /^### [^ :]+: /) {
+					if (!fence && (substr($0, 1, 3) == "## " || $0 ~ /^### [^ :]+: /)) {
 						on = 0
 						done = 1
 						next
 					}
-					print
+					buf[++n] = $0
 				}
-			}' "$lf" > "$tmp/cut" || fail2 "cannot read $lf"
+			}
+			END { if (!(on && inf)) for (i = 1; i <= n; i++) print buf[i] }' "$lf" > "$tmp/cut" || fail2 "cannot read $lf"
 	fi
 	if [ ! -s "$tmp/cut" ]; then
 		echo "live: no block for $cid in ledger/$cn.md"

@@ -601,6 +601,58 @@ same "carry L1" "$w/c1/live/carried/L1.md" "### L1: Retry loop never ends
 ### Evidence
 - worker.sh:9
 "
+rm -rf "$w/c3" && mkdir -p "$w/c3/ledger"
+cat > "$w/c3/ledger/6.md" <<'EOF'
+## Role
+Second opinion.
+
+### X1: Wrong total
+- severity: high
+
+```
+### X9: example heading inside a fence
+```
+
+- tail line after the fence
+
+### X2: Next
+EOF
+run "carry X1, heading inside a fence" 0 "" "" carry c3 X1
+same "carry X1, heading inside a fence" "$w/c3/live/carried/X1.md" "### X1: Wrong total
+- severity: high
+
+\`\`\`
+### X9: example heading inside a fence
+\`\`\`
+
+- tail line after the fence
+"
+rm -rf "$w/c4" && mkdir -p "$w/c4/ledger"
+cat > "$w/c4/ledger/6.md" <<'EOF'
+## Notes
+```
+### X3: Inside
+```
+EOF
+run "carry X3, only inside a fence" 1 "live: no block for X3 in ledger/6.md" "" carry c4 X3
+absent "carry X3, only inside a fence" "$w/c4/live/carried/X3.md"
+rm -rf "$w/c5" && mkdir -p "$w/c5/ledger"
+cat > "$w/c5/ledger/6.md" <<'EOF'
+## Role
+Second opinion.
+
+### X1: Open fence
+- severity: high
+
+```
+example that never closes
+
+### X2: Next
+
+## Notes
+EOF
+run "carry X1, fence never closes" 1 "live: no block for X1 in ledger/6.md" "" carry c5 X1
+absent "carry X1, fence never closes" "$w/c5/live/carried/X1.md"
 
 # --- assemble --------------------------------------------------------------
 

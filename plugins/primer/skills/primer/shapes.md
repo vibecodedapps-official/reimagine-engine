@@ -110,6 +110,7 @@ Done when <one sentence>.
 ```
 
 - Every `SKILL.md` needs a `description`. The drift hook denies a commit without one.
+- A written `description` holds no `<` or `>`: the skill list shows them as `&lt;` and `&gt;`, so write a placeholder as `[name]`.
 - Add `disable-model-invocation: true` when the procedure publishes, deploys, pushes or touches a live system.
 - Add `paths`, in the form a rule uses, when the skill belongs to one area. The skill stays hidden until a matching file is touched.
 - Add `allowed-tools` only for read-only commands every run needs.

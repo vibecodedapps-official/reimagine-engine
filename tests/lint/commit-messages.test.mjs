@@ -2,21 +2,23 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('../../tools/commit-messages.mjs', import.meta.url));
 
+let scratch;
 let dir;
 let base;
+let env;
 
 const git = (...args) => {
   const r = spawnSync(
     'git',
     ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false', ...args],
-    { cwd: dir, encoding: 'utf8' },
+    { cwd: dir, env, encoding: 'utf8' },
   );
   assert.equal(r.status, 0, `git ${args.join(' ')}\n${r.stderr}`);
   return r.stdout.trim();
@@ -27,15 +29,23 @@ const commit = (message) => {
   return git('rev-parse', 'HEAD');
 };
 
-const check = (...args) => spawnSync(process.execPath, [script, ...args], { cwd: dir, encoding: 'utf8' });
+const check = (...args) => spawnSync(process.execPath, [script, ...args], { cwd: dir, env, encoding: 'utf8' });
 
 before(() => {
-  dir = mkdtempSync(join(tmpdir(), 'commit-messages-'));
+  scratch = mkdtempSync(join(tmpdir(), 'commit-messages-'));
+  const emptyConfig = join(scratch, 'empty.gitconfig');
+  writeFileSync(emptyConfig, '');
+  env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: emptyConfig, GIT_CEILING_DIRECTORIES: scratch };
+  delete env.GIT_DIR;
+  delete env.GIT_WORK_TREE;
+  delete env.GIT_INDEX_FILE;
+  dir = join(scratch, 'repo');
+  mkdirSync(dir);
   git('init', '-q');
   base = commit('docs(a): the base');
 });
 
-after(() => rmSync(dir, { recursive: true, force: true }));
+after(() => rmSync(scratch, { recursive: true, force: true }));
 
 test('R222: a range with plain messages passes', () => {
   const head = commit('fix(a): a plain subject\n\nThe body says why, and names a session only in prose.');

@@ -52,7 +52,11 @@
 # rules (`*` does not cross `/`, `**` does).
 #
 # Work dir: must not exist. The script creates it, writes the two copies and their
-# temporary and cache directories in it, and removes it on every exit.
+# temporary and cache directories in it, and removes it on every exit. A removal that
+# leaves the work dir is retried each tick for up to 10 seconds, and the retries print
+# nothing; a work dir still there after that is named on stderr, with the last line of the
+# last removal's error when it printed one, and the exit status is unchanged. A run that
+# fails prints no such line, so its own message stays the last line on stderr.
 #
 # Steps:
 # 1. The changed paths are those of `git diff-tree -r --no-renames` from the merge-base to
@@ -100,9 +104,11 @@
 #   2  wrong arguments or keys, the work dir exists, a git step or write failed, a job
 #      did not start in its own process group, or a process group was still live 10
 #      seconds after KILL (one line on stderr; no result file)
-#   0  the result file is written, whatever the verdicts
+#   0  the result file is written, whatever the verdicts; it can carry the one stderr line
+#      that names a work dir left behind (see Work dir)
 # `bg` exits 0 once `.exit` is written, else 2. `wait` exits as `run` did (0, or 2 with
-# its stderr), 2 for no run started or an unreadable `.exit`, and 3 while still running.
+# its stderr) and forwards the last line of `.err` on 0 too; it exits 2 for no run
+# started or an unreadable `.exit`, and 3 while still running.
 
 if [ -z "${BASH_VERSION:-}" ]; then
 	if ! command -v bash > /dev/null 2>&1; then
@@ -322,6 +328,7 @@ stopdog() {
 	kill -KILL "$wdog" 2> /dev/null
 }
 cleanup() {
+	cl_st=$?
 	# A signal during the cleanup must not cut it short.
 	trap '' HUP INT TERM
 	if [ -n "$wdog" ]; then
@@ -336,7 +343,22 @@ cleanup() {
 	fi
 	if [ -n "$made" ]; then
 		chmod -R u+w "$work" 2> /dev/null
-		rm -rf "$work"
+		cl_err=$(rm -rf "$work" 2>&1)
+		cl_start=$SECONDS
+		while [ -e "$work" ] && [ $((SECONDS - cl_start)) -lt $((10 + slack)) ]; do
+			sleep "$tick"
+			chmod -R u+w "$work" 2> /dev/null
+			cl_err=$(rm -rf "$work" 2>&1)
+		done
+		# On a failed run the failure's own line stays the last one, which `wait` reports.
+		if [ -e "$work" ] && [ "$cl_st" -eq 0 ]; then
+			if [ -n "$cl_err" ]; then
+				cl_last=$(printf '%s\n' "$cl_err" | tail -n 1)
+				printf '%s\n' "revert-tests: the work dir is left: $work; the last removal said: $cl_last" >&2
+			else
+				printf '%s\n' "revert-tests: the work dir is left: $work" >&2
+			fi
+		fi
 	fi
 	if [ -z "$renamed" ]; then
 		rm -f "$out.tmp"

@@ -265,9 +265,14 @@ anything; running resume again completes the work.
 - `carry <run dir> <id>`. `<id>` is `X<n>` or `L<n>`; anything else is a usage error,
   exit 2. It cuts the block that starts at the line beginning `### <id>: ` in
   `ledger/6.md` (`X`) or `ledger/7.md` (`L`) and runs to the next `## ` line or
-  `### <word>: ` line (`### ` subheadings without a colon stay inside), and writes it to
+  `### <word>: ` line (`### ` subheadings without a colon stay inside). The start line
+  and the end lines count only outside a code fence, a line whose text after leading
+  spaces and tabs starts with three backticks opening or closing one, as the ledger reads
+  it. A block that reaches the end of the file inside an open fence is no block, as the
+  ledger leaves it out. The command writes the block to
   `live/carried/<id>.md`, creating `live/carried/`. Exit 1, writing nothing:
-  `live: live/carried/<id>.md exists`, or `live: no block for <id> in ledger/<n>.md`.
+  `live: live/carried/<id>.md exists`, or `live: no block for <id> in ledger/<n>.md`
+  (also when the block reaches the end of the file inside an open fence).
 - `assemble <run dir> <entries dir>`. Reads the orchestrator's new and changed entries,
   one `*.md` file each (a missing directory holds none). An entry is LF only: a first
   line `## <id>`, then one or more lines, none empty or starting `## `, `- source:` or

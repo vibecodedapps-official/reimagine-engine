@@ -433,6 +433,18 @@ describe('primer drift hook', () => {
       const dir = await make('cap-chars-nested-40001', { 'src/api/CLAUDE.md': chars40000 + 'a' });
       assert.equal(await run('git commit -m x', dir), deny('src/api/CLAUDE.md has 40001 characters, over its cap of 40000'));
     });
+    test('a nested CLAUDE.md of 40,000 characters passes', async () => {
+      const dir = await make('cap-chars-nested-40000', { 'src/api/CLAUDE.md': chars40000 });
+      assert.equal(await run('git commit -m x', dir), '');
+    });
+    test('a hub over 40,000 characters has no character cap', async () => {
+      const dir = await make('cap-chars-hub', { 'CLAUDE.md': hubText + 'a'.repeat(40000) + '\n' });
+      assert.equal(await run('git commit -m x', dir), '');
+    });
+    test('a SKILL.md over 40,000 characters has no character cap', async () => {
+      const dir = await make('cap-chars-skill', { '.claude/skills/release/SKILL.md': skillText + 'a'.repeat(40000) + '\n' });
+      assert.equal(await run('git commit -m x', dir), '');
+    });
     test('a rule of 40,000 characters that is 79,975 bytes passes', async () => {
       const dir = await make('cap-chars-multibyte', { '.claude/rules/style.md': ('\u00e9'.repeat(1599) + '\n').repeat(25) });
       assert.equal(await run('git commit -m x', dir), '');

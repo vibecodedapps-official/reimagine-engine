@@ -45,6 +45,8 @@
 # 19 stopdog, from the script's own text: the watchdog, stopped at once 200 times under the
 #    script's TERM trap, leaves stderr empty
 # 20 a work dir whose name holds a backslash   21 output without a final newline
+# 22 a removal that leaves the work dir behind, once, with an error: the cleanup retries
+#    it and stderr stays empty
 #
 # Prints one line per mismatch, then `revert-tests test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -935,6 +937,33 @@ verdicts '- `tests/test_long.sh`: passes at head and without the change
 inblock '`tests/test_long.sh`, head copy' '- Output, the last 80 of 81 lines:'
 inblock '`tests/test_one.sh`, head copy' '- Output:'
 inblock '`tests/test_one.sh`, head copy' '    only line'
+
+# 22. A removal that leaves the work dir behind: an rm on PATH that, on the first
+# `rm -rf <work dir>`, removes it, makes an empty `head` directory in it, as a Windows
+# removal was seen to, and fails with an error line. The cleanup must remove it again,
+# and that first error must not reach the run's stderr (`ok` requires it empty).
+case_id="case 22"
+mkdir "$root/fakebin2"
+real_rm=$(command -v rm)
+printf '#!/bin/sh\nif [ "$#" = 2 ] && [ "$1" = -rf ] && [ "$2" = "%s" ] && [ ! -e "%s" ]; then\n\t"%s" "$@"\n\techo "rm: cannot remove $2: Device or resource busy" >&2\n\tmkdir -p "%s/head"\n\t: > "%s"\n\texit 1\nfi\nexec "%s" "$@"\n' \
+	"$root/rw" "$root/fakebin2/fired" "$real_rm" "$root/rw" "$root/fakebin2/fired" "$real_rm" > "$root/fakebin2/rm"
+chmod +x "$root/fakebin2/rm"
+old_path=$PATH
+fakebin2=$root/fakebin2
+if command -v cygpath > /dev/null 2>&1; then
+	fakebin2=$(cygpath -u "$fakebin2")
+fi
+PATH=$fakebin2:$PATH
+run "$root/c1" "$run_keys"
+PATH=$old_path
+ok
+verdicts "- \`tests/test_a b'c.sh\`: passes at head and without the change
+- \`tests/test_a.sh\`: passes at head and without the change
+- \`tests/test_m.sh\`: passes at head only
+- \`tests/test_moved.sh\`: passes at head only
+- \`tests/test_t.sh\`: does not pass at head (exit status 127)
+"
+[ -e "$root/fakebin2/fired" ] || mismatch "$case_id: the shim did not fire"
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

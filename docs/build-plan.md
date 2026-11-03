@@ -1400,7 +1400,7 @@ Work items, in this order:
 8. One module for the file listing and the `plugin_version` scan that lint and release share. Commit: `refactor(tools): share the file listing and literal scan of lint and release`.
 9. The release test finds the audit version lines by their content. Commit: `test(release): find the audit version lines by content`.
 10. The ignore entry of the dropped gate eval cases. Commit: `chore(repo): drop the ignore entry of the dropped gate eval cases`.
-11. Three record phrases that locate a session. Commit: `docs(design): cut three record phrases that locate a session`.
+11. The record phrases that locate a session, in the decisions and the changelog. Commit: `docs(design): cut the record phrases that locate a session`.
 12. The gate on the branch in fix mode with checks `npm test; npm run lint`, its fixes committed on the branch.
 13. Items 69, 73 and 74, each record listing every recommended item and bundle with its verdict, the release items 22 and 39, and a commit in a throwaway clone with and without the attribution setting. Item 75 rests on its last run, since the tickets do not change; items 2 and 4 rest, since `core.md` does not change. Commit: `docs(acceptance): record the m67 review, primer 0.1.5 and rules 0.1.18`.
 14. After the merge, by the owner: the tags after a yes, then item 21 on the merge commit.

@@ -154,7 +154,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## rules 0.1.10 - 2026-10-25
 
-- The Working item that asks for one report ends after "when the next step turns on my answer"; the clause "no progress notes unless I ask for them" goes. It restated the bound the first clause already sets, and the owner read it as pushing replies toward under-reporting. The rule count stays 35; the block updates through /rules.
+- The Working item that asks for one report ends after "when the next step turns on my answer"; the clause "no progress notes unless I ask for them" goes. It restated the bound the first clause already sets. The rule count stays 35; the block updates through /rules.
 
 ## rules 0.1.9 - 2026-10-25
 

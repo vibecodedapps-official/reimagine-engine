@@ -476,12 +476,12 @@ The skill's description names "turn this into a skill", "we keep doing this", "a
 | File | Parts | Cap | Loads |
 |---|---|---|---|
 | root `CLAUDE.md` or `AGENTS.md`, the hub | line 1 `<!-- primer -->`; `# <name>` and two or three sentences, with one sentence per long document to read before a kind of work; `## Commands`; `## Constraints` | 60 lines | every session |
-| `<subdir>/CLAUDE.md` | the hub's three parts, no marker | 60 lines | when a file under it is read or edited |
-| `.claude/rules/<topic>.md` | prose; optional `paths` frontmatter, a YAML list or a comma string | 200 lines | at launch without `paths`; on a matching touch with it |
+| `<subdir>/CLAUDE.md` | the hub's three parts, no marker | 60 lines and 40,000 characters | when a file under it is read or edited |
+| `.claude/rules/<topic>.md` | prose; optional `paths` frontmatter, a YAML list or a comma string | 200 lines and 40,000 characters | at launch without `paths`; on a matching touch with it |
 | `.claude/skills/<name>/SKILL.md` | `name`, `description` with the phrases first, optional `disable-model-invocation`, `paths`, `allowed-tools`; one sentence for done, numbered steps, checks, what to report | 150 lines | description at launch unless `disable-model-invocation`; body when invoked, judged relevant, or a `paths` match |
 | `docs/*.md` | long-form for people and for the hub's sentences | none | when named |
 
-The marker is an HTML comment because the host strips those before the content reaches context (verified, decision 74). A count is the lines the file has, frontmatter and blank lines included. A file over its cap is split by topic; no real constraint is deleted to fit. `shapes.md` holds a template for each row; `placement.md` holds the eleven items of requirement 241 with the tasks test and one example per item.
+The marker is an HTML comment because the host strips those before the content reaches context (verified, decision 74). A count is the lines the file has, frontmatter and blank lines included; the character cap counts UTF-8 characters (requirement 240). A file over its cap is split by topic; no real constraint is deleted to fit. `shapes.md` holds a template for each row; `placement.md` holds the eleven items of requirement 241 with the tasks test and one example per item.
 
 Imports: the hub holds none but `@AGENTS.md`; a rule or skill names a `docs/` file in words, since the host does not expand `@path` inside `.claude/rules/` (verified, decision 82). A root `AGENTS.md` is the hub when the repository keeps one, with no `CLAUDE.md` written; a root `CLAUDE.local.md` stops the host reading it, so adopt then proposes the one-line `@AGENTS.md` file (decision 75).
 

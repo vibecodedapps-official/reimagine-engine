@@ -1333,6 +1333,24 @@ Work items, in this order:
 
 Check: the changed test fails on a quadratic function and passes on `units` and `imports`; `npm test` several times, where the old test failed; `npm run test:rules` and `npm run lint` before the push; item 21 on the pull request's own run, Windows included.
 
+## Settings keys and skill failures: M64
+
+Added 2026-11-02. Decision 169 and R241, R246, R255 and R257 as amended: placement item 2 gains the settings keys that enforce, a failure seen only when a skill runs goes into its step, and maintain may change an existing skill by a promoted line, in primer 0.1.3. M64 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/primer/` and `tests/primer/`. Tags wait for the owner's merge.
+
+### M64: the placement sentences
+
+Work items, in this order:
+
+1. `tests/primer/skill.test.mjs` first: the settings key sentences of item 2, the skill failure bullet and the maintain exception, each seen failing; then `placement.md` and `SKILL.md`. Commit: `feat(primer): place enforced settings keys and skill-run failures`.
+2. The design documents. Commit: `docs(design): record the settings key and skill failure placements`.
+3. `node tools/release.mjs primer 0.1.3`, with the catalog `metadata.version` raised to 0.1.24. Commit: `release(primer): 0.1.3`.
+4. The `## primer 0.1.3 - <date>` heading. Commit: `docs(changelog): add the primer 0.1.3 heading`.
+5. The gate on the branch with checks `npm test; npm run lint`, its fixes committed on the branch.
+6. The release items 22, 39 and 44, and items 32, 33 and 69, which rerun when promote, propose or a primer reference file changes. Commit: `docs(acceptance): record primer 0.1.3`.
+7. After the merge, by the owner: the tag after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:primer` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

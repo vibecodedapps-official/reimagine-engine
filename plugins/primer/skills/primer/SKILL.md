@@ -33,7 +33,7 @@ Keep the repository's project instructions in the forms Claude Code loads, in on
 
 - Writes are documentation files only: `CLAUDE.md` and `AGENTS.md` at any depth, `.claude/rules/**`, `.claude/skills/**`, `README.md`, and Markdown under `docs/`.
 - Never edit code, configuration, settings, CI files, package manifests, `CLAUDE.local.md`, anything git ignores, or the auto memory directory. The exceptions are a memory note the user approves for deletion in its own question, and the review stamp of Maintain step 3.
-- Never install a git hook and never write a linter rule, a test or a hook. Where placement item 1 or 2 applies, the plan proposes the check for the user.
+- Never install a git hook and never write a linter rule, a test or a hook. Where placement item 1 or 2 applies, the plan proposes the check, hook or settings key for the user.
 - Never run `/init`, `/doctor` or `/memory`.
 - Read `CLAUDE.local.md`, the user's own `CLAUDE.md` and `rules/`, and auto memory to avoid duplication; never write them.
 - Obey every ask-first rule in the instruction files the session loaded. Anything outside the plan asks again.
@@ -128,7 +128,7 @@ Reported:
    - the instruction files: a numbered list or a "to do X" section in the hub, a rule, a nested file or `README.md`;
    - the repository: a script or build target whose use takes more than one command or a setup step, a runbook under `docs/`, a procedure in `CONTRIBUTING.md`;
    - auto memory: a `feedback` or `project` note that says how to do something.
-   Never propose a skill for one command, for a fact, or for a procedure a skill already holds, and never run a skill or change one this run did not raise. A written skill takes the skill shape of `shapes.md` at `.claude/skills/<name>/SKILL.md`. A procedure from an instruction file leaves that file in the same commit, a memory note is then offered for deletion as Proposals says, and a procedure from the repository changes nothing else.
+   Never propose a skill for one command, for a fact, or for a procedure a skill already holds, never run a skill, and change a skill this run did not raise only by a line step 3 promotes. A written skill takes the skill shape of `shapes.md` at `.claude/skills/<name>/SKILL.md`. A procedure from an instruction file leaves that file in the same commit, a memory note is then offered for deletion as Proposals says, and a procedure from the repository changes nothing else.
 5. With a change to make, print the plan in the form of Adopt step 7 with `primer: maintain plan` as its first line, ask once, and on the yes make its commits; a fix is a rewrite, a promoted note's line is a rewrite made only on its own yes, and a split adds a move only when a file moves.
 6. With nothing to change, print `primer: no drift`, then one line per reported item as `- <item>: <why>`, and write nothing in the repository.
 7. End the reply with this sentence: `/doctor prompt-audit` checks the instruction files for contradictions and stale model names; run it yourself when you want that check.

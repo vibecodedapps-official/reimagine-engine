@@ -1402,8 +1402,9 @@ Work items, in this order:
 10. The ignore entry of the dropped gate eval cases. Commit: `chore(repo): drop the ignore entry of the dropped gate eval cases`.
 11. The `## primer 0.1.5 - <date>` and `## rules 0.1.18 - <date>` headings. Commit: `docs(changelog): add the primer 0.1.5 and rules 0.1.18 headings`.
 12. The gate on the branch in fix mode with checks `npm test; npm run lint`, its fixes committed on the branch.
-13. Items 69, 73 and 74, each record listing every recommended item and bundle with its verdict, the release items 22 and 39, and a commit in a throwaway clone with and without the attribution setting. Item 75 rests on its last run, since the tickets do not change; items 2 and 4 rest, since `core.md` does not change. Commit: `docs(acceptance): record the m67 review, primer 0.1.5 and rules 0.1.18`.
-14. After the merge, by the owner: the tags after a yes, then item 21 on the merge commit.
+13. What the attribution check and item 73 showed after the gate: requirement 16 and decision 172 on what the tracked attribution setting does, and the character cap in the architecture's caps table. Commits: `docs(design): record that the tracked attribution setting is not the rule's enforcement` and `docs(design): give the architecture's caps table the character cap`.
+14. Items 69, 73 and 74, each record listing every recommended item and bundle with its verdict, the release items 22 and 39, and a commit in a throwaway clone with and without the attribution setting. Item 75 rests on its last run, since the tickets do not change; items 2 and 4 rest, since `core.md` does not change. Commit: `docs(acceptance): record the m67 review, primer 0.1.5 and rules 0.1.18`.
+15. After the merge, by the owner: the tags after a yes, then item 21 on the merge commit.
 
 Check: `npm run test:primer` before and after item 7, `npm run test:rules` before and after item 6, `npm run test:lint` and `npm run test:release` before and after items 8 and 9; `npm test` and `npm run lint` with the deny tokens before the push.
 

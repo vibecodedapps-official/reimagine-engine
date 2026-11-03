@@ -1,0 +1,24 @@
+# On a pull request, the description check, run again when the description is edited. It is apart from ci.yml,
+# whose runs on a pull request cancel each other, so an edit does not restart the test matrix.
+name: pr description
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  description:
+    name: pull request description
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: check the description
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "$BODY" | node tools/commit-messages.mjs --description

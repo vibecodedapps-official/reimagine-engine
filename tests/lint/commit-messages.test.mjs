@@ -74,3 +74,27 @@ test('R222: no arguments is an error, not a pass', () => {
   const r = check();
   assert.equal(r.status, 2);
 });
+
+const describe = (text) => spawnSync(process.execPath, [script, '--description'], { input: text, encoding: 'utf8' });
+
+test('R222: a plain pull request description passes', () => {
+  const r = describe('The change keeps the trailer.\r\n\r\nCloses #65.\n');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, 'pull request description: ok\n');
+});
+
+test('R222: an empty pull request description passes', () => {
+  const r = describe('');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, 'pull request description: ok\n');
+});
+
+test('R222: a pull request description holding a session line fails and names each line', () => {
+  const r = describe('The summary.\r\n\r\nhttps://claude.ai/code/session_01abc\nClaude-Session: https://example.invalid/x\n');
+  assert.equal(r.status, 1);
+  assert.equal(
+    r.stderr,
+    'pull request description: line 3: https://claude.ai/code/session_01abc\n' +
+      'pull request description: line 4: Claude-Session: https://example.invalid/x\n',
+  );
+});

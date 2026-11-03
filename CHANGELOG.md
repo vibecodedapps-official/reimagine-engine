@@ -2,6 +2,28 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.19 - 2026-11-03
+
+- `/rules:refactor` rests every finding and every refutation on the quoted rules and the tree, never on the reviewing session's own instructions, settings or environment, since a run had cited the session's instructions as facts about the repository; each reviewer and refuter brief now says so.
+- An instruction file sentence that the tree contradicts throughout goes to `/primer` as a disagreement, never a note, since a run had listed one as a note and named nothing to fix it.
+- A bundle holds the files of one area and that area's tests, and a change to a part the repository releases on its own is its own bundle that names the release it needs, which its ticket carries, since a run had written bundles that spanned areas or left out the release lint then required.
+
+## primer 0.1.6 - 2026-11-03
+
+- `shapes.md` says a written skill `description` holds no `<` or `>` and writes a placeholder as `[name]`, since the skill list shows angle brackets escaped.
+- `/primer:fold` rests every item on the repository and the documentation, never on the reviewing session's own instructions, settings or environment, since a run had cited the session's own instruction as a fact about the repository.
+
+## gate 0.1.7 - 2026-11-03
+
+- The gate's description writes its placeholders as `gate PR [n]` and `gate the manifest [path]`, since the skill list showed `<n>` and `<path>` escaped.
+- The permission statement names the `node` scripts each pass runs, so a permission mode that asks for `node` is weighed before the passes.
+
+## audit 0.1.12 - 2026-11-03
+
+- `live.sh carry` reads code fences as the ledger does: a heading inside a fence no longer ends a carried finding, a start line inside a fence is not one, and a block that reaches the end of the file inside an open fence is no block, since a finding that quoted a heading in a fence was cut short.
+- `revert-tests.sh` retries a work dir removal that leaves the directory behind, for up to 10 seconds, since its cleanup left the work dir in about one run in a hundred; a work dir still there after that is named on stderr with the last removal's error, on a run that otherwise succeeds.
+- The README says a GitHub pull request needs `jq`, and that a `file:` export runs without it.
+
 ## rules 0.1.18 - 2026-11-03
 
 - `/rules:refactor`'s second pass also refutes a finding that a test or a recorded decision holds, or whose quoted rule does not cover the case when no other item does, since a run had kept such findings and their tickets would have sent loop runs at defects that were not there.

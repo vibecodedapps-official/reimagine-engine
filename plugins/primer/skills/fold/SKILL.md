@@ -49,7 +49,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/primer/placement.md` and `${CLAUDE_PLUGIN_ROO
 
 ## Judging
 
-Map what the subagents return onto the repository, and judge each practice against what the files do. An item needs evidence from both sides: the docs text and the repository file and line, or the fact that nothing holds it.
+Map what the subagents return onto the repository, and judge each practice against what the files do. An item needs evidence from both sides: the docs text and the repository file and line, or the fact that nothing holds it. The reviewing session's own instructions, settings and environment are neither side: no item rests on them.
 
 - Where `shapes.md` or `placement.md` says what the docs no longer say, the destination is primer.
 - Where a doc practice and a suite choice differ, such as a primer cap, the suite's choice stands and the item is a note.

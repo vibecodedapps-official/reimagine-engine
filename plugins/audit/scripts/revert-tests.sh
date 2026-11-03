@@ -53,7 +53,8 @@
 #
 # Work dir: must not exist. The script creates it, writes the two copies and their
 # temporary and cache directories in it, and removes it on every exit. A removal that
-# leaves the work dir is retried each tick for up to 10 seconds.
+# leaves the work dir is retried each tick for up to 10 seconds; a work dir still there
+# after that is named on stderr, and the exit status is unchanged.
 #
 # Steps:
 # 1. The changed paths are those of `git diff-tree -r --no-renames` from the merge-base to
@@ -344,6 +345,9 @@ cleanup() {
 			chmod -R u+w "$work" 2> /dev/null
 			rm -rf "$work" 2> /dev/null
 		done
+		if [ -e "$work" ]; then
+			printf '%s\n' "revert-tests: the work dir is left: $work" >&2
+		fi
 	fi
 	if [ -z "$renamed" ]; then
 		rm -f "$out.tmp"

@@ -45,8 +45,11 @@
 # 19 stopdog, from the script's own text: the watchdog, stopped at once 200 times under the
 #    script's TERM trap, leaves stderr empty
 # 20 a work dir whose name holds a backslash   21 output without a final newline
-# 22 a removal that leaves the work dir behind, once, with an error: the cleanup retries
-#    it and stderr stays empty
+# 22 a removal that leaves the work dir behind once, with no error and exit status 0, the
+#    mode observed: the cleanup retries it and stderr stays empty
+# 23 the same with an error line and exit status 1: the first error does not reach stderr
+# 24 a work dir that stays after the retry window: exit 0, and stderr is the one line naming
+#    it (waits the whole window, about 11 seconds)
 #
 # Prints one line per mismatch, then `revert-tests test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -156,13 +159,18 @@ checkleft() {
 # string) and a new work dir ($wd, $root/rw unless set); sets rc, and writes $tmp/res,
 # $tmp/out, and $tmp/err.
 run() {
+	run_only "$@"
+	checkleft
+}
+
+# run_only <repo> <keys> [<cap>]: run without the checkleft that follows it.
+run_only() {
 	printf '%b' "$2" > "$tmp/keys"
 	rm -f "$tmp/res"
 	wd=${RW:-$root/rw}
 	REVERT_TESTS_CAP=${3:-1800} "$sh_bin" "$rt" run "$1" main feature "$tmp/keys" "$wd" \
 		"$tmp/res" > "$tmp/out" 2> "$tmp/err"
 	rc=$?
-	checkleft
 }
 
 # ok: the last run exited 0 with nothing on stdout or stderr.
@@ -938,22 +946,29 @@ inblock '`tests/test_long.sh`, head copy' '- Output, the last 80 of 81 lines:'
 inblock '`tests/test_one.sh`, head copy' '- Output:'
 inblock '`tests/test_one.sh`, head copy' '    only line'
 
-# 22. A removal that leaves the work dir behind: an rm on PATH that, on the first
-# `rm -rf <work dir>`, removes it, makes an empty `head` directory in it, as a Windows
-# removal was seen to, and fails with an error line. The cleanup must remove it again,
-# and that first error must not reach the run's stderr (`ok` requires it empty).
-case_id="case 22"
-mkdir "$root/fakebin2"
 real_rm=$(command -v rm)
-printf '#!/bin/sh\nif [ "$#" = 2 ] && [ "$1" = -rf ] && [ "$2" = "%s" ] && [ ! -e "%s" ]; then\n\t"%s" "$@"\n\techo "rm: cannot remove $2: Device or resource busy" >&2\n\tmkdir -p "%s/head"\n\t: > "%s"\n\texit 1\nfi\nexec "%s" "$@"\n' \
-	"$root/rw" "$root/fakebin2/fired" "$real_rm" "$root/rw" "$root/fakebin2/fired" "$real_rm" > "$root/fakebin2/rm"
-chmod +x "$root/fakebin2/rm"
 old_path=$PATH
-fakebin2=$root/fakebin2
-if command -v cygpath > /dev/null 2>&1; then
-	fakebin2=$(cygpath -u "$fakebin2")
-fi
-PATH=$fakebin2:$PATH
+
+# shimpath <dir>: the directory in the form PATH takes.
+shimpath() {
+	if command -v cygpath > /dev/null 2>&1; then
+		cygpath -u "$1"
+	else
+		printf '%s\n' "$1"
+	fi
+}
+
+# 22. A removal that leaves the work dir behind with no error, the mode observed: an rm on
+# PATH that, on the first `rm -rf <work dir>`, runs the real rm, makes an empty `head`
+# directory in it, as a Windows removal was seen to, and exits with the real rm's status
+# (0), printing nothing. The cleanup must remove it again, whatever the status, and stderr
+# stays empty (`ok` requires it).
+case_id="case 22"
+mkdir "$root/fb22"
+printf '#!/bin/sh\nif [ "$#" = 2 ] && [ "$1" = -rf ] && [ "$2" = "%s" ] && [ ! -e "%s" ]; then\n\t"%s" "$@"\n\ts=$?\n\tmkdir -p "%s/head"\n\t: > "%s"\n\texit $s\nfi\nexec "%s" "$@"\n' \
+	"$root/rw" "$root/fb22/fired" "$real_rm" "$root/rw" "$root/fb22/fired" "$real_rm" > "$root/fb22/rm"
+chmod +x "$root/fb22/rm"
+PATH=$(shimpath "$root/fb22"):$old_path
 run "$root/c1" "$run_keys"
 PATH=$old_path
 ok
@@ -963,7 +978,50 @@ verdicts "- \`tests/test_a b'c.sh\`: passes at head and without the change
 - \`tests/test_moved.sh\`: passes at head only
 - \`tests/test_t.sh\`: does not pass at head (exit status 127)
 "
-[ -e "$root/fakebin2/fired" ] || mismatch "$case_id: the shim did not fire"
+[ -e "$root/fb22/fired" ] || mismatch "$case_id: the shim did not fire"
+
+# 23. The same removal in the error mode: the shim also prints a `Device or resource busy`
+# line on stderr and exits 1. The cleanup must remove the dir again, and that first error
+# must not reach the run's stderr.
+case_id="case 23"
+mkdir "$root/fb23"
+printf '#!/bin/sh\nif [ "$#" = 2 ] && [ "$1" = -rf ] && [ "$2" = "%s" ] && [ ! -e "%s" ]; then\n\t"%s" "$@"\n\techo "rm: cannot remove $2: Device or resource busy" >&2\n\tmkdir -p "%s/head"\n\t: > "%s"\n\texit 1\nfi\nexec "%s" "$@"\n' \
+	"$root/rw" "$root/fb23/fired" "$real_rm" "$root/rw" "$root/fb23/fired" "$real_rm" > "$root/fb23/rm"
+chmod +x "$root/fb23/rm"
+PATH=$(shimpath "$root/fb23"):$old_path
+run "$root/c1" "$run_keys"
+PATH=$old_path
+ok
+verdicts "- \`tests/test_a b'c.sh\`: passes at head and without the change
+- \`tests/test_a.sh\`: passes at head and without the change
+- \`tests/test_m.sh\`: passes at head only
+- \`tests/test_moved.sh\`: passes at head only
+- \`tests/test_t.sh\`: does not pass at head (exit status 127)
+"
+[ -e "$root/fb23/fired" ] || mismatch "$case_id: the shim did not fire"
+
+# 24. A work dir that stays: an rm on PATH that, on every `rm -rf <work dir>`, runs the real
+# rm, makes the empty `head` directory again and exits 0. The run waits out the whole
+# retry window (about 11 seconds with the low tick), exits 0, and its stderr is the one
+# line naming the work dir as the run was given it. The dir is removed with the real rm
+# afterwards, before the checks that follow every run.
+case_id="case 24"
+mkdir "$root/fb24"
+printf '#!/bin/sh\nif [ "$#" = 2 ] && [ "$1" = -rf ] && [ "$2" = "%s" ]; then\n\t"%s" "$@"\n\tmkdir -p "%s/head"\n\t: > "%s"\n\texit 0\nfi\nexec "%s" "$@"\n' \
+	"$root/rw" "$real_rm" "$root/rw" "$root/fb24/fired" "$real_rm" > "$root/fb24/rm"
+chmod +x "$root/fb24/rm"
+PATH=$(shimpath "$root/fb24"):$old_path
+run_only "$root/c1" "$run_keys"
+PATH=$old_path
+[ -d "$wd/head" ] || mismatch "$case_id: the work dir was not left"
+"$real_rm" -rf "$wd"
+[ "$rc" = 0 ] || mismatch "$case_id: exit $rc, expected 0"
+[ ! -s "$tmp/out" ] || mismatch "$case_id: stdout is not empty"
+printf '%s\n' "revert-tests: the work dir is left: $wd" > "$tmp/exp"
+cmp -s "$tmp/exp" "$tmp/err" ||
+	mismatch "$case_id: stderr differs: got [$(tr '\n' '|' < "$tmp/err")], expected [$(tr '\n' '|' < "$tmp/exp")]"
+[ -e "$root/fb24/fired" ] || mismatch "$case_id: the shim did not fire"
+checkleft
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

@@ -1351,6 +1351,24 @@ Work items, in this order:
 
 Check: `npm run test:primer` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
 
+## Attribution trailer in primer and the audit: M65
+
+Added 2026-11-02. Decision 170 and issue 65: primer's commits and the audit's act commits keep the trailer the host adds, as R11 already says, in primer 0.1.4 and audit 0.1.11. M65 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/primer/`, `plugins/audit/`, `tests/primer/` and `tests/audit/`. Tags wait for the owner's merge.
+
+### M65: the trailer
+
+Work items, in this order:
+
+1. The design documents. Commit: `docs(design): keep the host's attribution trailer in primer and the audit`.
+2. `node tools/release.mjs primer 0.1.4` and `node tools/release.mjs audit 0.1.11`, with the catalog `metadata.version` raised to 0.1.26. Commits: `release(primer): 0.1.4` and `release(audit): 0.1.11`.
+3. The tests first, each seen failing; then primer's `SKILL.md` and the audit's `stages/9-act.md`. Commits: `fix(primer): keep the host's attribution trailer` and `fix(audit): keep the host's attribution trailer`.
+4. The `## primer 0.1.4 - <date>` and `## audit 0.1.11 - <date>` headings. Commit: `docs(changelog): add the primer 0.1.4 and audit 0.1.11 headings`.
+5. The record of M64's merge, its tag and item 21 on the merge commit. Commit: `docs(acceptance): record the primer 0.1.3 merge`.
+6. The release items 22, 39 and 44, items 28 and 29, which rerun when the primer skill or adopt changes, item 15, which reruns when act changes, and item 16, which reruns when resume changes, as the release changes the version `resume.md` carries. Commit: `docs(acceptance): record primer 0.1.4 and audit 0.1.11`.
+7. After the merge, by the owner: the tags after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:primer` and `npm run test:audit` before and after item 3; `npm test` and `npm run lint` with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

@@ -84,7 +84,7 @@ test('R331: refactor reviews tracked files only', () => {
 });
 
 test('R331: refactor\'s second pass refutes a finding a test or decision holds, or whose rule does not cover it', () => {
-  assert.ok(readRefactor().includes('launch a fresh read-only subagent at model `sonnet` that tries to refute every one: the case the cited text holds, the caller or test that uses the option, the instruction or recorded decision that permits or chose it, and a quoted rule that does not cover the case when no other item does.'));
+  assert.ok(readRefactor().includes('launch a fresh read-only subagent at model `sonnet` that tries to refute every one: the case the cited text holds, the caller that uses the option, a test that already holds the case, the instruction or recorded decision that permits or chose it, and a quoted rule that does not cover the case when no other item does.'));
 });
 
 test('R331: refactor keeps reviewers and refuters together at most 20 at a time', () => {

@@ -231,10 +231,10 @@ refuses('R221: refuses a manifest and catalog that disagree', (dir) => {
 'release: rules manifest has 0.1.0-alpha.1, the catalog has 0.1.0-alpha.9; fix that first');
 
 refuses('R221: refuses an audit literal that differs from the version', (dir) => {
-  put(dir, 'plugins/audit/skills/audit/notes.md', 'The "plugin_version" is "0.1.0-alpha.9".\n');
+  put(dir, 'plugins/audit/skills/audit/notes.md', '# Notes\n\nThe "plugin_version" is "0.1.0-alpha.9".\n');
   commit(dir);
 }, ['audit', '0.1.0'], 1,
-'release: plugins/audit/skills/audit/notes.md:1: plugin_version literal 0.1.0-alpha.9 differs from 0.1.0-alpha.1');
+'release: plugins/audit/skills/audit/notes.md:3: plugin_version literal 0.1.0-alpha.9 differs from 0.1.0-alpha.1');
 
 test('R221: runs lint afterwards and exits with its status', () => {
   const dir = caseDir();

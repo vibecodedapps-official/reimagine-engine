@@ -57,13 +57,13 @@ A subdirectory gets its own `CLAUDE.md` when its subtree has its own build and c
 - <A hard constraint for work in this subtree.>
 ```
 
-- The cap is 60 lines. There is no marker.
+- The cap is 60 lines and 40,000 characters. There is no marker.
 - The host loads the file when a file under its directory is read or edited. The drift hook names it for a recheck when a commit touches files under it.
 - A `.claude/CLAUDE.md` is not a nested file. Adopt merges it into the hub.
 
 ## Rules
 
-A rule is `.claude/rules/<topic>.md`, at most 200 lines, in declarative prose.
+A rule is `.claude/rules/<topic>.md`, at most 200 lines and 40,000 characters, in declarative prose.
 
 - A rule without frontmatter loads in every session, so keep these few. Write one only for a convention every task needs that is too long for one constraint bullet.
 - A rule with `paths` loads when a matching file is touched. Use the template:

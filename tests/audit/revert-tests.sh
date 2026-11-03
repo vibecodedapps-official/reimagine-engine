@@ -49,7 +49,10 @@
 #    mode observed: the cleanup retries it and stderr stays empty
 # 23 the same with an error line and exit status 1: the first error does not reach stderr
 # 24 a work dir that stays after the retry window: exit 0, and stderr is the one line naming
-#    it (waits the whole window, about 11 seconds)
+#    it and the last line of the last removal's error (waits the whole window, about 11
+#    seconds)
+# 25 the same shim on a run that fails (a keys error): exit 2, and stderr is the failure's one
+#    line, with no line about the work dir (waits the whole window)
 #
 # Prints one line per mismatch, then `revert-tests test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -1001,13 +1004,14 @@ verdicts "- \`tests/test_a b'c.sh\`: passes at head and without the change
 [ -e "$root/fb23/fired" ] || mismatch "$case_id: the shim did not fire"
 
 # 24. A work dir that stays: an rm on PATH that, on every `rm -rf <work dir>`, runs the real
-# rm, makes the empty `head` directory again and exits 0. The run waits out the whole
-# retry window (about 11 seconds with the low tick), exits 0, and its stderr is the one
-# line naming the work dir as the run was given it. The dir is removed with the real rm
-# afterwards, before the checks that follow every run.
+# rm, makes the empty `head` directory again, prints two error lines and exits 1. The run
+# waits out the whole retry window (about 11 seconds with the low tick), exits 0, and its
+# stderr is the one line naming the work dir as the run was given it and the shim's last
+# error line. The dir is removed with the real rm afterwards, before the checks that follow
+# every run.
 case_id="case 24"
 mkdir "$root/fb24"
-printf '#!/bin/sh\nif [ "$#" = 2 ] && [ "$1" = -rf ] && [ "$2" = "%s" ]; then\n\t"%s" "$@"\n\tmkdir -p "%s/head"\n\t: > "%s"\n\texit 0\nfi\nexec "%s" "$@"\n' \
+printf '#!/bin/sh\nif [ "$#" = 2 ] && [ "$1" = -rf ] && [ "$2" = "%s" ]; then\n\t"%s" "$@"\n\tmkdir -p "%s/head"\n\t: > "%s"\n\techo "rm: cannot remove $2/x: Permission denied" >&2\n\techo "rm: cannot remove $2/head: Device or resource busy" >&2\n\texit 1\nfi\nexec "%s" "$@"\n' \
 	"$root/rw" "$real_rm" "$root/rw" "$root/fb24/fired" "$real_rm" > "$root/fb24/rm"
 chmod +x "$root/fb24/rm"
 PATH=$(shimpath "$root/fb24"):$old_path
@@ -1017,9 +1021,24 @@ PATH=$old_path
 "$real_rm" -rf "$wd"
 [ "$rc" = 0 ] || mismatch "$case_id: exit $rc, expected 0"
 [ ! -s "$tmp/out" ] || mismatch "$case_id: stdout is not empty"
-printf '%s\n' "revert-tests: the work dir is left: $wd" > "$tmp/exp"
+printf '%s\n' "revert-tests: the work dir is left: $wd; the last removal said: rm: cannot remove $wd/head: Device or resource busy" > "$tmp/exp"
 cmp -s "$tmp/exp" "$tmp/err" ||
 	mismatch "$case_id: stderr differs: got [$(tr '\n' '|' < "$tmp/err")], expected [$(tr '\n' '|' < "$tmp/exp")]"
+[ -e "$root/fb24/fired" ] || mismatch "$case_id: the shim did not fire"
+checkleft
+
+# 25. The same shim on a run that fails after the work dir is made: keys without a command
+# die with exit 2. The work dir stays, and stderr is the failure's one line, with no line
+# about the work dir after it (the line `wait` reports). The dir is removed with the real rm
+# afterwards.
+case_id="case 25"
+rm -f "$root/fb24/fired"
+PATH=$(shimpath "$root/fb24"):$old_path
+run_only "$root/c1" 'run\ttests/test_*.sh\n'
+PATH=$old_path
+[ -d "$wd/head" ] || mismatch "$case_id: the work dir was not left"
+"$real_rm" -rf "$wd"
+fails 'revert-tests: keys: no command'
 [ -e "$root/fb24/fired" ] || mismatch "$case_id: the shim did not fire"
 checkleft
 

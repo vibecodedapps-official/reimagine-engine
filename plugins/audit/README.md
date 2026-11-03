@@ -13,9 +13,9 @@ Audit a set of pull requests or branches against their tickets, and stop at a re
 
 - Node 22 or later.
 - On Windows, Git for Windows.
-- `jq` for three parts: the live checks, the validation of `work-items.jsonl`, and the check for collisions with open pull requests. On Windows, `winget install jqlang.jq`; on macOS, `brew install jq`, or the `/usr/bin/jq` that macOS 15 and later ship.
+- `jq` for four parts: reading a GitHub pull request, the live checks, the validation of `work-items.jsonl`, and the check for collisions with open pull requests. On Windows, `winget install jqlang.jq`; on macOS, `brew install jq`, or the `/usr/bin/jq` that macOS 15 and later ship.
 
-Without `jq`, everything else runs. Stage 1 says what it will skip. No other tool is required.
+Without `jq`, a GitHub pull request cannot be read, so give a `file:` export of it instead. The live checks, the validation of `work-items.jsonl` and the collision check are skipped, and everything else runs. Stage 1 says what it will skip. No other tool is required.
 
 ## Use
 

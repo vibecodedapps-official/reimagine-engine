@@ -1408,6 +1408,23 @@ Work items, in this order:
 
 Check: `npm run test:primer` before and after item 7, `npm run test:rules` before and after item 6, `npm run test:lint` and `npm run test:release` before and after items 8 and 9; `npm test` and `npm run lint` with the deny tokens before the push.
 
+## Ten open issues: M68
+
+Added 2026-11-03. Decisions 173 to 175, issues 62, 63, 70 to 72 and 74 to 77, and R254, R288, R328, R331 and R332 as amended: the audit's carry keeps a code fence and its revert-tests cleanup retries the work dir removal in audit 0.1.12, the gate's description placeholders and its permission statement in gate 0.1.7, the description rule and fold's sources in primer 0.1.6, refactor's sources, bundles and contradicted instruction sentences in rules 0.1.19, and two test fixtures isolated from the machine's git. Issue 69 needs a host without Git Bash, which the build machine cannot give, so it stays open. M68 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/audit/`, `plugins/gate/`, `plugins/primer/`, `plugins/rules/`, `tests/audit/`, `tests/gate/`, `tests/lint/`, `tests/primer/` and `tests/rules/`. Tags wait for the owner's merge.
+
+### M68: the fixes
+
+Work items, in this order:
+
+1. The tests first, each seen failing against the base; then `live.sh` and `live.md`, `revert-tests.sh`, the gate's description and statement, `shapes.md` and fold, and refactor. Commits: `fix(audit): keep a code fence inside a carried finding`, `fix(audit): retry the work dir removal when it is left`, `fix(gate): bracket the description placeholders and weigh the node scripts`, `fix(primer): keep angle brackets out of a description and the session out of fold` and `fix(rules): size refactor bundles by area and release and keep the session out of findings`.
+2. The fixtures of `tests/lint/commit-messages.test.mjs` and `tests/primer/notice.test.mjs`. Commits: `test(lint): isolate the commit messages suite from the git config` and `test(primer): turn off git maintenance in the notice fixture`.
+3. The design documents. Commit: `docs(design): record the refactor and fold sources, the description placeholders and the cleanup retry`.
+4. `node tools/release.mjs` for audit 0.1.12, gate 0.1.7, primer 0.1.6 and rules 0.1.19, with the catalog `metadata.version` raised to 0.1.29, 0.1.30, 0.1.31 and 0.1.32 and the version literals of `tests/rules/rules.test.mjs` moved. Commits: `release(audit): 0.1.12`, `release(gate): 0.1.7`, `release(primer): 0.1.6` and `release(rules): 0.1.19`.
+5. The gate on the pull request, its fixes committed on the branch.
+6. After the merge, by the owner: the four changelog headings, `npm run eval` with its score, the release items 22 and 39, items 69 and 70 for fold and 73 and 74 for refactor, the acceptance record of each release, the tags after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:audit`, `npm run test:gate`, `npm run test:primer`, `npm run test:rules` and `npm run test:lint` before and after items 1 and 2; `npm test` and `npm run lint` with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

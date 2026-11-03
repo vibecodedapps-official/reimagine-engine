@@ -104,9 +104,11 @@
 #   2  wrong arguments or keys, the work dir exists, a git step or write failed, a job
 #      did not start in its own process group, or a process group was still live 10
 #      seconds after KILL (one line on stderr; no result file)
-#   0  the result file is written, whatever the verdicts
+#   0  the result file is written, whatever the verdicts; it can carry the one stderr line
+#      that names a work dir left behind (see Work dir)
 # `bg` exits 0 once `.exit` is written, else 2. `wait` exits as `run` did (0, or 2 with
-# its stderr), 2 for no run started or an unreadable `.exit`, and 3 while still running.
+# its stderr) and forwards the last line of `.err` on 0 too; it exits 2 for no run
+# started or an unreadable `.exit`, and 3 while still running.
 
 if [ -z "${BASH_VERSION:-}" ]; then
 	if ! command -v bash > /dev/null 2>&1; then

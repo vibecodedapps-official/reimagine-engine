@@ -5,6 +5,7 @@ This file gives the shape of each instruction file primer writes or checks, with
 ## Counting and caps
 
 - Hub: 60 lines. Nested `CLAUDE.md`: 60 lines. Rule: 200 lines. `SKILL.md`: 150 lines. `docs/` pages: no cap.
+- Nested `CLAUDE.md` and rule: also 40,000 characters, since the host gives only the start of a file that loads on demand when it is over that.
 - Count every line the file has, frontmatter and blank lines included. A last line without a newline counts.
 - A file over its cap is split by topic into another file of the right shape. Never delete a real constraint to fit.
 

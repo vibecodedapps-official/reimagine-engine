@@ -419,6 +419,32 @@ describe('primer drift hook', () => {
       const dir = await make('cap-skill-151', { '.claude/skills/release/SKILL.md': pad(skillText, 8, 151) });
       assert.equal(await run('git commit -m x', dir), deny('.claude/skills/release/SKILL.md has 151 lines, over its cap of 150'));
     });
+    // 25 lines of 1600 characters each is 40,000 characters; one more character is 40,001.
+    const chars40000 = ('a'.repeat(1599) + '\n').repeat(25);
+    test('a rule of 40,000 characters passes', async () => {
+      const dir = await make('cap-chars-rule-40000', { '.claude/rules/style.md': chars40000 });
+      assert.equal(await run('git commit -m x', dir), '');
+    });
+    test('a rule of 40,001 characters is denied', async () => {
+      const dir = await make('cap-chars-rule-40001', { '.claude/rules/style.md': chars40000 + 'a' });
+      assert.equal(await run('git commit -m x', dir), deny('.claude/rules/style.md has 40001 characters, over its cap of 40000'));
+    });
+    test('a nested CLAUDE.md of 40,001 characters is denied', async () => {
+      const dir = await make('cap-chars-nested-40001', { 'src/api/CLAUDE.md': chars40000 + 'a' });
+      assert.equal(await run('git commit -m x', dir), deny('src/api/CLAUDE.md has 40001 characters, over its cap of 40000'));
+    });
+    test('a rule of 40,000 characters that is 79,975 bytes passes', async () => {
+      const dir = await make('cap-chars-multibyte', { '.claude/rules/style.md': ('\u00e9'.repeat(1599) + '\n').repeat(25) });
+      assert.equal(await run('git commit -m x', dir), '');
+    });
+    test('a rule over both caps gets the line finding then the character finding', async () => {
+      // 201 lines of 200 characters each is 40,200 characters.
+      const dir = await make('cap-chars-both', { '.claude/rules/style.md': ('a'.repeat(199) + '\n').repeat(201) });
+      assert.equal(
+        await run('git commit -m x', dir),
+        deny('.claude/rules/style.md has 201 lines, over its cap of 200; .claude/rules/style.md has 40200 characters, over its cap of 40000'),
+      );
+    });
     test('a 70-line .claude/CLAUDE.md is not a nested file and has no cap', async () => {
       const dir = await make('cap-dot-claude', { '.claude/CLAUDE.md': '# Dot\n' + 'x\n'.repeat(69) });
       assert.equal(await run('git commit -m x', dir), '');

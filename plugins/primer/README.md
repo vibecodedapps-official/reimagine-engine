@@ -42,7 +42,7 @@ The hub is the root `CLAUDE.md`, or the root `AGENTS.md` when the repository kee
 - `## Commands`: the commands that verify work.
 - `## Constraints`: the hard constraints every task follows.
 
-The other files have caps too: a nested `CLAUDE.md` at most 60 lines, a rule 200, a `SKILL.md` 150. Every line of the file counts. A nested `CLAUDE.md` and a rule are also capped at 40,000 characters, since Claude Code gives only the start of a file that loads on demand when it is longer.
+The other files have caps too: a nested `CLAUDE.md` at most 60 lines, a rule 200, a `SKILL.md` 150. Every line of the file counts. A nested `CLAUDE.md` and a rule are also capped at 40,000 characters: Claude Code gives only the start of a nested `CLAUDE.md` or a rule with `paths` that is longer, and the cap covers every rule, so a rule that gains `paths` is already within it.
 
 ## Drift hook
 

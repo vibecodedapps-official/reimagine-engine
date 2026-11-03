@@ -150,7 +150,9 @@ test('R221: audit 0.1.0 also sets the plugin_version literals', () => {
     [resume, '   - `plugin_version`, compared with the literal `"0.1.0"`; any other recorded value'],
     [orient, '      `mv -f`, with `plugin_version` `0.1.0`, empty `approvals`, and a stage 1 entry'],
   ]) {
-    assert.ok(read(dir, path).split('\n').includes(line), `${path} lacks the line ${line}`);
+    const held = read(dir, path).split('\n');
+    assert.equal(held.filter((l) => l === line).length, 1, `${path} does not hold the line ${line} exactly once`);
+    assert.deepEqual(held.filter((l) => l.includes('0.1.0-alpha.1')), [], `${path} still holds the old version 0.1.0-alpha.1`);
   }
 });
 

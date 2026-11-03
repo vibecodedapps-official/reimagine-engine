@@ -1384,7 +1384,7 @@ Check: `npm run test:lint` before and after item 1; `npm test` and `npm run lint
 
 ## First fold and refactor review: M67
 
-Added 2026-11-03. Decision 172, issues 69 to 72, R16, R224, R240, R262, R273 and R331 as amended and R319 retired: the fold and refactor findings that hold on this repository, the primer character cap in primer 0.1.5, the refactor second-pass brief in rules 0.1.18, and the record each review of this repository keeps. M67 touches `docs/`, `CHANGELOG.md`, `.claude/settings.json`, `.gitignore`, `.claude-plugin/marketplace.json`, `plugins/primer/`, `plugins/rules/`, `tools/`, `tests/primer/`, `tests/rules/` and `tests/release/`. Tags wait for the owner's merge.
+Added 2026-11-03. Decision 172, issues 69 to 72, R16, R224, R240, R262, R265, R273 and R331 as amended and R319 retired: the fold and refactor findings that hold on this repository, the primer character cap in primer 0.1.5, the refactor second-pass brief in rules 0.1.18, and the record each review of this repository keeps. M67 touches `docs/`, `CHANGELOG.md`, `.claude/settings.json`, `.gitignore`, `.claude-plugin/marketplace.json`, `plugins/primer/`, `plugins/rules/`, `tools/`, `tests/primer/`, `tests/rules/` and `tests/release/`. Tags wait for the owner's merge.
 
 ### M67: the review
 

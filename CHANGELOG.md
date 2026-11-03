@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.3 - 2026-11-02
+
+- Placement item 2 sends a tool call that must be stopped or asked about in every task, or a trailer the host adds, to the settings key that enforces it, permissions deny or ask or attribution, so a fold that names a setting has an item to land in; primer proposes the key and never writes it.
+- A failure seen only when a skill runs, and its fix, goes into the step of that skill that fails, since only that skill's runs need it; maintain may now write a promoted memory note's line into an existing skill, which it had refused for any skill the run did not propose.
+
 ## rules 0.1.17 - 2026-11-02
 
 - `/rules:refactor` reviews a whole repository against the house rules and the repository's own instruction files and reports the findings in bundles, one loop run each, so a tree that drifted from the rules, or never used the suite, gets the same review a pull request does; on a yes it writes one ticket file per bundle and prints the loop line to ship it, and it runs only when the user types it.

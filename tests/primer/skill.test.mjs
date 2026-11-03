@@ -167,6 +167,7 @@ test('R241: placement item 2 sends a stopped or asked tool call and a host trail
   const item = lines.slice(start + 1, stop).find((l) => l.startsWith('2. '));
   assert.ok(item, 'item 2 exists');
   assert.ok(item.includes('A tool call that must be stopped or asked about in every task, or a trailer the host adds, goes to the settings key that enforces it: permissions deny or ask, attribution.'));
+  assert.ok(item.includes('An allow entry enforces nothing, so it is not this item.'));
   assert.ok(item.includes('The plan proposes the hook or the key to the user. Primer never writes it. Until it exists, place the piece by the items below.'));
   assert.ok(SKILL.includes('Where placement item 1 or 2 applies, the plan proposes the check, hook or settings key for the user.'));
 });

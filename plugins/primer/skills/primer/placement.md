@@ -33,7 +33,7 @@ A destination that loads too widely costs every task that did not need the piece
 Each entry gives the destination and one example of a piece that lands there.
 
 1. A checkable pattern goes to a linter, a test or a hook. Example: "imports from `internal/` are forbidden outside `src/core/`". The plan proposes the check to the user. Primer never writes it. Until the check exists, place the piece by the items below.
-2. A thing that must happen at a point in every task goes to a hook. Example: "run the formatter after every file edit". A tool call that must be stopped or asked about in every task, or a trailer the host adds, goes to the settings key that enforces it: permissions deny or ask, attribution. The plan proposes the hook or the key to the user. Primer never writes it. Until it exists, place the piece by the items below.
+2. A thing that must happen at a point in every task goes to a hook. Example: "run the formatter after every file edit". A tool call that must be stopped or asked about in every task, or a trailer the host adds, goes to the settings key that enforces it: permissions deny or ask, attribution. An allow entry enforces nothing, so it is not this item. The plan proposes the hook or the key to the user. Primer never writes it. Until it exists, place the piece by the items below.
 3. A procedure, a checklist or a section that has become steps goes to a skill. Example: the release steps in CONTRIBUTING.md.
 4. A piece every task must obey, in one line, goes to the hub as a constraint or a command. Example: "`npm run lint` must pass before a commit".
 5. A topic every task must know goes to an unscoped rule. Example: how errors are logged and reported across the code base.

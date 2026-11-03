@@ -1382,6 +1382,31 @@ Work items, in this order:
 
 Check: `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push; item 21 on the pull request's own run, the description check included.
 
+## First fold and refactor review: M67
+
+Added 2026-11-03. Decision 172, issues 69 to 72, R16, R224, R240, R262, R273 and R331 as amended and R319 retired: the fold and refactor findings that hold on this repository, the primer character cap in primer 0.1.5, the refactor second-pass brief in rules 0.1.18, and the record each review of this repository keeps. M67 touches `docs/`, `CHANGELOG.md`, `.claude/settings.json`, `.gitignore`, `.claude-plugin/marketplace.json`, `plugins/primer/`, `plugins/rules/`, `tools/`, `tests/primer/`, `tests/rules/`, `tests/lint/` and `tests/release/`. Tags wait for the owner's merge.
+
+### M67: the review
+
+Work items, in this order:
+
+1. The design documents, with items 38, 69 and 73 amended. Commit: `docs(design): record the first fold and refactor review of this repository`.
+2. `.claude/settings.json` sets `attribution` in its object form. Commit: `chore(repo): turn off the host attribution in this repository`.
+3. `node tools/release.mjs primer 0.1.5`, with the catalog `metadata.version` raised to 0.1.27. Commit: `release(primer): 0.1.5`.
+4. The tests first in `tests/primer/`, each seen failing; then `drift.sh` and `shapes.md`. Commit: `feat(primer): cap a nested file and a rule at 40,000 characters`.
+5. `node tools/release.mjs rules 0.1.18`, with the catalog `metadata.version` raised to 0.1.28 and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.18`.
+6. The test first in `tests/rules/skill.test.mjs`, seen failing; then the second pass of `skills/refactor/SKILL.md`. Commit: `fix(rules): refute a refactor finding a test or decision holds`.
+7. The `## primer 0.1.5 - <date>` and `## rules 0.1.18 - <date>` headings. Commit: `docs(changelog): add the primer 0.1.5 and rules 0.1.18 headings`.
+8. One module for the file listing and the `plugin_version` scan that lint and release share. Commit: `refactor(tools): share the file listing and literal scan of lint and release`.
+9. The release test finds the audit version lines by their content. Commit: `test(release): find the audit version lines by content`.
+10. The ignore entry of the dropped gate eval cases. Commit: `chore(repo): drop the ignore entry of the dropped gate eval cases`.
+11. Three record phrases that locate a session. Commit: `docs(design): cut three record phrases that locate a session`.
+12. The gate on the branch in fix mode with checks `npm test; npm run lint`, its fixes committed on the branch.
+13. Items 69, 73 and 74, each record listing every recommended item and bundle with its verdict, the release items 22 and 39, and a commit in a throwaway clone with and without the attribution setting. Item 75 rests on its last run, since the tickets do not change; items 2 and 4 rest, since `core.md` does not change. Commit: `docs(acceptance): record the m67 review, primer 0.1.5 and rules 0.1.18`.
+14. After the merge, by the owner: the tags after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:primer` before and after item 4, `npm run test:rules` before and after item 6, `npm run test:lint` and `npm run test:release` before and after items 8 and 9; `npm test` and `npm run lint` with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

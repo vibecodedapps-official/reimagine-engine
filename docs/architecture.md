@@ -26,9 +26,10 @@ reimagine-engine/
   plugins/primer/                   project instructions in the host's forms, memory promotion, two hooks
   tests/                            node:test suites and the audit sh suites
   tools/commit-messages.mjs         the commit message and description checks of a pull request
+  tools/files.mjs                   the file listing lint and release share
   tools/lint.mjs                    repository rules
   tools/release.mjs                 version bump per plugin
-  tools/semver.mjs                  the semver rule lint and release share
+  tools/semver.mjs                  the semver rule and literal scan lint and release share
 ```
 
 | Plugin | Installs | Entry points | Scripts | Hooks | Version line |

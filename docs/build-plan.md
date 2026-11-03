@@ -1346,7 +1346,7 @@ Work items, in this order:
 3. `node tools/release.mjs primer 0.1.3`, with the catalog `metadata.version` raised to 0.1.24. Commit: `release(primer): 0.1.3`.
 4. The `## primer 0.1.3 - <date>` heading. Commit: `docs(changelog): add the primer 0.1.3 heading`.
 5. The gate on the branch with checks `npm test; npm run lint`, its fixes committed on the branch.
-6. The release items 22, 39 and 44, and items 32 and 69, which rerun when promote or a primer reference file changes. Commit: `docs(acceptance): record primer 0.1.3`.
+6. The release items 22, 39 and 44, and items 32, 33 and 69, which rerun when promote, propose or a primer reference file changes. Commit: `docs(acceptance): record primer 0.1.3`.
 7. After the merge, by the owner: the tag after a yes, then item 21 on the merge commit.
 
 Check: `npm run test:primer` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.

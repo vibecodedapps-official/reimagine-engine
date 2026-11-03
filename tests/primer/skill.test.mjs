@@ -112,7 +112,7 @@ test('R253 to R255: propose reads four sources in order, never proposes the neve
   assert.ok(SKILL.includes('   - the instruction files: a numbered list or a "to do X" section in the hub, a rule, a nested file or `README.md`;'));
   assert.ok(SKILL.includes('   - the repository: a script or build target whose use takes more than one command or a setup step, a runbook under `docs/`, a procedure in `CONTRIBUTING.md`;'));
   assert.ok(SKILL.includes('   - auto memory: a `feedback` or `project` note that says how to do something.'));
-  assert.ok(SKILL.includes('Never propose a skill for one command, for a fact, or for a procedure a skill already holds, and never run a skill or change one this run did not raise, except by a line step 3 promotes.'));
+  assert.ok(SKILL.includes('Never propose a skill for one command, for a fact, or for a procedure a skill already holds, never run a skill, and change a skill this run did not raise only by a line step 3 promotes.'));
   assert.ok(SKILL.includes('A written skill takes the skill shape of `shapes.md` at `.claude/skills/<name>/SKILL.md`.'));
   assert.ok(SKILL.includes('A procedure from an instruction file leaves that file in the same commit, a memory note is then offered for deletion as Proposals says, and a procedure from the repository changes nothing else.'));
   assert.ok(SKILL.includes('On its yes, write it; `adopt` and `maintain` commit it, and `init` leaves it uncommitted.'));

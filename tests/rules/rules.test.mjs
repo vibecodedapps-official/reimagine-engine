@@ -1444,7 +1444,7 @@ test('R35: a backslash escapes only an opening backtick; a closing run pairs and
 
 test('units and imports grow about linearly: four times the input takes under ten times as long', () => {
   // Linear growth gives a ratio near 4 and quadratic code near 16, so 10 sits between.
-  // Each side is its best batch, taken after warm-up, so a slow patch must hit every batch to count.
+  // Each side is its median batch, taken after warm-up, so a slow patch must hit most batches to count.
   // CPU time, not wall time, so time spent waiting while other test files run does not count;
   // a batch runs at least 100 ms because Windows can count CPU time in steps of about 16 ms.
   const timed = (run, text, count) => {
@@ -1465,28 +1465,10 @@ test('units and imports grow about linearly: four times the input takes under te
       a.push(timed(run, small, count) / count);
       b.push(timed(run, large, more) / more);
     }
-    const ratio = Math.min(...b) / Math.min(...a);
-    {
-      const both = (text, c) => {
-        const u0 = process.cpuUsage();
-        const t0 = performance.now();
-        for (let i = 0; i < c; i++) run(text);
-        const w = performance.now() - t0;
-        const u = process.cpuUsage(u0);
-        return [w / c, (u.user + u.system) / 1000 / c];
-      };
-      const sw = [], sc = [], lw = [], lc = [];
-      for (let k = 0; k < 7; k++) {
-        const [w1, c1] = both(small, count);
-        const [w2, c2] = both(large, more);
-        sw.push(w1); sc.push(c1); lw.push(w2); lc.push(c2);
-      }
-      const med = (x) => [...x].sort((p, q) => p - q)[Math.floor(x.length / 2)];
-      const f2 = (x) => x.toFixed(2);
-      console.log(`CLOCKS ${name} count ${count} wall-min ${f2(Math.min(...lw) / Math.min(...sw))} wall-med ${f2(med(lw) / med(sw))} cpu-min ${f2(Math.min(...lc) / Math.min(...sc))} cpu-med ${f2(med(lc) / med(sc))} sw ${sw.map(f2)} lw ${lw.map(f2)} sc ${sc.map(f2)} lc ${lc.map(f2)}`);
-    }
+    const median = (list) => [...list].sort((x, y) => x - y)[Math.floor(list.length / 2)];
+    const ratio = median(b) / median(a);
     const ms = (list) => list.map((x) => x.toFixed(2)).join(', ');
-    return [true, `${name}: ratio ${ratio.toFixed(2)}; ms per run, small [${ms(a)}], large [${ms(b)}]`];
+    return [ratio < 10, `${name}: ratio ${ratio.toFixed(2)}; ms per run, small [${ms(a)}], large [${ms(b)}]`];
   };
   const stray = (n) => `${Array.from({ length: n }, (_, i) => `line ${i} with a stray \` tick`).join('\n')}\n`;
   assert.ok(...grows('units, stray ticks', stray, (t) => units(t), 8000));

@@ -1328,7 +1328,7 @@ Added 2026-11-02. Decision 168 and issue 45: the growth test of `units` and `imp
 
 Work items, in this order:
 
-1. The design documents, then `tests/rules/rules.test.mjs`: `timed` reads `process.cpuUsage()` and a batch runs at least 100 ms; the threshold stays 10. Commit: `test(rules): time the growth test by cpu, not the wall clock`.
+1. The design documents, then `tests/rules/rules.test.mjs`: `timed` reads `process.cpuUsage()`, each side is its median batch, and a batch runs at least 100 ms; the threshold stays 10. Commit: `test(rules): time the growth test by cpu, not the wall clock`.
 2. The record of the merges of M61 and M62, their tags and item 21 on each merge commit. Commit: `docs(acceptance): record primer 0.1.2, rules 0.1.17 and the growth test clock`.
 
 Check: the changed test fails on a quadratic function and passes on `units` and `imports`; `npm test` several times, where the old test failed; `npm run test:rules` and `npm run lint` before the push; item 21 on the pull request's own run, Windows included.

@@ -67,9 +67,10 @@ test('R288: the frontmatter names the skill gate, has no paths key and names the
   assert.ok(!lines.some((l) => l.startsWith('paths:')));
   const description = lines.find((l) => l.startsWith('description:'));
   assert.notEqual(description, undefined);
-  for (const phrase of ['reimagine gate', 'gate this branch', 'gate PR <n>', 'gate the manifest <path>']) {
+  for (const phrase of ['reimagine gate', 'gate this branch', 'gate PR [n]', 'gate the manifest [path]']) {
     assert.ok(description.includes(phrase), `description lacks ${phrase}`);
   }
+  assert.ok(!description.includes('<') && !description.includes('>'), 'the host shows < and > in a description escaped');
 });
 
 test('R313: the configuration block is the same in SKILL.md and the README and holds the defaults', () => {
@@ -304,9 +305,14 @@ test('R295: Step 0 blocks on an unauthenticated gh, a merged or closed pull requ
 
 test('R294 and R313: Step 0 reads the instruction files and the configuration and states the prompts', () => {
   const text = holds('steps/0-preflight.md', '$CLAUDE_CONFIG_DIR', '.reimagine.json', 'ask-first', 'whether a prompt will occur');
-  for (const action of ['fetch', 'checkout', 'exclude', 'child session', 'subagent', 'check', 'commit', 'push', 'comment']) {
+  for (const action of ['fetch', 'checkout', 'exclude', 'child session', 'subagent', 'check', 'node', 'commit', 'push', 'comment']) {
     assert.ok(text.toLowerCase().includes(action), `the permission statement lacks ${action}`);
   }
+  const item = text.split('\n').find((l) => l.startsWith('3. Print the permission statement'));
+  assert.notEqual(item, undefined, '0.3 item 3 is missing');
+  assert.ok(item.includes('the checks, the `node` scripts each pass runs (`findings.mjs`, and `next.mjs` outside "no fixes" mode), the commit'), 'item 3 does not list the node scripts');
+  assert.ok(text.includes('checks: yes; node scripts: yes; commit: yes'), 'the sample Prompts line lacks node scripts');
+  assert.ok(text.includes('the checks, the node scripts, the commit'), 'the sample prompt line lacks the node scripts');
 });
 
 test('R294: the gate reads the instruction files of one directory only and the statement names it', () => {

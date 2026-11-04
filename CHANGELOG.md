@@ -2,6 +2,20 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.20 - 2026-11-04
+
+- `/rules` says to run each command with the Bash tool, which its `allowed-tools` pre-approves, since a session had called the script with another shell tool first and hit a permission failure.
+
+## loop 0.1.12 - 2026-11-04
+
+- A worktree run creates the worktree detached at the base commit recorded at preflight, not at the base branch, since a base branch that moved after preflight gave a worktree at a commit the run had not planned against.
+
+## audit 0.1.13 - 2026-11-04
+
+- Stage 7's slice commands and the merger start and end a ledger section only at a heading outside a code fence, and a copied section that reaches the end of the file inside an open fence ends with a closing fence line, since a finding that quoted a heading in a fence was cut short or named an id with no finding behind it.
+- The merger's end-of-file rule skips only the addition block the ledger script leaves out, one with no heading or end line after it before the open fence ends the file, so the merger reads the same ids the gate list holds.
+- The skill's stage 6 writes the mandatory set to `tmp/` and moves it into the ledger only when the script succeeds, as the stage file does, since a failed run could leave a partial set that later stages read.
+
 ## rules 0.1.19 - 2026-11-03
 
 - `/rules:refactor` rests every finding and every refutation on the quoted rules and the tree, never on the reviewing session's own instructions, settings or environment, since a run had cited the session's instructions as facts about the repository; each reviewer and refuter brief now says so.

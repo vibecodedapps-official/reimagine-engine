@@ -1,14 +1,14 @@
 # Architecture: 0.1.0
 
-Drafted 2026-10-14; amended 2026-10-20 for the `primer` plugin, which replaces `repo-docs` (decisions 73 to 89), and 2026-10-25 for the `gate` plugin and the loop's one-pass step 5 (decisions 118 to 134). The requirements are in requirements.md and win where the two disagree. The order of work is in build-plan.md. A fact marked "verified" was read from the host's documentation or observed in a spike recorded in decisions.md. Nothing here is implemented.
+Drafted 2026-10-14; amended 2026-10-20 for the `primer` plugin, which replaces `repo-docs` (decisions 73 to 89), and 2026-10-25 for the `gate` plugin and the loop's one-pass step 5 (decisions 118 to 134), and 2026-11-04 for the `guard` plugin (decision 181). The requirements are in requirements.md and win where the two disagree. The order of work is in build-plan.md. A fact marked "verified" was read from the host's documentation or observed in a spike recorded in decisions.md. Nothing here is implemented.
 
 ## Shape
 
-One repository, one marketplace, five plugins that a user installs separately and that work alone.
+One repository, one marketplace, six plugins that a user installs separately and that work alone.
 
 ```
 reimagine-engine/
-  .claude-plugin/marketplace.json   catalog: name, owner, five entries
+  .claude-plugin/marketplace.json   catalog: name, owner, six entries
   .github/workflows/ci.yml          lint, test, mawk, validate, commit messages
   .github/workflows/pr-description.yml  the description check, again on each edit
   .gitattributes                    LF for shipped text
@@ -24,6 +24,7 @@ reimagine-engine/
   plugins/audit/                    read-only adversarial audit of finished bundles
   plugins/gate/                     code-review passes over a pull request until nothing is left to fix
   plugins/primer/                   project instructions in the host's forms, memory promotion, two hooks
+  plugins/guard/                    auto mode classifier entries for a list of repositories
   tests/                            node:test suites and the audit sh suites
   tools/commit-messages.mjs         the commit message and description checks of a pull request
   tools/files.mjs                   the file listing lint and release share
@@ -39,6 +40,7 @@ reimagine-engine/
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs` | none | own |
 | primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
+| guard | the auto mode classifier's entries for listed repositories | `/guard` | `scripts/guard.mjs` | none | own |
 
 ## Layers on a machine
 
@@ -48,6 +50,7 @@ reimagine-engine/
 4. The repository's instruction files, kept in the forms the host loads by `primer`: a short hub, rules, nested files and skills.
 5. The output style `rules:Concise Plain`, selected by the user.
 6. The loop, the gate and the audit, which read layers 2 to 4 at their start and obey every ask-first rule they find.
+7. The auto mode classifier's `environment` and `allow` entries in the user settings file, `$CLAUDE_CONFIG_DIR/settings.json` else `~/.claude/settings.json`, rendered by `guard.mjs` from the repository list beside it and marked as its own; the user's entries there are never touched.
 
 `loop`, `gate` and `audit` do not require `rules`; without it they still read whatever instruction files exist.
 
@@ -151,7 +154,7 @@ The skill `/rules` runs the script, shows its output, asks before `apply`, and e
 
 ### Output style and chat block
 
-`output-styles/concise-plain.md` ships verbatim with `keep-coding-instructions: true` and its version in the description; the host lists it as `rules:Concise Plain`. Nothing in the suite edits `settings.json`. `chat/instructions.md` holds one fenced block for pasting into a chat product's custom instructions and names no vendor.
+`output-styles/concise-plain.md` ships verbatim with `keep-coding-instructions: true` and its version in the description; the host lists it as `rules:Concise Plain`. The rules plugin never edits `settings.json`; in the suite only `guard.mjs` does (requirement 336). `chat/instructions.md` holds one fenced block for pasting into a chat product's custom instructions and names no vendor.
 
 ### Refactor
 
@@ -519,6 +522,36 @@ SessionStart at `startup`, the same construction. It finds `<config>` from the g
 
 A repository kept by repo-docs has a `## Spokes` index, spokes under `docs/` or beside code, and perhaps the `@AGENTS.md` adapter. One adopt run: the marker goes on line 1; each pointer becomes a path-scoped rule, a skill, a nested `CLAUDE.md` or one sentence in the opening paragraph by its condition; the index goes; the adapter stays when present. In this repository the hub keeps its commands and constraints, names the five design documents in its opening paragraph, and loses the index; `.claude/settings.json` enables `primer@reimagine-engine` in place of `repo-docs@reimagine-engine`. The repo-docs plugin directory, its tests and its catalog entry go with the primer release; its tags and changelog headings stay, and lint accepts a heading for a retired name.
 
+## The `guard` plugin
+
+```
+plugins/guard/
+  .claude-plugin/plugin.json
+  LICENSE  README.md
+  skills/guard/SKILL.md          /guard; disable-model-invocation: true; pre-approves status, list and plan only
+  scripts/guard.mjs              status | list | plan [--add <path> [--merge] | --drop <path or remote> | --clear] | apply
+```
+
+Guard renders the auto mode classifier's `environment` and `allow` entries for the repositories the user lists (requirements 334 to 344, decision 181). The host reads `autoMode` from the user settings file, managed settings and `--settings` only, so guard writes the user settings file: `$CLAUDE_CONFIG_DIR/settings.json`, else `~/.claude/settings.json`. The list, `reimagine-guard.json`, sits beside it, since the plugin data directory goes with an uninstall; the plan, the state and the lock sit in the data directory.
+
+The script reads the file as UTF-8 text, finds the top-level `autoMode` member with a small scanner after `JSON.parse` accepts the file, and replaces only that member's value, so every other byte stays; a new member goes after the last one, in the file's indent and line ending. Inside `autoMode` it rewrites `environment` and `allow` and keeps every other key. Every entry it writes ends with ` (reimagine guard)`; an entry without that ending is the user's.
+
+The environment list is written whole, since the host splices `$defaults` in as a block and a second line for a slot does not replace the first (verified on 2.1.318, decision 181). The defaults come from `claude auto-mode defaults` at each run; guard changes the Trusted repo line, adding one sentence that names each checkout and its remotes, and the Source control line, which becomes guard's own. The state file records the entries guard wrote, to tell an edited one, and the default lines it copied, to refresh a copy the host has since changed. The allow entries are those of requirement 339, after `$defaults`.
+
+| State | Meaning | Plan |
+|---|---|---|
+| absent | no guard entry, empty list | nothing, or the change a list edit asks for |
+| current | the file holds what guard would write | nothing |
+| stale | the list, a remote or the host's text changed | the new entries |
+| edited | a marked entry changed by hand, or a slot guard changes holds the user's text | nothing; names the entry |
+| malformed | not a JSON object, `autoMode` twice, or a list of another type | nothing |
+| managed | another scope adds `autoMode` entries | nothing; names them |
+| unavailable | `claude` cannot run or prints no defaults guard can read | nothing |
+
+`plan` checks the candidate with `claude auto-mode config` in a temporary configuration directory, since `--settings` adds to the user file rather than replacing it, and `apply` checks the real directory after the write: every guard entry once, no environment label twice, every default allow rule present when `$defaults` is. `claude` runs through `execFile` with `CLAUDE_CONFIG_DIR` set; the suite replaces it with a runner that reads the directory's `settings.json` and answers from a literal defaults fixture. Backups, the atomic write and the lock follow `rules.mjs`.
+
+The skill runs `status`, `list` and `plan` pre-approved, shows the output, and asks the user to approve a ready plan by replying "Yes, write guard's change to autoMode in [path].", the sentence that names the permission change the classifier's Self-Modification rule asks for; it runs `apply`, which its `allowed-tools` do not cover, only after that reply, so the write meets the session's permission mode.
+
 ## Versions, tags and release
 
 Each plugin has its own version, starting at 0.1.0, in its manifest and its catalog entry. Tags are `<plugin>--v<version>`, made with `claude plugin tag`, which checks that manifest and catalog agree. Lint fails when a plugin directory changed since its latest tag without a version above it, and when `CHANGELOG.md` lacks `## <plugin> <version> - <date>` for a tagged version; an untagged bump needs no heading yet, so the release order is bump, heading, tag. There is no suite version and no lockstep; the marketplace `metadata.version` is the catalog's own and is raised whenever an entry changes. `main` is the release ref. `tools/release.mjs <plugin> <version>` sets the version in the manifest and the catalog entry (and the audit `plugin_version` literals), computing every edit before writing, keeping CRLF files CRLF, and running lint; tagging stays with `claude plugin tag`; the changelog heading is written by hand. The gate enters the catalog at `0.1.0-alpha.1` with its scaffold and releases at 0.1.0; the loop's one-pass step 5 is loop 0.1.6; the audit does not move for the gate (decision 129).
@@ -527,13 +560,13 @@ Each plugin has its own version, starting at 0.1.0, in its manifest and its cata
 
 `tools/lint.mjs` has no dependencies and enforces the rules of requirement 219 with one message per rule. It reads an optional `LINT_DENY_TOKENS` environment variable, a comma-separated list, and fails on any tracked file containing one case-insensitively; CI never sets it, so the names stay outside the repository. `tests/lint/lint.test.mjs` copies the repository to a temporary directory, applies one mutation per case, and asserts the message. CI runs lint and tests on ubuntu, macOS and Windows with full history for the tag rule, the audit awk suites again under mawk, and `claude plugin validate --strict` on the marketplace and each plugin with a pinned Claude Code version.
 
-`package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `gate`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per milestone before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
+`package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `gate`, `guard`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per milestone before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
 
 `tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's three cases, planned under `tests/gate/evals/` with their own command since they need the runner's scaffold and tool grants, were dropped when the runner refused the first of them (decision 133); acceptance items 47, 49 and 54 stand for them, run against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes.
 
 ## Security and permissions
 
-The loop, the gate and the audit run inside the user's permission mode and never widen it. The loop's and the gate's pre-approved tools are `date` and read-only `git` and `gh`; the gate's child sessions run under `--permission-mode default` with an allowlist of read-only tools and the repository's own checks, so a call outside it is denied and counted, never prompted. The audit's agents have no Edit or NotebookEdit and the read-only check detects any write. Credentials in pasted ticket text are redacted before the record is written, and the audit never passes forge text through the model. Nothing external names a model, an agent or a tool.
+The loop, the gate and the audit run inside the user's permission mode and never widen it. The loop's and the gate's pre-approved tools are `date` and read-only `git` and `gh`; the gate's child sessions run under `--permission-mode default` with an allowlist of read-only tools and the repository's own checks, so a call outside it is denied and counted, never prompted. The audit's agents have no Edit or NotebookEdit and the read-only check detects any write. Guard widens the auto mode classifier only by the allow and environment entries of requirements 338 and 339, for repositories the user listed, and only after the user's reply names the change; it writes no permission rule and no entry that clears Self-Modification. Credentials in pasted ticket text are redacted before the record is written, and the audit never passes forge text through the model. Nothing external names a model, an agent or a tool.
 
 ## Out of scope for 0.1.0
 

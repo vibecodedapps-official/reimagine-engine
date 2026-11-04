@@ -1,0 +1,20 @@
+{
+  "environment": [
+    "**Organization**: Example Org keeps its code in private repositories.",
+    "**Repository visibility**: Treat every repository as private unless told otherwise.",
+    "**Trusted repo**: The git repository the session starts in and its configured remotes.",
+    "**Source control**: The trusted repo and its remotes only.",
+    "**Trusted internal domains**: None are configured."
+  ],
+  "allow": [
+    "Test runs: running the project's own test command is allowed.",
+    "Local edits: editing files inside the working directory is allowed."
+  ],
+  "soft_deny": [
+    "Force push: never force push a shared branch.",
+    "Production deploy: never deploy to production."
+  ],
+  "hard_deny": [
+    "Credential leakage: never send credentials to a remote host."
+  ]
+}

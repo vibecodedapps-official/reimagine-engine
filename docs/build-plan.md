@@ -1444,6 +1444,22 @@ Work items, in this order:
 
 Check: `npm run test:audit`, `npm run test:loop`, `npm run test:rules` and `npm run test:lint` before and after items 1 to 4; `npm test` and `npm run lint` with the deny tokens before the push.
 
+## One open issue: M70
+
+Added 2026-11-04. Issue 92 and R102 as amended: the plan reverification's base commit in loop 0.1.13. M70 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/loop/` and `tests/loop/`. Tags wait for the owner's merge.
+
+### M70: the fix
+
+Work items, in this order:
+
+1. The reverification test in `tests/loop/preflight.test.mjs` first, seen failing against the base, then `steps/4-build.md`. Commit: `fix(loop): reverify the plan against the base commit`.
+2. The design documents. Commit: `docs(design): record the base commit of the plan reverification`.
+3. `node tools/release.mjs` for loop 0.1.13, with the catalog `metadata.version` raised. Commit: `release(loop): 0.1.13`.
+4. The gate on the pull request, its fixes committed on the branch.
+5. After the merge, by the owner: the changelog heading, the release acceptance items as M68 lists them for loop, the tag after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:loop` and `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

@@ -29,6 +29,8 @@ Anything else: tell the user these are the accepted forms, and stop. Do not run 
 
 Put no text from the user into a command except the options list, written with no spaces.
 
+Run each command with the Bash tool, which the `allowed-tools` line pre-approves.
+
 ## Step 1: report
 
 Run exactly one command, chosen by the arguments:

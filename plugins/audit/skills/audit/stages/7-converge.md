@@ -245,20 +245,29 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
       finding's own heading under `### Original`. In `ledger/6.md` and `ledger/7.md` a
       section starts at a line that is exactly `## <id>` or begins `### <id>: ` and runs
       to the next `## ` line or `### <word>: ` line, `<word>` holding no space or
-      colon. Every other part of a ledger file (role, acknowledgments, merge verdict,
-      the seen list, map corrections, a failure note) sits under a `## ` heading that is
-      not an id, which ends a section and is never cut out. Every path starts with
-      `<run dir>/`; `<slice>` is the slice's full path:
+      colon. A line whose text, after leading spaces and tabs, starts with three
+      backticks opens or closes a code fence; that line and every line inside the fence
+      belong to the section that holds them and never start or end one, so both commands
+      print fence lines with their section. A copy that reaches the end of the file
+      inside an open fence ends with a closing fence line, so the rest of the slice is
+      read outside it. `ledger.sh` leaves out of the universe only a `ledger/6.md`
+      `### X<n>: ` block that it ends at the end of the file inside such a fence; a
+      slice can still copy a `## <id>` section that ends inside the fence, which is what
+      the closing fence line is for. Every other part of a ledger
+      file (role, acknowledgments, merge verdict, the seen list, map corrections, a
+      failure note) sits under a `## ` heading that is not an id, which ends a section
+      and is never cut out. Every path starts with `<run dir>/`; `<slice>` is the
+      slice's full path:
 
       ```
       # ledger/5.md
-      awk -v id=<id> '/^## /{p = ($0 == "## " id); if (p) f = 1} END{exit !f}' <run dir>/ledger/5.md &&
+      awk -v id=<id> '{t = $0; sub(/^[ \t]+/, "", t); if (index(t, "```") == 1) inf = !inf; else if (!inf && /^## /) {p = ($0 == "## " id); if (p) f = 1}} END{exit !f}' <run dir>/ledger/5.md &&
         printf 'source: ledger/5.md, section <id>\n' >> <slice> &&
-        awk -v id=<id> '/^## /{p = ($0 == "## " id)} p' <run dir>/ledger/5.md >> <slice>
+        awk -v id=<id> '{t = $0; sub(/^[ \t]+/, "", t); if (index(t, "```") == 1) inf = !inf; else if (!inf && /^## /) p = ($0 == "## " id)} p; END{if (p && inf) print "```"}' <run dir>/ledger/5.md >> <slice>
       # ledger/6.md and ledger/7.md (<n> is 6 or 7)
-      awk -v id=<id> '/^## |^### [^ :]+: /{p = ($0 == "## " id || index($0, "### " id ": ") == 1); if (p) f = 1} END{exit !f}' <run dir>/ledger/<n>.md &&
+      awk -v id=<id> '{t = $0; sub(/^[ \t]+/, "", t); if (index(t, "```") == 1) inf = !inf; else if (!inf && /^## |^### [^ :]+: /) {p = ($0 == "## " id || index($0, "### " id ": ") == 1); if (p) f = 1}} END{exit !f}' <run dir>/ledger/<n>.md &&
         printf 'source: ledger/<n>.md, section <id>\n' >> <slice> &&
-        awk -v id=<id> '/^## |^### [^ :]+: /{p = ($0 == "## " id || index($0, "### " id ": ") == 1)} p' <run dir>/ledger/<n>.md >> <slice>
+        awk -v id=<id> '{t = $0; sub(/^[ \t]+/, "", t); if (index(t, "```") == 1) inf = !inf; else if (!inf && /^## |^### [^ :]+: /) p = ($0 == "## " id || index($0, "### " id ": ") == 1)} p; END{if (p && inf) print "```"}' <run dir>/ledger/<n>.md >> <slice>
       # live/findings.md, when it has a section for the id; a carried id's file whole
       awk -v id=<id> '/^## /{p = ($0 == "## " id); if (p) f = 1} END{exit !f}' <run dir>/live/findings.md &&
         printf 'source: live/findings.md, section <id>\n' >> <slice> &&

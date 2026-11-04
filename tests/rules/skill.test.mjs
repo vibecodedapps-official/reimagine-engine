@@ -12,6 +12,10 @@ test('R36: the adopt step passes only the options the user gave, never the plan\
   assert.equal(line.includes('--adopt'), true);
 });
 
+test('R39: the skill runs each command with the Bash tool, which its allowed-tools pre-approves', () => {
+  assert.ok(SKILL.includes('Run each command with the Bash tool, which the `allowed-tools` line pre-approves.'));
+});
+
 const REFACTOR_DIR = new URL('../../plugins/rules/skills/refactor/', import.meta.url);
 
 function readRefactor() {

@@ -1,14 +1,15 @@
 # reimagine-engine
 
-A suite of five Claude Code plugins, built on three ideas: achieve more with less; say how, not what; take work from development to production in bulk.
+A suite of six Claude Code plugins, built on three ideas: achieve more with less; say how, not what; take work from development to production in bulk.
 
 - `rules`: house rules as one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style and a refactor review against them.
 - `loop`: plan, build, review and publish a bundle of tickets as one reviewed pull request per repository, resuming on the same branch when run again.
 - `audit`: a read-only, adversarial audit of finished pull requests that stops at a report, with an act step for approved items.
 - `gate`: code-review passes over a pull request, several, or a loop manifest, fixing what each pass finds until a pass finds nothing left to fix.
 - `primer`: project instructions in the forms Claude Code loads, a short `CLAUDE.md`, path-scoped rules, nested instructions and skills, with a hook that checks every commit.
+- `guard`: auto mode trust for the repositories you list, the classifier's entries in your user settings file kept current by a script, each change shown before it is made.
 
-Status: all five plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`. The build order is in `docs/build-plan.md`.
+Status: all six plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`. The build order is in `docs/build-plan.md`.
 
 ## Requirements
 
@@ -28,9 +29,10 @@ Without a GitHub SSH key on the machine, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`
 /plugin install audit@reimagine-engine
 /plugin install primer@reimagine-engine
 /plugin install gate@reimagine-engine
+/plugin install guard@reimagine-engine
 ```
 
-Each plugin works alone. After installing `rules`, run `/rules` (also reachable as `/rules:rules`) and answer the question it asks; then pick the output style with `/output-style rules:Concise Plain`.
+Each plugin works alone. After installing `rules`, run `/rules` (also reachable as `/rules:rules`) and answer the question it asks; then pick the output style with `/output-style rules:Concise Plain`. After installing `guard`, `/guard add <path>` lists a repository and shows the change before writing it.
 
 ## Use
 
@@ -53,6 +55,7 @@ claude plugin update loop@reimagine-engine
 claude plugin update audit@reimagine-engine
 claude plugin update primer@reimagine-engine
 claude plugin update gate@reimagine-engine
+claude plugin update guard@reimagine-engine
 ```
 
 In a session, `/plugin marketplace update reimagine-engine` refreshes the catalog and `/plugin` opens the plugin manager, whose Installed tab updates a plugin; `/plugin update` is not a session command. An alpha install moves to 0.1.0 the same way; the alpha version sorts below it. Restart the session afterwards. When the house rules changed, a one-line notice at startup says to run `/rules`.
@@ -67,6 +70,7 @@ Run `/rules --remove` first if you want the block out of your `CLAUDE.md`; it gi
 /plugin uninstall audit@reimagine-engine
 /plugin uninstall primer@reimagine-engine
 /plugin uninstall gate@reimagine-engine
+/plugin uninstall guard@reimagine-engine
 ```
 
 The audit keeps its run registry in the plugin data directory; delete it by hand if you want it gone.

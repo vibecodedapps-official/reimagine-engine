@@ -20,7 +20,7 @@ const run = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
 
 const CATALOG = '.claude-plugin/marketplace.json';
-const NAMES = ['rules', 'loop', 'audit', 'primer', 'gate'];
+const NAMES = ['rules', 'loop', 'audit', 'primer', 'gate', 'guard'];
 const RETIRED = ['repo-docs'];
 const LOOP_SKILL = 'plugins/loop/skills/run/SKILL.md';
 const LOOP_DIR = 'plugins/loop/skills/run/';
@@ -28,6 +28,7 @@ const RULES_SKILL = 'plugins/rules/skills/rules/SKILL.md';
 const AUDIT_SKILL = 'plugins/audit/skills/audit/SKILL.md';
 const PRIMER_SKILL = 'plugins/primer/skills/primer/SKILL.md';
 const GATE_SKILL = 'plugins/gate/skills/gate/SKILL.md';
+const GUARD_SKILL = 'plugins/guard/skills/guard/SKILL.md';
 const STYLE = 'plugins/rules/output-styles/concise-plain.md';
 const CHAT = 'plugins/rules/chat/instructions.md';
 const RULES_HOOKS = 'plugins/rules/hooks/hooks.json';
@@ -43,7 +44,9 @@ const EXECUTABLES = [
   'plugins/primer/hooks/notice.sh',
   'plugins/gate/scripts/findings.mjs',
   'plugins/gate/scripts/next.mjs',
+  'plugins/guard/scripts/guard.mjs',
 ];
+const GUARD_RUNS = ['status', 'list', 'plan'].map((verb) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" ${verb} *)`);
 const EXECUTABLE_EXTENSIONS = ['.sh', '.mjs', '.js', '.cjs', '.py', '.ps1', '.bat', '.cmd', '.exe'];
 const PLUGIN_TOP = ['.claude-plugin', 'skills', 'commands', 'agents', 'hooks', 'scripts', 'output-styles', 'rules', 'chat', 'README.md', 'LICENSE'];
 const GITATTRIBUTES = ['* text=auto eol=lf', '*.sh text eol=lf', '*.mjs text eol=lf', '*.md text eol=lf'];
@@ -234,11 +237,11 @@ function importFailures(ctx) {
 
 function budgetFailures(ctx) {
   const out = [];
-  const rules = 'plugins/rules/scripts/rules.mjs';
-  const source = ctx.text(rules);
-  if (source !== null) {
+  for (const script of ['plugins/rules/scripts/rules.mjs', 'plugins/guard/scripts/guard.mjs']) {
+    const source = ctx.text(script);
+    if (source === null) continue;
     const lines = source.split('\n').length - 1 + (source !== '' && !source.endsWith('\n') ? 1 : 0);
-    if (lines > 700) out.push(`${rules}: ${lines} lines, over the 700-line budget`);
+    if (lines > 700) out.push(`${script}: ${lines} lines, over the 700-line budget`);
   }
   const skill = ctx.text(LOOP_SKILL);
   if (skill !== null) {
@@ -343,6 +346,12 @@ function skillFailures(ctx) {
   const out = [];
   const rulesSkill = ctx.text(RULES_SKILL);
   if (frontmatter(rulesSkill).get('disable-model-invocation') !== 'true') out.push(`${RULES_SKILL}: frontmatter lacks disable-model-invocation: true`);
+
+  const guardFm = frontmatter(ctx.text(GUARD_SKILL));
+  if (guardFm.get('disable-model-invocation') !== 'true') out.push(`${GUARD_SKILL}: frontmatter lacks disable-model-invocation: true`);
+  for (const entry of listEntries(guardFm.get('allowed-tools'))) {
+    if (!GUARD_RUNS.includes(entry)) out.push(`${GUARD_SKILL}: allowed-tools entry ${entry} is not a status, list or plan run of guard.mjs`);
+  }
 
   const loop = ctx.text(LOOP_SKILL);
   const loopFm = frontmatter(loop);

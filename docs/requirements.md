@@ -69,6 +69,8 @@ Amended 2026-11-03: the sources of refactor and fold, a contradicted instruction
 
 Amended 2026-11-03: the fence rule of the stage 7 slices and the merger (decision 176) amends requirement 159, the rules skill's tool (decision 177) amends 39, and the description rule of lint (decision 178) amends 219; the worktree's base commit amends 80 and the stage 6 mandatory set amends 158.
 
+Amended 2026-11-04: the base commit of the plan reverification amends requirement 102.
+
 ## Suite
 
 1. **One repository, one marketplace.** The marketplace is named `reimagine-engine` and lists exactly five plugins: `rules`, `loop`, `audit`, `primer` and `gate`, each at `plugins/<name>/`. Before a release a prerelease catalog may list a plugin that is built at a prerelease version (requirement 14), so a second machine can install it from `main` before its release, and may list `repo-docs` until requirement 268 retires it. Until the gate's scaffold milestone the catalog, lint's name list, the README and the repository's hub say four plugins, and that milestone moves all of them to five in one commit (decision 132). Check: lint.
@@ -226,7 +228,7 @@ Amended 2026-11-03: the fence rule of the stage 7 slices and the merger (decisio
 99. **Plan content.** `plan.md` holds, per input, scope, acceptance criteria and buildable status; across inputs, shared changes, migrations and API changes, tests, checks, order of work, and slices with disjoint files; per slice, the files owned, the change, criteria, tests, checks and the implementer. Slice count is a plan property. A slice is sized to fit one implementer call within the subagent budget in force (requirement 67), and the plan step names that budget and its source where it says when to split, since a call past it ends the run `blocked`. Check: review; test (the budget in Step 2).
 100. **Plan review rounds.** Each round verifies every objection, revises, appends a review log to `plan.md`, and is done when the reply ends `NO BLOCKING OBJECTIONS` and the orchestrator finds none. A disagreement that is the user's call ends `stopped`; the cap with a blocking objection ends `blocked`. Check: review.
 101. **Plan only.** In plan-only mode the run ends `plan-only` after the review, having changed nothing in the tree. A plan confirmation not answered with a clear yes also ends `plan-only`; a change request is another round within the cap; after a yes the clean-tree, flagged-file, branch, remote-head and pull request checks run again. Check: review; acceptance.
-102. **Execution setup.** After the plan is final the loop reverifies against the base when the base moved, creates or switches to the branch, discovers the checks and runs the baseline once, and installs plan-added dependencies after the ask-first yes and before any implementer. Check: review.
+102. **Execution setup.** After the plan is final the loop reverifies against the base commit when the base moved, creates or switches to the branch, discovers the checks and runs the baseline once, and installs plan-added dependencies after the ask-first yes and before any implementer. Check: review.
 103. **No comment before the plan.** Nothing is published before the plan is final, and nothing new is published on a blocked run. Check: review.
 
 ### Build (step 4)

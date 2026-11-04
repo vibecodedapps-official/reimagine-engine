@@ -177,3 +177,11 @@ test('R55: the user\'s instruction files come from $CLAUDE_CONFIG_DIR when it is
     assert.ok(!text.includes('in `$CLAUDE_CONFIG_DIR`, else `~/.claude`'));
   }
 });
+
+test('R80: worktree.md and Step 0 both create the worktree at <base commit>, not at the base branch name', () => {
+  const WORKTREE = read('../../plugins/loop/skills/run/worktree.md');
+  for (const text of [WORKTREE, PREFLIGHT]) {
+    assert.ok(text.includes('git worktree add --detach <path> <base commit>'));
+    assert.ok(!text.includes('git worktree add --detach <path> <base>`'));
+  }
+});

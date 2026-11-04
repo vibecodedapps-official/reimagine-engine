@@ -377,14 +377,14 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/5-pass-two.md` when the first gr
 Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/6-second-opinion.md` and `${CLAUDE_PLUGIN_ROOT}/skills/audit/second-opinion-request.md` when stage 5 is complete or failed. Stage 6 always runs.
 
 1. Copy every input to `second-opinion/inputs/<run-relative path>` with a first line `audit-sentinel: <run-relative path> <16 hex>`, the token from `od -An -N8 -tx1 /dev/urandom` with spaces removed. Audited sources are never copied, only named by absolute read path and sha from the brief.
-2. Write the mandatory set with `ledger.sh mandatory` into `ledger/mandatory.txt`. Over 60 ids, split it by shell into `second-opinion/batch-<k>.txt` files of at most 60. The `IDS-BATCH-<k>` placeholder is replaced by shell, never typed.
+2. Write the mandatory set with `ledger.sh mandatory` into `tmp/mandatory.txt` and move it to `ledger/mandatory.txt` only on exit 0; a nonzero exit fails stage 6. Over 60 ids, split it by shell into `second-opinion/batch-<k>.txt` files of at most 60. The `IDS-BATCH-<k>` placeholder is replaced by shell, never typed.
 3. Launch one fresh `audit:adversary` per batch in second-opinion mode, at fable or the override, in the background: scope `second-opinion` for a single batch, else `second-opinion-<k>`; request `second-opinion/request.md` for batch 1, else `second-opinion/request-<k>.md`, which holds asks 1 and 2 only. The agent writes `second-opinion/response.md` or `second-opinion/response-<k>.md` itself and ends `status: complete`. Only the first batch may add `X<n>` findings with `origin: second-opinion`. The answer file is the agent's own and is never retyped.
 4. Per batch, check the sentinel acknowledgments and run `ledger.sh missing` for that batch's ids. A failed check or a missing `status: complete` follows the ladder: relaunch on opus, then stage 6 fails.
 5. Write `ledger/6.md` once, with these sections in order:
    - `## Role`: the role, the requested model of each batch, and any swap.
    - `## Acknowledgments`: each input's sentinel and whether the answer acknowledged it.
    - One `## <id>` section per position, with `- position:`, `- evidence:` and `- answer location:`.
-   - The `### X<n>:` additions of the first batch.
+   - `## Additions`: the `### X<n>:` additions of the first batch.
    - `## Merge verdict (non-binding)`.
    - `## Seen, no position`, from `ledger.sh seen`, appended by redirection.
    - `## Stage failure`, only when stage 6 failed.

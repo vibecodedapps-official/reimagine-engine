@@ -58,6 +58,13 @@ the ledger files for duplicate checks only.
      line Grep gives, as above, to the end of the section: in `ledger/5.md` the next
      `## ` line; in `ledger/6.md` and `ledger/7.md` the next `## ` line or
      `### <word>: ` line, `<word>` holding no space or colon; or the end of the file.
+     A line whose text, after leading spaces and tabs, starts with three backticks opens
+     or closes a code fence. A line inside a fence never starts or ends a section, and a
+     `### <id>: ` block that reaches the end of the file inside an open fence is no block.
+     To tell a fenced hit without reading the file whole, Grep the same file, with line
+     numbers, for the lines whose text after leading spaces and tabs starts with three
+     backticks: a hit with an odd number of those lines above it is inside a fence, and
+     you read from the hit outside a fence.
    - Before you write, check that each file you read whole was read from line 1 through
      its line count with no gap. When you cannot read a file to its end, or the tool
      refuses a single line, the merge fails: write no items, write the reason, and end

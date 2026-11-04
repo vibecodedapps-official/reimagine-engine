@@ -69,9 +69,21 @@
 #   names its paging rule ("Read pages of at most 600 lines", "A page the tool refuses
 #   is read again"), the anchored Grep pattern `^## <id>$`, the gap check ("with no
 #   gap") and `status: failed at <file>:<line>`, which skills/audit/common.md also
-#   names. skills/audit/stages/7-converge.md names
+#   names, and the fence rule for a section of a "duplicate checks only" ledger ("never
+#   starts or ends a section", "is no block", "an odd number of those lines above it").
+#   skills/audit/stages/7-converge.md names
 #   awk 'END { print NR }', and steps 6, 7.3 and 7.4, the three merger prompts, each
 #   say "line count".
+# - The awk commands of step 7.1 in skills/audit/stages/7-converge.md that cut a section
+#   of ledger/5.md, ledger/6.md or ledger/7.md, found in the indented block by their
+#   content, are filled in and run on temp ledgers: a line inside a code fence never
+#   starts or ends a section, fence lines print with the section, and a copy that
+#   ends the file inside an open fence ends with a closing fence line while its
+#   existence check still exits 0. Output and exit status are compared with literal
+#   text.
+# - The stage 6 section of skills/audit/SKILL.md writes the mandatory set into
+#   `tmp/mandatory.txt`, moves it only on exit 0, and names `## Additions` for the first
+#   batch's `### X<n>:` additions.
 # - The command list in hard rule 2 of skills/audit/common.md and in Boundaries item 2
 #   of agents/auditor.md, adversary.md, mapper.md and digester.md, read as one line,
 #   names `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with `-t`,
@@ -489,7 +501,8 @@ fi
 if [ -f agents/merger.md ]; then
 	tr -d '\r' < agents/merger.md > "$tmp/merger"
 	for s in 'Read pages of at most 600 lines' 'A page the tool refuses is read again' \
-		'`^## <id>$`' 'with no gap' 'status: failed at <file>:<line>'; do
+		'`^## <id>$`' 'with no gap' 'status: failed at <file>:<line>' \
+		'never starts or ends a section' 'is no block' 'an odd number of those lines above it'; do
 		grep -qF "$s" "$tmp/merger" || fail "agents/merger.md: does not name '$s'"
 	done
 fi
@@ -511,6 +524,127 @@ if [ -f "$converge" ]; then
 		[ -s "$tmp/step" ] || fail "$converge: no step matching $s"
 		grep -q 'line count' "$tmp/step" || fail "$converge: the merger prompt of step $s gives no line count"
 	done
+fi
+
+# The slice commands of stage 7 for ledger/5.md, ledger/6.md and ledger/7.md start and end
+# a section only at a line outside a code fence. Each command is taken from the indented
+# block by its content, filled in, run on a temp ledger, and its output and exit status
+# compared with the expected text.
+slice_cmd() {
+	tr -d '\r' < "$converge" | sed 's/^[[:space:]]*//; s/ &&$//; s/ >> <slice>$//' |
+		grep '^awk -v id=<id> ' | grep -F " <run dir>/$1" > "$tmp/slice-cmds"
+	if [ "$2" = check ]; then grep -F 'exit !' "$tmp/slice-cmds"; else grep -vF 'exit !' "$tmp/slice-cmds"; fi
+}
+# slice_run <path as written> <ledger file name> <check|copy> <id> <expected>
+slice_run() {
+	sr_cmd=$(slice_cmd "$1" "$3")
+	case $sr_cmd in
+	'' | *'
+'*)
+		fail "$converge: not exactly one $3 command for $1"
+		return
+		;;
+	esac
+	sr_n=${2#ledger/}
+	sr_n=${sr_n%.md}
+	sr_cmd=$(printf '%s\n' "$sr_cmd" | sed "s|<id>|$4|g; s|<run dir>|$tmp/run|g; s|<n>|$sr_n|g")
+	sr_got=$(sh -c "$sr_cmd" 2>&1; echo "exit $?")
+	[ "$sr_got" = "$5" ] ||
+		fail "$converge: the $3 command for $1 on $2, id $4, gave: $(printf '%s' "$sr_got" | tr '\n' '|')"
+}
+if [ -f "$converge" ]; then
+	mkdir -p "$tmp/run/ledger"
+	cat > "$tmp/run/ledger/5.md" <<'LEDGER'
+## Role
+role
+## X1
+body 1
+### Original
+  ```text
+## X9
+## Not a heading
+  ```
+tail 1
+## X2
+body 2
+LEDGER
+	slice_run ledger/5.md ledger/5.md check X1 'exit 0'
+	slice_run ledger/5.md ledger/5.md check X9 'exit 1'
+	slice_run ledger/5.md ledger/5.md copy X1 '## X1
+body 1
+### Original
+  ```text
+## X9
+## Not a heading
+  ```
+tail 1
+exit 0'
+	cat > "$tmp/run/ledger/6.md" <<'LEDGER'
+## Role
+role
+### X1: first
+body 1
+  ```text
+### X9: not a section
+## Not a heading
+  ```
+tail 1
+### X2: second
+body 2
+## Merge verdict
+verdict
+LEDGER
+	slice_run 'ledger/<n>.md' ledger/6.md check X1 'exit 0'
+	slice_run 'ledger/<n>.md' ledger/6.md check X9 'exit 1'
+	slice_run 'ledger/<n>.md' ledger/6.md copy X1 '### X1: first
+body 1
+  ```text
+### X9: not a section
+## Not a heading
+  ```
+tail 1
+exit 0'
+	cat > "$tmp/run/ledger/6.md" <<'LEDGER'
+## Role
+role
+### X2: second
+body 2
+### X3: third
+  ```text
+code
+LEDGER
+	slice_run 'ledger/<n>.md' ledger/6.md check X3 'exit 0'
+	slice_run 'ledger/<n>.md' ledger/6.md check X2 'exit 0'
+	slice_run 'ledger/<n>.md' ledger/6.md copy X3 '### X3: third
+  ```text
+code
+```
+exit 0'
+	cat > "$tmp/run/ledger/6.md" <<'LEDGER'
+## Role
+role
+### X3: third
+body
+### Evidence
+  ```text
+code
+LEDGER
+	slice_run 'ledger/<n>.md' ledger/6.md check X3 'exit 0'
+	cat > "$tmp/run/ledger/7.md" <<'LEDGER'
+## Role
+role
+## X3
+body 3
+  ```text
+code
+LEDGER
+	slice_run 'ledger/<n>.md' ledger/7.md check X3 'exit 0'
+	slice_run 'ledger/<n>.md' ledger/7.md copy X3 '## X3
+body 3
+  ```text
+code
+```
+exit 0'
 fi
 
 # The command list of hard rule 2 and of each Bash agent's Boundaries item 2 holds the
@@ -556,8 +690,7 @@ fi
 # reports as if they were absent; the file is read as one line.
 f=skills/audit/common.md
 if [ -f "$f" ]; then
-	tr -d '' < "$f" | tr '
-	' '  ' | tr -s ' ' > "$tmp/list"
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF 'every agent reports and labels a finding as if those rules were absent' "$tmp/list" ||
 		fail "$f: does not say every agent reports as if REVIEW.md's severity and do-not-report rules were absent"
 fi
@@ -675,6 +808,13 @@ if [ -f "$f" ]; then
 		fail "$f: does not say a late completion notification changes nothing"
 	grep -qF 'for an agent this session did not launch, such as one an earlier session launched, also changes nothing' "$tmp/list" ||
 		fail "$f: does not say a completion notification for an unlisted agent changes nothing"
+	# Stage 6 builds the mandatory set in tmp/ and moves it on exit 0, and files the
+	# first batch's additions under ## Additions in ledger/6.md.
+	tr -d '\r' < "$f" | awk '/^## Stage 6: second opinion$/ { on = 1; next } /^## / { if (on) exit } on' |
+		tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	for s in 'into `tmp/mandatory.txt`' 'only on exit 0' '`## Additions`: the `### X<n>:` additions'; do
+		grep -qF "$s" "$tmp/list" || fail "$f: the stage 6 section does not name '$s'"
+	done
 fi
 # Act shows an item's defect at baseline before it edits, logs it as `demonstrate`, and
 # carries the before and after results into the commit body; the file is read as one line.

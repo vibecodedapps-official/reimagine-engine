@@ -8,7 +8,7 @@ The worktree path is `<checkout-parent>/<checkout-name>-reimagine-<branch-slug>`
 
 Do Step 0.5's work first, in the record root (`record.md`, Location): add the `.reimagine/` exclude and create the record directory. The record then exists before the worktree does, and from then a stop writes the report.
 
-Create the worktree detached at the base commit: `git worktree add --detach <path> <base commit>`.
+Create the worktree detached at the start commit (Step 0.2): `git worktree add --detach <path> <start commit>`.
 
 Record two roots in `run.md`:
 

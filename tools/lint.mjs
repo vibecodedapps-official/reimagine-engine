@@ -381,6 +381,12 @@ function skillFailures(ctx) {
     if (!primer.includes(phrase)) out.push(`${PRIMER_SKILL}: description does not name "${phrase}"`);
   }
 
+  for (const file of ctx.files.filter((f) => /^(?:plugins\/[^/]+|\.claude)\/skills\/[^/]+\/SKILL\.md$/.test(f))) {
+    if (/[<>]/.test(String(frontmatter(ctx.text(file)).get('description') ?? ''))) {
+      out.push(`${file}: description holds < or >; write a placeholder as [name]`);
+    }
+  }
+
   const style = ctx.text(STYLE);
   const styleFm = frontmatter(style);
   if (style === null || styleFm.get('name') !== 'Concise Plain') out.push(`${STYLE}: name is not Concise Plain`);

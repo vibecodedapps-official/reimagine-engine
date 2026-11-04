@@ -1,6 +1,6 @@
 ---
 name: release
-description: Release a plugin, cut a release, tag <plugin> <version>, publish <plugin>. Bumps one plugin's version, writes its changelog heading, runs the evals and pushes its tag, asking before each push.
+description: Release a plugin, cut a release, tag [plugin] [version], publish [plugin]. Bumps one plugin's version, writes its changelog heading, runs the evals and pushes its tag, asking before each push.
 disable-model-invocation: true
 ---
 # release

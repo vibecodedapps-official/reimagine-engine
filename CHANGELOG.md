@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.13 - 2026-11-04
+
+- Step 3.7.1 reverifies the plan against the base commit recorded at preflight, not the base branch name, since git read that name as the local branch, which can be behind the base the run fetched.
+
 ## rules 0.1.20 - 2026-11-04
 
 - `/rules` says to run each command with the Bash tool, which its `allowed-tools` pre-approves, since a session had called the script with another shell tool first and hit a permission failure.

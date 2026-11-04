@@ -1460,6 +1460,22 @@ Work items, in this order:
 
 Check: `npm run test:loop` and `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
 
+## Two open issues: M71
+
+Added 2026-11-04. Issues 94 and 95, decision 179, and R76, R80 and R102 as amended: the start commit of a continued branch in loop 0.1.14. M71 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/loop/` and `tests/loop/`. Tags wait for the owner's merge.
+
+### M71: the fix
+
+Work items, in this order:
+
+1. The preflight tests in `tests/loop/preflight.test.mjs` first, seen failing against the base; then `steps/0-preflight.md`, `steps/4-build.md`, `worktree.md`, `record.md` and `multi-repo.md`. Commit: `fix(loop): plan and reverify a continued branch at its tip`.
+2. The design documents. Commit: `docs(design): record the start commit of a continued branch`.
+3. `node tools/release.mjs` for loop 0.1.14, with the catalog `metadata.version` raised. Commit: `release(loop): 0.1.14`.
+4. The gate on the pull request, its fixes committed on the branch.
+5. After the merge, by the owner: the changelog heading, the release acceptance items as M68 lists them for loop, the tag after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:loop` and `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

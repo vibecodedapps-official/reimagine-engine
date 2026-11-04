@@ -1425,6 +1425,25 @@ Work items, in this order:
 
 Check: `npm run test:audit`, `npm run test:gate`, `npm run test:primer`, `npm run test:rules` and `npm run test:lint` before and after items 1 and 2; `npm test` and `npm run lint` with the deny tokens before the push.
 
+## Seven open issues: M69
+
+Added 2026-11-03. Decisions 176 to 178, issues 80, 81, 82, 85, 86, 87 and 89, and R39, R80, R158, R159 and R219 as amended: the fence rule of the stage 7 slices and the merger, the stage 6 mandatory set written to `tmp/` first and the carriage return in the audit lint in audit 0.1.13, the worktree's base commit in loop 0.1.12, the rules skill's tool in rules 0.1.20, and a lint rule for angle brackets in a skill description. M69 touches `docs/`, `.claude/skills/release/`, `.claude-plugin/marketplace.json`, `plugins/audit/`, `plugins/loop/`, `plugins/rules/`, `tools/`, `tests/audit/`, `tests/lint/`, `tests/loop/` and `tests/rules/`. Tags wait for the owner's merge.
+
+### M69: the fixes
+
+Work items, in this order:
+
+1. The tests first, each seen failing against the base: the slice commands on temp ledgers in `tests/audit/lint.sh`, the stage 6 text; then `7-converge.md`, `merger.md` and the audit `SKILL.md`. Commit: `fix(audit): keep code fences inside stage 7 sections and the stage 6 exit 0 guard`.
+2. The worktree line test in `tests/loop/preflight.test.mjs` first, seen failing against the base, then `worktree.md`. Commit: `fix(loop): create the worktree at the base commit`.
+3. The rules skill test in `tests/rules/skill.test.mjs` first, seen failing against the base, then the rules skill's sentence. Commit: `fix(rules): say which tool runs the rules script`.
+4. The lint rule and its two negative cases first, seen failing, then `tools/lint.mjs` and the release skill's description. Commit: `fix(lint): keep angle brackets out of skill descriptions`.
+5. The design documents. Commit: `docs(design): record the fence rule of stage 7, the base commit and the rules tool`.
+6. `node tools/release.mjs` for audit 0.1.13, loop 0.1.12 and rules 0.1.20, with the catalog `metadata.version` raised and the version literals of `tests/rules/rules.test.mjs` moved. Commits: `release(audit): 0.1.13`, `release(loop): 0.1.12` and `release(rules): 0.1.20`.
+7. The gate on the pull request, its fixes committed on the branch.
+8. After the merge, by the owner: the three changelog headings, the release acceptance items as M68 lists them for these three plugins, the tags after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:audit`, `npm run test:loop`, `npm run test:rules` and `npm run test:lint` before and after items 1 to 4; `npm test` and `npm run lint` with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

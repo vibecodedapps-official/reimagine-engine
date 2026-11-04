@@ -185,3 +185,11 @@ test('R80: worktree.md and Step 0 both create the worktree at <base commit>, not
     assert.ok(!text.includes('git worktree add --detach <path> <base>`'));
   }
 });
+
+test('R102: 3.7.1 reverifies the plan against <base commit>, not the base branch name', () => {
+  const BUILD = read('../../plugins/loop/skills/run/steps/4-build.md');
+  assert.ok(BUILD.includes('`git show <base commit>:<path>`'));
+  assert.ok(BUILD.includes('`git diff <snapshot> <base commit>`'));
+  assert.ok(!BUILD.includes('`git show <base>:<path>`'));
+  assert.ok(!BUILD.includes('`git diff <snapshot> <base>`'));
+});

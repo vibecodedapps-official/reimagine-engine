@@ -250,8 +250,10 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
       belong to the section that holds them and never start or end one, so both commands
       print fence lines with their section. A copy that reaches the end of the file
       inside an open fence ends with a closing fence line, so the rest of the slice is
-      read outside it. `ledger.sh` leaves the `ledger/6.md` block that holds such a
-      fence out of the universe, so no slice asks for it. Every other part of a ledger
+      read outside it. `ledger.sh` leaves out of the universe only a `ledger/6.md`
+      `### X<n>: ` block that it ends at the end of the file inside such a fence; a
+      slice can still copy a `## <id>` section that ends inside the fence, which is what
+      the closing fence line is for. Every other part of a ledger
       file (role, acknowledgments, merge verdict, the seen list, map corrections, a
       failure note) sits under a `## ` heading that is not an id, which ends a section
       and is never cut out. Every path starts with `<run dir>/`; `<slice>` is the

@@ -60,7 +60,9 @@ the ledger files for duplicate checks only.
      `### <word>: ` line, `<word>` holding no space or colon; or the end of the file.
      A line whose text, after leading spaces and tabs, starts with three backticks opens
      or closes a code fence. A line inside a fence never starts or ends a section, and a
-     `### <id>: ` block that reaches the end of the file inside an open fence is no block.
+     `### <id>: ` block is no block when the file ends inside an open fence and, outside
+     a fence, no line after its heading starts with `### ` or `## ` or is an end line
+     such as `status: complete`.
      To tell a fenced hit without reading the file whole, Grep the same file, with line
      numbers, for the lines whose text after leading spaces and tabs starts with three
      backticks: a hit with an odd number of those lines above it is inside a fence, and

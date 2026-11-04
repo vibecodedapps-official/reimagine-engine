@@ -178,18 +178,26 @@ test('R55: the user\'s instruction files come from $CLAUDE_CONFIG_DIR when it is
   }
 });
 
-test('R80: worktree.md and Step 0 both create the worktree at <base commit>, not at the base branch name', () => {
+test('R80: worktree.md and Step 0 both create the worktree at <start commit>, not at <base commit> or the base branch name', () => {
   const WORKTREE = read('../../plugins/loop/skills/run/worktree.md');
   for (const text of [WORKTREE, PREFLIGHT]) {
-    assert.ok(text.includes('git worktree add --detach <path> <base commit>'));
+    assert.ok(text.includes('git worktree add --detach <path> <start commit>'));
+    assert.ok(!text.includes('git worktree add --detach <path> <base commit>'));
     assert.ok(!text.includes('git worktree add --detach <path> <base>`'));
   }
 });
 
-test('R102: 3.7.1 reverifies the plan against <base commit>, not the base branch name', () => {
+test('R102: 3.7.1 reverifies the plan against <start commit>, not <base commit> or the base branch name', () => {
   const BUILD = read('../../plugins/loop/skills/run/steps/4-build.md');
-  assert.ok(BUILD.includes('`git show <base commit>:<path>`'));
-  assert.ok(BUILD.includes('`git diff <snapshot> <base commit>`'));
+  assert.ok(BUILD.includes('`git show <start commit>:<path>`'));
+  assert.ok(BUILD.includes('`git diff <snapshot> <start commit>`'));
+  assert.ok(!BUILD.includes('`git show <base commit>:<path>`'));
+  assert.ok(!BUILD.includes('`git diff <snapshot> <base commit>`'));
   assert.ok(!BUILD.includes('`git show <base>:<path>`'));
   assert.ok(!BUILD.includes('`git diff <snapshot> <base>`'));
+});
+
+test('R76: Step 0.2 defines the start commit and 0.4 compares the snapshot with it', () => {
+  assert.ok(PREFLIGHT.includes('10. The start commit is the commit the build starts from, held as a full sha for `run.md`. For a branch that exists neither locally nor on the remote, it is the base commit. For a continued branch that exists it is the branch tip: `refs/remotes/<remote>/<branch>` when the branch exists on the remote, else the local branch, and in a plan-only run, which never fast-forwards, the local tip item 5 plans at.'));
+  assert.ok(PREFLIGHT.includes('Record HEAD (`git rev-parse HEAD` in the checkout in use) as the planning snapshot. When it is not the start commit (0.2 item 10), note that in `run.md`. Steps 1 and 2 read the snapshot; Step 3.7 reverifies against the start commit.'));
 });

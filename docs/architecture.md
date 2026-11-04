@@ -227,7 +227,7 @@ Per-call budgets in minutes: subagent 20, review 30, check 15, CI 45. One defaul
 
 ### Steps
 
-0. Preflight: echo, primary checkout, host, input guard, instruction files and ask-first rules, `.reimagine.json`, credential scan, permission statement, base branch and base commit, continue checks, open pull requests, clean tree, flagged files, record directory, prompts seen.
+0. Preflight: echo, primary checkout, host, input guard, instruction files and ask-first rules, `.reimagine.json`, credential scan, permission statement, base branch, base commit and start commit, continue checks, open pull requests, clean tree, flagged files, record directory, prompts seen.
 1. Review and verify the inputs; repository gate; claims; drift; buildable status; risk floor.
 2. Plan: `plan.md` with slices.
 3. Plan review by the fresh reviewer, up to three rounds; plan-only stop; optional confirmation; then branch, baseline, dependencies.

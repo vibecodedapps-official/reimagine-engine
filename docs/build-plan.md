@@ -91,7 +91,7 @@ Work items:
 Check:
 
 - `npm test` passes on ubuntu, macOS and Windows; the awk suites pass under mawk.
-- A low-tier headless run on the patterns fixture ends `reported` with stage 6 run by an `opus` adversary and every read-only check at exit 0 (acceptance item 14).
+- A low-tier headless run on the patterns fixture ends `reported` with stage 6 run by an `opus` adversary (a `fable` one before decision 182) and every read-only check at exit 0 (acceptance item 14).
 - A medium run on the ground-truth fixture reaches the expected counts; `/audit:act` commits one item (acceptance item 15).
 - `/audit:resume --live` reruns stages 6 to 8 (acceptance item 16); `/audit:handoff --verdicts` applies matching lines (acceptance item 17).
 

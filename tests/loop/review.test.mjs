@@ -95,11 +95,13 @@ test('R62: Step 5 sends the reviewer request only to the opus stand-in', () => {
 
 test('R62: the plan reviewer defaults to opus and retries at sonnet in the skill and the plan step', () => {
   assert.ok(SKILL.includes('3. Plan reviewer: a fresh-context Agent at `opus`,'));
-  assert.ok(SKILL.includes('| plan reviewer | a fresh Agent at `opus`, read and report only, Step 3 only | once, on a model or tool error, at the `fallback-reviewer` model, or at `sonnet` when that is the reviewer\'s own model, or at `opus` when the reviewer is itself on `sonnet`; stays swapped for the run |'));
+  assert.ok(SKILL.includes('| plan reviewer | a fresh Agent at `opus`, read and report only, Step 3 only | once, on a model or tool error, at the `fallback-reviewer` model, or, when that is the reviewer\'s own model, at `sonnet`, or at `opus` for a reviewer on `sonnet`; stays swapped for the run |'));
   assert.ok(SKILL.includes('when that model is the reviewer\'s own, retry at `sonnet` instead, or at `opus` for a reviewer on `sonnet`'));
   assert.ok(PLAN.includes('(`opus` unless `.reimagine.json` says otherwise)'));
   assert.ok(PLAN.includes('when that model is the reviewer\'s own, retry at `sonnet` instead, or at `opus` for a reviewer on `sonnet`'));
   assert.ok(!PLAN.includes('`fable` unless'));
+  assert.ok(SKILL.includes('A pass that errors is retried once, the stand-in at `sonnet`; a second error ends `blocked`.'));
+  assert.ok(PLAN.includes('A stand-in pass that errors is retried once at `sonnet`, and a second error ends the run `blocked`'));
 });
 
 test('R285: SKILL.md names risk.md for the floor alone', () => {

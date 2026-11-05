@@ -206,7 +206,7 @@ Invoking by name approves branch, commit, push, one pull request per repository,
 |---|---|---|
 | orchestrator, judge, slice reviewer | the session model | none; the run stops |
 | implementer | Agent `sonnet`, one per slice, parallel for disjoint slices | none; a tool error ends `blocked` after the snapshot restore |
-| plan reviewer | fresh Agent `fable`, read and report only | once to `opus` on a model or tool error; stays swapped |
+| plan reviewer | fresh Agent `opus`, read and report only | once to `sonnet` on a model or tool error; stays swapped |
 | final reviewer | built-in `code-review` skill, explicit level at most `xhigh`, `<merge-base>...HEAD` as a full sha, one pass | Agent `opus` over a patch file, once, when the skill is not listed, the primary is not the session's checkout, or the diff is in an additional repository |
 | reader | Agent `haiku` when a read is worth splitting out | the orchestrator reads |
 
@@ -217,7 +217,7 @@ Invoking by name approves branch, commit, push, one pull request per repository,
   "commit": false,
   "checks": ["npm test", "npm run lint"],
   "timeouts": { "subagent": 20, "review": 30, "check": 15, "ci": 45, "run": 240 },
-  "models": { "implementer": "sonnet", "reviewer": "fable", "fallback-reviewer": "opus", "reader": "haiku" },
+  "models": { "implementer": "sonnet", "reviewer": "opus", "fallback-reviewer": "sonnet", "reader": "haiku" },
   "base": "main"
 }
 ```
@@ -317,9 +317,9 @@ The skill description names "reimagine audit". The four commands forward to the 
 
 Nine stages, in this order with these dependencies: orient; digest and domain map and pass one together; pass two per group after a barrier; second opinion after every pass two; converge with the late adversary and the merger; report; act on request. `stages.json` in the run directory is the completion record and the input to resume, with the schema in requirement 149. A finding counts only after a fresh adversary other than its author challenged it and the second opinion saw it. The four questions and the evidence model are requirements 162 to 174.
 
-Stage 6 is a fresh `adversary` agent at `fable`, falling back once to `opus` per batch. It receives the request file built from the template: the brief, `common.md`, `audit-evidence.md`, claims, every diff and stat, `ledger/5.md`, every pass-two file, live files, and the audited sources by absolute path and sha; every copied input carries a sentinel line `audit-sentinel: <path> <16 hex>` that the answer must acknowledge, which is how the orchestrator knows the agent read it. The mandatory set is split into batches of at most 60 ids with one launch each; the first batch alone may add `X<n>` findings with `origin: second-opinion`. The answer file is saved under `second-opinion/` verbatim. The 60-id batch size is revisited when a run shows a reason (decision 21).
+Stage 6 is a fresh `adversary` agent at `opus`, falling back once to `sonnet` per batch. It receives the request file built from the template: the brief, `common.md`, `audit-evidence.md`, claims, every diff and stat, `ledger/5.md`, every pass-two file, live files, and the audited sources by absolute path and sha; every copied input carries a sentinel line `audit-sentinel: <path> <16 hex>` that the answer must acknowledge, which is how the orchestrator knows the agent read it. The mandatory set is split into batches of at most 60 ids with one launch each; the first batch alone may add `X<n>` findings with `origin: second-opinion`. The answer file is saved under `second-opinion/` verbatim. The 60-id batch size is revisited when a run shows a reason (decision 21).
 
-Roles: digester `haiku`; mapper and merger `sonnet`; auditor and adversary `opus`; second opinion `fable`. The manifest `models` key overrides per role. Launches use `subagent_type: audit:<role>` in the background.
+Roles: digester `haiku`; mapper and merger `sonnet`; auditor and adversary `opus`; second opinion `opus`. A failed agent relaunches on its model, then on `opus`, or on `sonnet` for a role already there, as a swap; no default or fallback selects `fable`, which stays an accepted override. The manifest `models` key overrides per role. Launches use `subagent_type: audit:<role>` in the background.
 
 Stages 4 to 6 run on the prompt path. Decision 94 defines a second engine, a dynamic workflow under `plugins/audit/workflows/`, behind the same inputs, outputs and `stages.json`, with `engine: workflow` or `engine: prompt` and the reason recorded; it is built only under requirement 270's gate, and this document's plugin table names it when it ships. The default source list gains `REVIEW.md`, read at the bundle's base commit, whose calibration and skip rules shape the report with every removal counted in one line (requirement 271).
 

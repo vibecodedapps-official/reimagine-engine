@@ -457,9 +457,9 @@ function locked(dataDir, fn) {
 // Writes beside the target, then renames over it, with the mode given or else the old file's. On Windows a rename that fails is retried once after a short wait.
 function writeAtomic(path, text, backup, mode) {
   const tmp = `${path}.reimagine-tmp-${process.pid}`;
-  try { writeFileSync(tmp, text, mode === undefined ? 'utf8' : { encoding: 'utf8', mode }); } catch (e) { refuse(`could not write ${tmp} (${e.code}); nothing was written`); }
-  if (mode !== undefined) chmodSync(tmp, mode);
-  else if (existsSync(path)) chmodSync(tmp, statSync(path).mode & 0o777);
+  const fileMode = mode ?? (existsSync(path) ? statSync(path).mode & 0o777 : undefined);
+  try { writeFileSync(tmp, text, fileMode === undefined ? 'utf8' : { encoding: 'utf8', mode: fileMode }); } catch (e) { refuse(`could not write ${tmp} (${e.code}); nothing was written`); }
+  if (fileMode !== undefined) chmodSync(tmp, fileMode);
   try { renameSync(tmp, path); } catch (e) {
     if (process.platform === 'win32') {
       sleep(500);

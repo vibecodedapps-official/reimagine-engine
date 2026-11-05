@@ -1505,9 +1505,9 @@ Work items, in this order:
 3. `tests/guard/guard.test.mjs`, each case seen failing before the script exists, with a literal fixture of the host's defaults and a runner that stands in for `claude`; then `scripts/guard.mjs` (R335 to R342). Commit: `feat(guard): add the auto mode writer and its suite`.
 4. `skills/guard/SKILL.md` (R334, R343). Commit: `feat(guard): add the /guard skill`.
 5. The catalog entry at 0.1.0 with `metadata.version` 0.1.39; the README's install, update and uninstall lines and plugin count; the hub's count and area list; `test:guard`; lint's names, executables, budget and guard skill rule, each new message with a negative case; the lint and release suites' plugin lists. Commit: `feat(catalog): list the guard plugin`.
-6. Items 76 to 80 on Windows with a scratch `CLAUDE_CONFIG_DIR`, recorded. Commit: `docs(acceptance): record the guard milestone`.
+6. Items 76 and 78 run and recorded, item 76 with a scratch `CLAUDE_CONFIG_DIR` and item 78 in part, in the profile in use; items 77, 79 and 80 left to step 8. Commit: `docs(acceptance): record the guard milestone`.
 7. The gate on the branch, its fixes committed on the branch.
-8. After the merge, by the owner: the changelog heading, the tag `guard--v0.1.0` after a yes, items 21, 22, 38, 39 and 44 on the merge commit, item 1 for guard, and items 77, 79 and 80, run in a logged-in scratch profile, item 79 with a throwaway GitHub repository.
+8. After the merge, by the owner: the changelog heading, the tag `guard--v0.1.0` after a yes, items 21, 22, 38, 39 and 44 on the merge commit, item 1 for guard, and items 77, 79 and 80, run in a logged-in scratch profile, item 79 with a throwaway GitHub repository. The owner tags the merge commit before anything else lands under `plugins/guard/`, since installs are pinned by the version string and a later change at 0.1.0 would not reach them.
 
 Check: `npm run test:guard` before and after item 3; `npm run test:lint` and `npm run test:release` before and after item 5; `npm test` and `npm run lint` with the deny tokens before the push.
 

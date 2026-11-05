@@ -2,6 +2,24 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.22 - 2026-11-05
+
+- Concise Plain 4.12: an ask goes to whoever owns the decision, and a decision the team shares is put as the team's, never as the reader's because they are the reader, since a draft put a shared decision to two readers as theirs and a reply's ask went through four forms on the same slip.
+- A status note to a reader who won't open the code answers what changed for them, what happens next and what they decide, and nothing on how the result was reached, since a status note opened with release mechanics and was cut by about half on each of three turns before it read that way.
+- A revised draft comes back whole, or the one paragraph that was asked for, since the whole-draft return was skipped twice when one paragraph was asked for and the paragraph was accepted both times.
+- Where links won't render, an id is written with its URL in parentheses and the draft says so, since a sent reply wrote a pull request id that way because pasted email renders no Markdown link, and the style named only the bare id.
+- From the untagged 0.1.21, Concise Plain 4.11: the finding shape is scoped to a reader who will open the code, and a reader who won't gets no file, branch, line, pull request or check output, only what they see and what will change, since drafts to such readers carried that detail; a draft takes its length and register from the messages already on its thread, plain and professional when there is none, since redrafts swung between terse and chatty with nothing to anchor them; a reply answers the last message to the sender and takes up only what the thread raises, since a draft rebutted a point nobody had made; a draft commits the sender to nothing they haven't decided and grades neither the request nor the reader's work, since drafts promised unapproved work and opened or closed by grading; and a draft the user pastes writes the name where a mention goes and says they pick it in the platform, the raw form only when a tool posts it, since pasted drafts carried raw mention identifiers.
+
+## loop 0.1.15 - 2026-11-05
+
+- The plan reviewer runs at the default tier and retries once at the `fallback-reviewer` model, one tier down by default, or at the other of the two lower tiers when the fallback is the reviewer's own model, since the top tier's usage limit was met by several runs at once and a retry on the same model meets the same limit.
+- The stand-in final reviewer retries once one tier down on an error, for the same reason.
+
+## audit 0.1.14 - 2026-11-05
+
+- The second opinion runs at the default tier and relaunches a failed batch once one tier down, or at the default tier when it was overridden to the lower one, since the top tier's usage limit was met by several runs at once, as a run of acceptance item 14 had already seen.
+- The other roles relaunch on their own model, then on the default tier, or one tier down for a role already there, so the swap still changes model instead of retrying on the one that failed.
+
 ## guard 0.1.0 - 2026-11-04
 
 - First release. `/guard` keeps the auto mode classifier's environment and allow entries for a list of repositories the user names, so pushing a branch and opening or commenting on a pull request there is not denied; `merge` also allows merging a pull request the user names. Each entry is marked as guard's own, so the user's entries stay, and the environment list is written whole from the host's defaults, since an added line does not replace a default one.

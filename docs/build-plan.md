@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R333; the primer milestones M10 to M19 follow M9, and M20 to M63 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R344; the primer milestones M10 to M19 follow M9, and M20 to M73 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -1491,6 +1491,25 @@ Work items, in this order:
 5. After the merge, by the owner: the changelog heading, the release acceptance items 2 and 5 for rules, the tag after a yes, then item 21 on the merge commit.
 
 Check: `npm run test:rules` and `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
+
+## Guard: M73
+
+Added 2026-11-04. Decision 181, R334 to R344, and R1, R5, R6, R43, R219 and R277 as amended: a sixth plugin, `guard`, at 0.1.0, which writes the auto mode classifier's configuration for a list of repositories. M73 touches `docs/`, `.claude-plugin/marketplace.json`, `CLAUDE.md`, `README.md`, `package.json`, `plugins/guard/`, `tools/lint.mjs`, `tests/guard/`, `tests/lint/` and `tests/release/`. Tags wait for the owner's merge.
+
+### M73: the guard plugin
+
+Work items, in this order:
+
+1. The design documents: decision 181, R334 to R344, the amendments, the architecture's shape, table, layer 7 and guard section, this section, and acceptance items 76 to 80. Commit: `docs(design): add the guard plugin`.
+2. `plugins/guard/.claude-plugin/plugin.json` at 0.1.0, `LICENSE` and `README.md`. Commit: `feat(guard): add the plugin manifest and readme`.
+3. `tests/guard/guard.test.mjs`, each case seen failing before the script exists, with a literal fixture of the host's defaults and a runner that stands in for `claude`; then `scripts/guard.mjs` (R335 to R342). Commit: `feat(guard): add the auto mode writer and its suite`.
+4. `skills/guard/SKILL.md` (R334, R343). Commit: `feat(guard): add the /guard skill`.
+5. The catalog entry at 0.1.0 with `metadata.version` 0.1.39; the README's install, update and uninstall lines and plugin count; the hub's count and area list; `test:guard`; lint's names, executables, budget and guard skill rule, each new message with a negative case; the lint and release suites' plugin lists. Commit: `feat(catalog): list the guard plugin`.
+6. Items 76 and 78 run and recorded, item 76 with a scratch `CLAUDE_CONFIG_DIR` and item 78 in part, in the profile in use; items 77, 79 and 80 left to step 8. Commit: `docs(acceptance): record the guard milestone`.
+7. The gate on the branch, its fixes committed on the branch.
+8. After the merge, by the owner: the changelog heading, the tag `guard--v0.1.0` after a yes, items 21, 22, 38, 39 and 44 on the merge commit, item 1 for guard, and items 77, 79 and 80, run in a logged-in scratch profile, item 79 with a throwaway GitHub repository. The owner tags the merge commit before anything else lands under `plugins/guard/`, since installs are pinned by the version string and a later change at 0.1.0 would not reach them.
+
+Check: `npm run test:guard` before and after item 3; `npm run test:lint` and `npm run test:release` before and after item 5; `npm test` and `npm run lint` with the deny tokens before the push.
 
 ## Acceptance record
 

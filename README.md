@@ -1,20 +1,22 @@
 # reimagine-engine
 
-A suite of five Claude Code plugins, built on three ideas: achieve more with less; say how, not what; take work from development to production in bulk.
+A suite of six Claude Code plugins, built on three ideas: achieve more with less; say how, not what; take work from development to production in bulk.
 
 - `rules`: house rules as one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style and a refactor review against them.
 - `loop`: plan, build, review and publish a bundle of tickets as one reviewed pull request per repository, resuming on the same branch when run again.
 - `audit`: a read-only, adversarial audit of finished pull requests that stops at a report, with an act step for approved items.
 - `gate`: code-review passes over a pull request, several, or a loop manifest, fixing what each pass finds until a pass finds nothing left to fix.
 - `primer`: project instructions in the forms Claude Code loads, a short `CLAUDE.md`, path-scoped rules, nested instructions and skills, with a hook that checks every commit.
+- `guard`: auto mode trust for the repositories you list, the classifier's entries in your user settings file, written by a script when you run `/guard`, each change shown before it is made.
 
-Status: all five plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`. The build order is in `docs/build-plan.md`.
+Status: all six plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`. The build order is in `docs/build-plan.md`.
 
 ## Requirements
 
 - Claude Code 2.1.296 or later (the version the design was checked on).
 - Node 22 or later.
-- On Windows, Git for Windows (the primer hooks and the audit scripts run under its `sh`).
+- For guard: `git` and the `claude` command on the PATH, since it runs both as child processes; its design was checked on Claude Code 2.1.318.
+- On Windows, Git for Windows (the primer hooks and the audit scripts run under its `sh`, and guard runs `git`).
 - For the audit's live checks, work-item validation and collision check: `jq` (on Windows, `winget install jqlang.jq`; on macOS, `brew install jq`, or the `/usr/bin/jq` that macOS 15 and later ship). Without it the audit still runs and says what it skipped.
 
 ## Install
@@ -28,9 +30,10 @@ Without a GitHub SSH key on the machine, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`
 /plugin install audit@reimagine-engine
 /plugin install primer@reimagine-engine
 /plugin install gate@reimagine-engine
+/plugin install guard@reimagine-engine
 ```
 
-Each plugin works alone. After installing `rules`, run `/rules` (also reachable as `/rules:rules`) and answer the question it asks; then pick the output style with `/output-style rules:Concise Plain`.
+Each plugin works alone. After installing `rules`, run `/rules` (also reachable as `/rules:rules`) and answer the question it asks; then pick the output style with `/output-style rules:Concise Plain`. After installing `guard`, `/guard add <path>` adds a repository to its list and shows the change before writing it.
 
 ## Use
 
@@ -40,6 +43,7 @@ Each plugin works alone. After installing `rules`, run `/rules` (also reachable 
 - Gate: say `reimagine gate PR 73`, `gate this branch` or `gate the manifest <path>`, or type `/gate` followed by the same words. There are no flags.
 - primer: put `<!-- primer -->` on the first line of a repository's `CLAUDE.md`, and the drift hook checks every commit Claude Code makes there against the instruction files. Run `/primer` in a repository to set up, adopt or check its instruction files; it says which mode it runs in before it writes.
 - primer fold: run `/primer:fold` in a repository for a read-only report of where the current Claude Code documentation describes a practice or mechanism it could fold in; it writes nothing.
+- Guard: `/guard add <path>` adds a repository to the list, `/guard add <path> merge` also allows merging a pull request you name there, and `/guard` alone refreshes the entries, for example after a Claude Code update (a new default line is added only if guard itself expanded the defaults); `drop`, `clear`, `list` and `status` do the rest. Nothing is written to your settings file until you reply with the exact sentence the skill asks for; any other reply, a plain yes included, writes nothing. The write then meets the session's permission mode. See `plugins/guard/README.md` for the rest.
 - repo-docs is retired and left the catalog with the primer release: uninstall it with `/plugin uninstall repo-docs@reimagine-engine`, then run `/primer` in each repository it kept, and adopt converts the hub and its spokes in one run.
 
 ## Update
@@ -53,13 +57,14 @@ claude plugin update loop@reimagine-engine
 claude plugin update audit@reimagine-engine
 claude plugin update primer@reimagine-engine
 claude plugin update gate@reimagine-engine
+claude plugin update guard@reimagine-engine
 ```
 
 In a session, `/plugin marketplace update reimagine-engine` refreshes the catalog and `/plugin` opens the plugin manager, whose Installed tab updates a plugin; `/plugin update` is not a session command. An alpha install moves to 0.1.0 the same way; the alpha version sorts below it. Restart the session afterwards. When the house rules changed, a one-line notice at startup says to run `/rules`.
 
 ## Uninstall
 
-Run `/rules --remove` first if you want the block out of your `CLAUDE.md`; it gives back the file's original bytes.
+Run `/rules --remove` first if you want the block out of your `CLAUDE.md`; it gives back the file's original bytes. If you want guard's entries out of your user settings file, run `/guard clear` first and reply with the sentence the skill asks for, since a plain yes writes nothing; the entries stay there after the plugin is gone.
 
 ```
 /plugin uninstall rules@reimagine-engine
@@ -67,9 +72,10 @@ Run `/rules --remove` first if you want the block out of your `CLAUDE.md`; it gi
 /plugin uninstall audit@reimagine-engine
 /plugin uninstall primer@reimagine-engine
 /plugin uninstall gate@reimagine-engine
+/plugin uninstall guard@reimagine-engine
 ```
 
-The audit keeps its run registry in the plugin data directory; delete it by hand if you want it gone.
+The audit keeps its run registry in the plugin data directory; delete it by hand if you want it gone. Guard leaves the copies that each change to an existing settings file made, named like that file with `.reimagine-backup-<YYYYMMDDHHMMSS>` added (the name of its target, when `settings.json` is a symbolic link), beside it, and the list file `reimagine-guard.json` while the list still holds a repository; delete them by hand if you want them gone.
 
 ## Development
 

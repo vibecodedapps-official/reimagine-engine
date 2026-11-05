@@ -107,12 +107,13 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
      marks the completion failed, as `fault-injection.md` says.
 
    The ladder applies to each batch on its own. On the first failed attempt, relaunch
-   that batch with `model: sonnet` and the same prompt, scope, scratch folder and output
-   file; the relaunch first moves the failed file aside with `mv -f <output file>
+   that batch with `model: sonnet`, or `model: opus` when the batch already ran on
+   `sonnet`, and the same prompt, scope, scratch folder and output file; the relaunch
+   first moves the failed file aside with `mv -f <output file>
    <run dir>/tmp/agents/<folder>/failed-response.md`. This is a swap: record in the
-   entry's `swaps` the role second opinion, the scope, from the requested model to
-   `sonnet`, and the reason (the error, no `status: complete`, the unacknowledged inputs,
-   the count of missing positions, or `_test.fail`). A second failed attempt fails stage
+   entry's `swaps` the role second opinion, the scope, from the requested model to the
+   relaunch model, and the reason (the error, no `status: complete`, the unacknowledged
+   inputs, the count of missing positions, or `_test.fail`). A second failed attempt fails stage
    6 for that batch; its answer, when it exists, stays where it is. The other batches
    still run to the end and are checked as above.
 

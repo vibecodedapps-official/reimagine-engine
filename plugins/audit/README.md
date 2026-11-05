@@ -72,7 +72,7 @@ A JSON file. Relative paths in it are relative to the manifest's directory. Ever
   "forge_exports": { "command": "export-tickets --project AB", "exported_at": "2026-10-01T09:00:00Z" },
   "groups": [ { "name": "accounts", "repo": "./app", "files": ["src/users.js", "migrations/**"] } ],
   "questions": "./questions.md",
-  "models": { "adversary": "fable", "second-opinion": "opus" },
+  "models": { "adversary": "fable", "second-opinion": "sonnet" },
   "budget": 90,
   "max_agents": 8,
   "_test": {}

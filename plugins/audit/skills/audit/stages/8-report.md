@@ -225,8 +225,8 @@ result's text, approver and time; a `result_file` result's text is its copy
          the run may escape the read-only check;
        - stage 6: whether the mandatory ids went out in batches (`batched`), each
          sentinel acknowledgment that failed (`sentinels`), every mandatory id left
-         without a position (`missing_positions`), and each batch relaunched on
-         `sonnet` or failed;
+         without a position (`missing_positions`), and each batch relaunched,
+         with its model, or failed;
        - every file stage 2 split by byte range (`split_files`): source, path, size,
          each range and the chunk id that covered it, with that chunk's status;
        - unanswered questions and departures from the stage plan;

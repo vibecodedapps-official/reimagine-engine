@@ -1520,7 +1520,7 @@ Added 2026-11-05. Decision 182 and R62, R150, R151 and R158 as amended: no defau
 Work items, in this order:
 
 1. The loop's roles table, items 3 and 7, the configuration example, `steps/1-plan.md` and the defaults literal of `tests/loop/config.test.mjs`. Commit: `fix(loop): the plan reviewer runs at the default tier and retries one tier down`.
-2. The audit's roles table, the ladder passages of stages 2 to 8, the request template, the report shape and the README. Commit: `fix(audit): the second opinion and the swap rung stay off the top tier`.
+2. The audit's roles table, the ladder passages of stages 2 to 8, the request template, the report shape and the README, and the stage 6 role fixture of `tests/audit/ledger.sh`. Commit: `fix(audit): the second opinion and the swap rung stay off the top tier`.
 3. The design documents. Commit: `docs(design): record the default tier decision`.
 4. `node tools/release.mjs` for loop 0.1.15 and audit 0.1.14, with the catalog `metadata.version` raised to 0.1.40 and 0.1.41 and the `plugin_version` literals of the audit skill files moved. Commits: `release(loop): 0.1.15` and `release(audit): 0.1.14`.
 5. The gate on the pull request, its fixes committed on the branch.

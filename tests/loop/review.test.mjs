@@ -93,6 +93,14 @@ test('R62: Step 5 sends the reviewer request only to the opus stand-in', () => {
   assert.ok(PLAN.includes('Step 5 sends it only to the `opus` stand-in'));
 });
 
+test('R62: the plan reviewer defaults to opus and retries at sonnet in the skill and the plan step', () => {
+  assert.ok(SKILL.includes('3. Plan reviewer: a fresh-context Agent at `opus`,'));
+  assert.ok(SKILL.includes('(`sonnet` unless `.reimagine.json` says otherwise, and `opus` when the reviewer already runs at `sonnet` and no `fallback-reviewer` is set)'));
+  assert.ok(PLAN.includes('(`opus` unless `.reimagine.json` says otherwise)'));
+  assert.ok(PLAN.includes('(`sonnet` unless `.reimagine.json` says otherwise, and `opus` when the reviewer already runs at `sonnet` and no `fallback-reviewer` is set)'));
+  assert.ok(!PLAN.includes('`fable` unless'));
+});
+
 test('R285: SKILL.md names risk.md for the floor alone', () => {
   const text = section(SKILL, 'Supporting files');
   assert.notEqual(text, null);

@@ -1,7 +1,7 @@
 {
   "name": "guard",
   "version": "0.1.0",
-  "description": "Auto mode trust for the repositories you list: the classifier's entries in your user settings file, kept current by a script, each change shown before it is made.",
+  "description": "Auto mode trust for the repositories you list: the classifier's entries in your user settings file, written by a script when you run /guard, each change shown before it is made.",
   "author": { "name": "vibecodedapps.net" },
   "repository": "https://github.com/vibecodedapps-official/reimagine-engine",
   "license": "Apache-2.0"

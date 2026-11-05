@@ -348,6 +348,7 @@ function skillFailures(ctx) {
   if (frontmatter(rulesSkill).get('disable-model-invocation') !== 'true') out.push(`${RULES_SKILL}: frontmatter lacks disable-model-invocation: true`);
 
   const guardFm = frontmatter(ctx.text(GUARD_SKILL));
+  if (guardFm.get('name') !== 'guard') out.push(`${GUARD_SKILL}: frontmatter name is ${guardFm.get('name') || 'missing'}, not guard`);
   if (guardFm.get('disable-model-invocation') !== 'true') out.push(`${GUARD_SKILL}: frontmatter lacks disable-model-invocation: true`);
   for (const entry of listEntries(guardFm.get('allowed-tools'))) {
     if (!GUARD_RUNS.includes(entry)) out.push(`${GUARD_SKILL}: allowed-tools entry ${entry} is not a status, list or plan run of guard.mjs`);

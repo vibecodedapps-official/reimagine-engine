@@ -30,7 +30,7 @@ $ARGUMENTS
 
 Anything else: tell the user these are the accepted forms, and stop. Do not run anything.
 
-Put no text from the user into a command except the path or remote, in double quotes. If it holds a double quote, a backtick, `$` or a newline, say so, and stop. Do not run anything.
+Put no text from the user into a command except the path or remote, in double quotes. If it holds a double quote, a backtick, `$` or a newline, say so, and stop. Do not run anything. Write each backslash in the path or remote as a forward slash first, so that `C:\src\app\` becomes `C:/src/app/`; a backslash before the closing quote would escape it.
 
 The `allowed-tools` lines pre-approve `status`, `list` and `plan` only. `apply` meets the session's permission mode: a prompt in the default mode, the classifier in auto mode.
 

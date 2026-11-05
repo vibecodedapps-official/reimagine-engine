@@ -1,6 +1,6 @@
 # Build plan: 0.1.0
 
-Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R344; the primer milestones M10 to M19 follow M9, and M20 to M63 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
+Drafted 2026-10-14. requirements.md and architecture.md win over this plan. Requirements are cited as R1 to R344; the primer milestones M10 to M19 follow M9, and M20 to M73 follow them, each dated where it was added. Each milestone ends with its checks green on the implementer's machine; `npm test` runs from M1 on, `npm run lint` from M7 on, and the forbidden-name sweep (decision 10) runs before every commit from the first one. Pushes and pull requests follow the ask-first rules of the owner's instruction files; the handoff that starts the implementation says what is approved.
 
 The implementation runs with an Opus orchestrator and Sonnet subagents. The orchestrator owns every design document, every commit, and every check; subagents write files from a brief that quotes the requirement and see nothing else.
 
@@ -1507,7 +1507,7 @@ Work items, in this order:
 5. The catalog entry at 0.1.0 with `metadata.version` 0.1.39; the README's install, update and uninstall lines and plugin count; the hub's count and area list; `test:guard`; lint's names, executables, budget and guard skill rule, each new message with a negative case; the lint and release suites' plugin lists. Commit: `feat(catalog): list the guard plugin`.
 6. Items 76 to 80 on Windows with a scratch `CLAUDE_CONFIG_DIR`, recorded. Commit: `docs(acceptance): record the guard milestone`.
 7. The gate on the branch, its fixes committed on the branch.
-8. After the merge, by the owner: the changelog heading, the tag `guard--v0.1.0` after a yes, item 21 on the merge commit, and item 1 for guard.
+8. After the merge, by the owner: the changelog heading, the tag `guard--v0.1.0` after a yes, items 21, 22, 38, 39 and 44 on the merge commit, and item 1 for guard.
 
 Check: `npm run test:guard` before and after item 3; `npm run test:lint` and `npm run test:release` before and after item 5; `npm test` and `npm run lint` with the deny tokens before the push.
 

@@ -3,7 +3,7 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -131,6 +131,8 @@ test('R340: remote normalization drops scheme, user, password, port and .git, an
     ['./rel', null],
     ['rel/path', null],
     ['file:///srv/app.git', null],
+    ['git@host.example.invalid:/srv/repo.git', 'host.example.invalid/srv/repo'],
+    ['host.example.invalid:/srv/repo.git', 'host.example.invalid/srv/repo'],
   ];
   for (const [url, want] of table) assert.equal(normalizeRemote(url), want, url);
 });
@@ -429,6 +431,35 @@ test('R342: an apply with a backup already named refuses before writing', () => 
   assert.equal(read(w.settings), '{}\n');
 });
 
+test('R342: an apply whose list write refuses leaves the settings file unchanged, so the next plan is not edited', () => {
+  const w = world();
+  const lib = repo(w, 'lib', [RB1]);
+  const app = repo(w, 'app', [RA]);
+  change(w, '--add', lib.path);
+  const before = read(w.settings);
+  w.run('plan', '--add', app.path);
+  const tmp = `${w.list}.reimagine-tmp-${process.pid}`;
+  mkdirSync(tmp);
+  assert.throws(() => w.run('apply'), (e) => e instanceof Refusal && e.message.startsWith(`could not write ${tmp} (`));
+  rmSync(tmp, { recursive: true });
+  assert.equal(read(w.settings), before);
+  assert.deepEqual(w.run('plan').slice(2), ['state: current', 'change: none']);
+});
+
+test('R342: the plan and state files are written readable by the owner only, whatever the old mode', { skip: process.platform === 'win32' }, () => {
+  const w = repoWorld();
+  const plan = join(w.data, 'guard-plan.json');
+  const mode = (p) => statSync(p).mode & 0o777;
+  w.run('plan', '--add', w.repo.path);
+  assert.equal(mode(plan), 0o600);
+  chmodSync(plan, 0o644);
+  w.run('plan', '--add', w.repo.path);
+  assert.equal(mode(plan), 0o600);
+  w.run('apply');
+  assert.equal(mode(plan), 0o600);
+  assert.equal(mode(join(w.data, 'guard-state.json')), 0o600);
+});
+
 test('R342: apply writes through a symlink at its real path, and refuses a dangling one and a hard-linked file', (t) => {
   const w = repoWorld();
   const real = join(w.dir, 'real.json');
@@ -545,14 +576,34 @@ test('R340: --drop takes a path, or a remote written as a URL, and the last drop
   assert.deepEqual(last.done, [`guard: removed ${w.settings}`, `guard: removed ${w.list}`, CHECK]);
 });
 
-test('R340: --drop compares paths case-insensitively on win32 only', () => {
+test('R340: --drop takes the host/path form that list prints', () => {
   const w = repoWorld();
   change(w, '--add', w.repo.path);
-  w.platform = 'linux';
-  assert.throws(() => w.run('plan', '--drop', w.repo.top.toUpperCase()), refusal(`${w.repo.top.toUpperCase()} is not in the list`));
-  w.platform = 'win32';
-  const plan = w.run('plan', '--drop', w.repo.top.toUpperCase());
+  assert.deepEqual(w.run('list'), [`${w.repo.top} ${NA}`]);
+  const { plan } = change(w, '--drop', NA);
   assert.equal(plan[3], `repository: - ${w.repo.top} (${NA})`);
+  assert.deepEqual(w.run('list'), ['list: no repositories']);
+});
+
+test('R340: --drop takes a path inside a listed checkout', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  const sub = join(w.repo.path, 'sub');
+  mkdirSync(sub);
+  const { plan } = change(w, '--drop', sub);
+  assert.equal(plan[3], `repository: - ${w.repo.top} (${NA})`);
+  assert.deepEqual(w.run('list'), ['list: no repositories']);
+});
+
+test('R340: --drop compares paths case-insensitively on win32 only', () => {
+  const w = world();
+  const gone = join(w.dir, 'gone').replace(/\\/g, '/');
+  writeFileSync(w.list, `{"version":1,"repos":[{"path":"${gone}","remotes":["${NA}"],"merge":false}]}\n`);
+  w.platform = 'linux';
+  assert.throws(() => w.run('plan', '--drop', gone.toUpperCase()), refusal(`${gone.toUpperCase()} is not in the list`));
+  w.platform = 'win32';
+  const plan = w.run('plan', '--drop', gone.toUpperCase());
+  assert.ok(plan.includes(`repository: - ${gone} (${NA})`), plan.join('\n'));
 });
 
 test('R340: --clear removes every repository, and a missing list path is noted with its remotes kept', () => {
@@ -565,6 +616,19 @@ test('R340: --clear removes every repository, and a missing list path is noted w
   change(w, '--clear');
   assert.equal(existsSync(w.list), false);
   assert.equal(existsSync(w.settings), false);
+});
+
+test('R340: a listed path that cannot be read is noted with its remotes kept, not reported as an unexpected error', { skip: process.platform === 'win32' || process.getuid?.() === 0 }, () => {
+  const w = world();
+  const locked = join(w.dir, 'locked');
+  mkdirSync(locked);
+  writeFileSync(w.list, `{"version":1,"repos":[{"path":"${locked}/app","remotes":["${NA}"],"merge":false}]}\n`);
+  chmodSync(locked, 0o000);
+  try {
+    const plan = w.run('plan');
+    assert.ok(plan.includes(`note: ${locked}/app has no readable remote now; its recorded remotes are kept`), plan.join('\n'));
+    assert.equal(plan.at(-1), 'change: ready');
+  } finally { chmodSync(locked, 0o755); }
 });
 
 test('R335: list prints one line per repository, and an empty list says so, without running claude', () => {
@@ -623,6 +687,42 @@ test('R338: a line that copies an earlier default text takes the current text of
       assert.deepEqual(JSON.parse(read(join(w.data, 'guard-state.json'))).copied, [VIS, DOMAINS]);
     }
   }
+});
+
+test('R338: a default line the host adds after the first write is appended, when the state records copied lines', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  const farm = '**Build farm**: Builds run on shared hosts.';
+  w.stand.defaults = { ...structuredClone(FIX), environment: [...FIX.environment, farm] };
+  const plan = w.run('plan');
+  assert.deepEqual(plan.slice(2), ['state: stale', `entry: + environment: ${farm}`, PLAN_CHECK, 'change: ready']);
+  w.now = new Date('2026-11-04T10:05:00Z');
+  w.run('apply');
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.environment, [ORG, VIS, trustedFor(`${w.repo.top} (${NA})`), sourceFor(NA), DOMAINS, farm]);
+  assert.deepEqual(w.run('plan').slice(2), ['state: current', 'change: none']);
+});
+
+test('R336: clearing puts $defaults back in place of the default lines guard copied, and the user\'s lines stay', () => {
+  const w = repoWorld();
+  const original = '{"autoMode":{"environment":["$defaults","**Team**: Mine."]}}\n';
+  writeFileSync(w.settings, original);
+  change(w, '--add', w.repo.path);
+  change(w, '--clear');
+  assert.equal(read(w.settings), original);
+});
+
+test('R337: clearing drops a marked line whose label the user\'s own line holds, instead of duplicating the label', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  const mine = '**Source control**: only my fork.';
+  const doc = JSON.parse(read(w.settings));
+  doc.autoMode.environment.push(mine);
+  writeFileSync(w.settings, j(doc));
+  const plan = w.run('plan', '--clear');
+  assert.equal(plan.at(-1), 'change: ready');
+  w.now = new Date('2026-11-04T10:05:00Z');
+  w.run('apply');
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.environment, [ORG, VIS, TRUSTED, DOMAINS, mine]);
 });
 
 test('R339: an allow of [] stays [], and an allow left as ["$defaults"] is removed', () => {

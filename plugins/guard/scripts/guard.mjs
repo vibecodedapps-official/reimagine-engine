@@ -54,10 +54,10 @@ export function normalizeRemote(url) {
   let host, path, m;
   if ((m = u.match(/^(?:https?|ssh|git):\/\/(?:[^/@]*@)?([^/:]+)(?::\d+)?\/(.+)$/i))) [, host, path] = m;
   else if (/^[a-z][a-z0-9+.-]*:\/\//i.test(u) || /^[A-Za-z]:[\\/]/.test(u)) return null;
-  else if ((m = u.match(/^(?:[^/@\\:]+@)?([^/@\\:]+):(?!\/)(.+)$/))) [, host, path] = m;
+  else if ((m = u.match(/^(?:[^/@\\:]+@)?([^/@\\:]+):(.+)$/))) [, host, path] = m;
   else return null;
   host = host.toLowerCase();
-  path = path.replace(/\/+$/, '').replace(/\.git$/, '').replace(/\/+$/, '');
+  path = path.replace(/^\/+/, '').replace(/\/+$/, '').replace(/\.git$/, '').replace(/\/+$/, '');
   const az = host === 'ssh.dev.azure.com' && path.match(/^v3\/([^/]+)\/([^/]+)\/([^/]+)$/);
   return az ? `dev.azure.com/${az[1]}/${az[2]}/_git/${az[3]}` : `${host}/${path}`;
 }
@@ -116,7 +116,7 @@ const readJson = (path) => { try { return JSON.parse(readFileSync(path, 'utf8'))
 const loadState = (dataDir) => readJson(join(dataDir, STATE_FILE)) ?? {};
 const save = (dataDir, file, value) => {
   mkdirSync(dataDir, { recursive: true });
-  writeAtomic(join(dataDir, file), `${JSON.stringify(value, null, 2)}\n`);
+  writeAtomic(join(dataDir, file), `${JSON.stringify(value, null, 2)}\n`, undefined, 0o600);
 };
 
 // The list file: an empty list when it is missing, a stop when it is not a guard list.
@@ -267,8 +267,17 @@ function render(auto, repos, defs, state) {
     return { auto, written: [], copied: (env0 ?? []).filter((l) => isDefault(l) && oldCopied.includes(l)) };
   }
   if (!repos.length) {
-    lines = env0?.map((t) => (isMarked(t) ? { t: current(labelOf(t)), g: true } : { t, g: false })).filter((l) => l.t !== undefined);
-    if (env0?.some(isMarked) && same(lines.map((l) => l.t), dflt)) lines = undefined;
+    const mine = new Set((env0 ?? []).filter((l) => !isMarked(l) && !isDefault(l)).map(labelOf).filter(Boolean));
+    lines = env0?.map((t) => (isMarked(t) ? { t: mine.has(labelOf(t)) ? undefined : current(labelOf(t)), g: true } : { t, g: false })).filter((l) => l.t !== undefined);
+    const copied = (l) => isDefault(l.t) && (l.g || oldCopied.includes(l.t));
+    if (env0?.some(isMarked)) {
+      if (same(lines.map((l) => l.t), dflt)) lines = undefined;
+      else if (same(sorted(lines.filter(copied).map((l) => l.t)), sorted(dflt))) {
+        const first = lines.findIndex(copied);
+        lines = lines.flatMap((l, i) => (i === first ? [{ t: '$defaults', g: false }] : copied(l) ? [] : [l]));
+        if (lines.length === 1) lines = undefined;
+      }
+    }
     if (allow0?.some(isMarked)) allow = allow0.filter((l) => !isMarked(l));
     if (allow && same(allow, ['$defaults']) && allow0.some(isMarked)) allow = undefined;
   } else {
@@ -280,6 +289,10 @@ function render(auto, repos, defs, state) {
       const d = current(labelOf(l.t));
       return d ? [{ t: d, g: true }] : [];
     });
+    if (oldCopied.length) {
+      const absent = dflt.filter((d) => !lines.some((l) => l.t === d || (labelOf(d) !== null && labelOf(l.t) === labelOf(d))));
+      lines.push(...absent.map((t) => ({ t, g: true })));
+    }
     for (const [lb, name] of GUARD_LABELS) {
       if (lines.some((l) => labelOf(l.t) === lb && !isMarked(l.t) && !isDefault(l.t))) {
         stop('edited', `environment: the ${name} line holds your own text; guard leaves it alone; delete it or fold it into the list, then run /guard again`);
@@ -339,8 +352,9 @@ function change(old, req, c) {
     if (!remotes.length) refuse(`${top} has no remote; guard trusts a repository by its remotes`);
     return [...old.filter((x) => key(x.path, c.platform) !== key(top, c.platform)), { path: top, remotes, merge: req.merge }].sort(byPath(c.platform));
   }
-  const abs = key(slash(resolve(c.cwd, req.value)), c.platform), remote = normalizeRemote(req.value);
-  const keep = old.filter((x) => key(x.path, c.platform) !== abs && !(remote && x.remotes.includes(remote)));
+  const given = resolve(c.cwd, req.value), paths = [slash(given)], remotes = [req.value, normalizeRemote(req.value)];
+  try { paths.push(slash(git(c.env, given, ['rev-parse', '--show-toplevel']).trim())); } catch {}
+  const keep = old.filter((x) => !paths.some((p) => key(p, c.platform) === key(x.path, c.platform)) && !x.remotes.some((r) => remotes.includes(r)));
   if (keep.length === old.length) refuse(`${req.value} is not in the list`);
   return keep;
 }
@@ -376,11 +390,11 @@ function body(c, t, request, deep, r) {
   const old = parseList(t.list, list, c.platform);
   r.count = old.length;
   const repos = (request ? change(old, request, c) : old).map((x) => {
-    if (!statSync(x.path, { throwIfNoEntry: false })?.isDirectory()) {
-      r.notes.push(`note: ${x.path} does not exist on this machine; its recorded remotes are kept`);
-      return x;
-    }
     try {
+      if (!statSync(x.path, { throwIfNoEntry: false })?.isDirectory()) {
+        r.notes.push(`note: ${x.path} does not exist on this machine; its recorded remotes are kept`);
+        return x;
+      }
       const remotes = remotesOf(c.env, x.path);
       if (remotes.length) return { ...x, remotes };
     } catch {}
@@ -440,11 +454,12 @@ function locked(dataDir, fn) {
   try { return fn(); } finally { rmSync(lock, { recursive: true, force: true }); }
 }
 
-// Writes beside the target, then renames over it. On Windows a rename that fails is retried once after a short wait.
-function writeAtomic(path, text, backup) {
+// Writes beside the target, then renames over it, with the mode given or else the old file's. On Windows a rename that fails is retried once after a short wait.
+function writeAtomic(path, text, backup, mode) {
   const tmp = `${path}.reimagine-tmp-${process.pid}`;
   try { writeFileSync(tmp, text, 'utf8'); } catch (e) { refuse(`could not write ${tmp} (${e.code}); nothing was written`); }
-  if (existsSync(path)) chmodSync(tmp, statSync(path).mode & 0o777);
+  if (mode !== undefined) chmodSync(tmp, mode);
+  else if (existsSync(path)) chmodSync(tmp, statSync(path).mode & 0o777);
   try { renameSync(tmp, path); } catch (e) {
     if (process.platform === 'win32') {
       sleep(500);
@@ -465,23 +480,27 @@ function applyPlan(c) {
   const edits = p.after !== cur.text;
   if (edits && cur.text !== null && statSync(p.path).nlink > 1) refuse(`${p.path} has multiple hard links, so nothing was written`);
   const out = [];
-  let backup;
-  if (edits && p.after === null) {
-    rmSync(p.path);
-    out.push(`guard: removed ${p.path}`);
-  } else if (edits) {
+  let backup, listLine;
+  if (edits && p.after !== null) {
     if (cur.text !== null) {
       backup = `${p.path}.reimagine-backup-${stamp(c.now)}`;
       try { copyFileSync(p.path, backup, constants.COPYFILE_EXCL); } catch (e) { refuse(`could not back up ${p.path} to ${backup} (${e.code}); nothing was written`); }
     } else mkdirSync(dirname(p.path), { recursive: true });
-    writeAtomic(p.path, p.after, backup);
-    out.push(`guard: wrote ${p.path}${backup ? `; the backup is ${backup}` : ''}`);
   }
+  // The list goes first: a list write that refuses then leaves the settings file as the state records it.
   if (p.listAfter !== list.text) {
     if (p.listAfter === null) rmSync(p.listPath);
     else { mkdirSync(dirname(p.listPath), { recursive: true }); writeAtomic(p.listPath, p.listAfter); }
-    out.push(`guard: ${p.listAfter === null ? 'removed' : 'wrote'} ${p.listPath}`);
+    listLine = `guard: ${p.listAfter === null ? 'removed' : 'wrote'} ${p.listPath}`;
   }
+  if (edits && p.after === null) {
+    rmSync(p.path);
+    out.push(`guard: removed ${p.path}`);
+  } else if (edits) {
+    writeAtomic(p.path, p.after, backup);
+    out.push(`guard: wrote ${p.path}${backup ? `; the backup is ${backup}` : ''}`);
+  }
+  if (listLine) out.push(listLine);
   save(c.dataDir, STATE_FILE, { written: p.written, copied: p.copied, created: p.created });
   save(c.dataDir, PLAN_FILE, {});
   const dir = c.env.CLAUDE_CONFIG_DIR || undefined;

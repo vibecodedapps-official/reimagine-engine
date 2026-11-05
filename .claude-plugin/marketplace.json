@@ -39,7 +39,7 @@
     {
       "name": "guard",
       "source": "./plugins/guard",
-      "description": "Auto mode trust for the repositories you list: the classifier's entries in your user settings file, kept current by a script, each change shown before it is made.",
+      "description": "Auto mode trust for the repositories you list: the classifier's entries in your user settings file, written by a script when you run /guard, each change shown before it is made.",
       "version": "0.1.0"
     }
   ]

@@ -366,6 +366,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, guardSkill, 'disable-model-invocation: true\n', '');
     bump(dir, 'guard');
   }, 1, [`${guardSkill}: frontmatter lacks disable-model-invocation: true`]);
+  negative('R334: <file>: frontmatter name is <name>, not guard', (dir) => {
+    edit(dir, guardSkill, '\nname: guard\n', '\nname: trust\n');
+    bump(dir, 'guard');
+  }, 1, [`${guardSkill}: frontmatter name is trust, not guard`]);
   negative('R343: <file>: allowed-tools entry <entry> is not a status, list or plan run of guard.mjs', (dir) => {
     edit(dir, guardSkill, '  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan *)\n',
       '  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan *)\n  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" apply *)\n');

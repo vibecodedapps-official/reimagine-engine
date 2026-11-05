@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## guard 0.1.0 - 2026-11-04
+
+- First release. `/guard` keeps the auto mode classifier's environment and allow entries for a list of repositories the user names, so pushing a branch and opening or commenting on a pull request there is not denied; `merge` also allows merging a pull request the user names. Each entry is marked as guard's own, so the user's entries stay, and the environment list is written whole from the host's defaults, since an added line does not replace a default one.
+- The script writes only `autoMode.environment` and `autoMode.allow` in the user settings file and keeps every byte outside that value; it checks the candidate in a scratch configuration directory before the write and the real one after, backs up the file first, and writes nothing until the user replies with the sentence the skill asks for, since the write is a permission change the user must name.
+- The catalog lists six plugins.
+
 ## loop 0.1.14 - 2026-11-04
 
 - On a continued branch, preflight plans at the branch tip and step 3.7.1 reverifies against it, and a worktree run starts its worktree there, since the run compared the tip with the base commit and planned a worktree run at the base while the build starts from the tip.

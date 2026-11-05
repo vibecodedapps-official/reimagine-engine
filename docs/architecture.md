@@ -545,7 +545,7 @@ The environment list is written whole, since the host splices `$defaults` in as 
 | stale | the list, a remote or the host's text changed | the new entries |
 | edited | a marked entry changed by hand, or a slot guard changes holds the user's text | nothing; names the entry |
 | malformed | a settings file that is not a JSON object, holds `autoMode` twice, whose `autoMode` is not an object, or whose `environment` or `allow` is not a list of strings; a list file that is not a guard list | nothing |
-| managed | another scope adds `autoMode` entries | nothing; names them |
+| managed | another scope adds `autoMode` entries | nothing; names one as an example |
 | unavailable | `claude` cannot run or prints no defaults guard can read | nothing |
 
 `plan` checks the candidate with `claude auto-mode config` in a temporary configuration directory, since `--settings` adds to the user file rather than replacing it, and `apply` checks the real directory after the write: every guard entry once, no environment label twice, every default allow rule present when `$defaults` is. `claude` runs through `execFile` with `CLAUDE_CONFIG_DIR` set; the suite replaces it with a runner that reads the directory's `settings.json` and answers from a literal defaults fixture. Backups, the atomic write and the lock follow `rules.mjs`.

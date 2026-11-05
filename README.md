@@ -43,7 +43,7 @@ Each plugin works alone. After installing `rules`, run `/rules` (also reachable 
 - Gate: say `reimagine gate PR 73`, `gate this branch` or `gate the manifest <path>`, or type `/gate` followed by the same words. There are no flags.
 - primer: put `<!-- primer -->` on the first line of a repository's `CLAUDE.md`, and the drift hook checks every commit Claude Code makes there against the instruction files. Run `/primer` in a repository to set up, adopt or check its instruction files; it says which mode it runs in before it writes.
 - primer fold: run `/primer:fold` in a repository for a read-only report of where the current Claude Code documentation describes a practice or mechanism it could fold in; it writes nothing.
-- Guard: `/guard add <path>` adds a repository to the list, and `/guard` alone refreshes the entries, for example after a Claude Code update; `drop`, `clear`, `list` and `status` do the rest. Nothing is written until you reply with the exact sentence the skill asks for; any other reply, a plain yes included, writes nothing. The write then meets the session's permission mode. See `plugins/guard/README.md` for the rest.
+- Guard: `/guard add <path>` adds a repository to the list, `/guard add <path> merge` also allows merging a pull request you name there, and `/guard` alone refreshes the entries, for example after a Claude Code update; `drop`, `clear`, `list` and `status` do the rest. Nothing is written to your settings file until you reply with the exact sentence the skill asks for; any other reply, a plain yes included, writes nothing. The write then meets the session's permission mode. See `plugins/guard/README.md` for the rest.
 - repo-docs is retired and left the catalog with the primer release: uninstall it with `/plugin uninstall repo-docs@reimagine-engine`, then run `/primer` in each repository it kept, and adopt converts the hub and its spokes in one run.
 
 ## Update
@@ -75,7 +75,7 @@ Run `/rules --remove` first if you want the block out of your `CLAUDE.md`; it gi
 /plugin uninstall guard@reimagine-engine
 ```
 
-The audit keeps its run registry in the plugin data directory; delete it by hand if you want it gone. Guard leaves the `settings.json.reimagine-backup-<YYYYMMDDHHMMSS>` copies that each change to an existing settings file made, beside that file (beside its target when `settings.json` is a symbolic link), and the list file `reimagine-guard.json` while the list still holds a repository; delete them by hand if you want them gone.
+The audit keeps its run registry in the plugin data directory; delete it by hand if you want it gone. Guard leaves the copies that each change to an existing settings file made, named like that file with `.reimagine-backup-<YYYYMMDDHHMMSS>` added (the name of its target, when `settings.json` is a symbolic link), beside it, and the list file `reimagine-guard.json` while the list still holds a repository; delete them by hand if you want them gone.
 
 ## Development
 

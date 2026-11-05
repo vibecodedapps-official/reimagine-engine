@@ -1507,7 +1507,7 @@ Work items, in this order:
 5. The catalog entry at 0.1.0 with `metadata.version` 0.1.39; the README's install, update and uninstall lines and plugin count; the hub's count and area list; `test:guard`; lint's names, executables, budget and guard skill rule, each new message with a negative case; the lint and release suites' plugin lists. Commit: `feat(catalog): list the guard plugin`.
 6. Items 76 to 80 on Windows with a scratch `CLAUDE_CONFIG_DIR`, recorded. Commit: `docs(acceptance): record the guard milestone`.
 7. The gate on the branch, its fixes committed on the branch.
-8. After the merge, by the owner: the changelog heading, the tag `guard--v0.1.0` after a yes, items 21, 22, 38, 39 and 44 on the merge commit, and item 1 for guard.
+8. After the merge, by the owner: the changelog heading, the tag `guard--v0.1.0` after a yes, items 21, 22, 38, 39 and 44 on the merge commit, item 1 for guard, and items 77, 79 and 80, run in a logged-in scratch profile, item 79 with a throwaway GitHub repository.
 
 Check: `npm run test:guard` before and after item 3; `npm run test:lint` and `npm run test:release` before and after item 5; `npm test` and `npm run lint` with the deny tokens before the push.
 

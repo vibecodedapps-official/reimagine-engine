@@ -124,8 +124,9 @@
 # - skills/audit/stages/9-act.md's commit step types no attribution trailer and keeps
 #   the host's (requirement 11).
 # - The roles table in skills/audit/SKILL.md carries the swap rung off the top tier and
-#   the second opinion row defaults to opus; no stage 2 to 7 file says "on `fable`" or
-#   "model: fable".
+#   the second opinion row defaults to opus; the stage 6 summary line in that file and
+#   the README's second opinion row carry the same ladder; no stage 2 to 7 file says
+#   "on `fable`" or "model: fable".
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -828,6 +829,14 @@ if [ -f "$f" ]; then
 		fail "$f: the roles table does not carry the swap rung off the top tier"
 	grep -qF '| opus | per batch: relaunch on sonnet, or on opus for a second opinion already on sonnet, a swap; then stage 6 fails |' "$tmp/list" ||
 		fail "$f: the second opinion row does not default to opus with the sonnet relaunch"
+	grep -qF 'follows the ladder: relaunch on sonnet, or on opus for a second opinion already on sonnet, then stage 6 fails.' "$tmp/list" ||
+		fail "$f: the stage 6 summary does not follow the roles table's second opinion ladder"
+fi
+f=README.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF '| second opinion | 6 | opus, a fresh adversary; then sonnet, or opus when it already ran on sonnet |' "$tmp/list" ||
+		fail "$f: the second opinion row does not follow the roles table's ladder"
 fi
 for f in skills/audit/stages/2-digest.md skills/audit/stages/3-domain.md skills/audit/stages/4-pass-one.md skills/audit/stages/5-pass-two.md skills/audit/stages/6-second-opinion.md skills/audit/stages/7-converge.md; do
 	[ -f "$f" ] || continue

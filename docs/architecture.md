@@ -206,7 +206,7 @@ Invoking by name approves branch, commit, push, one pull request per repository,
 |---|---|---|
 | orchestrator, judge, slice reviewer | the session model | none; the run stops |
 | implementer | Agent `sonnet`, one per slice, parallel for disjoint slices | none; a tool error ends `blocked` after the snapshot restore |
-| plan reviewer | fresh Agent `opus`, read and report only | once to `sonnet` on a model or tool error; stays swapped |
+| plan reviewer | fresh Agent `opus`, read and report only | once to the `fallback-reviewer` model, else the other of `sonnet` and `opus` when it is the reviewer's own, on a model or tool error; stays swapped |
 | final reviewer | built-in `code-review` skill, explicit level at most `xhigh`, `<merge-base>...HEAD` as a full sha, one pass | Agent `opus` over a patch file, once, when the skill is not listed, the primary is not the session's checkout, or the diff is in an additional repository |
 | reader | Agent `haiku` when a read is worth splitting out | the orchestrator reads |
 

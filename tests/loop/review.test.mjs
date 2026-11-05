@@ -95,9 +95,9 @@ test('R62: Step 5 sends the reviewer request only to the opus stand-in', () => {
 
 test('R62: the plan reviewer defaults to opus and retries at sonnet in the skill and the plan step', () => {
   assert.ok(SKILL.includes('3. Plan reviewer: a fresh-context Agent at `opus`,'));
-  assert.ok(SKILL.includes('(`sonnet` unless `.reimagine.json` says otherwise, and `opus` when the reviewer already runs at `sonnet` and no `fallback-reviewer` is set)'));
+  assert.ok(SKILL.includes('(`sonnet` unless `.reimagine.json` says otherwise), or at the other of `sonnet` and `opus` when that model is the reviewer\'s own'));
   assert.ok(PLAN.includes('(`opus` unless `.reimagine.json` says otherwise)'));
-  assert.ok(PLAN.includes('(`sonnet` unless `.reimagine.json` says otherwise, and `opus` when the reviewer already runs at `sonnet` and no `fallback-reviewer` is set)'));
+  assert.ok(PLAN.includes('(`sonnet` unless `.reimagine.json` says otherwise), or at the other of `sonnet` and `opus` when that model is the reviewer\'s own'));
   assert.ok(!PLAN.includes('`fable` unless'));
 });
 

@@ -114,7 +114,7 @@ Sources of truth: /src/specs
 Claims: none
 Effort: high (from "effort high")
 Budget: 90 minutes, this invocation only
-Models: auditor on fable
+Models: auditor on sonnet
 Tickets: AB#4567 (mcp:<tool>), AB#4580 (file)
 ```
 

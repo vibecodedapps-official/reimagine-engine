@@ -1519,7 +1519,7 @@ Added 2026-11-05. Decision 182 and R62, R150, R151 and R158 as amended: no defau
 
 Work items, in this order:
 
-1. The loop's roles table, items 3 and 7, the configuration example, `steps/1-plan.md` and the defaults literal of `tests/loop/config.test.mjs`. Commit: `fix(loop): the plan reviewer runs at the default tier and retries one tier down`.
+1. The loop's roles table, item 3, the configuration example, `steps/1-plan.md` and the defaults literal of `tests/loop/config.test.mjs`. Commit: `fix(loop): the plan reviewer runs at the default tier and retries one tier down`.
 2. The audit's roles table, the ladder passages of stages 2 to 8, the request template, the report shape and the README, and the stage 6 role fixture of `tests/audit/ledger.sh`. Commit: `fix(audit): the second opinion and the swap rung stay off the top tier`.
 3. The design documents. Commit: `docs(design): record the default tier decision`.
 4. `node tools/release.mjs` for loop 0.1.15 and audit 0.1.14, with the catalog `metadata.version` raised to 0.1.40 and 0.1.41 and the `plugin_version` literals of the audit skill files moved. Commits: `release(loop): 0.1.15` and `release(audit): 0.1.14`.
@@ -1540,7 +1540,7 @@ Work items, in this order:
 2. The design documents. Commit: `docs(design): record the second drafts feedback behind concise plain 4.12`.
 3. `node tools/release.mjs` for rules 0.1.22, with the catalog `metadata.version` raised to 0.1.42 and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.22`.
 4. The gate on the pull request, shared with M74, its fixes committed on the branch.
-5. After the merge, by the owner: the changelog heading, the release acceptance items 2 and 5 for rules, the tag after a yes, then item 21 on the merge commit.
+5. After the merge, by the owner: the changelog heading for 0.1.22, which also records the 0.1.21 changes since 0.1.21 was not tagged, the release acceptance items 2 and 5 for rules, the tag `rules--v0.1.22` after a yes, then item 21 on the merge commit.
 
 Check: `npm run test:rules` and `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
 

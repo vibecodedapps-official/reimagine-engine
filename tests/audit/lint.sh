@@ -123,6 +123,9 @@
 #   result as `demonstrate`; the file is read as one line.
 # - skills/audit/stages/9-act.md's commit step types no attribution trailer and keeps
 #   the host's (requirement 11).
+# - The roles table in skills/audit/SKILL.md carries the swap rung off the top tier and
+#   the second opinion row defaults to opus; no stage 2 to 7 file says "on `fable`" or
+#   "model: fable".
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -816,6 +819,24 @@ if [ -f "$f" ]; then
 		grep -qF "$s" "$tmp/list" || fail "$f: the stage 6 section does not name '$s'"
 	done
 fi
+# The roles table carries the swap rung off the top tier and the second opinion row
+# defaults to opus; no stage file names the top tier as a default or a fallback.
+f=skills/audit/SKILL.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'relaunch on opus, or on sonnet for a role already on opus, a swap; the scope fails' "$tmp/list" ||
+		fail "$f: the roles table does not carry the swap rung off the top tier"
+	grep -qF '| opus | per batch: relaunch on sonnet, or on opus for a second opinion already on sonnet, a swap; then stage 6 fails |' "$tmp/list" ||
+		fail "$f: the second opinion row does not default to opus with the sonnet relaunch"
+fi
+for f in skills/audit/stages/2-digest.md skills/audit/stages/3-domain.md skills/audit/stages/4-pass-one.md skills/audit/stages/5-pass-two.md skills/audit/stages/6-second-opinion.md skills/audit/stages/7-converge.md; do
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'on `fable`' "$tmp/list" &&
+		fail "$f: names the top tier as a default or a fallback"
+	grep -qF 'model: fable' "$tmp/list" &&
+		fail "$f: names the top tier as a default or a fallback"
+done
 # Act shows an item's defect at baseline before it edits, logs it as `demonstrate`, and
 # carries the before and after results into the commit body; the file is read as one line.
 f=skills/audit/stages/9-act.md

@@ -39,8 +39,9 @@ per code base.
    disagree, with a quote from each. The agent definition holds the rest.
 5. **On each completion.** Apply `_test` `fail` for role `mapper` at scope `<source>` or
    `any`. Read the output; its last line must be `status: complete`. On a failure, follow
-   the ladder (SKILL.md, Roles): relaunch on the same model, then on `fable` recorded as a
-   swap, then the scope fails. Record each agent in the entry. On success:
+   the ladder (SKILL.md, Roles): relaunch on the same model, then on `opus`, or on `sonnet`
+   for a role already on `opus`, recorded as a swap, then the scope fails. Record each
+   agent in the entry. On success:
    1. When `_test` `plant_map_error` names this source, change one quoted answer's
       conclusion in `domain/<source>-map.md` to its opposite, keep its quote, and record
       the line number and the original line in the entry as `test_planted`. Do this

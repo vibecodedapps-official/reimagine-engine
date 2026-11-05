@@ -83,10 +83,11 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
    5. Failure: an error, a nonzero exit or any line from `late-check`, a missing
       `status: complete`, or a live true claim without its line. A `_test.fail` entry
       with `role: adversary` and scope `late` or `any` applies (`SKILL.md`, "Fault
-      injection"). Ladder: relaunch on the same model; then relaunch on `fable`,
-      recorded as a swap; then the late scope fails. A failed scope is recorded with its
-      coverage loss, every id the list holds; the late additions stay provisional, and
-      the merger still runs. The outcome for the steps below is `complete` or `failed`.
+      injection"). Ladder: relaunch on the same model; then on `opus`, or on `sonnet` for a
+      role already on `opus`, recorded as a swap; then the late scope fails. A failed scope
+      is recorded with its coverage loss, every id the list holds; the late additions stay
+      provisional, and the merger still runs. The outcome for the steps below is `complete`
+      or `failed`.
 
 3. **Write `ledger/7.md` once.** One section per challenged id, copied from the verdicts
    in `late/adversary.md`:

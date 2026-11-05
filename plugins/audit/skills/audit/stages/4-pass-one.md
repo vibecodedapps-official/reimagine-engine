@@ -94,10 +94,10 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
       `_test` `fail` entry with role `auditor` and this scope or `any` turns the scope's
       first `times` completions into failures.
    3. On a failure, follow the ladder (SKILL.md, Roles): relaunch on the same model with
-      the same prompt; then relaunch on `fable`, recorded as a swap with role, scope, from,
-      to and reason; then the scope fails, with its coverage loss recorded. A relaunch
-      overwrites the output file. A failed scope counts as done for the barrier and for
-      the stage, and gets no pass two.
+      the same prompt; then relaunch on `opus`, or on `sonnet` for a role already on
+      `opus`, recorded as a swap with role, scope, from, to and reason; then the scope
+      fails, with its coverage loss recorded. A relaunch overwrites the output file. A failed
+      scope counts as done for the barrier and for the stage, and gets no pass two.
    4. On success, check that the report has a `runs:` heading and a `consumed:` heading;
       either may say none. `consumed:` names each digest and map read, with its hash.
       Then check coverage. The report's `## Decisions` must name every `decision` claim of

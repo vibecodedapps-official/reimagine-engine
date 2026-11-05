@@ -70,8 +70,9 @@ restate the finding schema or the output contract.
    its file is missing, its last line is not `status: complete`, it has no
    `## Claims challenged` heading, or step 3 found a missing verdict or claims line. A `_test` `fail` entry with role `adversary` and this scope or
    `any` turns the scope's first `times` completions into failures. Ladder (SKILL.md,
-   Roles): relaunch on the same model; then on `fable`, recorded as a swap; then the scope
-   fails and its findings have no pass-two verdict. Check the budget before every launch
+   Roles): relaunch on the same model; then on `opus`, or on `sonnet` for a role already on
+   `opus`, recorded as a swap; then the scope fails and its findings have no pass-two
+   verdict. Check the budget before every launch
    (SKILL.md, Soft budget); once it has expired, launch nothing and record each scope not
    run.
 

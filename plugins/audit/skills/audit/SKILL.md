@@ -166,11 +166,11 @@ After a compaction, or whenever you cannot account for your state, stop. Before 
 | Role | Agent type | Default model | Failure ladder |
 |---|---|---|---|
 | orchestrator | you, the session model | none | none; the run ends `blocked` |
-| digester (stage 2) | `audit:digester` | haiku | relaunch on the same model; relaunch on fable, a swap; the scope fails |
+| digester (stage 2) | `audit:digester` | haiku | relaunch on the same model; relaunch on opus, or on sonnet for a role already on opus, a swap; the scope fails |
 | mapper (stage 3) | `audit:mapper` | sonnet | as the digester |
 | auditor (stage 4, top-ups) | `audit:auditor` | opus | as the digester |
 | adversary (stages 5 and 7) | `audit:adversary`, fresh context | opus | as the digester |
-| second opinion (stage 6) | a fresh `audit:adversary` in second-opinion mode | fable | per batch: relaunch on opus; then stage 6 fails |
+| second opinion (stage 6) | a fresh `audit:adversary` in second-opinion mode | opus | per batch: relaunch on sonnet, a swap; then stage 6 fails |
 | merger (stage 7) | `audit:merger` | sonnet | you merge, a swap; a second failure fails stage 7 |
 
 An agent fails when it returns an error, when the last line of its output file is not `status: complete`, or when `_test` marks it failed. A swap changes who fills a role and never removes a stage. Record each swap in the stage entry's `swaps` list with role, scope, from, to and reason, and name it in the report. A stage fails when any of its scopes failed. A failed stage counts as satisfied for every stage that waits on it; the run goes on, records the coverage loss, and ends `partial`.
@@ -378,8 +378,8 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/6-second-opinion.md` and `${CLAU
 
 1. Copy every input to `second-opinion/inputs/<run-relative path>` with a first line `audit-sentinel: <run-relative path> <16 hex>`, the token from `od -An -N8 -tx1 /dev/urandom` with spaces removed. Audited sources are never copied, only named by absolute read path and sha from the brief.
 2. Write the mandatory set with `ledger.sh mandatory` into `tmp/mandatory.txt` and move it to `ledger/mandatory.txt` only on exit 0; a nonzero exit fails stage 6. Over 60 ids, split it by shell into `second-opinion/batch-<k>.txt` files of at most 60. The `IDS-BATCH-<k>` placeholder is replaced by shell, never typed.
-3. Launch one fresh `audit:adversary` per batch in second-opinion mode, at fable or the override, in the background: scope `second-opinion` for a single batch, else `second-opinion-<k>`; request `second-opinion/request.md` for batch 1, else `second-opinion/request-<k>.md`, which holds asks 1 and 2 only. The agent writes `second-opinion/response.md` or `second-opinion/response-<k>.md` itself and ends `status: complete`. Only the first batch may add `X<n>` findings with `origin: second-opinion`. The answer file is the agent's own and is never retyped.
-4. Per batch, check the sentinel acknowledgments and run `ledger.sh missing` for that batch's ids. A failed check or a missing `status: complete` follows the ladder: relaunch on opus, then stage 6 fails.
+3. Launch one fresh `audit:adversary` per batch in second-opinion mode, at opus or the override, in the background: scope `second-opinion` for a single batch, else `second-opinion-<k>`; request `second-opinion/request.md` for batch 1, else `second-opinion/request-<k>.md`, which holds asks 1 and 2 only. The agent writes `second-opinion/response.md` or `second-opinion/response-<k>.md` itself and ends `status: complete`. Only the first batch may add `X<n>` findings with `origin: second-opinion`. The answer file is the agent's own and is never retyped.
+4. Per batch, check the sentinel acknowledgments and run `ledger.sh missing` for that batch's ids. A failed check or a missing `status: complete` follows the ladder: relaunch on sonnet, then stage 6 fails.
 5. Write `ledger/6.md` once, with these sections in order:
    - `## Role`: the role, the requested model of each batch, and any swap.
    - `## Acknowledgments`: each input's sentinel and whether the answer acknowledged it.

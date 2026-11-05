@@ -27,7 +27,7 @@ test('R81: the configuration block has exactly the keys commit, checks, timeouts
   assert.equal(config.base, 'main');
   assert.deepEqual(Object.keys(config.timeouts), ['subagent', 'review', 'check', 'ci', 'run']);
   assert.deepEqual(config.timeouts, { subagent: 20, review: 30, check: 15, ci: 45, run: 240 });
-  assert.deepEqual(config.models, { implementer: 'sonnet', reviewer: 'fable', 'fallback-reviewer': 'opus', reader: 'haiku' });
+  assert.deepEqual(config.models, { implementer: 'sonnet', reviewer: 'opus', 'fallback-reviewer': 'sonnet', reader: 'haiku' });
 });
 
 test('R81: SKILL.md and README.md skip the gate key without reporting it', () => {

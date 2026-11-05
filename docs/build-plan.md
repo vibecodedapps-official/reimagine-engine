@@ -1494,7 +1494,7 @@ Check: `npm run test:rules` and `npm run test:lint` before and after item 1; `np
 
 ## Guard: M73
 
-Added 2026-11-04. Decision 181, R334 to R344, and R1, R6, R43, R219 and R277 as amended: a sixth plugin, `guard`, at 0.1.0, which writes the auto mode classifier's configuration for a list of repositories. M73 touches `docs/`, `.claude-plugin/marketplace.json`, `CLAUDE.md`, `README.md`, `package.json`, `plugins/guard/`, `tools/lint.mjs`, `tests/guard/`, `tests/lint/` and `tests/release/`. Tags wait for the owner's merge.
+Added 2026-11-04. Decision 181, R334 to R344, and R1, R5, R6, R43, R219 and R277 as amended: a sixth plugin, `guard`, at 0.1.0, which writes the auto mode classifier's configuration for a list of repositories. M73 touches `docs/`, `.claude-plugin/marketplace.json`, `CLAUDE.md`, `README.md`, `package.json`, `plugins/guard/`, `tools/lint.mjs`, `tests/guard/`, `tests/lint/` and `tests/release/`. Tags wait for the owner's merge.
 
 ### M73: the guard plugin
 

@@ -3,7 +3,7 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -279,6 +279,13 @@ test('R337: edited: taking the ending off makes the line the user\'s own text, a
   assert.deepEqual(JSON.parse(read(w.settings)).autoMode.environment, [ORG, VIS, trustedFor(`${w.repo.top} (${NA})`), DOMAINS, source]);
 });
 
+test('R337: with no state file, as after a reinstall, marked entries count as written by the script, so none is edited', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  rmSync(join(w.data, 'guard-state.json'));
+  assert.deepEqual(w.run('plan').slice(2), ['state: current', 'change: none']);
+});
+
 test('R337: edited: an own-text Source control line is left alone', () => {
   const w = repoWorld();
   const text = '{"autoMode":{"environment":["**Source control**: Only my fork."]}}\n';
@@ -427,7 +434,7 @@ test('R342: an apply with a backup already named refuses before writing', () => 
   writeFileSync(w.settings, '{}\n');
   w.run('plan', '--add', w.repo.path);
   writeFileSync(`${w.settings}.reimagine-backup-20261104100000`, 'x');
-  assert.throws(() => w.run('apply'), (e) => e instanceof Refusal && e.message.startsWith(`could not back up ${w.settings} to ${w.settings}.reimagine-backup-20261104100000 (EEXIST)`));
+  assert.throws(() => w.run('apply'), refusal(`could not back up ${w.settings} to ${w.settings}.reimagine-backup-20261104100000 (EEXIST); ${w.list} was changed, ${w.settings} was not`));
   assert.equal(read(w.settings), '{}\n');
 });
 
@@ -443,7 +450,32 @@ test('R342: an apply whose list write refuses leaves the settings file unchanged
   assert.throws(() => w.run('apply'), (e) => e instanceof Refusal && e.message.startsWith(`could not write ${tmp} (`));
   rmSync(tmp, { recursive: true });
   assert.equal(read(w.settings), before);
+  assert.deepEqual(readdirSync(w.config).filter((f) => f.startsWith('settings.json.reimagine-backup-')), []);
   assert.deepEqual(w.run('plan').slice(2), ['state: current', 'change: none']);
+});
+
+// A plan can run three claude calls of up to 60 s each, so only a lock older than that is taken over.
+function agedLock(w, seconds) {
+  const lock = join(w.data, 'guard.lock');
+  mkdirSync(lock);
+  const at = new Date(Date.now() - seconds * 1000);
+  utimesSync(lock, at, at);
+  return lock;
+}
+
+test('R342: a lock 100 s old is held by a live step: plan refuses and leaves it', () => {
+  const w = repoWorld();
+  const lock = agedLock(w, 100);
+  assert.throws(() => w.run('plan', '--add', w.repo.path), refusal(`another /guard step holds ${lock}; nothing was written; run /guard again`));
+  assert.equal(existsSync(lock), true);
+  assert.deepEqual(w.calls, []);
+});
+
+test('R342: a lock 300 s old is stale: plan takes it over and runs', () => {
+  const w = repoWorld();
+  const lock = agedLock(w, 300);
+  assert.equal(w.run('plan', '--add', w.repo.path).at(-1), 'change: ready');
+  assert.equal(existsSync(lock), false);
 });
 
 test('R342: the plan and state files are written readable by the owner only, whatever the old mode', { skip: process.platform === 'win32' }, () => {

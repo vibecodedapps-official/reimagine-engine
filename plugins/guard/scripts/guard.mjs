@@ -446,7 +446,7 @@ function locked(dataDir, fn) {
       if (removing && tries >= 20) refuse(`cannot create ${lock} (EPERM); nothing was written; check the permissions of ${dataDir}`);
       if (e.code === 'EACCES' || (e.code === 'EPERM' && !removing)) refuse(`cannot create ${lock} (${e.code}); nothing was written; check the permissions of ${dataDir}`);
       if (e.code !== 'EEXIST' && !removing) throw e;
-      try { if (Date.now() - statSync(lock).mtimeMs > 60_000) { rmSync(lock, { recursive: true, force: true }); continue; } } catch {}
+      try { if (Date.now() - statSync(lock).mtimeMs > 240_000) { rmSync(lock, { recursive: true, force: true }); continue; } } catch {}
       if (tries >= 200) refuse(`another /guard step holds ${lock}; nothing was written; run /guard again`);
       sleep(50);
     }
@@ -457,7 +457,7 @@ function locked(dataDir, fn) {
 // Writes beside the target, then renames over it, with the mode given or else the old file's. On Windows a rename that fails is retried once after a short wait.
 function writeAtomic(path, text, backup, mode) {
   const tmp = `${path}.reimagine-tmp-${process.pid}`;
-  try { writeFileSync(tmp, text, 'utf8'); } catch (e) { refuse(`could not write ${tmp} (${e.code}); nothing was written`); }
+  try { writeFileSync(tmp, text, mode === undefined ? 'utf8' : { encoding: 'utf8', mode }); } catch (e) { refuse(`could not write ${tmp} (${e.code}); nothing was written`); }
   if (mode !== undefined) chmodSync(tmp, mode);
   else if (existsSync(path)) chmodSync(tmp, statSync(path).mode & 0o777);
   try { renameSync(tmp, path); } catch (e) {
@@ -481,17 +481,17 @@ function applyPlan(c) {
   if (edits && cur.text !== null && statSync(p.path).nlink > 1) refuse(`${p.path} has multiple hard links, so nothing was written`);
   const out = [];
   let backup, listLine;
-  if (edits && p.after !== null) {
-    if (cur.text !== null) {
-      backup = `${p.path}.reimagine-backup-${stamp(c.now)}`;
-      try { copyFileSync(p.path, backup, constants.COPYFILE_EXCL); } catch (e) { refuse(`could not back up ${p.path} to ${backup} (${e.code}); nothing was written`); }
-    } else mkdirSync(dirname(p.path), { recursive: true });
-  }
-  // The list goes first: a list write that refuses then leaves the settings file as the state records it.
+  // The list goes first: a list write that refuses then leaves the settings file as the state records it, and no backup behind.
   if (p.listAfter !== list.text) {
     if (p.listAfter === null) rmSync(p.listPath);
     else { mkdirSync(dirname(p.listPath), { recursive: true }); writeAtomic(p.listPath, p.listAfter); }
     listLine = `guard: ${p.listAfter === null ? 'removed' : 'wrote'} ${p.listPath}`;
+  }
+  if (edits && p.after !== null) {
+    if (cur.text !== null) {
+      backup = `${p.path}.reimagine-backup-${stamp(c.now)}`;
+      try { copyFileSync(p.path, backup, constants.COPYFILE_EXCL); } catch (e) { refuse(`could not back up ${p.path} to ${backup} (${e.code}); ${listLine ? `${p.listPath} was changed, ${p.path} was not` : 'nothing was written'}`); }
+    } else mkdirSync(dirname(p.path), { recursive: true });
   }
   if (edits && p.after === null) {
     rmSync(p.path);

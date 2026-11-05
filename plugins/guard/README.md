@@ -4,7 +4,7 @@ Auto mode trust for the repositories you list: the classifier's entries in your 
 
 ## What it writes
 
-Only `autoMode.environment` and `autoMode.allow`, in `$CLAUDE_CONFIG_DIR/settings.json` when that variable is set, else `~/.claude/settings.json`. Every other key keeps its value, `permissions` and `env` included, and every byte outside the `autoMode` value is kept. Nothing is written until you reply yes to a plan.
+Only `autoMode.environment` and `autoMode.allow`, in `$CLAUDE_CONFIG_DIR/settings.json` when that variable is set, else `~/.claude/settings.json`. Every other key keeps its value, `permissions` and `env` included, and every byte outside the `autoMode` value is kept. Nothing is written until you reply with the sentence the skill asks for.
 
 - The environment list. It is written out in full, with Claude Code's own default lines in it, since an added line does not replace a default one. While repositories are listed, a default line the host adds in a later release is added at the next `/guard`. With at least one repository listed, the Trusted repo line names each listed checkout and its remotes, and the Source control line names those remotes too. With none listed, both lines are Claude Code's again.
 - The allow list. With at least one repository listed, it gains three entries: publishing in the listed repositories, which is pushing a branch, opening a pull request, and editing or commenting on a pull request your own message asked to work on; reading Claude Code settings files to inspect configuration; and, only for a repository added with `merge`, merging a pull request in it that your own message names. Nothing guard writes clears the classifier's rules against self-modification, destructive git commands, safety bypasses or credential leakage.
@@ -51,7 +51,7 @@ If you edit a marked entry, or put your own text in a Trusted repo or Source con
 
 ## Backups
 
-Before it changes an existing file, the script copies it to `<path>.reimagine-backup-<YYYYMMDDHHMMSS>`, so each `apply` that changes an existing settings file leaves one beside it. `clear` deletes the list file but no backup. It refuses to apply a plan when either file changed after the plan was made.
+Before it changes an existing file, the script copies it to `<path>.reimagine-backup-<YYYYMMDDHHMMSS>`, so each `apply` that changes an existing settings file leaves one beside it, or beside its target when `settings.json` is a symbolic link. The list file goes when the list becomes empty, by `clear` or the last `drop`, and no backup is deleted. It refuses to apply a plan when either file changed after the plan was made.
 
 ## Approving the write
 
@@ -63,7 +63,7 @@ If you install your user settings from a shared file by a merge that replaces th
 
 ## Uninstall
 
-1. Run `/guard clear` and approve. It takes every guard entry out and deletes the list. When the copied default lines are every current default, they go back to one `$defaults`. A settings file that had no `autoMode` before gets its original bytes back, except that an object that held only whitespace, such as `{ }`, comes back as `{}`; a file guard created is deleted unless it holds something else.
+1. Run `/guard clear` and reply with the sentence the skill asks for; a plain yes writes nothing and leaves the entries in place. It takes every guard entry out and deletes the list. When the copied default lines are every current default, they go back to one `$defaults`. A settings file that had no `autoMode` before gets its original bytes back, except that an object that held only whitespace, such as `{ }`, comes back as `{}`; a file guard created is deleted unless it holds something else.
 2. Run `/plugin uninstall guard@reimagine-engine`.
 
 ## License

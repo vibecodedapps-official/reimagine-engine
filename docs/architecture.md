@@ -529,7 +529,7 @@ plugins/guard/
   .claude-plugin/plugin.json
   LICENSE  README.md
   skills/guard/SKILL.md          /guard; disable-model-invocation: true; pre-approves status, list and plan only
-  scripts/guard.mjs              status | list | plan [--add <path> [--merge] | --drop <path or remote> | --clear] | apply
+  scripts/guard.mjs              node guard.mjs <verb> <data directory> [args]; verbs: status | list | plan [--add <path> [--merge] | --drop <path or remote> | --clear] | apply
 ```
 
 Guard renders the auto mode classifier's `environment` and `allow` entries for the repositories the user lists (requirements 334 to 344, decision 181). The host reads `autoMode` from the user settings file, managed settings and `--settings` only, so guard writes the user settings file: `$CLAUDE_CONFIG_DIR/settings.json`, else `~/.claude/settings.json`. The list, `reimagine-guard.json`, sits beside it, since the plugin data directory goes with an uninstall; the plan, the state and the lock sit in the data directory. `--drop` removes a listed repository by its path, a path inside it, or a remote as `list` prints it or as a URL.
@@ -544,7 +544,7 @@ The environment list is written whole, since the host splices `$defaults` in as 
 | current | the file holds what guard would write | nothing |
 | stale | the list, a remote or the host's text changed | the new entries |
 | edited | a marked entry changed by hand, or a slot guard changes holds the user's text | nothing; names the entry |
-| malformed | not a JSON object, `autoMode` twice, or a list of another type | nothing |
+| malformed | a settings file that is not a JSON object, holds `autoMode` twice, whose `autoMode` is not an object, or whose `environment` or `allow` is not a list of strings; a list file that is not a guard list | nothing |
 | managed | another scope adds `autoMode` entries | nothing; names them |
 | unavailable | `claude` cannot run or prints no defaults guard can read | nothing |
 

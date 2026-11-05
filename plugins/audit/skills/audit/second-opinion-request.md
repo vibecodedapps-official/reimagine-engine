@@ -115,8 +115,9 @@ its finding.
 This rule is the stage's, not part of the request text. After each batch's answer, the
 stage compares every input's sentinel line with the answer: a sentinel not quoted
 exactly, or an input listed as `not read:`, means access to that input is not
-confirmed, and the attempt fails. The ladder then relaunches the batch on `opus`; a
-second failure fails stage 6, and no finding passes the review gate on its account. The
-stage also requires a position for every mandatory id of the batch, and an id missing
-one fails the attempt the same way. With `_test.drop_ack` naming an input, its
-acknowledgment counts as missing for the first `times` checks, whatever the answer says.
+confirmed, and the attempt fails. The ladder then relaunches the batch once, on
+`sonnet`, or on `opus` when the batch already ran on `sonnet`; a second failure fails
+stage 6, and no finding passes the review gate on its account. The stage also requires
+a position for every mandatory id of the batch, and an id missing one fails the attempt
+the same way. With `_test.drop_ack` naming an input, its acknowledgment counts as
+missing for the first `times` checks, whatever the answer says.

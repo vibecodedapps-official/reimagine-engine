@@ -6,7 +6,7 @@ At the start of each of Steps 1, 2 and 3, run `date -u +%Y-%m-%dT%H:%M:%SZ` and 
 
 ## Reviewer request
 
-Step 3 sends it to the plan reviewer. Step 5 sends it only to the `opus` stand-in (SKILL.md, Roles and models, item 5), with the changes named below; the `code-review` skill takes no request text. The plan reviewer is a fresh Agent call at the `reviewer` model (`fable` unless `.reimagine.json` says otherwise), never a fork, with `model` passed explicitly. The stand-in is an Agent call at `opus`, and the `fallback-reviewer` key does not apply to it. Each reads and reports, and never edits a file, runs a command that changes anything, or posts anything.
+Step 3 sends it to the plan reviewer. Step 5 sends it only to the `opus` stand-in (SKILL.md, Roles and models, item 5), with the changes named below; the `code-review` skill takes no request text. The plan reviewer is a fresh Agent call at the `reviewer` model (`opus` unless `.reimagine.json` says otherwise), never a fork, with `model` passed explicitly. The stand-in is an Agent call at `opus`, and the `fallback-reviewer` key does not apply to it. Each reads and reports, and never edits a file, runs a command that changes anything, or posts anything.
 
 Give the reviewer:
 
@@ -23,7 +23,7 @@ After a `drop` answer to the credential question, the request and any patch you 
 
 Pass the effort argument by the effort rule in SKILL.md: none when the request has no effort word, the word's level otherwise, and at least `high` when `risk.md` floors the run. The `opus` stand-in takes the `code-review` level of `risk.md` as its `effort` instead, `high` with no effort word and `xhigh` for "max". Take `date` before the call and again after it. The review budget is 30 minutes (`timeouts.review`).
 
-For the plan reviewer, on a model or tool error, retry once at the `fallback-reviewer` model (`opus` unless `.reimagine.json` says otherwise). From then on the reviewer for the whole run is that model. Record the swap in `run.md` and name it in the report. A permission denial is final and is not retried. A timeout is not an error: do not swap. A call past the review budget ends the run `blocked` naming the budget, as SKILL.md Budgets and rounds says. A stand-in pass that errors is retried once at `opus`, and a second error ends the run `blocked` (SKILL.md, Roles and models, item 4).
+For the plan reviewer, on a model or tool error, retry once at the `fallback-reviewer` model (`sonnet` unless `.reimagine.json` says otherwise); when that model is the reviewer's own, retry at `sonnet` instead, or at `opus` for a reviewer on `sonnet`. From then on the reviewer for the whole run is that model. Record the swap in `run.md` and name it in the report. A permission denial is final and is not retried. A timeout is not an error: do not swap. A call past the review budget ends the run `blocked` naming the budget, as SKILL.md Budgets and rounds says. A stand-in pass that errors is retried once at `sonnet`, and a second error ends the run `blocked` (SKILL.md, Roles and models, item 4).
 
 ## Step 1: review and verify the inputs
 

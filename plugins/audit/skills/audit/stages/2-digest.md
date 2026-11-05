@@ -65,8 +65,9 @@ document at its sha, never the digest. Agents: one `audit:digester` per chunk.
    rule collides with a claim or the diff stat. The agent definition holds the rest.
 5. **On each completion.** Apply `_test` `fail` for role `digester` at scope `digest-N`
    or `any`. Read the output; its last line must be `status: complete`. On a failure,
-   follow the ladder (SKILL.md, Roles): relaunch on the same model, then on `fable`
-   recorded as a swap, then the scope fails. Record each agent in the entry. On success,
+   follow the ladder (SKILL.md, Roles): relaunch on the same model, then on `opus`, or
+   on `sonnet` for a role already on `opus`, recorded as a swap, then the scope fails.
+   Record each agent in the entry. On success,
    run `git hash-object --no-filters guidelines/digest-N.md` and record the hash in the
    entry's `output_hashes` map as `"guidelines/digest-N.md": "<hash>"`. These are the
    final digest hashes that the barrier of stage 4 compares with each pass-one report's

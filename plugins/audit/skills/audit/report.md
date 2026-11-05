@@ -321,7 +321,7 @@ A run record.
   (an allowed write).
 - Stage 6: whether the mandatory ids went out in batches (`batched`), each sentinel
   acknowledgment that failed (`sentinels`), every mandatory id left without a position
-  (`missing_positions`), and each batch relaunched on `opus` or failed.
+  (`missing_positions`), and each batch relaunched, with its model, or failed.
 - Corpus files stage 2 split by byte range: source, path, size, each range, and the
   chunk id (`digest-N`) that covered it, with that chunk's status.
 - Unanswered questions, and questions marked "not run".

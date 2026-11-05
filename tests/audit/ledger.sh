@@ -69,7 +69,7 @@ crlf() {
 # lines, so the section k (from 0) starts at line 7 + 5k.
 mk6() {
 	{
-		printf '## Role\naudit:adversary, model fable\n\n## Acknowledgments\n- inputs: acknowledged\n\n'
+		printf '## Role\naudit:adversary, model opus\n\n## Acknowledgments\n- inputs: acknowledged\n\n'
 		for id in $2; do
 			printf '## %s\n- position: agrees\n- evidence: %s@abc:f.js:1\n- answer location: second-opinion/response.md, %s\n\n' "$id" "$id" "$id"
 		done

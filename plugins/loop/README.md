@@ -71,7 +71,7 @@ An optional `.reimagine.json` at the repository root. Every key is optional; the
   "commit": false,
   "checks": ["npm test", "npm run lint"],
   "timeouts": { "subagent": 20, "review": 30, "check": 15, "ci": 45, "run": 240 },
-  "models": { "implementer": "sonnet", "reviewer": "fable", "fallback-reviewer": "opus", "reader": "haiku" },
+  "models": { "implementer": "sonnet", "reviewer": "opus", "fallback-reviewer": "sonnet", "reader": "haiku" },
   "base": "main"
 }
 ```

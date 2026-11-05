@@ -14,7 +14,7 @@ $ARGUMENTS
 
    - Split the words into tokens at spaces. Text the user put in quotes stays one token.
    - This command takes no flags. When any token starts with `--`, reject with
-     `audit: no flags; say it in words (effort high, budget 30 minutes, adversary on fable)`.
+     `audit: no flags; say it in words (effort high, budget 30 minutes, adversary on sonnet)`.
    - The manifest is the first token that ends in `.json` and has no scheme prefix. A scheme
      prefix is a name of two or more characters and a `:` at the start of the token, such as
      `file:` or `github:`. A single letter followed by `:/` or `:\`, such as `C:/`, is a drive

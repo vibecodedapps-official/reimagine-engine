@@ -72,7 +72,7 @@ A JSON file. Relative paths in it are relative to the manifest's directory. Ever
   "forge_exports": { "command": "export-tickets --project AB", "exported_at": "2026-10-01T09:00:00Z" },
   "groups": [ { "name": "accounts", "repo": "./app", "files": ["src/users.js", "migrations/**"] } ],
   "questions": "./questions.md",
-  "models": { "adversary": "fable", "second-opinion": "opus" },
+  "models": { "adversary": "fable", "second-opinion": "sonnet" },
   "budget": 90,
   "max_agents": 8,
   "_test": {}
@@ -124,7 +124,7 @@ A phrase such as `effort high` overrides the default. The tier sets the scopes o
 | mapper | 3 | sonnet |
 | auditor | 4 | opus |
 | adversary | 5 and 7 | opus, fresh context |
-| second opinion | 6 | fable, a fresh adversary; then opus |
+| second opinion | 6 | opus, a fresh adversary; then sonnet, or opus when it already ran on sonnet |
 | merger | 7 | sonnet |
 
 The session model runs the stages. The `models` key, or a prose override, sets any role to opus, sonnet, haiku or fable. Every agent runs in the background with its own scratch folder. A failed agent is relaunched by a fixed ladder, and any model swap is named in the report.

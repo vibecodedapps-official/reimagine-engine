@@ -70,7 +70,7 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
 
 3. **Launch one agent per batch.** For each batch, launch a fresh `audit:adversary` with
    the Agent tool, in the background, never as a fork, `subagent_type: audit:adversary`,
-   `model: fable`, or the model the manifest `models` key or a prose override sets for
+   `model: opus`, or the model the manifest `models` key or a prose override sets for
    `second-opinion`. Its scope is `second-opinion` when there is one batch, else
    `second-opinion-<k>` for batch `<k>` (batch 1 included). Each gets its own scratch
    folder `<run dir>/tmp/agents/6-second-opinion/` or
@@ -107,12 +107,13 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
      marks the completion failed, as `fault-injection.md` says.
 
    The ladder applies to each batch on its own. On the first failed attempt, relaunch
-   that batch with `model: opus` and the same prompt, scope, scratch folder and output
-   file; the relaunch first moves the failed file aside with `mv -f <output file>
+   that batch with `model: sonnet`, or `model: opus` when the batch already ran on
+   `sonnet`, and the same prompt, scope, scratch folder and output file; the relaunch
+   first moves the failed file aside with `mv -f <output file>
    <run dir>/tmp/agents/<folder>/failed-response.md`. This is a swap: record in the
-   entry's `swaps` the role second opinion, the scope, from the requested model to
-   `opus`, and the reason (the error, no `status: complete`, the unacknowledged inputs,
-   the count of missing positions, or `_test.fail`). A second failed attempt fails stage
+   entry's `swaps` the role second opinion, the scope, from the requested model to the
+   relaunch model, and the reason (the error, no `status: complete`, the unacknowledged
+   inputs, the count of missing positions, or `_test.fail`). A second failed attempt fails stage
    6 for that batch; its answer, when it exists, stays where it is. The other batches
    still run to the end and are checked as above.
 

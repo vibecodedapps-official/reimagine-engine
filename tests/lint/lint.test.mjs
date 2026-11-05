@@ -222,11 +222,11 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   });
 
   negative('R219: loop SKILL.md over the 5800-word cap', (dir) => {
-    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(1503) + '\n');
+    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(1433) + '\n');
     bump(dir, 'loop');
   }, 1, ['plugins/loop/skills/run/SKILL.md: 5850 words, over the 5800-word cap']);
   positive('R219: loop SKILL.md at 5800 words passes', (dir) => {
-    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(1453) + '\n');
+    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(1383) + '\n');
     bump(dir, 'loop');
   });
 
@@ -455,10 +455,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', '\nname: Concise Plain\n', '\nname: Plain\n');
     bump(dir, 'rules');
   }, 1, ['plugins/rules/output-styles/concise-plain.md: name is not Concise Plain']);
-  negative('R43: <file>: description does not end in v4.11.', (dir) => {
-    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.11.', 'procedures.');
+  negative('R43: <file>: description does not end in v4.12.', (dir) => {
+    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.12.', 'procedures.');
     bump(dir, 'rules');
-  }, 1, ['plugins/rules/output-styles/concise-plain.md: description does not end in v4.11.']);
+  }, 1, ['plugins/rules/output-styles/concise-plain.md: description does not end in v4.12.']);
   negative('R43: <file>: keep-coding-instructions is not true', (dir) => {
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'keep-coding-instructions: true', 'keep-coding-instructions: false');
     bump(dir, 'rules');

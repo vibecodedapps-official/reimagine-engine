@@ -91,7 +91,7 @@ Work items:
 Check:
 
 - `npm test` passes on ubuntu, macOS and Windows; the awk suites pass under mawk.
-- A low-tier headless run on the patterns fixture ends `reported` with stage 6 run by a `fable` adversary and every read-only check at exit 0 (acceptance item 14).
+- A low-tier headless run on the patterns fixture ends `reported` with stage 6 run by an `opus` adversary (a `fable` one before decision 182) and every read-only check at exit 0 (acceptance item 14).
 - A medium run on the ground-truth fixture reaches the expected counts; `/audit:act` commits one item (acceptance item 15).
 - `/audit:resume --live` reruns stages 6 to 8 (acceptance item 16); `/audit:handoff --verdicts` applies matching lines (acceptance item 17).
 
@@ -1510,6 +1510,39 @@ Work items, in this order:
 8. After the merge, by the owner: the changelog heading, the tag `guard--v0.1.0` after a yes, items 21, 22, 38, 39 and 44 on the merge commit, item 1 for guard, and items 77, 79 and 80, run in a logged-in scratch profile, item 79 with a throwaway GitHub repository. The owner tags the merge commit before anything else lands under `plugins/guard/`, since installs are pinned by the version string and a later change at 0.1.0 would not reach them.
 
 Check: `npm run test:guard` before and after item 3; `npm run test:lint` and `npm run test:release` before and after item 5; `npm test` and `npm run lint` with the deny tokens before the push.
+
+## Default tier: M74
+
+Added 2026-11-05. Decision 182 and R62, R150, R151 and R158 as amended: no default or fallback selects the top tier, in loop 0.1.15 and audit 0.1.14. M74 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/loop/`, `plugins/audit/`, `tests/loop/` and `tests/audit/`. Tags wait for the owner's merge.
+
+### M74: the fix
+
+Work items, in this order:
+
+1. The loop's roles table, item 3, the configuration example, `steps/1-plan.md` and the defaults literal of `tests/loop/config.test.mjs`. Commit: `fix(loop): the plan reviewer runs at the default tier and retries one tier down`.
+2. The audit's roles table, the ladder passages of stages 2 to 8, the request template, the report shape and the README, and the stage 6 role fixture of `tests/audit/ledger.sh`. Commit: `fix(audit): the second opinion and the swap rung stay off the top tier`.
+3. The design documents. Commit: `docs(design): record the default tier decision`.
+4. `node tools/release.mjs` for loop 0.1.15 and audit 0.1.14, with the catalog `metadata.version` raised to 0.1.40 and 0.1.41 and the `plugin_version` literals of the audit skill files moved. Commits: `release(loop): 0.1.15` and `release(audit): 0.1.14`.
+5. The gate on the pull request, its fixes committed on the branch.
+6. After the merge, by the owner: the changelog headings, the release acceptance items 2 and 5 for loop and audit, the tags after a yes, item 14 at audit 0.1.14, then item 21 on the merge commit.
+
+Check: `npm run test:loop` and `npm run test:audit` before and after items 1 and 2; `npm test` and `npm run lint` with the deny tokens before the push.
+
+## Drafts feedback, second batch: M75
+
+Added 2026-11-05. Decision 183 and R43 as amended: Concise Plain 4.12 in rules 0.1.22. M75 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/rules/`, `tools/lint.mjs`, `tests/lint/` and `tests/rules/`. Tags wait for the owner's merge.
+
+### M75: the fix
+
+Work items, in this order:
+
+1. The style and the chat block, with lint and its test pinning 4.12. Commit: `feat(rules): an ask names the decision's owner and a status note starts from the reader`.
+2. The design documents. Commit: `docs(design): record the second drafts feedback behind concise plain 4.12`.
+3. `node tools/release.mjs` for rules 0.1.22, with the catalog `metadata.version` raised to 0.1.42 and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.22`.
+4. The gate on the pull request, shared with M74, its fixes committed on the branch.
+5. After the merge, by the owner: the changelog heading for 0.1.22, which also records the 0.1.21 changes since 0.1.21 was not tagged, the release acceptance items 2 and 5 for rules, the tag `rules--v0.1.22` after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:rules` and `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
 
 ## Acceptance record
 

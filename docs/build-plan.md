@@ -1528,6 +1528,22 @@ Work items, in this order:
 
 Check: `npm run test:loop` and `npm run test:audit` before and after items 1 and 2; `npm test` and `npm run lint` with the deny tokens before the push.
 
+## Drafts feedback, second batch: M75
+
+Added 2026-11-05. Decision 183 and R43 as amended: Concise Plain 4.12 in rules 0.1.22. M75 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/rules/`, `tools/lint.mjs`, `tests/lint/` and `tests/rules/`. Tags wait for the owner's merge.
+
+### M75: the fix
+
+Work items, in this order:
+
+1. The style and the chat block, with lint and its test pinning 4.12. Commit: `feat(rules): an ask names the decision's owner and a status note starts from the reader`.
+2. The design documents. Commit: `docs(design): record the second drafts feedback behind concise plain 4.12`.
+3. `node tools/release.mjs` for rules 0.1.22, with the catalog `metadata.version` raised to 0.1.42 and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.22`.
+4. The gate on the pull request, shared with M74, its fixes committed on the branch.
+5. After the merge, by the owner: the changelog heading, the release acceptance items 2 and 5 for rules, the tag after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:rules` and `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

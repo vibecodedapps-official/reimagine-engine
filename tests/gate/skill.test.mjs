@@ -128,7 +128,7 @@ test('R291, R305 and R313: the reviewer model is passed to the child session and
   const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
   assert.notEqual(block, undefined, 'SKILL.md has no reading block');
   assert.equal(block.lines.find((l) => l.startsWith('Engine: ')), 'Engine: subprocess; reviewer opus, stand-in opus (default)');
-  assert.ok(SKILL.includes("Engine is `subprocess`, or the stand-in with the reason for it, then the reviewer's model (`models.reviewer`) and the stand-in's (`models.fallback-reviewer`), each with its source when it is not the default, and for a manifest whose bundles' repositories set different models, the models of each such repository after its path, so the run names every model a review starts on before the first review starts."), 'SKILL.md does not describe the Engine line');
+  assert.ok(SKILL.includes("Engine is `subprocess`, or the stand-in with the reason for it, then the reviewer's model (`models.reviewer`) and the stand-in's (`models.fallback-reviewer`), each with its source when it is not the default, and for a manifest whose bundles' repositories set different models, the models of each such repository after its path, so the run names the model each child review starts on before the first review starts."), 'SKILL.md does not describe the Engine line');
 });
 
 test('R289 and R300: the checks phrase is in both grammar lists and ends where another phrase starts', () => {
@@ -659,6 +659,7 @@ test('R299 and R313: a reader role at models.reader returns evidence per finding
   assert.ok(SKILL.includes('changes the reviewer, the implementer, the reader and the stand-in reviewer'), 'SKILL.md does not name the reader under models');
   assert.ok(SKILL.includes('the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer'), 'SKILL.md models bullet lacks the reader');
   assert.ok(README.includes('the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer'), 'README.md lacks the reader under models');
+  assert.ok(README.includes('Each child review runs at `models.reviewer`, `opus` unless the key says otherwise, in place of the model your settings choose, and the reading block names it before the first review starts.'), 'README.md does not say the reviewer model replaces the settings model');
   holds('report.md', 'each reader call');
 });
 

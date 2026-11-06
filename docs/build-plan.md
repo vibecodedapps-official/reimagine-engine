@@ -1564,7 +1564,7 @@ Check: the area script of each commit before and after it (`npm run test:gate`, 
 
 ## Gate and guard feedback of 2026-11-06: M77
 
-Added 2026-11-06. Issues 124 to 126, decisions 205 to 207, and the requirements those decisions amend: the reviewer's model and the plain words of the cross-file candidates in gate 0.1.9, and the startup check of a print-mode session in guard 0.1.2. M77 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/gate/`, `plugins/guard/`, `tests/gate/` and `tests/guard/`. Tags wait for the owner's merge.
+Added 2026-11-06. Issues 124 to 126, decisions 205 to 207, and requirements 291, 305, 306, 307, 311, 313 and 341 as those decisions amend them: the reviewer's model and the plain words of the cross-file candidates in gate 0.1.9, and the startup check of a print-mode session in guard 0.1.2. M77 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/gate/`, `plugins/guard/`, `tests/gate/` and `tests/guard/`. Tags wait for the owner's merge.
 
 ### M77: the fixes
 

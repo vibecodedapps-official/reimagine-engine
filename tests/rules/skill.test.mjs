@@ -166,3 +166,11 @@ test('R332: a refactor bundle holds one area with its tests and a separately rel
 test('R332: a refactor ticket holds the release it needs when the bundle names one', () => {
   assert.ok(readRefactor().includes('the done condition; the release it needs, when the bundle names one; and the repository\'s checks by command, taken from its instruction files or manifest.'));
 });
+
+test('R330: refactor runs each git read with the Bash tool, before its first git read', () => {
+  const text = readRefactor();
+  const sentence = text.indexOf('Run each `git` read with the Bash tool, which the `allowed-tools` list pre-approves.');
+  assert.notEqual(sentence, -1);
+  assert.ok(sentence < text.indexOf('`git check-ignore`'));
+  assert.equal(text.includes('PowerShell'), false);
+});

@@ -884,6 +884,18 @@ for f in skills/audit/report.md skills/audit/stages/8-report.md; do
 	fi
 done
 
+# Section 3 names its cut by tier: every item in full at low tier; at medium and high tier
+# the challenged items in full and the others as a cut first line with the pass-one path.
+for f in skills/audit/report.md skills/audit/stages/8-report.md; do
+	if [ -f "$f" ]; then
+		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+		grep -qF 'every Verified OK item shows in full.' "$tmp/list" ||
+			fail "$f: section 3 does not show every item in full at low tier"
+		grep -qF 'At medium and high tier an item marked `challenged` shows in full, and an item marked `not challenged` shows as its first line cut at 150 characters, then its pass-one file path, grouped by scope with the scope'"'"'s count.' "$tmp/list" ||
+			fail "$f: section 3 does not name the cut of the items not challenged"
+	fi
+done
+
 if [ "$fails" -gt 0 ]; then
 	exit 1
 fi

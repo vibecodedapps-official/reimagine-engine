@@ -185,9 +185,12 @@ removed from every section of the body:
 ### 3. Verified as sound
 
 Every Verified OK item of pass one, marked `challenged` or `not challenged` by the tier's
-pass-two rule: none at low, up to five per report at medium, all at high. A challenged
-item that failed its challenge moves to section 2 as the finding it became and is noted
-here.
+pass-two rule: none at low, up to five per report at medium, all at high. At low tier
+every Verified OK item shows in full. At medium and high tier an item marked
+`challenged` shows in full, and an item marked `not challenged` shows as its first line
+cut at 150 characters, then its pass-one file path, grouped by scope with the scope's
+count. A challenged item that failed its challenge moves to section 2 as the finding it
+became and is noted here.
 
 ### 4. Disagreements kept
 

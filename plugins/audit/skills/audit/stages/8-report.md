@@ -139,7 +139,11 @@ result's text, approver and time; a `result_file` result's text is its copy
       or that a `REVIEW.md` rule holds it. Then the skip lines of step 2.
    3. **Verified as sound**: every Verified OK item of the pass-one reports, marked
       `challenged` when a pass-two `## Verified OK challenged` list names it, else
-      `not challenged`. At low tier every one is `not challenged`.
+      `not challenged`. At low tier every one is `not challenged`, and every Verified
+      OK item shows in full. At medium and high tier an item marked
+      `challenged` shows in full, and an item marked `not challenged` shows as its first
+      line cut at 150 characters, then its pass-one file path, grouped by scope with the
+      scope's count.
    4. **Disagreements kept**: every `contested` item with each position and its
       evidence, no side picked.
    5. **Recommended next steps**: the ordered plan of step 14.

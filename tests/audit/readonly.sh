@@ -40,6 +40,7 @@
 # 35 an existing branch that moves
 # 36 a new branch whose name holds a dot, with its config
 # 37 branch config of an existing branch
+# 38 a branch of a second worktree gets a commit  39 that branch then deleted
 #
 # Prints one line per mismatch, then `readonly test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -62,6 +63,8 @@ hash_orig=62bbbc5f8f323f1c372e43131e1d3ad8a214adeb
 hash_edit=44e925490cf5a75b8514640ac89751f80066380f
 # The parent of `main` in the fixture: a second commit, different from $sha.
 sha2=bd5d5e1e67a1fc55adeaa1452920245b1d368f7f
+# The empty commit `two` on top of $sha, made with the pinned identity of g().
+sha_sib=3adff5debeb7cc749e6304cfba64ab5d3224940c
 
 mismatch() {
 	echo "readonly test: $*"
@@ -585,7 +588,8 @@ git -C "$A" config --local audit.test 1
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
 expect "case 34" 1 "blocked config + audit.test=1\nlocal-branch + $sha commit\trefs/heads/new-y\n" ''
 
-# 35. an existing branch that moves (not the checked-out one): both refs lines are blocked.
+# 35. an existing branch that moves (not the checked-out one, and not checked out in
+# another worktree): both refs lines are blocked.
 case_id="case 35"
 fresh
 snap "$R/b"
@@ -609,6 +613,30 @@ snap "$R/b"
 git -C "$A" config branch.main.remote origin
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
 expect "case 37" 1 'blocked config + branch.main.remote=origin\n' ''
+
+# 38. a branch checked out in a second worktree gets a commit: the moved ref is a
+# local-branch pair, `+` before `-` in byte order.
+case_id="case 38"
+fresh
+W=$root/wt38
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 38: worktree add failed"
+snap "$R/b"
+g -C "$W" commit -q --allow-empty -m two
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 38" 3 "local-branch + $sha_sib commit\trefs/heads/sibling\nlocal-branch - $sha commit\trefs/heads/sibling\n" ''
+
+# 39. the same, then the worktree is removed and the branch deleted from the main checkout:
+# the branch is only in the baseline, so it is blocked.
+case_id="case 39"
+fresh
+W=$root/wt39
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 39: worktree add failed"
+snap "$R/b"
+g -C "$W" commit -q --allow-empty -m two
+g -C "$A" worktree remove -f "$W" || mismatch "case 39: worktree remove failed"
+g -C "$A" branch -q -D sibling || mismatch "case 39: branch delete failed"
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 39" 1 "blocked refs - $sha commit\trefs/heads/sibling\n" ''
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

@@ -63,17 +63,21 @@
 # this order, each group sorted:
 #   blocked <status|stash|config|hashes|refs> <-|+> <line>
 #   remote-ref <-|+> <line>
-#   local-branch + <line>
+#   local-branch <-|+> <line>
 #   ignored <added|deleted|changed> <path>
 #   touched <path>
 # `-` is a line only in the baseline, `+` a line only now. A refs line whose ref name
 # starts with refs/remotes/ is `remote-ref`, any other is `blocked refs`, except that a `+`
 # refs/heads/<name> line is `local-branch` when no baseline refs line has that ref and <name>
 # is not the baseline's `# branch.head`, as is a `+` config line `branch.<name>.<key>=<value>`
-# for such a name. Refs and config are shared by every worktree, so another worktree's new
-# branch shows here. Ignored files are compared with <ignored base prefix>.ignored by path,
-# on size and mtime. `touched` is a file newer than <baseline prefix>.marker that is not
-# ignored and not part of a blocked line.
+# for such a name. A refs/heads/<name> line, `-` or `+`, is also `local-branch` when the
+# baseline and now both have a line for that ref, and <name> is not the baseline's
+# `# branch.head` and is checked out in another worktree of the repository (a `branch` line
+# of `git worktree list --porcelain` for a worktree that is not the audited one). A branch
+# only in the baseline stays `blocked refs -`. Refs and config are shared by every worktree,
+# so another worktree's new or moved branch shows here. Ignored files are compared with
+# <ignored base prefix>.ignored by path, on size and mtime. `touched` is a file newer than
+# <baseline prefix>.marker that is not ignored and not part of a blocked line.
 #
 # Exit status, the first that holds:
 #   2  a collection or comparison step failed, or the arguments are wrong (one line on
@@ -473,6 +477,19 @@ check() {
 
 	snapshot "$1" "$2" "$5"
 
+	# The branches checked out in a worktree other than the audited one.
+	git -C "$top" worktree list --porcelain > "$tmp/wt" < /dev/null || die "git worktree list failed"
+	: > "$tmp/wtbranches"
+	wtp=
+	while IFS= read -r l; do
+		case $l in
+		"worktree "*) wtp=${l#worktree } ;;
+		"branch refs/heads/"*)
+			[ "$wtp" -ef "$top" ] || printf '%s\n' "${l#branch refs/heads/}" >> "$tmp/wtbranches"
+			;;
+		esac
+	done < "$tmp/wt"
+
 	: > "$tmp/blocked"
 	: > "$tmp/remote" && : > "$tmp/localbr"
 	# An awk operand such as k=v.status would be taken as an assignment, so a relative
@@ -483,10 +500,14 @@ check() {
 	# line, so a line present twice in the baseline and once now is reported once, as
 	# `comm` on the sorted files did. Lines only in the baseline are `-`, only now `+`. A
 	# refs line whose ref name starts with refs/remotes/ is a remote-ref line, a new branch's
-	# refs and config lines are local-branch lines. The final print sorts each group.
-	BLK=$tmp/blocked REM=$tmp/remote LOC=$tmp/localbr awk -v kinds="status stash config hashes refs" '
+	# refs and config lines are local-branch lines, as are both refs lines of a branch that
+	# moved while another worktree has it checked out. The final print sorts each group.
+	BLK=$tmp/blocked REM=$tmp/remote LOC=$tmp/localbr WTB=$tmp/wtbranches awk -v kinds="status stash config hashes refs" '
 		BEGIN {
 			blk = ENVIRON["BLK"]; rem = ENVIRON["REM"]; loc = ENVIRON["LOC"]
+			wtb = ENVIRON["WTB"]
+			while ((getline wl < wtb) > 0) wtn[wl] = 1
+			close(wtb)
 			nk = split(kinds, kn, " ")
 			for (i = 1; i <= nk; i++) {
 				kind[ARGV[2 * i - 1]] = kn[i]; side[ARGV[2 * i - 1]] = "b"
@@ -502,6 +523,9 @@ check() {
 		function newcfg(line) {
 			return substr(line, 1, 7) == "branch." && match(substr(line, 1, index(line, "=") - 1), /\.[^.]*$/) > 8 && (substr(line, 8, RSTART - 8) in newn)
 		}
+		function moved(name) {
+			return (name in wtn) && (("brefs/heads/" name) in seen) && (("nrefs/heads/" name) in seen) && !(("status" SUBSEP "# branch.head " name) in cb)
+		}
 		function emit(key, times, sign,   k, line, n, ref, i) {
 			k = index(key, SUBSEP)
 			line = substr(key, k + 1)
@@ -512,6 +536,7 @@ check() {
 					ref = substr(line, n + 1)
 					if (n > 0 && index(ref, "refs/remotes/") == 1) print "remote-ref " sign " " line >> rem
 					else if (n > 0 && sign == "+" && index(ref, "refs/heads/") == 1 && (substr(ref, 12) in newn)) print "local-branch + " line >> loc
+					else if (n > 0 && index(ref, "refs/heads/") == 1 && moved(substr(ref, 12))) print "local-branch " sign " " line >> loc
 					else print "blocked refs " sign " " line >> blk
 				} else if (k == "config" && sign == "+" && newcfg(line)) print "local-branch + " line >> loc
 				else print "blocked " k " " sign " " line >> blk

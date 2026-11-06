@@ -119,16 +119,16 @@ test('R291: the reading block is one fenced block of five lines in a fixed order
 test('R291, R305 and R313: the reviewer model is passed to the child session and named on the Engine line', () => {
   const pass = holds('steps/1-pass.md',
     'claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json',
-    "`<reviewer>` is `models.reviewer` of the configuration of the repository the target runs in (default `opus`); always pass it, since a child session without `--model` takes the model its settings files set, not the session's.",
+    "`<reviewer>` is `gate.models.reviewer` of the configuration of the repository the target runs in (default `opus`), never the root `models` key, which is the loop's; always pass it, since a child session without `--model` takes the model its settings files set, not the session's.",
     'Never a second retry, and never a child session run again at another `--model`.',
-    'When the Engine line of the reading block starts with `stand-in`, or an earlier review of this run chose it, skip to 1.4.');
+    'When the word after `Engine:` on the reading block\'s Engine line is `stand-in`, or an earlier review of this run chose it, skip to 1.4.');
   assert.ok(!pass.includes('the model the Engine line names'), 'steps/1-pass.md still defines <reviewer> by the Engine line');
   assert.ok(!pass.includes('never a `--model` flag'), 'steps/1-pass.md still bars a --model flag');
   assert.ok(fencedLines(pass).some((l) => l.includes('claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json')), 'the fenced command lacks --model <reviewer>');
   const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
   assert.notEqual(block, undefined, 'SKILL.md has no reading block');
   assert.equal(block.lines.find((l) => l.startsWith('Engine: ')), 'Engine: subprocess; reviewer opus, stand-in opus (default)');
-  assert.ok(SKILL.includes("Engine is `subprocess`, or the stand-in with the reason for it, then the reviewer's model (`models.reviewer`) and the stand-in's (`models.fallback-reviewer`), each with its source when it is not the default, so the run names its model before the first review starts."), 'SKILL.md does not describe the Engine line');
+  assert.ok(SKILL.includes("Engine is `subprocess`, or the stand-in with the reason for it, then the reviewer's model (`models.reviewer`) and the stand-in's (`models.fallback-reviewer`), each with its source when it is not the default, and for a manifest whose bundles' repositories set different models, the models of each such repository after its path, so the run names every model a review starts on before the first review starts."), 'SKILL.md does not describe the Engine line');
 });
 
 test('R289 and R300: the checks phrase is in both grammar lists and ends where another phrase starts', () => {
@@ -592,6 +592,7 @@ test('R306 and R307: a usage limit is an infrastructure failure, and each limite
     'else at `sonnet`, or at `opus` when `models.reviewer` is `sonnet`',
     'Call an Agent at `models.fallback-reviewer` (default `opus`), or for a group that met a usage limit at the model 1.5 item 2 names,',
     'Never a second retry, and never a child session run again at another `--model`.',
+    "or for a stand-in's reply the one model it was called at, as item 3 says",
     'the three numbers `null` and `models` the one model the stand-in was called at, as `["<model>"]`, for a stand-in\'s text.',
     'a later run resumes the pass');
   holds('record.md', 'for a stand-in\'s text, which names no models, the one model the stand-in was called at, and `null` for a child session result without `modelUsage`.');

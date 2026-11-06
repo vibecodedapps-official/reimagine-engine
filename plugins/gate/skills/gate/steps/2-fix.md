@@ -47,6 +47,7 @@ Judge the fix round's change kinds and write them into `changes`. The diff the p
 - `exported-signature`: an exported function, class, type or public API signature changed.
 - `schema-or-migration`: a schema or migration file changed.
 - `over-quarter`: the fix round changed more than a quarter of that diff's files. Count both lists: it applies when four times the number of changed files is more than the number of that diff's files, so 2 changed of 4 is over a quarter and 2 of 8 is not.
+- `docs-only`: every changed file is documentation, meaning prose for people that no build, test or runtime reads, such as a README, a changelog or a design document. A file the host loads as instructions (a `CLAUDE.md` or `AGENTS.md`, a rule, a skill or step file, an agent or prompt file) is not documentation, nor is any code or configuration, while a document that an instruction file only tells an agent to read is.
 
 A fix round that changed nothing is `[]`.
 
@@ -63,7 +64,7 @@ A fix round that changed nothing commits nothing: write `commit` as null and `he
 
 1. Read the commit convention from the user's and the repository's instruction files and from `git log -n 10 --format=%s`. The commit message follows it and names no model, agent or tool. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
 2. Ask-first rules recorded at preflight still prompt before the commit (SKILL.md, Approval scope).
-3. Stage each path by name with `git add -- <path>`, one call per path, only the paths the fix round changed, never anything under `.reimagine/`. Then run `git diff --cached --name-only` and confirm it lists exactly those paths.
+3. Before staging, run `git status --porcelain --untracked-files=all` again and compare its paths with the groups' files; a path outside every group's files, such as a file a check regenerated, is restored as Snapshots, item 4, restores a path and named in the report, and only then are the fix round's paths staged. Stage each path by name with `git add -- <path>`, one call per path, only the paths the fix round changed, never anything under `.reimagine/`. Then run `git diff --cached --name-only` and confirm it lists exactly those paths.
 4. Make one commit for the pass with `git commit -m <subject>`, with a second `-m <body>` when the convention has a body. Read the sha with `git rev-parse HEAD`.
 5. A commit that is denied, or that fails, ends the run `blocked` with the pass recorded `failed` and the tree left as it is.
 6. Once the commit exists, set each fix-bucket entry of this pass in `findings.json` to state `fixed`.

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Refusal, main, normalizeRemote } from '../../plugins/guard/scripts/guard.mjs';
 
@@ -557,7 +557,7 @@ test('R340: argument errors are refused before any claude call', () => {
   noCall(w, ['apply', 'x'], 'apply takes no arguments');
   noCall(w, ['status', 'x'], 'status takes no arguments');
   noCall(w, ['list', 'x'], 'list takes no arguments');
-  assert.throws(() => main(['nope', w.data], { env: w.env }), refusal('unknown command nope; use status, list, plan or apply'));
+  assert.throws(() => main(['nope', w.data], { env: w.env }), refusal('unknown command nope; use status, list, plan, apply or denials'));
   assert.throws(() => main(['plan'], { env: w.env }), refusal('the data directory argument is missing'));
 });
 
@@ -854,5 +854,125 @@ test('R342: a refusal on the command line is one line starting guard: with exit 
   assert.equal(listed.stdout, 'list: no repositories\n');
   const unknown = run('nope', w.data);
   assert.equal(unknown.status, 1);
-  assert.equal(unknown.stdout, 'guard: unknown command nope; use status, list, plan or apply\n');
+  assert.equal(unknown.stdout, 'guard: unknown command nope; use status, list, plan, apply or denials\n');
+});
+
+const denied = (w, input) => main(['denied', w.data], { now: w.now, stdin: () => (typeof input === 'string' ? input : j(input)) });
+const DENIALS = (w) => join(w.data, 'denials.jsonl');
+
+test('R344: a denied Bash call appends one line with the reason, the command cut at 300 characters, the cwd and the clock\'s time', () => {
+  const w = world();
+  const command = `git push origin main ${'x'.repeat(400)}`;
+  const input = { session_id: 's1', transcript_path: '/t.jsonl', cwd: '/work/app', permission_mode: 'auto', hook_event_name: 'PermissionDenied', tool_name: 'Bash', tool_input: { command, description: 'push' }, tool_use_id: 'u1', reason: '[Data Exfiltration] pushes to an unlisted remote' };
+  assert.deepEqual(denied(w, input), []);
+  assert.equal(read(DENIALS(w)), `${j({ time: '2026-11-04T10:00:00.000Z', reason: '[Data Exfiltration] pushes to an unlisted remote', tool: 'Bash', command: `git push origin main ${'x'.repeat(279)}`, cwd: '/work/app' })}\n`);
+  denied(w, { ...input, tool_name: 'PowerShell', tool_input: { command: 'Get-Date' }, reason: 'second' });
+  assert.equal(read(DENIALS(w)).split('\n').length, 3);
+});
+
+test('R344: a denied Write call records the path and none of the content', () => {
+  const w = world();
+  denied(w, { cwd: '/work/app', tool_name: 'Write', tool_input: { file_path: '/work/app/.env', content: 'SECRET=1' }, reason: '[Credential Access]' });
+  denied(w, { cwd: '/work/app', tool_name: 'WebFetch', tool_input: { url: 'https://example.invalid/' }, reason: '[Data Exfiltration]' });
+  assert.equal(read(DENIALS(w)), `${j({ time: '2026-11-04T10:00:00.000Z', reason: '[Credential Access]', tool: 'Write', path: '/work/app/.env', cwd: '/work/app' })}\n${j({ time: '2026-11-04T10:00:00.000Z', reason: '[Data Exfiltration]', tool: 'WebFetch', cwd: '/work/app' })}\n`);
+});
+
+test('R344: a stdin that is not JSON, or a file that cannot be written, leaves the hook silent with exit 0', () => {
+  const w = world();
+  assert.deepEqual(denied(w, 'not json'), []);
+  assert.deepEqual(denied(w, 'null'), []);
+  assert.deepEqual(readdirSync(w.data), []);
+  const run = (input) => spawnSync(process.execPath, [SCRIPT, 'denied', w.data], { env: w.env, encoding: 'utf8', input });
+  const text = run('not json');
+  assert.equal(text.status, 0);
+  assert.equal(text.stdout, '');
+  assert.deepEqual(readdirSync(w.data), []);
+  mkdirSync(DENIALS(w));
+  const blocked = run(j({ tool_name: 'Bash', tool_input: { command: 'ls' } }));
+  assert.equal(blocked.status, 0);
+  assert.equal(blocked.stdout, '');
+});
+
+test('R344: denials prints the header and one line per entry, oldest first, and skips a line that is not JSON', () => {
+  const w = world();
+  writeFileSync(DENIALS(w), `${j({ time: '2026-11-04T09:00:00.000Z', reason: '[Data Exfiltration]', tool: 'Bash', command: 'git push\norigin', cwd: '/work/app' })}\ngarbage\n${j({ time: '2026-11-04T09:30:00.000Z', reason: '[Credential Access]', tool: 'Write', path: '/work/app/.env', cwd: '/work/app' })}\n`);
+  assert.deepEqual(w.run('denials'), [
+    `denials: ${DENIALS(w)} (2 recorded)`,
+    '2026-11-04T09:00:00.000Z Bash [Data Exfiltration]: git push origin (/work/app)',
+    '2026-11-04T09:30:00.000Z Write [Credential Access]: /work/app/.env (/work/app)',
+  ]);
+  assert.deepEqual(w.calls, []);
+});
+
+test('R344: denials with no file, or an empty one, prints the none line', () => {
+  const w = world();
+  assert.deepEqual(w.run('denials'), [`denials: none recorded in ${DENIALS(w)}`]);
+  writeFileSync(DENIALS(w), '');
+  assert.deepEqual(w.run('denials'), [`denials: none recorded in ${DENIALS(w)}`]);
+  assert.throws(() => w.run('denials', 'extra'), refusal('denials takes no arguments'));
+});
+
+test('R342: denials refuses with one line when the denials file cannot be read', () => {
+  const w = world();
+  mkdirSync(DENIALS(w));
+  assert.throws(() => w.run('denials'), refusal(`cannot read ${DENIALS(w)} (EISDIR)`));
+  const out = spawnSync(process.execPath, [SCRIPT, 'denials', w.data], { env: w.env, encoding: 'utf8' });
+  assert.equal(out.status, 1);
+  assert.equal(out.stdout, `guard: cannot read ${DENIALS(w)} (EISDIR)\n`);
+});
+
+test('R344: the denials file is created readable by the owner only', { skip: process.platform === 'win32' }, () => {
+  const w = world();
+  denied(w, { cwd: '/work/app', tool_name: 'Bash', tool_input: { command: 'ls' }, reason: '[x]' });
+  assert.equal(statSync(DENIALS(w)).mode & 0o777, 0o600);
+});
+
+const sessionStart = (w, claude = w.claude) => main(['session-start', w.data], { env: w.env, now: w.now, home: w.home, cwd: w.work, claude });
+
+test('R341: session-start prints one systemMessage line when a copied default line differs from the host\'s now', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  assert.deepEqual(sessionStart(w), []);
+  w.stand.defaults = { ...structuredClone(FIX), environment: [ORG, '**Repository visibility**: Treat every repository as public.', TRUSTED, SOURCE, DOMAINS] };
+  const timeouts = [];
+  const lines = sessionStart(w, (args, d, timeout) => { timeouts.push(timeout); return w.claude(args, d); });
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0].startsWith('{"systemMessage":"guard: the auto mode entries in '));
+  assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: the auto mode entries in ${w.settings} are stale; run /guard to update them` });
+  assert.deepEqual(timeouts, [20000]);
+  assert.equal(w.calls.at(-1), 'auto-mode defaults @ real');
+});
+
+test('R341: session-start uses the remotes the list records, runs no config check and writes nothing', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  w.repo.g('remote', 'set-url', 'r0', 'https://git.example.invalid/org/app2.git');
+  assert.equal(w.run('status')[0], `state: stale ${w.settings}`);
+  w.calls.length = 0;
+  const before = [read(w.settings), read(w.list), readdirSync(w.data).sort()];
+  assert.deepEqual(sessionStart(w), []);
+  assert.deepEqual(w.calls, ['auto-mode defaults @ real']);
+  assert.deepEqual([read(w.settings), read(w.list), readdirSync(w.data).sort()], before);
+});
+
+test('R341: session-start prints nothing and runs no claude for a missing, empty or unreadable list', () => {
+  const w = repoWorld();
+  assert.deepEqual(sessionStart(w), []);
+  writeFileSync(w.list, '{"version":1,"repos":[]}\n');
+  assert.deepEqual(sessionStart(w), []);
+  rmSync(w.list);
+  mkdirSync(w.list);
+  assert.deepEqual(sessionStart(w), []);
+  assert.deepEqual(w.calls, []);
+});
+
+test('R341: session-start prints nothing when claude cannot run, and the hook exits 0', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  w.stand.throws = Object.assign(new Error('spawn claude ENOENT'), { code: 'ENOENT' });
+  assert.deepEqual(sessionStart(w), []);
+  const env = { ...w.env, PATH: dirname(process.execPath) };
+  const run = spawnSync(process.execPath, [SCRIPT, 'session-start', w.data], { env, encoding: 'utf8' });
+  assert.equal(run.status, 0);
+  assert.equal(run.stdout, '');
 });

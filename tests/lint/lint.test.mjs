@@ -370,11 +370,11 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, guardSkill, '\nname: guard\n', '\nname: trust\n');
     bump(dir, 'guard');
   }, 1, [`${guardSkill}: frontmatter name is trust, not guard`]);
-  negative('R343: <file>: allowed-tools entry <entry> is not a status, list or plan run of guard.mjs', (dir) => {
+  negative('R343: <file>: allowed-tools entry <entry> is not a status, list, plan or denials run of guard.mjs', (dir) => {
     edit(dir, guardSkill, '  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan *)\n',
       '  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan *)\n  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" apply *)\n');
     bump(dir, 'guard');
-  }, 1, [`${guardSkill}: allowed-tools entry Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" apply *) is not a status, list or plan run of guard.mjs`]);
+  }, 1, [`${guardSkill}: allowed-tools entry Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" apply *) is not a status, list, plan or denials run of guard.mjs`]);
 
   negative('R45: <file>: frontmatter name is <name>, not run', (dir) => {
     edit(dir, 'plugins/loop/skills/run/SKILL.md', '\nname: run\n', '\nname: go\n');
@@ -476,6 +476,14 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, 'plugins/primer/hooks/hooks.json', '"Bash|PowerShell"', '"Bash"');
     bump(dir, 'primer');
   }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape']);
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape (PreToolUse without onFailure)', (dir) => {
+    edit(dir, 'plugins/primer/hooks/hooks.json', ',\n            "onFailure": "continue"', '');
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape']);
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape (onFailure block)', (dir) => {
+    edit(dir, 'plugins/primer/hooks/hooks.json', '"onFailure": "continue"', '"onFailure": "block"');
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape']);
   negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape (SessionStart command)', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', '/hooks/notice.sh', '/hooks/drift.sh');
     bump(dir, 'primer');
@@ -484,14 +492,38 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     rmSync(join(dir, 'plugins/primer/hooks/hooks.json'));
     bump(dir, 'primer');
   }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape']);
-  negative('R8: <file>: hooks outside plugins/rules/hooks/hooks.json and plugins/primer/hooks/hooks.json (hooks.json)', (dir) => {
+  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"denied"', '"status"');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (timeout)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"timeout": 10', '"timeout": 20');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart matcher)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"startup"', '"resume"');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart timeout)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"timeout": 30', '"timeout": 60');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart verb)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"session-start"', '"status"');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (missing)', (dir) => {
+    rmSync(join(dir, 'plugins/guard/hooks/hooks.json'));
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R8: <file>: hooks outside plugins/rules/hooks/hooks.json, plugins/primer/hooks/hooks.json and plugins/guard/hooks/hooks.json (hooks.json)', (dir) => {
     put(dir, 'plugins/loop/hooks/hooks.json', '{}\n');
     bump(dir, 'loop');
-  }, 1, ['plugins/loop/hooks/hooks.json: hooks outside plugins/rules/hooks/hooks.json and plugins/primer/hooks/hooks.json']);
-  negative('R8: <file>: hooks outside plugins/rules/hooks/hooks.json and plugins/primer/hooks/hooks.json (manifest)', (dir) => {
+  }, 1, ['plugins/loop/hooks/hooks.json: hooks outside plugins/rules/hooks/hooks.json, plugins/primer/hooks/hooks.json and plugins/guard/hooks/hooks.json']);
+  negative('R8: <file>: hooks outside plugins/rules/hooks/hooks.json, plugins/primer/hooks/hooks.json and plugins/guard/hooks/hooks.json (manifest)', (dir) => {
     editJson(dir, manifest('loop'), (m) => { m.hooks = {}; });
     bump(dir, 'loop');
-  }, 1, ['plugins/loop/.claude-plugin/plugin.json: hooks outside plugins/rules/hooks/hooks.json and plugins/primer/hooks/hooks.json']);
+  }, 1, ['plugins/loop/.claude-plugin/plugin.json: hooks outside plugins/rules/hooks/hooks.json, plugins/primer/hooks/hooks.json and plugins/guard/hooks/hooks.json']);
 
   negative('R3: <file>:<line>: not ASCII', (dir) => {
     put(dir, extra, 'ok\ncaf\u00e9\nna\u00efve\n');

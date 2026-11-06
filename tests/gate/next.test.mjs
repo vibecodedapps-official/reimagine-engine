@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'plugins', 'gate', 'scripts', 'next.mjs');
 const concurrency = Math.max(1, availableParallelism() - 1);
-const USAGE = 'usage: node next.mjs <passes.json> <max-passes>';
-const KINDS = 'inside-diff, exported-signature, schema-or-migration, outside-diff or over-quarter';
+const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-left> <minutes-a-pass-needs>]';
+const KINDS = 'inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter or docs-only';
 
 let base;
 before(() => {
@@ -59,8 +59,8 @@ const exec = (text, args = ['passes.json', '4']) => {
 };
 
 // A successful run: exit 0, nothing on stderr, this one stdout line, and nothing written beside the record.
-const ok = async (passes, expected, max = '4') => {
-  const r = await exec(record(passes), ['passes.json', max]);
+const ok = async (passes, expected, max = '4', budget = []) => {
+  const r = await exec(record(passes), ['passes.json', max, ...budget]);
   assert.equal(r.stderr, '');
   assert.equal(r.stdout, expected + '\n');
   assert.equal(r.status, 0);
@@ -347,6 +347,42 @@ describe('rule 2, after-medium', { concurrency }, () => {
   });
 });
 
+describe('docs-only', { concurrency }, () => {
+  const MEDIUM = '{"level":"medium","rule":"docs-only"}';
+
+  test('a high pass with a fix that changed only documentation gives medium', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['docs-only'] })], MEDIUM);
+  });
+
+  test('the first pass at xhigh with a docs-only fix gives medium', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] })], MEDIUM);
+  });
+
+  test('docs-only beside a wide kind gives medium, not xhigh', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only', 'outside-diff'] })], MEDIUM);
+  });
+
+  test('a docs-only pass with nothing to fix stops by nothing-to-fix', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { changes: ['docs-only'] })], PASS);
+  });
+
+  test('a docs-only medium pass with a fix is unconverged by after-medium', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] }), pass(2, 1, 'medium', { fix: ['a|y'], changes: ['docs-only'] })], '{"stop":"unconverged","rule":"after-medium"}');
+  });
+
+  test('a docs-only fix at the cap is capped', async () => {
+    await ok(
+      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'] }), pass(3, 1, 'high', { fix: ['a|z'], changes: ['docs-only'] })],
+      '{"level":"medium","rule":"docs-only","capped":"max-passes"}',
+      '3',
+    );
+  });
+
+  test('a code fix beside no docs-only kind still gives high', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['inside-diff'] })], HIGH);
+  });
+});
+
 describe('max-passes', { concurrency }, () => {
   const four = [
     pass(1, 1, 'xhigh', { fix: ['a|x'] }),
@@ -401,8 +437,58 @@ describe('max-passes', { concurrency }, () => {
   });
 });
 
+describe('the run budget', { concurrency }, () => {
+  const fixing = [pass(1, 1, 'xhigh', { fix: ['a|x'] })];
+
+  test('less time left than a pass needs caps the level as budget', async () => {
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['7', '50']);
+  });
+
+  test('exactly the time a pass needs is not capped', async () => {
+    await ok(fixing, HIGH, '4', ['50', '50']);
+  });
+
+  test('a run over its budget, with negative time left, is capped', async () => {
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['-3', '50']);
+  });
+
+  test('a fractional figure is read as a number', async () => {
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['49.5', '50']);
+    await ok(fixing, HIGH, '4', ['50.5', '50']);
+  });
+
+  test('a figure without a leading digit is read as a number', async () => {
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['.5', '1']);
+    await ok(fixing, HIGH, '4', ['1', '.5']);
+  });
+
+  test('a figure in exponent notation is read as a number', async () => {
+    await ok(fixing, HIGH, '4', ['1e1', '5']);
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['1e1', '50']);
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['7', '1e1']);
+  });
+
+  test('a stop with little time left is not capped', async () => {
+    await ok([pass(1, 1, 'xhigh', { changes: [] })], PASS, '4', ['1', '50']);
+  });
+
+  test('a medium or xhigh level is capped the same way', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] })], '{"level":"medium","rule":"docs-only","capped":"budget"}', '4', ['7', '50']);
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] })], '{"level":"xhigh","rule":"wide-fix","capped":"budget"}', '4', ['7', '50']);
+  });
+
+  test('max-passes wins when both caps apply', async () => {
+    await ok(
+      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'] })],
+      '{"level":"high","rule":"otherwise","capped":"max-passes"}',
+      '2',
+      ['7', '50'],
+    );
+  });
+});
+
 describe('usage and read errors', { concurrency }, () => {
-  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra']]) {
+  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra'], ['passes.json', '4', '7'], ['passes.json', '4', '7', '50', '1'], ['passes.json', '4', 'soon', '50'], ['passes.json', '4', '7', 'long'], ['passes.json', '4', '', '50'], ['passes.json', '4', '7', ''], ['passes.json', '4', 'Infinity', '50'], ['passes.json', '4', '7', '0'], ['passes.json', '4', '7', '-50'], ['passes.json', '4', '7', 'NaN'], ['passes.json', '4', '0x10', '50'], ['passes.json', '4', 'abc', '50'], ['passes.json', '4', '7', 'abc'], ['passes.json', '4', ' ', '50'], ['passes.json', '4', '7', ' ']]) {
     test(`usage for arguments [${args.join(' ')}]`, async () => {
       await bad(record([pass(1, 1, 'xhigh')]), 2, USAGE, args);
     });
@@ -518,9 +604,18 @@ describe('validation errors', { concurrency }, () => {
     await bad(record([good, { ...second, changes: 'inside-diff' }]), 1, 'next: passes.json: passes[1].changes is missing or not an array');
   });
 
-  test('a latest pass with a change kind outside the five', async () => {
+  test('a latest pass with a change kind outside the six', async () => {
     await bad(record([good, { ...second, changes: ['inside-diff', 'rename'] }]), 1, `next: passes.json: passes[1].changes holds "rename", not ${KINDS}`);
     await bad(record([good, { ...second, changes: [7, 'rename'] }]), 1, `next: passes.json: passes[1].changes holds 7, not ${KINDS}`);
+  });
+
+  test('a latest pass with docs-only beside a kind that is code or configuration', async () => {
+    await bad(record([good, { ...second, changes: ['docs-only', 'schema-or-migration'] }]), 1, 'next: passes.json: passes[1].changes holds "docs-only" beside "schema-or-migration", which documentation cannot be');
+    await bad(record([good, { ...second, changes: ['exported-signature', 'inside-diff', 'docs-only'] }]), 1, 'next: passes.json: passes[1].changes holds "docs-only" beside "exported-signature", which documentation cannot be');
+  });
+
+  test('docs-only beside outside-diff or over-quarter stays valid', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only', 'over-quarter'] })], '{"level":"medium","rule":"docs-only"}');
   });
 
   test('changes of a pass before the latest are not read', async () => {

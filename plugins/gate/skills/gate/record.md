@@ -15,7 +15,7 @@ All names are relative to the record directory. Times in every file are copied f
 | `passes.json` | Step 0, then Steps 1 to 4 | The completion record (see the next section) |
 | `findings.json` | Step 1 by `findings.mjs`, then the triage and Step 2 | The identity ledger across passes (see Findings ledger) |
 | `report.md` | Every terminal state | The report, compiled from the record. Rewritten in place |
-| `review-<n>[-<slug>].json` or `.md` | Step 1, after each review | The review's saved output: `.json` from a child session, `.md` from the stand-in. `<n>` is the pass number, which counts across runs. An unsplit pass has no `-<slug>`; a pass over `split` groups its files by path at the shallowest depth that gives more than one group, a group still over `split` is grouped again one segment deeper, and a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on (Step 1.2) |
+| `review-<n>[-<slug>].json` or `.md` | Step 1, after each review | The review's saved output: `.json` from a child session, `.md` from the stand-in. `<n>` is the pass number, which counts across runs. An unsplit pass has no `-<slug>`; a pass over `split` groups its files by path at the shallowest depth that gives more than one group, a group still over `split` is grouped again one segment deeper, sibling groups under one fifth of `split` are merged into a group whose slug is the parent key's slug plus `-small`, or `small` at the top, and a slug an earlier key of the pass holds takes `-2`, else `-3`, and so on (Step 1.2) |
 | `diff-<n>[-<slug>].patch` | Step 1, before a stand-in review | The stand-in's input; `<n>` and `<slug>` as for `review-<n>` |
 | `pre-<n>.status`, `pre-<n>.patch`, `pre-<n>.hashes` | Step 2, before each implementer call | `git status`, a patch and file hashes, for restoring after a failed call. `<n>` is one more than the highest number among the record's `pre-*.status` files, or 1 when there is none; a parallel batch takes one snapshot per file group before any call of the batch starts |
 | `post-<n>.status`, `post-<n>.hashes` | Step 2, when an implementer call returns | `git status` and file hashes of the checkout as the call left it, for comparing the checkout after a late notification for that call. `<n>` is the call's own `pre-<n>` number |
@@ -40,7 +40,7 @@ No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`,
   "runs": [{ "n": 1, "started": "2026-10-25T09:00:40Z", "ended": null, "state": "running" }],
   "passes": [
     { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...",
-      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "notes": "The suite could not be run here." }],
+      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "notes": "The suite could not be run here.", "models": ["<model id>"] }],
       "findings": { "src/stats.mjs|percentile indexes sorted rank ...": { "bucket": "fix", "reason": "off-by-one inside the change" } },
       "changes": ["inside-diff"], "commit": "<sha>", "head": "<sha>",
       "checks": [{ "command": "npm test", "result": "pass" }],
@@ -50,7 +50,7 @@ No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`,
 }
 ```
 
-The second pass in the literal is shortened to show a pass that has only started; Step 1 writes every field of a pass entry when it appends it. The values `...` and `<sha>` stand for a time and a full sha.
+A `reviews[]` entry's `notes` holds the text before and after the fence, joined with a blank line, as `findings.mjs` prints `notes.text`. The entry also holds `models`, the sorted model names of the review as `findings.mjs` prints them, `null` when the output names no models: a stand-in's text, or a child session result without `modelUsage`. The entry of a review that stopped on a usage limit holds `"failure": "usage limit"` and `null` numbers and `models`. The second pass in the literal is shortened to show a pass that has only started; Step 1 writes every field of a pass entry when it appends it. The values `...` and `<sha>` stand for a time and a full sha.
 
 Step 0 writes the top level and the run entry, Step 1 appends the pass entry and fills `reviews` and `findings`, Step 2 writes `changes`, `checks`, `commit` and `head`, Step 3 writes `next`, `ended` and `status`, and Step 4 closes the run entry, each as its step shows. A run's `state` is `running`, then the terminal state, or `interrupted` when a later Step 0 finds it still `running`. A pass's `status` is `running`, `complete` or `failed`, and `n` counts across runs, so pass 3 may be run 2's first pass. A failed pass has `ended` and a `next` of `null`.
 

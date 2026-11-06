@@ -15,6 +15,8 @@ A change is floored when it adds, alters or removes any of these, directly or th
 
 Check the shared code and configuration the change touches, not only the files it names. A helper, a middleware, a base class or a config key that one of the six depends on counts.
 
+For a schema, migration or data access change, check that every read-only companion of it, such as a listing kept as its rollback record, reads the same rows the write touches.
+
 An incidental edit does not trigger the floor. Examples: a typo in a migrations README, a comment in an auth module, a rename with no signature change.
 
 Judge the floor on the plan (Step 2) and again on the actual diff after Step 4 (Step 4.5). Judge the diff itself, not the plan's promise. The floor never falls: once a judgment finds a trigger, the run stays floored for every later step, even when a later edit removes the change that triggered it.

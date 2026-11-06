@@ -80,7 +80,7 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   assert.notEqual(readme, undefined, 'README.md has no json block');
   assert.equal(skill.lines.join('\n'), readme.lines.join('\n'));
   assert.deepEqual(JSON.parse(skill.lines.join('\n')), {
-    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', 'fallback-reviewer': 'opus' } },
+    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', 'fallback-reviewer': 'opus' } },
   });
 });
 
@@ -168,7 +168,8 @@ test('R300: the checks come from the request, the manifest bundle or the configu
 test('R311 and R317: each review keeps its notes in passes.json and the Log prints them', () => {
   const lines = jsonAfter(read('record.md'), '`passes.json`:');
   assert.ok(lines.some((l) => l.includes('"reviews": [') && l.includes('"denials": 2, "notes": ')), 'the reviews literal of record.md has no notes key');
-  holds('steps/1-pass.md', '"notes": "<notes.before>"');
+  holds('steps/1-pass.md', '"notes": "<notes.text>"', 'the text the reviewer wrote before and after its fence');
+  holds('record.md', '`notes` holds the text before and after the fence');
   holds('report.md', 'denial count and notes, from `reviews[]`');
 });
 
@@ -428,8 +429,8 @@ test('R295: Step 2 reads the remote head with git ls-remote and compares it befo
   holds('steps/2-fix.md', 'git ls-remote', 'what preflight fetched', 'the last sha this run pushed', 'no force');
 });
 
-test('R301: Step 2 judges the fix round with the five change kinds next.mjs accepts', () => {
-  holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`');
+test('R301: Step 2 judges the fix round with the six change kinds next.mjs accepts', () => {
+  holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`', '`docs-only`: every changed file is documentation');
 });
 
 test('R301: Step 2 counts the files for over-quarter instead of judging the share', () => {
@@ -456,8 +457,8 @@ test('R311: record.md holds the passes.json literal of the architecture, line fo
   assert.deepEqual(jsonAfter(read('record.md'), '`passes.json`:'), arch);
 });
 
-test('R301 and R303: Step 3 names the five rules of next.mjs, the two caps and the no-fixes stop', () => {
-  holds('steps/3-next.md', '`nothing-to-fix`', '`after-medium`', '`wide-fix`', '`rejects-at-high`', '`otherwise`', '`max-passes`', '`budget`', '`no-fixes`');
+test('R301 and R303: Step 3 names the six rules of next.mjs, the two caps and the no-fixes stop', () => {
+  holds('steps/3-next.md', '`nothing-to-fix`', '`after-medium`', '`docs-only`', '`wide-fix`', '`rejects-at-high`', '`otherwise`', '`max-passes`', '`budget`', '`no-fixes`');
 });
 
 test('R312: Step 3 resumes a record by its head and merge-base', () => {
@@ -567,4 +568,88 @@ test('R306: the repair of a warning takes the earlier id from passes.json, else 
 
 test('R300: the snapshot items read each path from a status line unquoted and take the new path of a rename', () => {
   holds('steps/2-fix.md', 'Read each path from a status line unquoted and unescaped when status prints it in double quotes, and for a rename (`old -> new`) take the new path.', 'each path read as item 1 says', "compare the checkout with that call's `post-<n>` files, hashing each path as item 7 does, since `pre-<n>.hashes` uses the filtered hash.");
+});
+
+test('R306 and R307: a usage limit is an infrastructure failure, and each limited group gets one stand-in review', () => {
+  holds('steps/1-pass.md',
+    'a `usage limit` line, which is an infrastructure failure',
+    'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer`, for that group only, without moving the run to the stand-in',
+    'Never a second retry, and never a `--model` flag',
+    'a later run resumes the pass');
+});
+
+test('R306 and R307: the stand-in retries of limited groups run in parallel beside a sleep of the review budget, and one still running is a failed review', () => {
+  holds('steps/1-pass.md', 'The retry calls, one per limited group, run in parallel in one message beside a new `sleep` of the review budget for each 6 calls or part of 6, started as 1.3 item 2 starts one; a retry still running when it ends is stopped with TaskStop and is a failed review.');
+});
+
+test('R306: Step 1.6 ends the candidate list with entries on other files that share an identifier and matches them the same way', () => {
+  holds('steps/1-pass.md',
+    'then the entries on other files that share an identifier with the finding, a backticked name or a camelCase or snake_case word, each naming its `file` and the identifiers it `shared`',
+    'a match to an entry on another file is written the same way');
+});
+
+test('R301: SKILL.md lists the docs-only rule between the medium stop and the xhigh re-review', () => {
+  const text = SKILL.slice(SKILL.indexOf('## Levels and caps'));
+  const docs = text.indexOf('(`docs-only`): `medium`');
+  assert.ok(docs > text.indexOf('2. The latest pass ran at `medium`'), 'the docs-only rule is not after the medium stop');
+  assert.ok(docs < text.indexOf('4. The fix round changed an exported signature'), 'the docs-only rule is not before the xhigh re-review');
+});
+
+test('R303: the run budget caps a level when the time left cannot hold one more pass', () => {
+  holds('steps/3-next.md',
+    '<absolute passes.json> <max-passes> <minutes left> <minutes a pass needs>',
+    '`<minutes a pass needs>` is the review budget for each 6 groups or part of 6 of the pass just made, the groups being the distinct slugs in its `reviews[]` (a group that a stand-in reviewed again has two entries under one slug), which the next pass\'s split will usually match, plus the subagent budget in force',
+    'so a pass of one review needs the review budget plus the subagent budget',
+    'the report says the next pass was not started for that reason');
+  assert.ok(SKILL.includes('fewer than the review budget for each 6 groups or part of 6 of the pass just made, plus the subagent budget'), 'SKILL.md does not name the time one more pass needs');
+  holds('report.md', 'the next pass not started because the run budget could not hold it');
+});
+
+test('R297: groups under a floor of one fifth of split are merged into a group named small', () => {
+  holds('steps/1-pass.md',
+    'The floor is one fifth of `split`, 300 lines at the default.',
+    'A merged group\'s target names its files one by one, as the `.` key\'s does, and its slug is the parent key\'s slug plus `-small`, `small` at the top',
+    'A merged group is made only of two or more groups, so a sibling under the floor that would be a merged group alone stays as it is, whether it is the only sibling under the floor or the last one left after the others closed.',
+    'so they form one group of target `<merge-base>...HEAD docs/a.md lib/b.ts tests/c.ts` and slug `small`, while `tools` is alone under the floor and stays the group `tools`');
+  assert.ok(SKILL.includes('groups under one fifth of `split` are merged'), 'SKILL.md lacks the floor');
+  assert.ok(README.includes('groups under one fifth of `split` are merged'), 'README.md lacks the floor');
+  holds('steps/1-pass.md', 'with `-- <key path>` for a split group and the files one by one for a merged group and the `.` key.');
+});
+
+test('R305 and R303: at most 6 child sessions run at once, within the review budget for each 6 reviews or part of 6', () => {
+  holds('steps/1-pass.md',
+    'At most 6 child sessions run at once.',
+    'each later review starts in its own call when one ends',
+    'the review budget for each 6 reviews or part of 6 (two waves of up to 6 get twice the review budget)');
+  assert.ok(SKILL.includes('at most 6 at once'), 'SKILL.md lacks the cap of 6');
+});
+
+test('R299 and R313: a reader role at models.reader returns evidence per finding for a large triage and never a bucket', () => {
+  holds('steps/1-pass.md',
+    'more than 30 findings whose bucket is `null`',
+    'batches of at most 40',
+    '`models.reader`',
+    'edit nothing, run no git command that writes and start no background command',
+    '`holds` (`yes`, `no` or `unsure`)',
+    '`pre-existing` (`yes`, `no` or `unsure`',
+    'A reader never returns a bucket.',
+    'reads the cited code itself for every finding it puts in `fix` and every `unsure`',
+    'A failed reader call is retried once; then the orchestrator reads that batch itself.');
+  assert.ok(SKILL.includes('| reader |'), 'SKILL.md Roles table has no reader row');
+  assert.ok(SKILL.includes('changes the implementer, the reader and the stand-in reviewer'), 'SKILL.md does not name the reader under models');
+  assert.ok(SKILL.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'SKILL.md models bullet lacks the reader');
+  assert.ok(README.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'README.md lacks the reader under models');
+  holds('report.md', 'each reader call');
+});
+
+test('R300: before staging, the commit compares the changed paths with the groups\' files and restores a path a check rewrote', () => {
+  holds('steps/2-fix.md',
+    'Before staging, run `git status --porcelain --untracked-files=all` again and compare its paths with the groups\' files',
+    'a path outside every group\'s files, such as a file a check regenerated, is restored as Snapshots, item 4, restores a path and named in the report, and only then are the fix round\'s paths staged');
+});
+
+test('R314: the comment file is written first with the Write tool and the post runs alone, naming only its path', () => {
+  holds('steps/4-publish.md',
+    'Write the comment to `comment-<n>.md` with the Write tool, in its own call.',
+    'alone in its own Bash call, naming only that path, never one compound command that writes and posts');
 });

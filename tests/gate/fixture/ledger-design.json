@@ -1,0 +1,13 @@
+{
+  "findings": {
+    "docs/design.md|the design narrows the retrypolicy enum to two values so callers lose the exponential option": {
+      "file": "docs/design.md",
+      "summary": "The design narrows the `retryPolicy` enum to two values, so callers lose the `exponential` option.",
+      "first_pass": 1,
+      "state": "deferred",
+      "passes": {
+        "1": { "line": 14, "bucket": "defer", "reason": "a design question, not a defect of the change", "prior": null }
+      }
+    }
+  }
+}

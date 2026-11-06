@@ -185,9 +185,12 @@ removed from every section of the body:
 ### 3. Verified as sound
 
 Every Verified OK item of pass one, marked `challenged` or `not challenged` by the tier's
-pass-two rule: none at low, up to five per report at medium, all at high. A challenged
-item that failed its challenge moves to section 2 as the finding it became and is noted
-here.
+pass-two rule: none at low, up to five per report at medium, all at high. At low tier
+every Verified OK item shows in full. At medium and high tier an item marked
+`challenged` shows in full, and an item marked `not challenged` shows as its first line
+cut at 150 characters, then its pass-one file path, grouped by scope with the scope's
+count. A challenged item that failed its challenge moves to section 2 as the finding it
+became and is noted here.
 
 ### 4. Disagreements kept
 
@@ -290,8 +293,12 @@ A run record.
 - Work items: the `work-items.sh check` result for `work-items.jsonl`: `work-items: ok`;
   or the error lines and that the file is not ready for an adapter; or that it was not
   validated, and why.
-- Stages: each stage 1 to 8 as `complete`, `not applicable`, `failed`, `swapped` or
-  `not run: budget expired`, with the reason.
+- Stages: each stage 1 to 7 as `complete`, `not applicable`, `failed`, `swapped` or
+  `not run: budget expired`, with the reason and the read-only checks it accepted. Then
+  the stage 8 line, written as it stands, because the report is hashed before stage 8's
+  check runs: ``Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.``
+- Plugin version: when a `--live` resume went on with a recorded `plugin_version` other
+  than the current one, the recorded and the current plugin version.
 - Swaps: every swap, with stage, role, scope, the requested model it left, the requested
   model it went to, and the reason.
 - Failed scopes and the files, rules or questions they left unreviewed, with the last
@@ -327,8 +334,8 @@ A run record.
 - Unanswered questions, and questions marked "not run".
 - Departures from the stage plan, such as the low tier's single auditor covering the
   tests and work-item hygiene.
-- Read-only check: each `baseline/<stage>-check.md` result, and every ignored file
-  accepted, with the run that wrote it. What the check does not detect: an ignored file
+- Read-only check: each `baseline/<stage>-check.md` result for stages 1 to 7, and every
+  ignored file accepted, with the run that wrote it. What the check does not detect: an ignored file
   replaced at the same size with a restored modification time; changes inside `.git/`
   other than refs, stashes and config; a nested repository's changes other than its
   HEAD, stashes or config; changes inside a repository that sits in an ignored

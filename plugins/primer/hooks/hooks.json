@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh\""
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh\"",
+            "onFailure": "continue"
           }
         ]
       }

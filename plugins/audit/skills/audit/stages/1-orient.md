@@ -95,7 +95,10 @@ branch to it in the manifest."
         GitHub remote (`git -C <repo> remote -v`); otherwise stop with
         `<id>: write it as github:owner/repo#n or file:<path>`, and add that a ticket
         on another forge comes in as a `file:` export. `<ticket>` in file names is the
-        id slugged.
+        id slugged, except for a `file:` ticket, whose `<ticket>` is the export's `id`
+        slugged, else the file's base name without its extension slugged; the
+        normalized id `file:<path>` stays the ticket's identity everywhere else. For
+        example, `file:./exports/APP-1.md` with `id: APP-1` gives `app-1`.
       - `<host>` of each GitHub id, the pull request first, then its tickets: the host
         of its URL when it was given as one; else the host of the bundle repository's
         fetch remote that names that owner and repository (`origin`'s when such remotes
@@ -224,8 +227,12 @@ branch to it in the manifest."
       The audit never writes to `.git/info/exclude` or any file of a git directory.
 
    j. **Run id and run directory.** The id is `<YYYY-MM-DD-HHMM>-<slug>` in local time;
-      the slug is the first bundle's name and its pull request number (an export's
-      `id`), or else its branch, slugged, at most 40 characters, with no forge call. When
+      the slug is the first bundle's repository name, then its pull request number (an
+      export's `id`) for a pull request bundle, or its branch for a branch bundle, joined
+      with `-`, the whole slugged and cut at 40 characters, with no forge call. For
+      example, a pull request bundle of repository `app` and pull request 123 gives
+      `<YYYY-MM-DD-HHMM>-app-123`, and a branch bundle of repository `app` and branch
+      `feat/export` gives `<YYYY-MM-DD-HHMM>-app-feat-export`. When
       `${CLAUDE_PLUGIN_DATA}/runs.json` has the id or its directory exists, try `-2`,
       `-3`, and so on; 0j and 0m settle it. The run directory is
       `<scratch>/audit/<run-id>/`, one `audit` level below `<scratch>` even when
@@ -279,7 +286,7 @@ branch to it in the manifest."
       cases.
 
    n. **Completion record.** Write `stages.json` through `stages.json.tmp` and
-      `mv -f`, with `plugin_version` `0.1.14`, empty `approvals`, and a stage 1 entry
+      `mv -f`, with `plugin_version` `0.1.15`, empty `approvals`, and a stage 1 entry
       with status `running` whose inputs are the `git hash-object --no-filters` hashes
       of `manifest.json`, each claims file, the questions file and each `file:` export,
       and `plugin_version`. Record the stage's start time for the budget.

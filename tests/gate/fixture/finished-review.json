@@ -1,0 +1,11 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 52000,
+  "num_turns": 0,
+  "result": "```json\n[{\"file\": \"src/queue.mjs\", \"line\": 8, \"summary\": \"The queue drops the last item on drain.\", \"failure_scenario\": \"drain() on [a, b] returns [a].\"}]\n```",
+  "total_cost_usd": 0.5,
+  "modelUsage": { "model-b": { "inputTokens": 10 }, "model-a": { "inputTokens": 20 } },
+  "permission_denials": []
+}

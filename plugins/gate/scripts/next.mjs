@@ -1,31 +1,36 @@
 #!/usr/bin/env node
 // Gate next: reads passes.json after a fix round and returns the next level or the stop, with the rule that produced it.
-// Usage: node next.mjs <passes.json> <max-passes>
+// Usage: node next.mjs <passes.json> <max-passes> [<minutes left> <minutes a pass needs>]
 //   <passes.json>    the completion record; only its `passes` array is read, and nothing is written
 //   <max-passes>     a whole number of 1 or more
+//   <minutes left>, <minutes a pass needs>   both or neither; the run budget still unspent, any finite number, negative when the run is over
+//                    budget, and the time one more pass needs, a number above 0
 // The latest pass is the last entry of `passes`; its `changes` lists the fix round's kinds:
-//   inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter (the last four are wide).
+//   inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter (these four are wide) and docs-only
+//   (every changed file is documentation; not wide; a record that lists it beside exported-signature or schema-or-migration is bad).
 // A reject is new unless the same finding id has bucket `reject` in any earlier pass of the record, in any run.
 // Rules, first match wins:
 //   nothing-to-fix     no fix finding and no new reject: stop `pass`, or `pass-with-deferred` when a pass of the run deferred
 //   after-medium       the latest pass ran at `medium`: stop as nothing-to-fix when it has no fix finding, else `unconverged`
+//   docs-only          the latest pass has a fix finding and its `changes` holds docs-only: level `medium`
 //   wide-fix           a wide change kind, and no pass of the run after its first ran at `xhigh`: level `xhigh`
 //   rejects-at-high    the two latest passes both ran at `high`, each with no fix finding and a new reject: level `medium`
 //   otherwise          level `high`
-// A level is marked "capped": "max-passes" when the run's passes number <max-passes> or more; a stop never is.
-// On success prints one JSON line on stdout, {"stop":...,"rule":...} or {"level":...,"rule":...[,"capped":"max-passes"]}, and exits 0.
+// A level is marked "capped": "max-passes" when the run's passes number <max-passes> or more, else "capped": "budget" when <minutes left>
+// is less than <minutes a pass needs>; a stop never is.
+// On success prints one JSON line on stdout, {"stop":...,"rule":...} or {"level":...,"rule":...[,"capped":"max-passes"|"budget"]}, and exits 0.
 // On failure prints nothing on stdout: exit 1 for a bad record, exit 2 for usage or IO, one line on stderr.
 // Everything above main() is pure: it takes objects.
 import { readFileSync, realpathSync } from 'node:fs';
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const USAGE = 'usage: node next.mjs <passes.json> <max-passes>';
+export const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-left> <minutes-a-pass-needs>]';
 const LEVELS = ['medium', 'high', 'xhigh'];
 const STATUSES = ['running', 'complete', 'failed'];
 const BUCKETS = ['fix', 'defer', 'reject'];
-const KINDS = ['inside-diff', 'exported-signature', 'schema-or-migration', 'outside-diff', 'over-quarter'];
-const WIDE = KINDS.slice(1);
+const WIDE = ['exported-signature', 'schema-or-migration', 'outside-diff', 'over-quarter'];
+const KINDS = ['inside-diff', ...WIDE, 'docs-only'];
 
 class Fail extends Error {
   constructor(code, message) {
@@ -65,6 +70,8 @@ function validate(record, file) {
   if (!Array.isArray(latest.changes)) fail(`${at}.changes is missing or not an array`);
   const bad = latest.changes.find((k) => !KINDS.includes(k));
   if (bad !== undefined) fail(`${at}.changes holds ${show(bad)}, not ${list(KINDS)}`);
+  const code = latest.changes.includes('docs-only') ? latest.changes.find((k) => k === 'exported-signature' || k === 'schema-or-migration') : undefined;
+  if (code !== undefined) fail(`${at}.changes holds "docs-only" beside ${show(code)}, which documentation cannot be`);
 }
 
 const has = (p, bucket) => Object.values(p.findings).some((f) => f.bucket === bucket);
@@ -73,8 +80,8 @@ const has = (p, bucket) => Object.values(p.findings).some((f) => f.bucket === bu
 const newReject = (passes, k) =>
   Object.entries(passes[k].findings).some(([id, f]) => f.bucket === 'reject' && !passes.slice(0, k).some((q) => Object.hasOwn(q.findings, id) && q.findings[id].bucket === 'reject'));
 
-// The result for a validated record: { stop, rule } or { level, rule[, capped] }.
-export function next(passes, max) {
+// The result for a validated record: { stop, rule } or { level, rule[, capped] }; `time` is { left, need } or null.
+export function next(passes, max, time = null) {
   const last = passes.length - 1;
   const latest = passes[last];
   const inRun = passes.filter((p) => p.run === latest.run);
@@ -85,14 +92,21 @@ export function next(passes, max) {
   if (latest.level === 'medium') return fixing ? { stop: 'unconverged', rule: 'after-medium' } : { ...stop(), rule: 'after-medium' };
 
   let result = { level: 'high', rule: 'otherwise' };
-  if (latest.changes.some((k) => WIDE.includes(k)) && inRun.slice(1).every((p) => p.level !== 'xhigh')) result = { level: 'xhigh', rule: 'wide-fix' };
+  if (fixing && latest.changes.includes('docs-only')) result = { level: 'medium', rule: 'docs-only' };
+  else if (latest.changes.some((k) => WIDE.includes(k)) && inRun.slice(1).every((p) => p.level !== 'xhigh')) result = { level: 'xhigh', rule: 'wide-fix' };
   else if (last > 0 && [last - 1, last].every((k) => passes[k].level === 'high' && !has(passes[k], 'fix') && newReject(passes, k))) result = { level: 'medium', rule: 'rejects-at-high' };
-  return inRun.length >= max ? { ...result, capped: 'max-passes' } : result;
+  if (inRun.length >= max) return { ...result, capped: 'max-passes' };
+  return time && time.left < time.need ? { ...result, capped: 'budget' } : result;
 }
+
+// A finite number as Number reads it, but not an empty argument or a 0x, 0o or 0b literal; else null.
+const minutes = (s) => (s.trim() !== '' && !/^0[xob]/i.test(s.trim()) && Number.isFinite(Number(s)) ? Number(s) : null);
 
 function main(argv) {
   try {
-    if (argv.length !== 2 || !/^[1-9][0-9]*$/.test(argv[1]) || !Number.isSafeInteger(Number(argv[1]))) throw new Fail(2, USAGE);
+    if ((argv.length !== 2 && argv.length !== 4) || !/^[1-9][0-9]*$/.test(argv[1]) || !Number.isSafeInteger(Number(argv[1]))) throw new Fail(2, USAGE);
+    const time = argv.length === 4 ? { left: minutes(argv[2]), need: minutes(argv[3]) } : null;
+    if (time && (time.left === null || time.need === null || time.need <= 0)) throw new Fail(2, USAGE);
     const file = basename(argv[0]);
     let text;
     try {
@@ -108,7 +122,7 @@ function main(argv) {
     }
     if (!isObject(record)) throw new Fail(1, `next: ${file}: not JSON`);
     validate(record, file);
-    process.stdout.write(JSON.stringify(next(record.passes, Number(argv[1]))) + '\n');
+    process.stdout.write(JSON.stringify(next(record.passes, Number(argv[1]), time)) + '\n');
   } catch (e) {
     if (!(e instanceof Fail)) throw e;
     process.stderr.write(e.message + '\n');

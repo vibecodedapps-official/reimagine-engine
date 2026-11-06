@@ -153,8 +153,11 @@ when the invocation block says `command: resume`; the rules of
    - The pinned sha of every reference and source of truth, resolved again as stage 1
      did through the brief's ref mapping lines; a change invalidates stage 1.
    - Upstream stage outputs, by `git hash-object --no-filters <file>`.
-   - `plugin_version`, compared with the literal `"0.1.14"`; any other recorded value
-     invalidates stage 1.
+   - `plugin_version`, compared with the literal `"0.1.15"`; any other recorded value
+     invalidates stage 1. With `--live`, a recorded `plugin_version` other than the
+     current one does not invalidate stage 1 when every other input of stage 1 is
+     unchanged. The final entry of the first rerun stage then records the recorded and
+     the current plugin version, and the report's Coverage names both.
    - Stage 1's `review_files` are not read again: each is a blob at a bundle's pinned
      base, which step 3 compares.
    - The live inputs, by `git hash-object --no-filters <file>`: for stage 6,

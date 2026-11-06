@@ -167,7 +167,7 @@ describe('primer drift hook', () => {
     const json = JSON.parse(readFileSync(join(root, 'plugins/primer/hooks/hooks.json'), 'utf8'));
     assert.deepEqual(json, {
       hooks: {
-        PreToolUse: [{ matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"' }] }],
+        PreToolUse: [{ matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] }],
         SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] }],
       },
     });

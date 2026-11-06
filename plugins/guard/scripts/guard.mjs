@@ -5,9 +5,12 @@
 //   list     print the repositories in the list
 //   plan     show the change and save it; takes --add <path> [--merge], --drop <path or remote> or --clear
 //   apply    write the saved change (a backup first), then check the host's effective configuration
+//   denials  print the classifier denials the PermissionDenied hook recorded
+//   session-start  the startup hook: one notice line when the entries are stale; writes nothing
+//   denied   the hook itself: reads a hook input on stdin and appends one line to the denials file
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -16,7 +19,8 @@ export const MARK = ' (reimagine guard)';
 const PLAN_FILE = 'guard-plan.json';
 const STATE_FILE = 'guard-state.json';
 const LIST_FILE = 'reimagine-guard.json';
-const VERBS = ['status', 'list', 'plan', 'apply'];
+const VERBS = ['status', 'list', 'plan', 'apply', 'denials'];
+const DENIALS_FILE = 'denials.jsonl';
 const LISTS = ['environment', 'allow', 'soft_deny', 'hard_deny'];
 const FORMS = 'plan takes one of --add <path> [--merge], --drop <path or remote> or --clear; nothing else is accepted';
 const GUARD_LABELS = [['trusted repo', 'Trusted repo'], ['source control', 'Source control']];
@@ -69,14 +73,24 @@ const remotesOf = (env, path) => sorted(git(env, path, ['remote', '-v']).split('
   return remote ? [remote] : [];
 }));
 
-const runClaude = (args, configDir) => JSON.parse(execFileSync('claude', args, {
-  encoding: 'utf8', env: configDir ? { ...process.env, CLAUDE_CONFIG_DIR: configDir } : process.env, stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000,
-}));
+// On Windows a claude installed through npm is a claude.cmd shim, which only cmd.exe resolves; the words are the script's own.
+function runClaude(args, configDir, timeout = 60000) {
+  const options = { encoding: 'utf8', env: configDir ? { ...process.env, CLAUDE_CONFIG_DIR: configDir } : process.env, stdio: ['ignore', 'pipe', 'pipe'], timeout };
+  let shim;
+  try { return JSON.parse(execFileSync('claude', args, options)); } catch (e) {
+    if (e?.code !== 'ENOENT' || process.platform !== 'win32') throw e;
+    const dir = (process.env.PATH ?? '').split(';').map((d) => d.replace(/"/g, '')).find((d) => d && existsSync(join(d, 'claude.cmd')));
+    if (!dir) throw e;
+    shim = join(dir, 'claude.cmd');
+  }
+  if (!args.every((a) => /^[a-z-]+$/.test(a))) throw new Error('claude takes only fixed words here');
+  return JSON.parse(execFileSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `""${shim}" ${args.join(' ')}"`], { ...options, windowsVerbatimArguments: true }));
+}
 
 // Runs claude auto-mode <verb>; anything but an object of the four lists of strings makes the state unavailable.
-function ask(claude, verb, dir) {
+function ask(claude, verb, dir, timeout) {
   let out;
-  try { out = claude(['auto-mode', verb], dir); } catch (e) { stop('unavailable', `claude auto-mode ${verb} could not run (${e?.code ?? String(e?.message).split('\n')[0]})`); }
+  try { out = claude(['auto-mode', verb], dir, timeout); } catch (e) { stop('unavailable', `claude auto-mode ${verb} could not run (${e?.code ?? String(e?.message).split('\n')[0]})`); }
   if (!out || typeof out !== 'object' || !LISTS.every((k) => Array.isArray(out[k]) && out[k].every((x) => typeof x === 'string'))) {
     stop('unavailable', `claude auto-mode ${verb} printed no object of the four lists`);
   }
@@ -390,6 +404,7 @@ function body(c, t, request, deep, r) {
   const old = parseList(t.list, list, c.platform);
   r.count = old.length;
   const repos = (request ? change(old, request, c) : old).map((x) => {
+    if (c.recorded) return x;
     try {
       if (!statSync(x.path, { throwIfNoEntry: false })?.isDirectory()) {
         r.notes.push(`note: ${x.path} does not exist on this machine; its recorded remotes are kept`);
@@ -404,7 +419,7 @@ function body(c, t, request, deep, r) {
   const file = readFile(t.path);
   const { auto, scan } = parseSettings(t.path, file);
   const state = loadState(c.dataDir);
-  const defs = ask(c.claude, 'defaults', c.env.CLAUDE_CONFIG_DIR || undefined);
+  const defs = ask(c.claude, 'defaults', c.env.CLAUDE_CONFIG_DIR || undefined, c.timeout);
   if (!GUARD_LABELS.every(([lb]) => defs.environment.some((l) => labelOf(l) === lb))) stop('unavailable', "the host's defaults have no Trusted repo or Source control line");
   const res = render(auto, repos, defs, state);
   const after = same(res.auto, auto) ? file.text : edit(file.text, scan, res.auto, state.created);
@@ -434,6 +449,29 @@ function body(c, t, request, deep, r) {
   ];
   const created = after !== file.text ? (file.text === null ? true : after === null ? false : !!state.created) : !!state.created;
   r.plan = { path: t.path, before: sha(file.text), after, listPath: t.list, listBefore: sha(list.text), listAfter, written: res.written, copied: res.copied, created, candidate: res.auto ?? null };
+}
+
+// The line a denial hook input becomes: what was denied and why; never the tool input whole.
+function denial(input, now) {
+  const text = (v) => (typeof v === 'string' ? v : '');
+  const tool = text(input.tool_name), args = input.tool_input ?? {};
+  const target = tool === 'Bash' || tool === 'PowerShell' ? { command: text(args.command).slice(0, 300) } : typeof args.file_path === 'string' ? { path: args.file_path } : {};
+  return { time: now.toISOString(), reason: text(input.reason), tool, ...target, cwd: text(input.cwd) };
+}
+
+function listDenials(dataDir) {
+  const path = join(dataDir, DENIALS_FILE);
+  let text;
+  try { text = readFile(path).text ?? ''; } catch (e) { refuse(`cannot read ${path} (${e.code})`); }
+  const entries = text.split('\n').flatMap((l) => {
+    try { const e = JSON.parse(l); return e && typeof e === 'object' && !Array.isArray(e) ? [e] : []; } catch { return []; }
+  });
+  if (!entries.length) return [`denials: none recorded in ${path}`];
+  const flat = (v) => String(v ?? '').replace(/\s+/g, ' ');
+  return [`denials: ${path} (${entries.length} recorded)`, ...entries.map((e) => {
+    const what = e.command ?? e.path;
+    return `${flat(e.time)} ${flat(e.tool)} ${flat(e.reason)}${what === undefined ? '' : `: ${flat(what)}`} (${flat(e.cwd)})`;
+  })];
 }
 
 // Each step but status and list changes the shared plan and state files, so steps take turns through a lock directory.
@@ -515,6 +553,7 @@ function applyPlan(c) {
 
 function run(verb, request, c) {
   if (verb === 'apply') return applyPlan(c);
+  if (verb === 'denials') return listDenials(c.dataDir);
   if (verb === 'list') {
     let repos;
     try { const { list } = locate(c.env, c.home); repos = parseList(list, readFile(list), c.platform); } catch (e) { if (e instanceof Stop) refuse(e.note); throw e; }
@@ -530,10 +569,32 @@ function run(verb, request, c) {
   return [...head, ...r.lines, "check: the dry run's effective configuration holds every guard entry once", 'change: ready'];
 }
 
+// The startup notice: one systemMessage line when listed repositories leave the entries stale. It uses the remotes the list
+// records, runs no config check, and prints nothing for any other state or any error.
+function sessionStart(c) {
+  const { list } = locate(c.env, c.home);
+  if (!parseList(list, readFile(list), c.platform).length) return [];
+  const r = inspect({ ...c, recorded: true, timeout: 20000 }, null, false);
+  return r.state === 'stale' ? [JSON.stringify({ systemMessage: `guard: the auto mode entries in ${r.t.path} are stale; run /guard to update them` })] : [];
+}
+
 // Returns the output lines. A refusal throws.
-export function main(argv, { env = process.env, platform = process.platform, now = new Date(), home = homedir(), cwd = process.cwd(), claude = runClaude } = {}) {
+export function main(argv, { env = process.env, platform = process.platform, now = new Date(), home = homedir(), cwd = process.cwd(), claude = runClaude, stdin = () => readFileSync(0, 'utf8') } = {}) {
   const [verb, dataDir, ...rest] = argv;
-  if (!VERBS.includes(verb)) refuse(`unknown command ${verb}; use status, list, plan or apply`);
+  if (verb === 'denied') {
+    try {
+      const input = JSON.parse(stdin());
+      if (input && typeof input === 'object' && !Array.isArray(input)) {
+        mkdirSync(dataDir, { recursive: true });
+        appendFileSync(join(dataDir, DENIALS_FILE), `${JSON.stringify(denial(input, now))}\n`, { mode: 0o600 });
+      }
+    } catch {}
+    return [];
+  }
+  if (verb === 'session-start') {
+    try { return sessionStart({ env, platform, now, home, cwd, claude, dataDir }); } catch { return []; }
+  }
+  if (!VERBS.includes(verb)) refuse(`unknown command ${verb}; use status, list, plan, apply or denials`);
   if (!dataDir) refuse('the data directory argument is missing');
   const request = parseRequest(verb, rest);
   const step = () => run(verb, request, { env, platform, now, home, cwd, claude, dataDir });

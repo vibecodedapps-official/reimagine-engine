@@ -40,6 +40,11 @@
 # 35 an existing branch that moves
 # 36 a new branch whose name holds a dot, with its config
 # 37 branch config of an existing branch
+# 38 a branch of a second worktree gets a commit  39 that branch then deleted
+# 40 that branch gets a commit and its remote and merge config
+# 41 branch config of a second worktree's branch that did not move
+# 42 that branch gets a commit and a changed remote config
+# 43 a second worktree whose folder is gone, its branch moved in the audited checkout
 #
 # Prints one line per mismatch, then `readonly test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -62,6 +67,8 @@ hash_orig=62bbbc5f8f323f1c372e43131e1d3ad8a214adeb
 hash_edit=44e925490cf5a75b8514640ac89751f80066380f
 # The parent of `main` in the fixture: a second commit, different from $sha.
 sha2=bd5d5e1e67a1fc55adeaa1452920245b1d368f7f
+# The empty commit `two` on top of $sha, made with the pinned identity of g().
+sha_sib=3adff5debeb7cc749e6304cfba64ab5d3224940c
 
 mismatch() {
 	echo "readonly test: $*"
@@ -585,7 +592,8 @@ git -C "$A" config --local audit.test 1
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
 expect "case 34" 1 "blocked config + audit.test=1\nlocal-branch + $sha commit\trefs/heads/new-y\n" ''
 
-# 35. an existing branch that moves (not the checked-out one): both refs lines are blocked.
+# 35. an existing branch that moves (not the checked-out one, and not checked out in
+# another worktree): both refs lines are blocked.
 case_id="case 35"
 fresh
 snap "$R/b"
@@ -609,6 +617,82 @@ snap "$R/b"
 git -C "$A" config branch.main.remote origin
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
 expect "case 37" 1 'blocked config + branch.main.remote=origin\n' ''
+
+# 38. a branch checked out in a second worktree gets a commit: the moved ref is a
+# local-branch pair, `+` before `-` in byte order.
+case_id="case 38"
+fresh
+W=$root/wt38
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 38: worktree add failed"
+snap "$R/b"
+g -C "$W" commit -q --allow-empty -m two
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 38" 3 "local-branch + $sha_sib commit\trefs/heads/sibling\nlocal-branch - $sha commit\trefs/heads/sibling\n" ''
+
+# 39. the same, then the worktree is removed and the branch deleted from the main checkout:
+# the branch is only in the baseline, so it is blocked.
+case_id="case 39"
+fresh
+W=$root/wt39
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 39: worktree add failed"
+snap "$R/b"
+g -C "$W" commit -q --allow-empty -m two
+g -C "$A" worktree remove -f "$W" || mismatch "case 39: worktree remove failed"
+g -C "$A" branch -q -D sibling || mismatch "case 39: branch delete failed"
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 39" 1 "blocked refs - $sha commit\trefs/heads/sibling\n" ''
+
+# 40. the branch of a second worktree gets a commit and its remote and merge config, as a first
+# push -u leaves them: the `+` config lines are local-branch too. Byte order: `+` before `-`,
+# and $sha_sib (3) before branch.
+case_id="case 40"
+fresh
+W=$root/wt40
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 40: worktree add failed"
+snap "$R/b"
+g -C "$W" commit -q --allow-empty -m two
+g -C "$W" config branch.sibling.remote origin
+g -C "$W" config branch.sibling.merge refs/heads/sibling
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 40" 3 "local-branch + $sha_sib commit\trefs/heads/sibling\nlocal-branch + branch.sibling.merge=refs/heads/sibling\nlocal-branch + branch.sibling.remote=origin\nlocal-branch - $sha commit\trefs/heads/sibling\n" ''
+
+# 41. the branch of a second worktree gets no commit, only a config key: it did not move, so
+# the line is blocked.
+case_id="case 41"
+fresh
+W=$root/wt41
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 41: worktree add failed"
+snap "$R/b"
+git -C "$A" config branch.sibling.remote x
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 41" 1 'blocked config + branch.sibling.remote=x\n' ''
+
+# 42. the branch of a second worktree gets a commit and its remote key changes, as a push -u to
+# another remote leaves it: the `-` config line is local-branch too. Byte order: `+` before `-`,
+# and within a sign $sha_sib (3) or $sha (2) before branch.
+case_id="case 42"
+fresh
+W=$root/wt42
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 42: worktree add failed"
+git -C "$W" config branch.sibling.remote origin
+snap "$R/b"
+g -C "$W" commit -q --allow-empty -m two
+git -C "$W" config branch.sibling.remote fork
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 42" 3 "local-branch + $sha_sib commit\trefs/heads/sibling\nlocal-branch + branch.sibling.remote=fork\nlocal-branch - $sha commit\trefs/heads/sibling\nlocal-branch - branch.sibling.remote=origin\n" ''
+
+# 43. a second worktree whose folder is gone (still listed, prunable) does not count as one: its
+# branch moved in the audited checkout is blocked, as in case 35. update-ref moves it because
+# branch -f refuses a branch that a listed worktree has checked out.
+case_id="case 43"
+fresh
+W=$root/wt43
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 43: worktree add failed"
+rm -rf "$W"
+snap "$R/b"
+git -C "$A" update-ref refs/heads/sibling "$sha2"
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 43" 1 "blocked refs + $sha2 commit\trefs/heads/sibling\nblocked refs - $sha commit\trefs/heads/sibling\n" ''
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

@@ -718,7 +718,25 @@ if [ -f "$f" ]; then
 		fail "$f: step 9 does not cap a group at 80 claims that name no file"
 	grep -qF "each scope's claim count and each move of step 9 rule 5" "$tmp/list" ||
 		fail "$f: the brief's Claims section does not record each scope's claim count and each move"
+	# A `file:` ticket's name in file names is its export's id, else the file's base name,
+	# slugged, so no name runs to the length of a path.
+	grep -qF "except for a \`file:\` ticket, whose \`<ticket>\` is the export's \`id\` slugged, else the file's base name without its extension slugged; the normalized id \`file:<path>\` stays the ticket's identity everywhere else" "$tmp/list" ||
+		fail "$f: 0d does not name the export's id or the base name as a file ticket's <ticket>"
+	grep -qF 'For example, `file:./exports/APP-1.md` with `id: APP-1` gives `app-1`.' "$tmp/list" ||
+		fail "$f: 0d does not give the file ticket slug example"
 fi
+# The run id's slug is the first bundle's repository name and then its pull request number
+# or its branch, with one worked example of each; each file is read as one line.
+for f in skills/audit/stages/1-orient.md skills/audit/SKILL.md; do
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "the slug is the first bundle's repository name, then its pull request number (an export's \`id\`) for a pull request bundle, or its branch for a branch bundle, joined with \`-\`, the whole slugged and cut at 40 characters" "$tmp/list" ||
+		fail "$f: the run id slug is not the repository name and then the pull request number or the branch"
+	grep -qF 'a pull request bundle of repository `app` and pull request 123 gives `<YYYY-MM-DD-HHMM>-app-123`' "$tmp/list" ||
+		fail "$f: the run id slug has no pull request bundle example"
+	grep -qF 'a branch bundle of repository `app` and branch `feat/export` gives `<YYYY-MM-DD-HHMM>-app-feat-export`' "$tmp/list" ||
+		fail "$f: the run id slug has no branch bundle example"
+done
 # A resume whose first rerun stage is 4 or 5 because its entry is missing or running
 # keeps each finished scope output, and the stage launches no agent for it; each file is
 # read as one line.
@@ -866,6 +884,47 @@ if [ -f "$f" ]; then
 	grep -qF 'with no trailer that does' "$tmp/list" &&
 		fail "$f: the commit step still drops a trailer that names a model"
 fi
+
+# Coverage lists stages 1 to 7 with the checks each accepted, and stage 8's line is one
+# fixed sentence, since stage 8's own check runs after the report is hashed; the files
+# are read as one line.
+for f in skills/audit/report.md skills/audit/stages/8-report.md; do
+	if [ -f "$f" ]; then
+		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+		grep -qF 'Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.' "$tmp/list" ||
+			fail "$f: Coverage has no fixed stage 8 line"
+	fi
+done
+
+# A `--live` resume takes live results after a plugin update: the version difference does
+# not invalidate stage 1, and the recorded and the current version are named in the first
+# rerun stage's entry and in Coverage.
+for f in skills/audit/resume.md skills/audit/live.md; do
+	if [ -f "$f" ]; then
+		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+		grep -qF 'With `--live`, a recorded `plugin_version` other than the current one does not invalidate stage 1 when every other input of stage 1 is unchanged.' "$tmp/list" ||
+			fail "$f: no --live exception for a plugin version difference"
+	fi
+done
+for f in skills/audit/resume.md skills/audit/report.md; do
+	if [ -f "$f" ]; then
+		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+		grep -qF 'the recorded and the current plugin version' "$tmp/list" ||
+			fail "$f: does not record or name both plugin versions of a --live resume"
+	fi
+done
+
+# Section 3 names its cut by tier: every item in full at low tier; at medium and high tier
+# the challenged items in full and the others as a cut first line with the pass-one path.
+for f in skills/audit/report.md skills/audit/stages/8-report.md; do
+	if [ -f "$f" ]; then
+		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+		grep -qF 'every Verified OK item shows in full.' "$tmp/list" ||
+			fail "$f: section 3 does not show every item in full at low tier"
+		grep -qF 'At medium and high tier an item marked `challenged` shows in full, and an item marked `not challenged` shows as its first line cut at 150 characters, then its pass-one file path, grouped by scope with the scope'"'"'s count.' "$tmp/list" ||
+			fail "$f: section 3 does not name the cut of the items not challenged"
+	fi
+done
 
 if [ "$fails" -gt 0 ]; then
 	exit 1

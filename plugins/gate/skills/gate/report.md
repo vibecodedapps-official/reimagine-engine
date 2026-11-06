@@ -59,7 +59,7 @@ A headless session does not show text written before a Skill call, so the header
 
 ### Findings
 
-Per pass of this run, each finding by bucket (`fix`, `defer`, `reject`) with its file, summary and the triage reason; the fixed ones are marked `fixed`. A failed review is named with its saved result file. In "no fixes", the fix bucket is headed as what a fix run would do. A finding carried, regressed or matched to an earlier one says so, with the match's reason from the ledger.
+Per pass of this run, each finding by bucket (`fix`, `defer`, `reject`) with its file, summary and the triage reason; the fixed ones are marked `fixed`. A failed review is named with its saved result file. A review that stopped on a usage limit is named as `usage limit`, with the line that a later run resumes the pass. In "no fixes", the fix bucket is headed as what a fix run would do. A finding carried, regressed or matched to an earlier one says so, with the match's reason from the ledger.
 
 ### Checks
 
@@ -83,12 +83,12 @@ The link of the comment posted. For a host other than GitHub, the comment's text
 
 ### Log
 
-Each review with its slug, duration, cost, denial count and notes, from `reviews[]`, the notes printed as the reviewer wrote them, or `none` when empty; each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch; and the elapsed time against the run budget.
+Each review with its slug, models, duration, cost, denial count and notes, from `reviews[]`, a review that stopped on a usage limit named as `usage limit`, the notes printed as the reviewer wrote them, or `none` when empty; each reader call with its batch's size and whether it was retried; each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch; and the elapsed time against the run budget.
 
 ## Rules
 
 - The report has exactly one terminal state, one of the five.
-- Name every cap that ended the run, and the engine when it is the stand-in.
+- Name every cap that ended the run, and the engine when it is the stand-in. A `budget` cap is named as the next pass not started because the run budget could not hold it.
 - For `blocked` and `stopped`, nothing is published after the state.
 - The report may name models, agents and tools, because it stays in the record. The comment follows the deny list of `steps/4-publish.md`, 4.4.
 

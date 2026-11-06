@@ -244,7 +244,7 @@ After every stage, stages 1 and 8 included, and before that stage's final entry,
 
 `sh ${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh check <repo> <run dir> <run dir>/baseline/<name> <ignored base prefix> <run dir>/baseline/<stage>/<name>`
 
-The ignored base prefix is `<run dir>/baseline/<name>` until a check passes after the baseline was taken, then the out prefix of the last check that passed. Everything else is compared with the stage 1 baseline, which never moves. The script prints `blocked <status|stash|config|hashes|refs> <-|+> <line>`, `remote-ref <-|+> <line>`, `local-branch + <line>`, `ignored <added|deleted|changed> <path>` and `touched <path>`, and may lead with `note mtime precision: seconds`, which is not a difference.
+The ignored base prefix is `<run dir>/baseline/<name>` until a check passes after the baseline was taken, then the out prefix of the last check that passed. Everything else is compared with the stage 1 baseline, which never moves. The script prints `blocked <status|stash|config|hashes|refs> <-|+> <line>`, `remote-ref <-|+> <line>`, `local-branch <-|+> <line>`, `ignored <added|deleted|changed> <path>` and `touched <path>`, and may lead with `note mtime precision: seconds`, which is not a difference.
 
 Judge the exit status:
 
@@ -253,7 +253,7 @@ Judge the exit status:
 - `3`: only `remote-ref`, `local-branch` or `ignored` lines. Judge each as below.
 - `0`: nothing to judge. `touched` lines are informational and never stop the run.
 
-A `remote-ref` line passes when an approved fetch in `approvals`, recorded after the baseline, explains it, or a `background-fetch` entry for the same ref with the same old and new commits does. Otherwise ask the user whether a background fetch explains the moved refs. The question names each ref with its old and new commit, or "new" or "deleted"; says that an editor's or Git client's automatic fetch, such as VS Code `git.autofetch`, can move refs even with no remote configured; and recommends no answer. On yes, append one `background-fetch` approval per ref with target `<repo name>:<ref>`, decision, time, and old and new commits, then go on. A further move of the same ref asks again. On no, or no answer, end the run `blocked`. A `local-branch` line is a new `refs/heads/<name>` other than the checkout's own branch, or a `+` config line `branch.<name>.<key>=<value>` for that name; refs and config are shared by every worktree of a repository, so the user's work in another worktree shows here. It passes when a `local-branch` approval for the same branch and commit explains it. Otherwise ask the user whether their own work in another worktree explains the branch, naming the branch and its commit, and recommend no answer. On yes, append a `local-branch` approval with target `<repo name>:<branch>`, decision, time and commit, then go on; its config lines pass with it. A later line for the same branch at another commit asks again. On no, or no answer, end the run `blocked`. A deleted or moved branch and any other config line print as `blocked`.
+A `remote-ref` line passes when an approved fetch in `approvals`, recorded after the baseline, explains it, or a `background-fetch` entry for the same ref with the same old and new commits does. Otherwise ask the user whether a background fetch explains the moved refs. The question names each ref with its old and new commit, or "new" or "deleted"; says that an editor's or Git client's automatic fetch, such as VS Code `git.autofetch`, can move refs even with no remote configured; and recommends no answer. On yes, append one `background-fetch` approval per ref with target `<repo name>:<ref>`, decision, time, and old and new commits, then go on. A further move of the same ref asks again. On no, or no answer, end the run `blocked`. A `local-branch` line is a new `refs/heads/<name>` other than the checkout's own branch, or a `+` config line `branch.<name>.<key>=<value>` for that name; refs and config are shared by every worktree of a repository, so the user's work in another worktree shows here. It passes when a `local-branch` approval for the same branch and commit explains it. Otherwise ask the user whether their own work in another worktree explains the branch, naming the branch and its commit, and recommend no answer. On yes, append a `local-branch` approval with target `<repo name>:<branch>`, decision, time and commit, then go on; its config lines pass with it. A later line for the same branch at another commit asks again. On no, or no answer, end the run `blocked`. A branch that moved while another worktree has it checked out prints as a `local-branch` pair, `-` the old commit and `+` the new, with its `+` and `-` config lines `local-branch` too, and is judged the same way: the pair passes when a `local-branch` approval for the same branch and its new commit explains the `+` line, the `-` line passing with it, as its config lines do, and the question names the branch with its old and new commit. It ends the run `blocked` when it is a bundle's branch or base, since that changes what the audit read. A deleted branch, a moved branch that no other worktree has checked out, and any other config line print as `blocked`.
 
 An `ignored` line is judged in this order:
 
@@ -280,7 +280,7 @@ The run directory is `<scratch>/audit/<run-id>/`. `<scratch>` is the first that 
 3. `.reimagine/`, when already ignored.
 4. `${CLAUDE_PLUGIN_DATA}/runs/`.
 
-Compare parent and child as whole resolved paths. Make `<scratch>/audit/` with `mkdir -p` and the run directory with `mkdir` without `-p`, so an existing id moves to the next suffix. The run id is `<YYYY-MM-DD-HHMM>-<slug>`, with `-2`, `-3` on collision. Never add an ignore rule to make a directory ignored.
+Compare parent and child as whole resolved paths. Make `<scratch>/audit/` with `mkdir -p` and the run directory with `mkdir` without `-p`, so an existing id moves to the next suffix. The run id is `<YYYY-MM-DD-HHMM>-<slug>`, where the slug is the first bundle's repository name, then its pull request number (an export's `id`) for a pull request bundle, or its branch for a branch bundle, joined with `-`, the whole slugged and cut at 40 characters, with `-2`, `-3` on collision. For example, a pull request bundle of repository `app` and pull request 123 gives `<YYYY-MM-DD-HHMM>-app-123`, and a branch bundle of repository `app` and branch `feat/export` gives `<YYYY-MM-DD-HHMM>-app-feat-export`. Never add an ignore rule to make a directory ignored.
 
 Write `stages.json` only through `stages.json.tmp` beside it, then `mv -f` it over the destination. Never edit a state file in place.
 
@@ -310,7 +310,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 ```json
 {
-  "plugin_version": "0.1.14",
+  "plugin_version": "0.1.15",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],

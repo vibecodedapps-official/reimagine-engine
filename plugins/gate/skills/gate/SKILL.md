@@ -92,10 +92,11 @@ Invoking this skill by name approves, for this run only: fix commits on each tar
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group, a group still over `split` being grouped again one segment deeper | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; it stays for the run |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group, a group still over `split` being grouped again one segment deeper, and groups under one fifth of `split` merged, at most 6 at once | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing, and stays for the run; also, once, for each group whose child stopped on a usage limit, for that group alone |
+| reader | read-only Agents at `sonnet` (`models.reader`), when a pass has more than 30 findings whose bucket is `null`: one per batch of at most 40, in parallel, returning evidence per finding and never a bucket | a failed call is retried once; then the orchestrator reads that batch itself |
 | implementer | an Agent at `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
-The `models` key of the configuration changes the implementer and the stand-in reviewer. The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was; the report says so in one line.
+The `models` key of the configuration changes the implementer, the reader and the stand-in reviewer. The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was; the report says so in one line.
 
 ## Levels and caps
 
@@ -105,15 +106,16 @@ You do not choose the next level. After the fix round, `next.mjs` reads the reco
 
 1. The latest pass's fix bucket is empty and its reject bucket holds nothing new: stop with `pass`, or `pass-with-deferred` when any pass of the run deferred something.
 2. The latest pass ran at `medium`: stop, with `pass` or `pass-with-deferred` when its fix bucket was empty and `unconverged` otherwise.
-3. The fix round changed an exported signature, a schema or migration, a file outside the original diff, or more than a quarter of the diff's files: `xhigh`, at most once per run after pass 1.
-4. The two latest passes both ran at `high`, each with an empty fix bucket and a reject bucket holding something new: `medium`.
-5. Otherwise `high`.
+3. The latest pass's fix bucket is not empty and the fix round changed only documentation (`docs-only`): `medium`.
+4. The fix round changed an exported signature, a schema or migration, a file outside the original diff, or more than a quarter of the diff's files: `xhigh`, at most once per run after pass 1.
+5. The two latest passes both ran at `high`, each with an empty fix bucket and a reject bucket holding something new: `medium`.
+6. Otherwise `high`.
 
 Caps:
 
 - `max-passes` (default 4) bounds the passes of one run. When the passes have reached it, the script still returns the rule's level and marks it `capped`, and you end the run `unconverged`. A later run resumes from that level.
-- The run budget is 120 minutes. "budget <n> minutes" in the request wins, then `.reimagine.json` `gate.budget`, then a session instruction. Question waits are outside it.
-- Each review has the review budget, the reviews of a split pass running together within it. Each implementer call has the subagent budget and each check the check budget. The defaults are 30, 20 and 15 minutes; `gate.timeouts` and the root `timeouts` set them as Configuration says.
+- The run budget is 120 minutes. "budget <n> minutes" in the request wins, then `.reimagine.json` `gate.budget`, then a session instruction. Question waits are outside it. A level is capped as `budget` when the minutes left in it are fewer than the review budget for each 6 groups or part of 6 of the pass just made, plus the subagent budget, the time one more pass needs.
+- Each review has the review budget, the reviews of a split pass, at most 6 at once, having together that budget for each 6 reviews or part of 6. Each implementer call has the subagent budget and each check the check budget. The defaults are 30, 20 and 15 minutes; `gate.timeouts` and the root `timeouts` set them as Configuration says.
 - Reaching `max-passes` with a level still to run, the run budget or the review budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends `blocked`. The output of the pass is kept and a pushed commit stays.
 - Never pass silently: a cap that ends the run is named in the report.
 
@@ -130,16 +132,16 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
     "max-passes": 4,
     "budget": 120,
     "timeouts": { "subagent": 20, "review": 30, "check": 15 },
-    "models": { "implementer": "sonnet", "fallback-reviewer": "opus" }
+    "models": { "implementer": "sonnet", "reader": "sonnet", "fallback-reviewer": "opus" }
   }
 }
 ```
 
-- `split`: the changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel; a group still over `split` is grouped again one segment deeper.
+- `split`: the changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel, at most 6 at once; a group still over `split` is grouped again one segment deeper, and groups under one fifth of `split` are merged.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
 - `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them. A key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default.
-- `models`: the model of the implementer and of the stand-in reviewer.
+- `models`: the model of the implementer, of the reader and of the stand-in reviewer.
 
 `split`, `max-passes` and `budget` are whole numbers of 1 or more. `timeouts` holds positive numbers. `models` accepts only `sonnet`, `opus`, `haiku` and `fable`. An unknown key or a bad value is reported in the reading block and ignored. A file that does not parse ends `blocked`. The root `base` key applies as Reading the request says.
 

@@ -139,7 +139,11 @@ result's text, approver and time; a `result_file` result's text is its copy
       or that a `REVIEW.md` rule holds it. Then the skip lines of step 2.
    3. **Verified as sound**: every Verified OK item of the pass-one reports, marked
       `challenged` when a pass-two `## Verified OK challenged` list names it, else
-      `not challenged`. At low tier every one is `not challenged`.
+      `not challenged`. At low tier every one is `not challenged`, and every Verified
+      OK item shows in full. At medium and high tier an item marked
+      `challenged` shows in full, and an item marked `not challenged` shows as its first
+      line cut at 150 characters, then its pass-one file path, grouped by scope with the
+      scope's count.
    4. **Disagreements kept**: every `contested` item with each position and its
       evidence, no side picked.
    5. **Recommended next steps**: the ordered plan of step 14.
@@ -199,9 +203,14 @@ result's text, approver and time; a `result_file` result's text is its copy
        - each handoff claims file with its path, hash and whether `handoff.sh check`
          validated it, from the brief;
        - the `work-items.sh` result, filled in at step 8;
-       - each stage run, not applicable, failed or swapped, and why; every swap by
-         name, with the requested model of each agent, written as "requested", never
-         "used";
+       - each stage 1 to 7 run, not applicable, failed or swapped, and why, with the
+         read-only checks it accepted; every swap by name, with the requested model of
+         each agent, written as "requested", never "used";
+       - the stage 8 line, the fixed sentence ``Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.`` written as it stands:
+         the report is hashed before the check of step 11 runs, so its result is only in
+         that file;
+       - when a `--live` resume went on with a recorded plugin version other than the
+         current one, the recorded and the current version, from the rerun stage's entry;
        - at low tier, that one auditor covered the ticket, the tests and work-item
          hygiene;
        - failed scopes and scopes not run because the budget expired, with the last

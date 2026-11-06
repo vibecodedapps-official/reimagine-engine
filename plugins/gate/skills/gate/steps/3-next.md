@@ -9,6 +9,7 @@ Read this file from Step 2 when its commit and push are done, from Step 1 when t
 3. Otherwise `max-passes` is `.reimagine.json` `gate.max-passes`, else 4. Run `node "<scripts>/next.mjs" <absolute passes.json> <max-passes>`, where `<scripts>` is the path on the reading block's Scripts line. It prints one JSON line, `{"stop": "<verdict>", "rule": "<rule>"}` or `{"level": "<level>", "rule": "<rule>"[, "capped": "max-passes"]}`, from the first rule that matches:
    - `nothing-to-fix`: the latest pass has no fix finding and no new rejection, a carried rejection counting as nothing: stop `pass`, or `pass-with-deferred` when a pass of the run deferred something.
    - `after-medium`: the latest pass ran at `medium`: stop as `nothing-to-fix` would when it has no fix finding, else `unconverged`, since no pass verifies its fixes.
+   - `docs-only`: the latest pass has a fix finding and the fix round's `changes` holds `docs-only`: `medium`, so the run can converge under `after-medium`.
    - `wide-fix`: the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of its files, and no pass of the run after its first ran at `xhigh`: `xhigh`.
    - `rejects-at-high`: the two latest passes both ran at `high`, each with no fix finding and a new rejection: `medium`.
    - `otherwise`: `high`.

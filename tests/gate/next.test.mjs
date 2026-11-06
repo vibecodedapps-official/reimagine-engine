@@ -12,7 +12,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'plugins', 'gate', 'scripts', 'next.mjs');
 const concurrency = Math.max(1, availableParallelism() - 1);
 const USAGE = 'usage: node next.mjs <passes.json> <max-passes>';
-const KINDS = 'inside-diff, exported-signature, schema-or-migration, outside-diff or over-quarter';
+const KINDS = 'inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter or docs-only';
 
 let base;
 before(() => {
@@ -347,6 +347,42 @@ describe('rule 2, after-medium', { concurrency }, () => {
   });
 });
 
+describe('docs-only', { concurrency }, () => {
+  const MEDIUM = '{"level":"medium","rule":"docs-only"}';
+
+  test('a high pass with a fix that changed only documentation gives medium', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['docs-only'] })], MEDIUM);
+  });
+
+  test('the first pass at xhigh with a docs-only fix gives medium', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] })], MEDIUM);
+  });
+
+  test('docs-only beside a wide kind gives medium, not xhigh', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only', 'outside-diff'] })], MEDIUM);
+  });
+
+  test('a docs-only pass with nothing to fix stops by nothing-to-fix', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { changes: ['docs-only'] })], PASS);
+  });
+
+  test('a docs-only medium pass with a fix is unconverged by after-medium', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] }), pass(2, 1, 'medium', { fix: ['a|y'], changes: ['docs-only'] })], '{"stop":"unconverged","rule":"after-medium"}');
+  });
+
+  test('a docs-only fix at the cap is capped', async () => {
+    await ok(
+      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'] }), pass(3, 1, 'high', { fix: ['a|z'], changes: ['docs-only'] })],
+      '{"level":"medium","rule":"docs-only","capped":"max-passes"}',
+      '3',
+    );
+  });
+
+  test('a code fix beside no docs-only kind still gives high', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['inside-diff'] })], HIGH);
+  });
+});
+
 describe('max-passes', { concurrency }, () => {
   const four = [
     pass(1, 1, 'xhigh', { fix: ['a|x'] }),
@@ -518,7 +554,7 @@ describe('validation errors', { concurrency }, () => {
     await bad(record([good, { ...second, changes: 'inside-diff' }]), 1, 'next: passes.json: passes[1].changes is missing or not an array');
   });
 
-  test('a latest pass with a change kind outside the five', async () => {
+  test('a latest pass with a change kind outside the six', async () => {
     await bad(record([good, { ...second, changes: ['inside-diff', 'rename'] }]), 1, `next: passes.json: passes[1].changes holds "rename", not ${KINDS}`);
     await bad(record([good, { ...second, changes: [7, 'rename'] }]), 1, `next: passes.json: passes[1].changes holds 7, not ${KINDS}`);
   });

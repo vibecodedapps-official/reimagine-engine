@@ -429,8 +429,8 @@ test('R295: Step 2 reads the remote head with git ls-remote and compares it befo
   holds('steps/2-fix.md', 'git ls-remote', 'what preflight fetched', 'the last sha this run pushed', 'no force');
 });
 
-test('R301: Step 2 judges the fix round with the five change kinds next.mjs accepts', () => {
-  holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`');
+test('R301: Step 2 judges the fix round with the six change kinds next.mjs accepts', () => {
+  holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`', '`docs-only`: every changed file is documentation');
 });
 
 test('R301: Step 2 counts the files for over-quarter instead of judging the share', () => {
@@ -457,8 +457,8 @@ test('R311: record.md holds the passes.json literal of the architecture, line fo
   assert.deepEqual(jsonAfter(read('record.md'), '`passes.json`:'), arch);
 });
 
-test('R301 and R303: Step 3 names the five rules of next.mjs, the two caps and the no-fixes stop', () => {
-  holds('steps/3-next.md', '`nothing-to-fix`', '`after-medium`', '`wide-fix`', '`rejects-at-high`', '`otherwise`', '`max-passes`', '`budget`', '`no-fixes`');
+test('R301 and R303: Step 3 names the six rules of next.mjs, the two caps and the no-fixes stop', () => {
+  holds('steps/3-next.md', '`nothing-to-fix`', '`after-medium`', '`docs-only`', '`wide-fix`', '`rejects-at-high`', '`otherwise`', '`max-passes`', '`budget`', '`no-fixes`');
 });
 
 test('R312: Step 3 resumes a record by its head and merge-base', () => {
@@ -582,4 +582,11 @@ test('R306: Step 1.6 ends the candidate list with entries on other files that sh
   holds('steps/1-pass.md',
     'then the entries on other files that share an identifier with the finding, a backticked name or a camelCase or snake_case word, each naming its `file` and the identifiers it `shared`',
     'a match to an entry on another file is written the same way');
+});
+
+test('R301: SKILL.md lists the docs-only rule between the medium stop and the xhigh re-review', () => {
+  const text = SKILL.slice(SKILL.indexOf('## Levels and caps'));
+  const docs = text.indexOf('(`docs-only`): `medium`');
+  assert.ok(docs > text.indexOf('2. The latest pass ran at `medium`'), 'the docs-only rule is not after the medium stop');
+  assert.ok(docs < text.indexOf('4. The fix round changed an exported signature'), 'the docs-only rule is not before the xhigh re-review');
 });

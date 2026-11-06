@@ -4,11 +4,13 @@
 //   <passes.json>    the completion record; only its `passes` array is read, and nothing is written
 //   <max-passes>     a whole number of 1 or more
 // The latest pass is the last entry of `passes`; its `changes` lists the fix round's kinds:
-//   inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter (the last four are wide).
+//   inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter (these four are wide) and docs-only
+//   (every changed file is documentation; not wide).
 // A reject is new unless the same finding id has bucket `reject` in any earlier pass of the record, in any run.
 // Rules, first match wins:
 //   nothing-to-fix     no fix finding and no new reject: stop `pass`, or `pass-with-deferred` when a pass of the run deferred
 //   after-medium       the latest pass ran at `medium`: stop as nothing-to-fix when it has no fix finding, else `unconverged`
+//   docs-only          the latest pass has a fix finding and its `changes` holds docs-only: level `medium`
 //   wide-fix           a wide change kind, and no pass of the run after its first ran at `xhigh`: level `xhigh`
 //   rejects-at-high    the two latest passes both ran at `high`, each with no fix finding and a new reject: level `medium`
 //   otherwise          level `high`
@@ -24,8 +26,8 @@ export const USAGE = 'usage: node next.mjs <passes.json> <max-passes>';
 const LEVELS = ['medium', 'high', 'xhigh'];
 const STATUSES = ['running', 'complete', 'failed'];
 const BUCKETS = ['fix', 'defer', 'reject'];
-const KINDS = ['inside-diff', 'exported-signature', 'schema-or-migration', 'outside-diff', 'over-quarter'];
-const WIDE = KINDS.slice(1);
+const WIDE = ['exported-signature', 'schema-or-migration', 'outside-diff', 'over-quarter'];
+const KINDS = ['inside-diff', ...WIDE, 'docs-only'];
 
 class Fail extends Error {
   constructor(code, message) {
@@ -85,7 +87,8 @@ export function next(passes, max) {
   if (latest.level === 'medium') return fixing ? { stop: 'unconverged', rule: 'after-medium' } : { ...stop(), rule: 'after-medium' };
 
   let result = { level: 'high', rule: 'otherwise' };
-  if (latest.changes.some((k) => WIDE.includes(k)) && inRun.slice(1).every((p) => p.level !== 'xhigh')) result = { level: 'xhigh', rule: 'wide-fix' };
+  if (fixing && latest.changes.includes('docs-only')) result = { level: 'medium', rule: 'docs-only' };
+  else if (latest.changes.some((k) => WIDE.includes(k)) && inRun.slice(1).every((p) => p.level !== 'xhigh')) result = { level: 'xhigh', rule: 'wide-fix' };
   else if (last > 0 && [last - 1, last].every((k) => passes[k].level === 'high' && !has(passes[k], 'fix') && newReject(passes, k))) result = { level: 'medium', rule: 'rejects-at-high' };
   return inRun.length >= max ? { ...result, capped: 'max-passes' } : result;
 }

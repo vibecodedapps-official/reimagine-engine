@@ -105,9 +105,10 @@ You do not choose the next level. After the fix round, `next.mjs` reads the reco
 
 1. The latest pass's fix bucket is empty and its reject bucket holds nothing new: stop with `pass`, or `pass-with-deferred` when any pass of the run deferred something.
 2. The latest pass ran at `medium`: stop, with `pass` or `pass-with-deferred` when its fix bucket was empty and `unconverged` otherwise.
-3. The fix round changed an exported signature, a schema or migration, a file outside the original diff, or more than a quarter of the diff's files: `xhigh`, at most once per run after pass 1.
-4. The two latest passes both ran at `high`, each with an empty fix bucket and a reject bucket holding something new: `medium`.
-5. Otherwise `high`.
+3. The latest pass's fix bucket is not empty and the fix round changed only documentation (`docs-only`): `medium`.
+4. The fix round changed an exported signature, a schema or migration, a file outside the original diff, or more than a quarter of the diff's files: `xhigh`, at most once per run after pass 1.
+5. The two latest passes both ran at `high`, each with an empty fix bucket and a reject bucket holding something new: `medium`.
+6. Otherwise `high`.
 
 Caps:
 

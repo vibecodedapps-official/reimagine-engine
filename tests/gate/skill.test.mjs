@@ -576,3 +576,9 @@ test('R306 and R307: a usage limit is an infrastructure failure, and each limite
     'Never a second retry, and never a `--model` flag',
     'a later run resumes the pass');
 });
+
+test('R306: Step 1.6 ends the candidate list with entries on other files that share an identifier and matches them the same way', () => {
+  holds('steps/1-pass.md',
+    'then the entries on other files that share an identifier with the finding, a backticked name or a camelCase or snake_case word, each naming its `file` and the identifiers it `shared`',
+    'a match to an entry on another file is written the same way');
+});

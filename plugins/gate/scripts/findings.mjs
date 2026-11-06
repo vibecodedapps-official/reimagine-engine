@@ -109,11 +109,24 @@ const latestLine = (entry) => {
   return isObject(pass) && pass.line !== undefined ? pass.line : null;
 };
 
-// The settled entries on the same file as a new finding that pass n did not report, nearest line first, a null
-// distance last, then by id.
-function candidatesFor(ledger, n, file, line) {
-  return Object.entries(ledger.findings)
-    .filter(([, e]) => e.passes[n] === undefined && e.file === file && CANDIDATE_STATES.includes(e.state))
+// The key identifiers of a raw summary: the trimmed content of each backticked span and each camelCase, PascalCase or
+// snake_case word (a lowercase letter or digit directly before a capital, so not `JSON`), those of 3 characters or more.
+const CAMEL = /^(?=[A-Za-z])[A-Za-z0-9]*[a-z0-9][A-Z][A-Za-z0-9]*$/;
+const SNAKE = /^[A-Za-z0-9]+(_[A-Za-z0-9]+)+$/;
+const identifiers = (summary) => {
+  if (typeof summary !== 'string') return new Set();
+  const spans = [...summary.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim());
+  const words = summary.split(/[^A-Za-z0-9_]+/).filter((w) => CAMEL.test(w) || SNAKE.test(w));
+  return new Set([...spans, ...words].filter((s) => s.length >= 3));
+};
+
+// The settled entries pass n did not report that a new finding may be the same defect as: first those on the same file,
+// nearest line first, a null distance last, then by id; then those on other files that share a key identifier of the
+// raw summary, by id.
+function candidatesFor(ledger, n, file, line, summary) {
+  const settled = Object.entries(ledger.findings).filter(([, e]) => e.passes[n] === undefined && CANDIDATE_STATES.includes(e.state));
+  const same = settled
+    .filter(([, e]) => e.file === file)
     .map(([otherId, e]) => {
       const at = latestLine(e);
       return { id: otherId, state: e.state, line: at, distance: Number.isInteger(line) && Number.isInteger(at) ? Math.abs(line - at) : null };
@@ -122,6 +135,13 @@ function candidatesFor(ledger, n, file, line) {
       if (a.distance !== b.distance) return a.distance === null ? 1 : b.distance === null ? -1 : a.distance - b.distance;
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
+  const mine = identifiers(summary);
+  const other = settled
+    .filter(([, e]) => e.file !== file)
+    .map(([otherId, e]) => ({ id: otherId, state: e.state, line: latestLine(e), distance: null, file: e.file, shared: [...identifiers(e.summary)].filter((s) => mine.has(s)).sort() }))
+    .filter((c) => c.shared.length > 0)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return [...same, ...other];
 }
 
 const highestPass = (ledger) => Math.max(0, ...Object.values(ledger.findings).flatMap(passKeys));
@@ -264,7 +284,7 @@ function ingest(argv) {
     findings.push({ id: f.id, file: f.file, line: f.line, summary: f.summary, failure_scenario: f.failure_scenario, outputs: f.outputs, state: entry.state, bucket, reason });
   }
   for (const finding of findings) {
-    if (finding.state === 'new') finding.candidates = candidatesFor(ledger, n, finding.file, finding.line);
+    if (finding.state === 'new') finding.candidates = candidatesFor(ledger, n, finding.file, finding.line, finding.summary);
   }
   return { ledgerPath, ledger: JSON.stringify(ledger, null, 2) + '\n', summary: JSON.stringify({ pass: n, reviews, findings }, null, 2) + '\n', warnings };
 }

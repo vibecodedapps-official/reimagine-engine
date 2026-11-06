@@ -558,6 +558,56 @@ describe('the ledger across passes', { concurrency }, () => {
     );
   });
 
+  const DESIGN_ID = 'docs/design.md|the design narrows the retrypolicy enum to two values so callers lose the exponential option';
+
+  test('a finding on another file that shares a backticked name is offered the deferred entry as a cross-file candidate', async () => {
+    const dir = kase(['ledger-design.json', 'standin-schema.md']);
+    copyFileSync(join(dir, 'ledger-design.json'), join(dir, 'findings.json'));
+    const summary = succeeded(await run(dir, '3', 'findings.json', 'standin-schema.md'));
+    assert.deepEqual(summary.findings.map((f) => [f.id, f.state, f.candidates]), [
+      [
+        'schema/config.json|the schemas retrypolicy enum allows only two values',
+        'new',
+        [{ id: DESIGN_ID, state: 'deferred', line: 14, distance: null, file: 'docs/design.md', shared: ['retryPolicy'] }],
+      ],
+    ]);
+  });
+
+  test('a finding on another file that shares only a common word or a capitalized word has no cross-file candidate', async () => {
+    const reply = '```json\n[{"file": "schema/config.json", "line": 30, "summary": "The schema narrows the enum to two values.", "failure_scenario": "x"}]\n```\n';
+    const dir = kase(['ledger-design.json'], { 'reply.md': reply });
+    copyFileSync(join(dir, 'ledger-design.json'), join(dir, 'findings.json'));
+    const summary = succeeded(await run(dir, '3', 'findings.json', 'reply.md'));
+    assert.deepEqual(summary.findings.map((f) => f.candidates), [[]]);
+
+    const upper = { file: 'docs/design.md', summary: 'The JSON output is wrong.', first_pass: 1, state: 'deferred', passes: { 1: { line: 3, bucket: 'defer', reason: 'r', prior: null } } };
+    const jsonReply = '```json\n[{"file": "schema/config.json", "line": 30, "summary": "The JSON reader fails.", "failure_scenario": "x"}]\n```\n';
+    const other = kase([], { 'findings.json': text({ findings: { 'docs/design.md|the json output is wrong': upper } }), 'reply.md': jsonReply });
+    assert.deepEqual(succeeded(await run(other, '3', 'findings.json', 'reply.md')).findings.map((f) => f.candidates), [[]]);
+  });
+
+  test('cross-file candidates follow the same-file ones, sort by id and list the sorted shared identifiers; a short name and an entry in the open state are left out', async () => {
+    const entry = (file, summary, state, passes) => ({ file, summary, first_pass: 1, state, passes });
+    const p = (line) => ({ 1: { line, bucket: 'defer', reason: 'r', prior: null } });
+    const ledger = {
+      findings: {
+        'src/a.mjs|same file': entry('src/a.mjs', 'Same file entry.', 'rejected', p(10)),
+        'z.md|two': entry('z.md', 'Uses `load_config` and `parseArgs`.', 'fixed', p(3)),
+        'b.md|one': entry('b.md', 'The `parseArgs` helper.', 'deferred', p(4)),
+        'c.md|open': entry('c.md', 'The `parseArgs` helper.', 'open', p(5)),
+        'd.md|short': entry('d.md', 'The `id` field.', 'deferred', p(6)),
+      },
+    };
+    const reply = '```json\n[{"file": "src/a.mjs", "line": 12, "summary": "Wrong `parseArgs` and load_config, and the `id` field.", "failure_scenario": "x"}]\n```\n';
+    const dir = kase([], { 'findings.json': text(ledger), 'reply.md': reply });
+    const summary = succeeded(await run(dir, '2', 'findings.json', 'reply.md'));
+    assert.deepEqual(summary.findings[0].candidates, [
+      { id: 'src/a.mjs|same file', state: 'rejected', line: 10, distance: 2 },
+      { id: 'b.md|one', state: 'deferred', line: 4, distance: null, file: 'b.md', shared: ['parseArgs'] },
+      { id: 'z.md|two', state: 'fixed', line: 3, distance: null, file: 'z.md', shared: ['load_config', 'parseArgs'] },
+    ]);
+  });
+
   test('a new finding is appended beside the existing entries, which stay as they are', async () => {
     const dir = kase(['ledger-fixed.json', 'standin.md']);
     copyFileSync(join(dir, 'ledger-fixed.json'), join(dir, 'findings.json'));
@@ -719,6 +769,14 @@ describe('a match written without its link', { concurrency }, () => {
     assert.equal(r.stderr, WARNING);
     assert.equal(ledgerText(dir), before);
     assert.deepEqual(readdirSync(dir), ['findings.json']);
+  });
+
+  test('--check accepts a match whose id names an entry on another file', async () => {
+    const dir = kase([], { 'findings.json': text({ findings: { [ID]: entry('carried', { match: { of: 'docs/design.md|the design narrows the enum', reason: 'same defect on the file that holds the enum' } }, 2) } }) });
+    const r = await run(dir, '--check', '2', 'findings.json');
+    assert.equal(r.status, 0);
+    assert.equal(r.stdout, '');
+    assert.equal(r.stderr, '');
   });
 
   test('--check is silent for a ledger whose entries all hold their match', async () => {

@@ -15,6 +15,8 @@ Every spike file below is a headless review result object from the spikes of dec
 - `limit-429.json`: written for the suite; a result with `is_error` true and `api_error_status` 429.
 - `review-with-rate-limit.json`: written for the suite; a finished review whose prose before a valid array mentions a rate limit.
 - `ledger-fixed.json`: written for the suite; a ledger after pass 1 holding the two `spike1b.json` findings, the first `fixed` with a `fix` bucket and an extra `match` field, the second `deferred`.
+- `ledger-design.json`: written for the suite; a ledger after pass 1 holding one `deferred` entry on `docs/design.md` whose summary names `retryPolicy` and `exponential` in backticks.
+- `standin-schema.md`: written for the suite; a stand-in reply with one finding on `schema/config.json` whose summary names `retryPolicy` in backticks.
 - `ledger-rejected.json`: written for the suite; a ledger after pass 1 holding the third `spike4d.json` finding as `rejected` with a reject reason.
 
 # The seeded repository

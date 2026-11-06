@@ -570,10 +570,10 @@ function run(verb, request, c) {
 }
 
 // The startup notice: one systemMessage line when listed repositories leave the entries stale. It uses the remotes the list
-// records, runs no config check, and prints nothing for any other state or any error. A print-mode session, which the host
-// marks with the sdk-cli entry point, gets no check.
+// records, runs no config check, and prints nothing for any other state or any error. A session no one attends, which the host
+// marks with that flag, gets no check.
 function sessionStart(c) {
-  if (c.env.CLAUDE_CODE_ENTRYPOINT === 'sdk-cli') return [];
+  if (c.env.CLAUDE_CODE_SESSION_ATTENDED === '0') return [];
   const { list } = locate(c.env, c.home);
   if (!parseList(list, readFile(list), c.platform).length) return [];
   const r = inspect({ ...c, recorded: true, timeout: 20000 }, null, false);

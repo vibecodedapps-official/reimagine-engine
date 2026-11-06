@@ -119,7 +119,7 @@ test('R291: the reading block is one fenced block of five lines in a fixed order
 test('R291, R305 and R313: the reviewer model is passed to the child session and named on the Engine line', () => {
   const pass = holds('steps/1-pass.md',
     'claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json',
-    "`<reviewer>` is the reviewer's model on the reading block's Engine line, `models.reviewer` (default `opus`); always pass it, since a child session without `--model` takes the model its settings files set, not the session's.",
+    "`<reviewer>` is `models.reviewer` of the configuration of the repository the target runs in (default `opus`), the model the Engine line names; always pass it, since a child session without `--model` takes the model its settings files set, not the session's.",
     'Never a second retry, and never a child session run again at another `--model`.');
   assert.ok(!pass.includes('never a `--model` flag'), 'steps/1-pass.md still bars a --model flag');
   assert.ok(fencedLines(pass).some((l) => l.includes('claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json')), 'the fenced command lacks --model <reviewer>');
@@ -586,7 +586,8 @@ test('R300: the snapshot items read each path from a status line unquoted and ta
 test('R306 and R307: a usage limit is an infrastructure failure, and each limited group gets one stand-in review', () => {
   holds('steps/1-pass.md',
     'a `usage limit` line, which is an infrastructure failure',
-    'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer`, for that group only, without moving the run to the stand-in',
+    'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer`, or at `sonnet` when that model is `models.reviewer`, or at `opus` when both are `sonnet`, since a retry on the model that met the limit meets it again, for that group only, without moving the run to the stand-in',
+    'or at `sonnet` when that model is `models.reviewer`, or at `opus` when both are `sonnet`',
     'Never a second retry, and never a child session run again at another `--model`.',
     'a later run resumes the pass');
 });
@@ -597,7 +598,7 @@ test('R306 and R307: the stand-in retries of limited groups run in parallel besi
 
 test('R306: Step 1.6 ends the candidate list with entries on other files that share an identifier and matches them the same way', () => {
   holds('steps/1-pass.md',
-    'then the entries on other files that share an identifier with the finding, a backticked name or a camelCase or snake_case word, each naming its `file` and the identifiers it `shared`',
+    'then the entries on other files that share an identifier with the finding, a camelCase or snake_case word or a backticked name that holds a character other than a letter, a digit or a space, each naming its `file` and the identifiers it `shared`',
     'a match to an entry on another file is written the same way');
 });
 

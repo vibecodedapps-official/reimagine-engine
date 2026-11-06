@@ -597,6 +597,20 @@ describe('the ledger across passes', { concurrency }, () => {
     assert.deepEqual(succeeded(await run(other, '3', 'findings.json', 'reply.md')).findings.map((f) => f.candidates), [[]]);
   });
 
+  test('a backticked null and a capitalized product name in a settled entry on another file are not shared; its backticked camelCase name is', async () => {
+    const entry = { file: 'src/remote.mjs', summary: 'Reads `null` for a GitHub remote, and `candidatesFor` skips it.', first_pass: 1, state: 'deferred', passes: { 1: { line: 8, bucket: 'defer', reason: 'r', prior: null } } };
+    const ledger = { findings: { 'src/remote.mjs|reads null for a github remote': entry } };
+    const replyFor = (summary) => '```json\n[{"file": "src/url.mjs", "line": 20, "summary": ' + JSON.stringify(summary) + ', "failure_scenario": "x"}]\n```\n';
+
+    const plain = kase([], { 'findings.json': text(ledger), 'reply.md': replyFor('parseRemote returns `null` for a GitHub URL with a trailing slash') });
+    assert.deepEqual(succeeded(await run(plain, '2', 'findings.json', 'reply.md')).findings.map((f) => f.candidates), [[]]);
+
+    const named = kase([], { 'findings.json': text(ledger), 'reply.md': replyFor('candidatesFor drops a settled entry whose line is missing') });
+    assert.deepEqual(succeeded(await run(named, '2', 'findings.json', 'reply.md')).findings.map((f) => f.candidates), [
+      [{ id: 'src/remote.mjs|reads null for a github remote', state: 'deferred', line: 8, distance: null, file: 'src/remote.mjs', shared: ['candidatesFor'] }],
+    ]);
+  });
+
   test('cross-file candidates follow the same-file ones, sort by id and list the sorted shared identifiers; a short name and an entry in the open state are left out', async () => {
     const entry = (file, summary, state, passes) => ({ file, summary, first_pass: 1, state, passes });
     const p = (line) => ({ 1: { line, bucket: 'defer', reason: 'r', prior: null } });

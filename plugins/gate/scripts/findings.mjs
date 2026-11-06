@@ -110,13 +110,14 @@ const latestLine = (entry) => {
   return isObject(pass) && pass.line !== undefined ? pass.line : null;
 };
 
-// The key identifiers of a raw summary: the trimmed content of each backticked span and each camelCase, PascalCase or
-// snake_case word (a lowercase letter or digit directly before a capital, so not `JSON`), those of 3 characters or more.
-const CAMEL = /^(?=[A-Za-z])[A-Za-z0-9]*[a-z0-9][A-Z][A-Za-z0-9]*$/;
+// The key identifiers of a raw summary, of 3 characters or more: each camelCase (a lowercase start, a capital inside) or
+// snake_case word, and the trimmed content of each backticked span that is such a word or holds a character other than a
+// letter, a digit or a space (so not `null` or GitHub).
+const CAMEL = /^[a-z][A-Za-z0-9]*[A-Z][A-Za-z0-9]*$/;
 const SNAKE = /^[A-Za-z0-9]+(_[A-Za-z0-9]+)+$/;
 const identifiers = (summary) => {
   if (typeof summary !== 'string') return new Set();
-  const spans = [...summary.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim());
+  const spans = [...summary.matchAll(/`([^`]+)`/g)].map((m) => m[1].trim()).filter((s) => CAMEL.test(s) || SNAKE.test(s) || /[^A-Za-z0-9 ]/.test(s));
   const words = summary.split(/[^A-Za-z0-9_]+/).filter((w) => CAMEL.test(w) || SNAKE.test(w));
   return new Set([...spans, ...words].filter((s) => s.length >= 3));
 };

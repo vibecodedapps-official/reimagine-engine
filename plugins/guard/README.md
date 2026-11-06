@@ -33,11 +33,16 @@ Run `/guard` (also reachable as `/guard:guard`). Each change is shown as a plan,
 - `/guard clear`: take every repository off the list.
 - `/guard list`: show the listed repositories.
 - `/guard status`: show the state: `absent`, `current`, `stale`, `edited`, `malformed`, `managed` or `unavailable`.
+- `/guard denials`: show the denials the hook recorded.
 - `/guard`: refresh the entries after the host or a remote changed.
 
 Only `absent`, `current` and `stale` lead to a write, and `current` leads to none. `malformed` means the settings file is not a JSON object, holds `autoMode` twice, or holds an `autoMode` whose `environment` or `allow` is not a list of strings. `managed` means another settings scope already adds entries that the list would duplicate. `unavailable` means `claude` cannot run or prints defaults guard cannot use.
 
 Before it saves a plan, the script writes the candidate `autoMode` to a temporary configuration directory and runs `claude auto-mode config` there. Every guard entry must appear once, no environment label may appear twice, and every default allow rule must be kept. A plan that fails the check is refused. After the write it runs the check again for your real directory.
+
+## The denial record
+
+Guard ships one hook, which runs when auto mode denies a tool call. It appends one line to `denials.jsonl` in the plugin data directory, created readable by you only: the time in UTC, the reason the classifier gave, which names the matched rule, the tool, the cwd, and the command cut at 300 characters for a Bash or PowerShell call or the file path for another tool that has one; a command is recorded as written, so it holds whatever was typed in it. It never records the rest of the tool input, file contents or command output. The file stays on your machine, and the hook prints nothing and never blocks or retries the call. `/guard denials` prints the lines, oldest first, so you can see which denials the entries do not clear. Delete the file to clear the record.
 
 ## The list file
 

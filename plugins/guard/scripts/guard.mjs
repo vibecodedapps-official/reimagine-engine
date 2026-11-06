@@ -5,9 +5,11 @@
 //   list     print the repositories in the list
 //   plan     show the change and save it; takes --add <path> [--merge], --drop <path or remote> or --clear
 //   apply    write the saved change (a backup first), then check the host's effective configuration
+//   denials  print the classifier denials the PermissionDenied hook recorded
+//   denied   the hook itself: reads a hook input on stdin and appends one line to the denials file
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -16,7 +18,8 @@ export const MARK = ' (reimagine guard)';
 const PLAN_FILE = 'guard-plan.json';
 const STATE_FILE = 'guard-state.json';
 const LIST_FILE = 'reimagine-guard.json';
-const VERBS = ['status', 'list', 'plan', 'apply'];
+const VERBS = ['status', 'list', 'plan', 'apply', 'denials'];
+const DENIALS_FILE = 'denials.jsonl';
 const LISTS = ['environment', 'allow', 'soft_deny', 'hard_deny'];
 const FORMS = 'plan takes one of --add <path> [--merge], --drop <path or remote> or --clear; nothing else is accepted';
 const GUARD_LABELS = [['trusted repo', 'Trusted repo'], ['source control', 'Source control']];
@@ -443,6 +446,27 @@ function body(c, t, request, deep, r) {
   r.plan = { path: t.path, before: sha(file.text), after, listPath: t.list, listBefore: sha(list.text), listAfter, written: res.written, copied: res.copied, created, candidate: res.auto ?? null };
 }
 
+// The line a denial hook input becomes: what was denied and why; never the tool input whole.
+function denial(input, now) {
+  const text = (v) => (typeof v === 'string' ? v : '');
+  const tool = text(input.tool_name), args = input.tool_input ?? {};
+  const target = tool === 'Bash' || tool === 'PowerShell' ? { command: text(args.command).slice(0, 300) } : typeof args.file_path === 'string' ? { path: args.file_path } : {};
+  return { time: now.toISOString(), reason: text(input.reason), tool, ...target, cwd: text(input.cwd) };
+}
+
+function listDenials(dataDir) {
+  const path = join(dataDir, DENIALS_FILE);
+  const entries = (readFile(path).text ?? '').split('\n').flatMap((l) => {
+    try { const e = JSON.parse(l); return e && typeof e === 'object' && !Array.isArray(e) ? [e] : []; } catch { return []; }
+  });
+  if (!entries.length) return [`denials: none recorded in ${path}`];
+  const flat = (v) => String(v ?? '').replace(/\s+/g, ' ');
+  return [`denials: ${path} (${entries.length} recorded)`, ...entries.map((e) => {
+    const what = e.command ?? e.path;
+    return `${flat(e.time)} ${flat(e.tool)} ${flat(e.reason)}${what === undefined ? '' : `: ${flat(what)}`} (${flat(e.cwd)})`;
+  })];
+}
+
 // Each step but status and list changes the shared plan and state files, so steps take turns through a lock directory.
 function locked(dataDir, fn) {
   const lock = join(dataDir, 'guard.lock');
@@ -522,6 +546,7 @@ function applyPlan(c) {
 
 function run(verb, request, c) {
   if (verb === 'apply') return applyPlan(c);
+  if (verb === 'denials') return listDenials(c.dataDir);
   if (verb === 'list') {
     let repos;
     try { const { list } = locate(c.env, c.home); repos = parseList(list, readFile(list), c.platform); } catch (e) { if (e instanceof Stop) refuse(e.note); throw e; }
@@ -538,9 +563,19 @@ function run(verb, request, c) {
 }
 
 // Returns the output lines. A refusal throws.
-export function main(argv, { env = process.env, platform = process.platform, now = new Date(), home = homedir(), cwd = process.cwd(), claude = runClaude } = {}) {
+export function main(argv, { env = process.env, platform = process.platform, now = new Date(), home = homedir(), cwd = process.cwd(), claude = runClaude, stdin = () => readFileSync(0, 'utf8') } = {}) {
   const [verb, dataDir, ...rest] = argv;
-  if (!VERBS.includes(verb)) refuse(`unknown command ${verb}; use status, list, plan or apply`);
+  if (verb === 'denied') {
+    try {
+      const input = JSON.parse(stdin());
+      if (input && typeof input === 'object' && !Array.isArray(input)) {
+        mkdirSync(dataDir, { recursive: true });
+        appendFileSync(join(dataDir, DENIALS_FILE), `${JSON.stringify(denial(input, now))}\n`, { mode: 0o600 });
+      }
+    } catch {}
+    return [];
+  }
+  if (!VERBS.includes(verb)) refuse(`unknown command ${verb}; use status, list, plan, apply or denials`);
   if (!dataDir) refuse('the data directory argument is missing');
   const request = parseRequest(verb, rest);
   const step = () => run(verb, request, { env, platform, now, home, cwd, claude, dataDir });

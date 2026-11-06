@@ -33,6 +33,7 @@ const STYLE = 'plugins/rules/output-styles/concise-plain.md';
 const CHAT = 'plugins/rules/chat/instructions.md';
 const RULES_HOOKS = 'plugins/rules/hooks/hooks.json';
 const PRIMER_HOOKS = 'plugins/primer/hooks/hooks.json';
+const GUARD_HOOKS = 'plugins/guard/hooks/hooks.json';
 const MERGER = 'plugins/audit/agents/merger.md';
 const CONVERGE = 'plugins/audit/skills/audit/stages/7-converge.md';
 const AUDIT_MANIFEST = 'plugins/audit/.claude-plugin/plugin.json';
@@ -46,7 +47,7 @@ const EXECUTABLES = [
   'plugins/gate/scripts/next.mjs',
   'plugins/guard/scripts/guard.mjs',
 ];
-const GUARD_RUNS = ['status', 'list', 'plan'].map((verb) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" ${verb} *)`);
+const GUARD_RUNS = ['status', 'list', 'plan', 'denials'].map((verb) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" ${verb} *)`);
 const EXECUTABLE_EXTENSIONS = ['.sh', '.mjs', '.js', '.cjs', '.py', '.ps1', '.bat', '.cmd', '.exe'];
 const PLUGIN_TOP = ['.claude-plugin', 'skills', 'commands', 'agents', 'hooks', 'scripts', 'output-styles', 'rules', 'chat', 'README.md', 'LICENSE'];
 const GITATTRIBUTES = ['* text=auto eol=lf', '*.sh text eol=lf', '*.mjs text eol=lf', '*.md text eol=lf'];
@@ -60,6 +61,9 @@ const FENCE = /^\s*```/;
 
 const ROOT_HOOKS = {
   hooks: { SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/rules.mjs', 'session-start', '${CLAUDE_PLUGIN_DATA}'] }] }] },
+};
+const GUARD_HOOK = {
+  hooks: { PermissionDenied: [{ hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs', 'denied', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] }] },
 };
 const PRIMER_HOOK = {
   hooks: {
@@ -351,7 +355,7 @@ function skillFailures(ctx) {
   if (guardFm.get('name') !== 'guard') out.push(`${GUARD_SKILL}: frontmatter name is ${guardFm.get('name') || 'missing'}, not guard`);
   if (guardFm.get('disable-model-invocation') !== 'true') out.push(`${GUARD_SKILL}: frontmatter lacks disable-model-invocation: true`);
   for (const entry of listEntries(guardFm.get('allowed-tools'))) {
-    if (!GUARD_RUNS.includes(entry)) out.push(`${GUARD_SKILL}: allowed-tools entry ${entry} is not a status, list or plan run of guard.mjs`);
+    if (!GUARD_RUNS.includes(entry)) out.push(`${GUARD_SKILL}: allowed-tools entry ${entry} is not a status, list, plan or denials run of guard.mjs`);
   }
 
   const loop = ctx.text(LOOP_SKILL);
@@ -411,10 +415,11 @@ function hookFailures(ctx) {
   const out = [];
   if (!same(ctx.json(RULES_HOOKS), ROOT_HOOKS)) out.push(`${RULES_HOOKS}: not the SessionStart startup shape`);
   if (!same(ctx.json(PRIMER_HOOKS), PRIMER_HOOK)) out.push(`${PRIMER_HOOKS}: not the PreToolUse Bash|PowerShell and SessionStart startup shape`);
+  if (!same(ctx.json(GUARD_HOOKS), GUARD_HOOK)) out.push(`${GUARD_HOOKS}: not the PermissionDenied shape`);
   const manifests = new Map(ctx.plugins.map((p) => [p.path, p.manifest]));
-  const message = (file) => `${file}: hooks outside ${RULES_HOOKS} and ${PRIMER_HOOKS}`;
+  const message = (file) => `${file}: hooks outside ${RULES_HOOKS}, ${PRIMER_HOOKS} and ${GUARD_HOOKS}`;
   for (const file of ctx.shipped) {
-    if (posix.basename(file) === 'hooks.json' && ![RULES_HOOKS, PRIMER_HOOKS].includes(file)) out.push(message(file));
+    if (posix.basename(file) === 'hooks.json' && ![RULES_HOOKS, PRIMER_HOOKS, GUARD_HOOKS].includes(file)) out.push(message(file));
     else if (manifests.get(file) && Object.hasOwn(manifests.get(file), 'hooks')) out.push(message(file));
   }
   return out;

@@ -241,3 +241,14 @@ test('R63: code-review covers a primary that is the session checkout, and the st
   assert.ok(!report.includes('(the skill not listed, a worktree, an additional repository)'));
   assert.ok(report.includes("(the skill not listed, a primary that is not the session's checkout, an additional repository)"));
 });
+
+test('R69: risk.md asks whether a read-only companion of a data change reads the rows the write touches', () => {
+  const text = section(RISK, 'Risk floor');
+  assert.notEqual(text, null, 'risk.md has no Risk floor section');
+  assert.ok(text.includes('For a schema, migration or data access change, check that every read-only companion of it, such as a listing kept as its rollback record, reads the same rows the write touches.'));
+  assert.equal(text.split('\n').filter((line) => /^\d+\. /.test(line)).length, 6);
+});
+
+test('R66: the reviewer request asks the plan reviewer to check the read-only companions of a data change', () => {
+  assert.ok(PLAN.includes('- For every data change in the plan, the ask to confirm that each read-only companion of it, such as a listing kept as its rollback record, reads the same rows the write touches.'));
+});

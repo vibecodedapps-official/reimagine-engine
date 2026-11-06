@@ -635,3 +635,9 @@ test('R299 and R313: a reader role at models.reader returns evidence per finding
   assert.ok(README.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'README.md lacks the reader under models');
   holds('report.md', 'each reader call');
 });
+
+test('R300: before staging, the commit compares the changed paths with the groups\' files and restores a path a check rewrote', () => {
+  holds('steps/2-fix.md',
+    'Before staging, run `git status --porcelain --untracked-files=all` again and compare its paths with the groups\' files',
+    'a path outside every group\'s files, such as a file a check regenerated, is restored as Snapshots, item 4, restores a path and named in the report, and only then are the fix round\'s paths staged');
+});

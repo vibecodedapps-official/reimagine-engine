@@ -867,6 +867,17 @@ if [ -f "$f" ]; then
 		fail "$f: the commit step still drops a trailer that names a model"
 fi
 
+# Coverage lists stages 1 to 7 with the checks each accepted, and stage 8's line is one
+# fixed sentence, since stage 8's own check runs after the report is hashed; the files
+# are read as one line.
+for f in skills/audit/report.md skills/audit/stages/8-report.md; do
+	if [ -f "$f" ]; then
+		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+		grep -qF 'Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.' "$tmp/list" ||
+			fail "$f: Coverage has no fixed stage 8 line"
+	fi
+done
+
 if [ "$fails" -gt 0 ]; then
 	exit 1
 fi

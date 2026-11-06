@@ -718,6 +718,12 @@ if [ -f "$f" ]; then
 		fail "$f: step 9 does not cap a group at 80 claims that name no file"
 	grep -qF "each scope's claim count and each move of step 9 rule 5" "$tmp/list" ||
 		fail "$f: the brief's Claims section does not record each scope's claim count and each move"
+	# A `file:` ticket's name in file names is its export's id, else the file's base name,
+	# slugged, so no name runs to the length of a path.
+	grep -qF "except for a \`file:\` ticket, whose \`<ticket>\` is the export's \`id\` slugged, else the file's base name without its extension slugged; the normalized id \`file:<path>\` stays the ticket's identity everywhere else" "$tmp/list" ||
+		fail "$f: 0d does not name the export's id or the base name as a file ticket's <ticket>"
+	grep -qF 'For example, `file:./exports/APP-1.md` with `id: APP-1` gives `app-1`.' "$tmp/list" ||
+		fail "$f: 0d does not give the file ticket slug example"
 fi
 # A resume whose first rerun stage is 4 or 5 because its entry is missing or running
 # keeps each finished scope output, and the stage launches no agent for it; each file is

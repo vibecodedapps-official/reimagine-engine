@@ -95,7 +95,10 @@ branch to it in the manifest."
         GitHub remote (`git -C <repo> remote -v`); otherwise stop with
         `<id>: write it as github:owner/repo#n or file:<path>`, and add that a ticket
         on another forge comes in as a `file:` export. `<ticket>` in file names is the
-        id slugged.
+        id slugged, except for a `file:` ticket, whose `<ticket>` is the export's `id`
+        slugged, else the file's base name without its extension slugged; the
+        normalized id `file:<path>` stays the ticket's identity everywhere else. For
+        example, `file:./exports/APP-1.md` with `id: APP-1` gives `app-1`.
       - `<host>` of each GitHub id, the pull request first, then its tickets: the host
         of its URL when it was given as one; else the host of the bundle repository's
         fetch remote that names that owner and repository (`origin`'s when such remotes

@@ -1562,6 +1562,24 @@ Work items, in this order, except that items 2 and 3 ran side by side, one commi
 
 Check: the area script of each commit before and after it (`npm run test:gate`, `test:audit`, `test:loop`, `test:guard`, `test:primer`, `test:rules`, `test:lint`); `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Gate and guard feedback of 2026-11-06: M77
+
+Added 2026-11-06. Issues 124 to 126, decisions 205 to 207, and requirements 291, 305, 306, 307, 311, 313 and 341 as those decisions amend them: the reviewer's model and the plain words of the cross-file candidates in gate 0.1.9, and the startup check of a print-mode session in guard 0.1.2. M77 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/gate/`, `plugins/guard/`, `tests/gate/` and `tests/guard/`. Tags wait for the owner's merge.
+
+### M77: the fixes
+
+Work items, in this order, except that the gate's items and the guard's item of 2 may run side by side, one commit per issue:
+
+1. This section. Commit: `docs(build-plan): add m77 for the gate and guard feedback of 2026-11-06`.
+2. The script defects, each test seen failing against the base script first: `findings.mjs`, then `guard.mjs`, after a check, run and recorded before any design, of whether `claude auto-mode defaults` fires the `SessionStart` hooks itself. Commits: `fix(gate): offer a cross-file candidate only for a name that looks like code` (#125) and `fix(guard): run no startup check in a print-mode session` (#126).
+3. The skill and README text with its text test, seen failing first. Commit: `feat(gate): run each child review at models.reviewer and name it before the first review` (#124).
+4. The design documents. Commit: `docs(design): record the gate and guard feedback of 2026-11-06`.
+5. `node tools/release.mjs` for gate 0.1.9 and guard 0.1.2, with the catalog `metadata.version` raised to 0.1.49 and 0.1.50. Commits: `release(gate): 0.1.9` and `release(guard): 0.1.2`.
+6. The gate on the branch, its fixes committed on the branch.
+7. After the merge, by the owner: the two changelog headings, the release acceptance items 2 and 5 for each plugin, the tags after a yes, then item 21 on the merge commit.
+
+Check: the area script of each commit before and after it (`npm run test:gate`, `test:guard`, `test:release`, `test:lint`); `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

@@ -42,7 +42,7 @@ Before it saves a plan, the script writes the candidate `autoMode` to a temporar
 
 ## The startup notice
 
-When a session starts, a hook checks the entries against Claude Code's current defaults and prints one line when they are stale, such as after a host release reworded a default line: `guard: the auto mode entries in [path] are stale; run /guard to update them`. It prints nothing when no repository is listed, for any other state, and when `claude` cannot run. It uses the remotes the list records, so a remote that changed on disk shows up at the next `/guard`. It runs `claude auto-mode defaults` with a 20-second limit, and writes nothing.
+When a session starts, a hook checks the entries against Claude Code's current defaults and prints one line when they are stale, such as after a host release reworded a default line: `guard: the auto mode entries in [path] are stale; run /guard to update them`. It prints nothing when no repository is listed, for any other state, and when `claude` cannot run, and it checks nothing in a `claude -p` session, which has no one to show the line to. It uses the remotes the list records, so a remote that changed on disk shows up at the next `/guard`. It runs `claude auto-mode defaults` with a 20-second limit, and writes nothing.
 
 ## The denial record
 

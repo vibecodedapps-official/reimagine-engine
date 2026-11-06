@@ -46,7 +46,7 @@ function world({ configEnv = true } = {}) {
   const gitConfig = join(dir, 'empty.gitconfig');
   writeFileSync(gitConfig, '');
   w.env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: gitConfig, GIT_CEILING_DIRECTORIES: dir };
-  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'CLAUDE_CONFIG_DIR']) delete w.env[k];
+  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'CLAUDE_CONFIG_DIR', 'CLAUDE_CODE_SESSION_ATTENDED', 'CLAUDE_CODE_ENTRYPOINT']) delete w.env[k];
   if (configEnv) w.env.CLAUDE_CONFIG_DIR = w.config;
   w.settings = join(configEnv ? w.config : join(w.home, '.claude'), 'settings.json');
   w.list = join(configEnv ? w.config : join(w.home, '.claude'), 'reimagine-guard.json');
@@ -941,6 +941,31 @@ test('R341: session-start prints one systemMessage line when a copied default li
   assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: the auto mode entries in ${w.settings} are stale; run /guard to update them` });
   assert.deepEqual(timeouts, [20000]);
   assert.equal(w.calls.at(-1), 'auto-mode defaults @ real');
+});
+
+test('R341: session-start prints nothing and runs no claude when no one attends the session', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  w.stand.defaults = { ...structuredClone(FIX), environment: [ORG, '**Repository visibility**: Treat every repository as public.', TRUSTED, SOURCE, DOMAINS] };
+  const calls = [];
+  const claude = (args, d, timeout) => { calls.push(args); return w.claude(args, d, timeout); };
+  const start = (attended, entrypoint) => {
+    const env = { ...w.env, CLAUDE_CODE_ENTRYPOINT: entrypoint };
+    if (attended !== undefined) env.CLAUDE_CODE_SESSION_ATTENDED = attended;
+    return main(['session-start', w.data], { env, now: w.now, home: w.home, cwd: w.work, claude });
+  };
+  assert.deepEqual(start('0', 'sdk-cli'), []);
+  assert.deepEqual(start('0', 'claude-desktop'), []);
+  assert.deepEqual(calls, []);
+  const unset = start(undefined, 'sdk-cli');
+  assert.equal(unset.length, 1);
+  assert.deepEqual(JSON.parse(unset[0]), { systemMessage: `guard: the auto mode entries in ${w.settings} are stale; run /guard to update them` });
+  assert.ok(calls.length > 0);
+  calls.length = 0;
+  const lines = start('1', 'cli');
+  assert.equal(lines.length, 1);
+  assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: the auto mode entries in ${w.settings} are stale; run /guard to update them` });
+  assert.ok(calls.length > 0);
 });
 
 test('R341: session-start uses the remotes the list records, runs no config check and writes nothing', () => {

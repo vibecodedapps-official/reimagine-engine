@@ -80,7 +80,7 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   assert.notEqual(readme, undefined, 'README.md has no json block');
   assert.equal(skill.lines.join('\n'), readme.lines.join('\n'));
   assert.deepEqual(JSON.parse(skill.lines.join('\n')), {
-    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', 'fallback-reviewer': 'opus' } },
+    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', reviewer: 'opus', 'fallback-reviewer': 'opus' } },
   });
 });
 
@@ -114,6 +114,21 @@ test('R291: the reading block is one fenced block of five lines in a fixed order
   assert.equal(block.lines.length, 5);
   const heads = ['Targets: ', 'Mode: ', 'Budget: ', 'Engine: ', 'Scripts: '];
   block.lines.forEach((line, i) => assert.ok(line.startsWith(heads[i]), `line ${i + 1} does not start with ${heads[i]}`));
+});
+
+test('R291, R305 and R313: the reviewer model is passed to the child session and named on the Engine line', () => {
+  const pass = holds('steps/1-pass.md',
+    'claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json',
+    "`<reviewer>` is `gate.models.reviewer` of the configuration of the repository the target runs in (default `opus`), never the root `models` key, which is the loop's; always pass it, since a child session without `--model` takes the model its settings files set, not the session's.",
+    'Never a second retry, and never a child session run again at another `--model`.',
+    'When the word after `Engine:` on the reading block\'s Engine line is `stand-in`, or an earlier review of this run chose it, skip to 1.4.');
+  assert.ok(!pass.includes('the model the Engine line names'), 'steps/1-pass.md still defines <reviewer> by the Engine line');
+  assert.ok(!pass.includes('never a `--model` flag'), 'steps/1-pass.md still bars a --model flag');
+  assert.ok(fencedLines(pass).some((l) => l.includes('claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json')), 'the fenced command lacks --model <reviewer>');
+  const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
+  assert.notEqual(block, undefined, 'SKILL.md has no reading block');
+  assert.equal(block.lines.find((l) => l.startsWith('Engine: ')), 'Engine: subprocess; reviewer opus, stand-in opus (default)');
+  assert.ok(SKILL.includes("Engine is `subprocess`, or the stand-in with the reason for it, then the reviewer's model (`models.reviewer`) and the stand-in's (`models.fallback-reviewer`), each with its source when it is not the default, and for a manifest whose bundles' repositories set different models, the models of each such repository after its path, so the run names the model each child review starts on before the first review starts."), 'SKILL.md does not describe the Engine line');
 });
 
 test('R289 and R300: the checks phrase is in both grammar lists and ends where another phrase starts', () => {
@@ -341,7 +356,7 @@ test('R310: Step 0 writes passes.json and the run entry, then sends the run to p
 const fencedLines = (text) => fences(text).flatMap((b) => b.lines);
 
 const COMMAND =
-  'cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
+  'cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
 
 test('R305: Step 1 holds the child session command as one fenced line', () => {
   holds('SKILL.md', 'In every command the skill and its step files show, a placeholder for a path, such as `<path>`, `<repo>`, `<repo root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.');
@@ -573,9 +588,14 @@ test('R300: the snapshot items read each path from a status line unquoted and ta
 test('R306 and R307: a usage limit is an infrastructure failure, and each limited group gets one stand-in review', () => {
   holds('steps/1-pass.md',
     'a `usage limit` line, which is an infrastructure failure',
-    'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer`, for that group only, without moving the run to the stand-in',
-    'Never a second retry, and never a `--model` flag',
+    'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer` when it differs from `models.reviewer`, else at `sonnet`, or at `opus` when `models.reviewer` is `sonnet`, since a retry on the model that met the limit meets it again, for that group only, without moving the run to the stand-in',
+    'else at `sonnet`, or at `opus` when `models.reviewer` is `sonnet`',
+    'Call an Agent at `models.fallback-reviewer` (default `opus`), or for a group that met a usage limit at the model 1.5 item 2 names,',
+    'Never a second retry, and never a child session run again at another `--model`.',
+    "or for a stand-in's reply the one model it was called at, as item 3 says",
+    'the three numbers `null` and `models` the one model the stand-in was called at, as `["<model>"]`, for a stand-in\'s text.',
     'a later run resumes the pass');
+  holds('record.md', 'for a stand-in\'s text, which names no models, the one model the stand-in was called at, and `null` for a child session result without `modelUsage`.');
 });
 
 test('R306 and R307: the stand-in retries of limited groups run in parallel beside a sleep of the review budget, and one still running is a failed review', () => {
@@ -584,7 +604,7 @@ test('R306 and R307: the stand-in retries of limited groups run in parallel besi
 
 test('R306: Step 1.6 ends the candidate list with entries on other files that share an identifier and matches them the same way', () => {
   holds('steps/1-pass.md',
-    'then the entries on other files that share an identifier with the finding, a backticked name or a camelCase or snake_case word, each naming its `file` and the identifiers it `shared`',
+    'then the entries on other files that share an identifier with the finding, a camelCase or snake_case word or a backticked name that holds a character other than a letter, a digit or a space, each naming its `file` and the identifiers it `shared`',
     'a match to an entry on another file is written the same way');
 });
 
@@ -636,9 +656,10 @@ test('R299 and R313: a reader role at models.reader returns evidence per finding
     'reads the cited code itself for every finding it puts in `fix` and every `unsure`',
     'A failed reader call is retried once; then the orchestrator reads that batch itself.');
   assert.ok(SKILL.includes('| reader |'), 'SKILL.md Roles table has no reader row');
-  assert.ok(SKILL.includes('changes the implementer, the reader and the stand-in reviewer'), 'SKILL.md does not name the reader under models');
-  assert.ok(SKILL.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'SKILL.md models bullet lacks the reader');
-  assert.ok(README.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'README.md lacks the reader under models');
+  assert.ok(SKILL.includes('changes the reviewer, the implementer, the reader and the stand-in reviewer'), 'SKILL.md does not name the reader under models');
+  assert.ok(SKILL.includes('the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer'), 'SKILL.md models bullet lacks the reader');
+  assert.ok(README.includes('the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer'), 'README.md lacks the reader under models');
+  assert.ok(README.includes('Each child review runs at `models.reviewer`, `opus` unless the key says otherwise, in place of the model your settings choose, and the reading block names it before the first review starts.'), 'README.md does not say the reviewer model replaces the settings model');
   holds('report.md', 'each reader call');
 });
 

@@ -68,11 +68,11 @@ Make only the read-only calls that resolve the targets and the engine: `git remo
 Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-retry, base main
 Mode: fix
 Budget: 120 minutes (default); max-passes 4; split 1500; subagent 20, review 30, check 15 minutes (default)
-Engine: subprocess
+Engine: subprocess; reviewer opus, stand-in opus (default)
 Scripts: <the plugin's directory>/scripts
 ```
 
-Targets lists each pull request or branch, how it resolved and its base; a branch target named by "repo <path>" shows its resolved toplevel. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`, then the subagent, review and check budgets in force, each with its source (`gate.timeouts`, root `timeouts`) when it is not the default. Engine is `subprocess`, or the stand-in with the reason for it. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored; the block reads the configuration of the repository the target runs in, which for "repo <path>" is `<path>`'s `.reimagine.json`.
+Targets lists each pull request or branch, how it resolved and its base; a branch target named by "repo <path>" shows its resolved toplevel. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes` and `split`, then the subagent, review and check budgets in force, each with its source (`gate.timeouts`, root `timeouts`) when it is not the default. Engine is `subprocess`, or the stand-in with the reason for it, then the reviewer's model (`models.reviewer`) and the stand-in's (`models.fallback-reviewer`), each with its source when it is not the default, and for a manifest whose bundles' repositories set different models, the models of each such repository after its path, so the run names the model each child review starts on before the first review starts. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored; the block reads the configuration of the repository the target runs in, which for "repo <path>" is `<path>`'s `.reimagine.json`.
 
 A target that cannot be resolved gets one line in the block and the run continues with the others. When none is left, the run ends `stopped`.
 
@@ -92,11 +92,11 @@ Invoking this skill by name approves, for this run only: fix commits on each tar
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group, a group still over `split` being grouped again one segment deeper, and groups under one fifth of `split` merged, at most 6 at once | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing, and stays for the run; also, once, for each group whose child stopped on a usage limit, for that group alone |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json`, at `models.reviewer` (default `opus`), one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group, a group still over `split` being grouped again one segment deeper, and groups under one fifth of `split` merged, at most 6 at once | an Agent at `opus` (`models.fallback-reviewer`) over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing, and stays for the run; also, once, for each group whose child stopped on a usage limit, for that group alone, on another model than the reviewer's |
 | reader | read-only Agents at `sonnet` (`models.reader`), when a pass has more than 30 findings whose bucket is `null`: one per batch of at most 40, in parallel, returning evidence per finding and never a bucket | a failed call is retried once; then the orchestrator reads that batch itself |
 | implementer | an Agent at `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
-The `models` key of the configuration changes the implementer, the reader and the stand-in reviewer. The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was; the report says so in one line.
+The `models` key of the configuration changes the reviewer, the implementer, the reader and the stand-in reviewer. The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was; the report says so in one line.
 
 ## Levels and caps
 
@@ -132,7 +132,7 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
     "max-passes": 4,
     "budget": 120,
     "timeouts": { "subagent": 20, "review": 30, "check": 15 },
-    "models": { "implementer": "sonnet", "reader": "sonnet", "fallback-reviewer": "opus" }
+    "models": { "implementer": "sonnet", "reader": "sonnet", "reviewer": "opus", "fallback-reviewer": "opus" }
   }
 }
 ```
@@ -141,7 +141,7 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
 - `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them. A key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default.
-- `models`: the model of the implementer, of the reader and of the stand-in reviewer.
+- `models`: the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer.
 
 `split`, `max-passes` and `budget` are whole numbers of 1 or more. `timeouts` holds positive numbers. `models` accepts only `sonnet`, `opus`, `haiku` and `fable`. An unknown key or a bad value is reported in the reading block and ignored. A file that does not parse ends `blocked`. The root `base` key applies as Reading the request says.
 

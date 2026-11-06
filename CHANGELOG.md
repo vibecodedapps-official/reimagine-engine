@@ -2,6 +2,46 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.23 - 2026-11-06
+
+- The refactor skill says to run its `git` reads with the Bash tool, which its `allowed-tools` pre-approve, since the skill named no tool and a Windows session could take another shell tool and prompt on each read.
+
+## primer 0.1.7 - 2026-11-06
+
+- The drift hook sets `"onFailure": "continue"`, so a shell call goes ahead when the hook cannot run, since a shell-form hook that fails on Windows without Git Bash with the field unset can block every shell call.
+
+## guard 0.1.1 - 2026-11-06
+
+- On Windows, a `claude` that only an npm `claude.cmd` shim provides is run through `cmd.exe` by the full path of the first shim on the PATH, quotes removed, since `execFileSync` cannot start a `.cmd` file and every call failed with `ENOENT`, and `cmd.exe` looks for a bare name in the current folder before the PATH.
+- A `PermissionDenied` hook appends each classifier denial to `denials.jsonl` in the plugin data directory, with the time, the reason, the tool, the cwd and the command cut at 300 characters or the file path, never file contents or output, and `/guard denials` prints the record, since nothing showed whether the entries clear the denials they were written for. An unreadable record prints one refusal line, not a stack trace.
+- A `SessionStart` hook prints one line when the entries are stale against the host's current defaults, since a host release that reworded a default line left them behind until the user happened to run `/guard`.
+
+## loop 0.1.16 - 2026-11-06
+
+- The risk floor and the plan review ask whether every read-only companion of a schema, migration or data access change reads the rows the write touches, since a repair across every tenant kept a rollback listing that saw only one and only the final review caught it.
+- The publish step writes the body file first and runs the post as its own command, since runs combined the two into one compound command, the form the classifier denied.
+
+## audit 0.1.15 - 2026-11-06
+
+- A branch that moved while another worktree has it checked out is a judged `local-branch` pair with its config lines, an upstream change included, not a block, unless it is a bundle's branch or base, since refs are shared by every worktree and work in a sibling one blocked runs. A worktree whose folder is gone no longer counts, and a branch that did not move stays blocked.
+- Stage 8's Coverage line is one fixed sentence naming `baseline/8-check.md`, since its check runs after the report is hashed and a run invented a wording for it.
+- Section 3 names its cut by tier, since a run cut the Verified OK items in a form the template did not allow.
+- The run id's slug is the repository name with the pull request number or the branch, since the rule read two ways for a branch bundle and a lookup by a guessed id missed.
+- A `file:` ticket's slug is its export's `id`, since the slug of its absolute path made group ids as long as the path.
+- With `--live`, a finished run takes live results after a plugin update when nothing else changed, since an update made the only path a full rerun.
+
+## gate 0.1.8 - 2026-11-06
+
+- A child review that stopped on a usage limit is an infrastructure failure: `findings.mjs` reads every output and names each bad one, and a limited group gets one stand-in review, bounded by the review budget, before the pass fails, since the script stopped at the first bad output and the finished reviews of the pass were lost.
+- A new finding's candidates include settled entries on other files that share an identifier, since one design question sat in the ledger as three entries over two files.
+- A reviewer's notes keep the text after its fence, since every reviewer of one run wrote there and the record showed none.
+- A fix round that touched only documentation sends the run to `medium`, since each `high` pass over a design document found new minor wording and no run converged; a file the host loads as instructions is not documentation.
+- No pass starts with less run budget left than a pass needs, counted per six groups, since a pass that started at 113 of 120 minutes ran a full review and ended the run past its budget with its findings open.
+- A wide diff merges small sibling groups and runs at most six reviews at once, since a diff of many small directories gave 29 full reviews in one pass.
+- A triage of more than 30 findings uses read-only readers that return evidence, never a bucket, since a pass of 245 findings would have filled the orchestrator's context.
+- The fix round restores a file a check rewrote outside its groups before it stages, since a regenerated file went into a fix commit.
+- The publish step writes the comment file first and runs the post as its own command, for the classifier, as the loop's does.
+
 ## rules 0.1.22 - 2026-11-05
 
 - Concise Plain 4.12: an ask goes to whoever owns the decision, and a decision the team shares is put as the team's, never as the reader's because they are the reader, since a draft put a shared decision to two readers as theirs and a reply's ask went through four forms on the same slip.

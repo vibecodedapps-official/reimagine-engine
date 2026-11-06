@@ -943,6 +943,21 @@ test('R341: session-start prints one systemMessage line when a copied default li
   assert.equal(w.calls.at(-1), 'auto-mode defaults @ real');
 });
 
+test('R341: session-start prints nothing and runs no claude when the host entry point is sdk-cli', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  w.stand.defaults = { ...structuredClone(FIX), environment: [ORG, '**Repository visibility**: Treat every repository as public.', TRUSTED, SOURCE, DOMAINS] };
+  const calls = [];
+  const claude = (args, d, timeout) => { calls.push(args); return w.claude(args, d, timeout); };
+  const start = (entrypoint) => main(['session-start', w.data], { env: { ...w.env, CLAUDE_CODE_ENTRYPOINT: entrypoint }, now: w.now, home: w.home, cwd: w.work, claude });
+  assert.deepEqual(start('sdk-cli'), []);
+  assert.deepEqual(calls, []);
+  const lines = start('cli');
+  assert.equal(lines.length, 1);
+  assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: the auto mode entries in ${w.settings} are stale; run /guard to update them` });
+  assert.ok(calls.length > 0);
+});
+
 test('R341: session-start uses the remotes the list records, runs no config check and writes nothing', () => {
   const w = repoWorld();
   change(w, '--add', w.repo.path);

@@ -227,8 +227,12 @@ branch to it in the manifest."
       The audit never writes to `.git/info/exclude` or any file of a git directory.
 
    j. **Run id and run directory.** The id is `<YYYY-MM-DD-HHMM>-<slug>` in local time;
-      the slug is the first bundle's name and its pull request number (an export's
-      `id`), or else its branch, slugged, at most 40 characters, with no forge call. When
+      the slug is the first bundle's repository name, then its pull request number (an
+      export's `id`) for a pull request bundle, or its branch for a branch bundle, joined
+      with `-`, the whole slugged and cut at 40 characters, with no forge call. For
+      example, a pull request bundle of repository `app` and pull request 123 gives
+      `<YYYY-MM-DD-HHMM>-app-123`, and a branch bundle of repository `app` and branch
+      `feat/export` gives `<YYYY-MM-DD-HHMM>-app-feat-export`. When
       `${CLAUDE_PLUGIN_DATA}/runs.json` has the id or its directory exists, try `-2`,
       `-3`, and so on; 0j and 0m settle it. The run directory is
       `<scratch>/audit/<run-id>/`, one `audit` level below `<scratch>` even when

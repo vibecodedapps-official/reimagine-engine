@@ -725,6 +725,18 @@ if [ -f "$f" ]; then
 	grep -qF 'For example, `file:./exports/APP-1.md` with `id: APP-1` gives `app-1`.' "$tmp/list" ||
 		fail "$f: 0d does not give the file ticket slug example"
 fi
+# The run id's slug is the first bundle's repository name and then its pull request number
+# or its branch, with one worked example of each; each file is read as one line.
+for f in skills/audit/stages/1-orient.md skills/audit/SKILL.md; do
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "the slug is the first bundle's repository name, then its pull request number (an export's \`id\`) for a pull request bundle, or its branch for a branch bundle, joined with \`-\`, the whole slugged and cut at 40 characters" "$tmp/list" ||
+		fail "$f: the run id slug is not the repository name and then the pull request number or the branch"
+	grep -qF 'a pull request bundle of repository `app` and pull request 123 gives `<YYYY-MM-DD-HHMM>-app-123`' "$tmp/list" ||
+		fail "$f: the run id slug has no pull request bundle example"
+	grep -qF 'a branch bundle of repository `app` and branch `feat/export` gives `<YYYY-MM-DD-HHMM>-app-feat-export`' "$tmp/list" ||
+		fail "$f: the run id slug has no branch bundle example"
+done
 # A resume whose first rerun stage is 4 or 5 because its entry is missing or running
 # keeps each finished scope output, and the stage launches no agent for it; each file is
 # read as one line.

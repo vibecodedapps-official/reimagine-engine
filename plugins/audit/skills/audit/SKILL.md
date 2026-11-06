@@ -280,7 +280,7 @@ The run directory is `<scratch>/audit/<run-id>/`. `<scratch>` is the first that 
 3. `.reimagine/`, when already ignored.
 4. `${CLAUDE_PLUGIN_DATA}/runs/`.
 
-Compare parent and child as whole resolved paths. Make `<scratch>/audit/` with `mkdir -p` and the run directory with `mkdir` without `-p`, so an existing id moves to the next suffix. The run id is `<YYYY-MM-DD-HHMM>-<slug>`, with `-2`, `-3` on collision. Never add an ignore rule to make a directory ignored.
+Compare parent and child as whole resolved paths. Make `<scratch>/audit/` with `mkdir -p` and the run directory with `mkdir` without `-p`, so an existing id moves to the next suffix. The run id is `<YYYY-MM-DD-HHMM>-<slug>`, where the slug is the first bundle's repository name, then its pull request number (an export's `id`) for a pull request bundle, or its branch for a branch bundle, joined with `-`, the whole slugged and cut at 40 characters, with `-2`, `-3` on collision. For example, a pull request bundle of repository `app` and pull request 123 gives `<YYYY-MM-DD-HHMM>-app-123`, and a branch bundle of repository `app` and branch `feat/export` gives `<YYYY-MM-DD-HHMM>-app-feat-export`. Never add an ignore rule to make a directory ignored.
 
 Write `stages.json` only through `stages.json.tmp` beside it, then `mv -f` it over the destination. Never edit a state file in place.
 

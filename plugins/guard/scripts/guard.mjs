@@ -78,8 +78,9 @@ function runClaude(args, configDir, timeout = 60000) {
   const options = { encoding: 'utf8', env: configDir ? { ...process.env, CLAUDE_CONFIG_DIR: configDir } : process.env, stdio: ['ignore', 'pipe', 'pipe'], timeout };
   let shim;
   try { return JSON.parse(execFileSync('claude', args, options)); } catch (e) {
-    const dir = (process.env.PATH ?? '').split(';').find((d) => d && existsSync(join(d, 'claude.cmd')));
-    if (e?.code !== 'ENOENT' || process.platform !== 'win32' || !dir) throw e;
+    if (e?.code !== 'ENOENT' || process.platform !== 'win32') throw e;
+    const dir = (process.env.PATH ?? '').split(';').map((d) => d.replace(/"/g, '')).find((d) => d && existsSync(join(d, 'claude.cmd')));
+    if (!dir) throw e;
     shim = join(dir, 'claude.cmd');
   }
   if (!args.every((a) => /^[a-z-]+$/.test(a))) throw new Error('claude takes only fixed words here');

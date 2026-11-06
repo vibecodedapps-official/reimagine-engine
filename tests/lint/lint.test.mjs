@@ -476,6 +476,14 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, 'plugins/primer/hooks/hooks.json', '"Bash|PowerShell"', '"Bash"');
     bump(dir, 'primer');
   }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape']);
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape (PreToolUse without onFailure)', (dir) => {
+    edit(dir, 'plugins/primer/hooks/hooks.json', ',\n            "onFailure": "continue"', '');
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape']);
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape (onFailure block)', (dir) => {
+    edit(dir, 'plugins/primer/hooks/hooks.json', '"onFailure": "continue"', '"onFailure": "block"');
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape']);
   negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape (SessionStart command)', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', '/hooks/notice.sh', '/hooks/drift.sh');
     bump(dir, 'primer');

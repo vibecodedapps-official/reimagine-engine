@@ -136,6 +136,7 @@ const DIVISOR_ENTRY_REJECTED = {
 const STANDIN_NOTES = {
   before: 'Review of the range from the merge-base to HEAD. I read the diff only and ran no check.',
   after: 'Not reviewed: docs/cache.md changed in the same range and holds no code.',
+  text: 'Review of the range from the merge-base to HEAD. I read the diff only and ran no check.\n\nNot reviewed: docs/cache.md changed in the same range and holds no code.',
 };
 const STANDIN_REVIEW = { output: 'standin.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null, notes: STANDIN_NOTES };
 const standinFindings = (state, bucket, reason) => [
@@ -174,7 +175,7 @@ describe('review outputs', { concurrency }, () => {
     const summary = succeeded(await run(dir, '1', 'findings.json', 'spike1b.json'));
     assert.deepEqual(summary, {
       pass: 1,
-      reviews: [{ output: 'spike1b.json', is_error: false, duration_ms: 80221, total_cost_usd: 0.81797925, denials: 2, models: ['claude-fable-5-1'], notes: { before: '', after: '' } }],
+      reviews: [{ output: 'spike1b.json', is_error: false, duration_ms: 80221, total_cost_usd: 0.81797925, denials: 2, models: ['claude-fable-5-1'], notes: { before: '', after: '', text: '' } }],
       findings: [
         { id: IDS.pct, file: 'src/stats.mjs', line: 23, summary: SUMMARIES.pct, failure_scenario: SCENARIOS.pct, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
         { id: IDS.pkg, file: 'package.json', line: 1, summary: SUMMARIES.pkg, failure_scenario: SCENARIOS.pkg, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
@@ -205,6 +206,8 @@ describe('review outputs', { concurrency }, () => {
             '- `src/extra.mjs:2` (in the same range, not in the named file): `isEven` returns `n % 2 === 1`, which is inverted, and also false for negative odd numbers since `-3 % 2 === -1`.\n' +
             "- Pre-existing: `npm test` (`node --test tests/`) fails on Node 26.4.0 with `Cannot find module 'tests'` (MODULE_NOT_FOUND); `node --test tests/stats.test.mjs` passes 3/3. Not caused by this diff.\n" +
             '- Commit `4065769 feat: add variance` has no scope while the CLAUDE.md asks for `type(scope): subject`; not a diff-line violation, so not counted as a finding.',
+          text:
+            'Review of `develop...HEAD src/stats.mjs` (`src/stats.mjs`). Edge cases confirmed by running the function; the existing suite passes when run by file.\n\nNotes outside scope, with evidence:\n- `src/extra.mjs:2` (in the same range, not in the named file): `isEven` returns `n % 2 === 1`, which is inverted, and also false for negative odd numbers since `-3 % 2 === -1`.\n- Pre-existing: `npm test` (`node --test tests/`) fails on Node 26.4.0 with `Cannot find module \'tests\'` (MODULE_NOT_FOUND); `node --test tests/stats.test.mjs` passes 3/3. Not caused by this diff.\n- Commit `4065769 feat: add variance` has no scope while the CLAUDE.md asks for `type(scope): subject`; not a diff-line violation, so not counted as a finding.',
         },
       },
     ]);
@@ -232,9 +235,11 @@ describe('review outputs', { concurrency }, () => {
             'Check not run: `npm --prefix . test` (the repo suite, run before reporting) was denied by the permission system. I did not substitute another invocation. It does not change either finding: the suite does not import `variance`, so its result cannot affect them.\n\n' +
             'Notes outside the findings: the `n - 1` (sample) denominator is a design choice with no spec or caller to judge it against; the commit subject `feat: add variance` lacks the `type(scope):` scope the sibling commit `feat(develop): add range` uses, but that is not a file line.',
           after: '',
+          text:
+            'Check not run: `npm --prefix . test` (the repo suite, run before reporting) was denied by the permission system. I did not substitute another invocation. It does not change either finding: the suite does not import `variance`, so its result cannot affect them.\n\nNotes outside the findings: the `n - 1` (sample) denominator is a design choice with no spec or caller to judge it against; the commit subject `feat: add variance` lacks the `type(scope):` scope the sibling commit `feat(develop): add range` uses, but that is not a file line.',
         },
       },
-      { output: 'group-2.json', is_error: false, duration_ms: 101753, total_cost_usd: 0.9521445, denials: 2, models: ['claude-fable-5-1'], notes: { before: '', after: '' } },
+      { output: 'group-2.json', is_error: false, duration_ms: 101753, total_cost_usd: 0.9521445, denials: 2, models: ['claude-fable-5-1'], notes: { before: '', after: '', text: '' } },
     ]);
     assert.deepEqual(summary.findings, [
       { id: IDS.guard4b, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.guard4b, failure_scenario: SCENARIOS.guard4b, outputs: ['spike4b.json', 'group-2.json'], state: 'new', bucket: null, reason: null, candidates: [] },
@@ -291,10 +296,16 @@ describe('review outputs', { concurrency }, () => {
     const summary = succeeded(await run(dir, '1', 'findings.json', 'empty.md'));
     assert.deepEqual(summary, {
       pass: 1,
-      reviews: [{ output: 'empty.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null, notes: { before: 'Nothing found.', after: 'The range is small.' } }],
+      reviews: [{ output: 'empty.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null, notes: { before: 'Nothing found.', after: 'The range is small.', text: 'Nothing found.\n\nThe range is small.' } }],
       findings: [],
     });
     assert.equal(ledgerText(dir), '{\n  "findings": {}\n}\n');
+  });
+
+  test('notes text keeps only the text after the fence when nothing precedes it', async () => {
+    const dir = kase([], { 'after.md': '```json\n[]\n```\n\nThe suite could not be run here.\n' });
+    const summary = succeeded(await run(dir, '1', 'findings.json', 'after.md'));
+    assert.deepEqual(summary.reviews[0].notes, { before: '', after: 'The suite could not be run here.', text: 'The suite could not be run here.' });
   });
 
   test('a fenced block that does not qualify is skipped and the scan goes on', async () => {
@@ -941,7 +952,11 @@ describe('validation errors', { concurrency }, () => {
         total_cost_usd: 0.6,
         denials: 0,
         models: ['model-a'],
-        notes: { before: 'The client retries on a rate limit without a backoff, which is outside this change.', after: '' },
+        notes: {
+          before: 'The client retries on a rate limit without a backoff, which is outside this change.',
+          after: '',
+          text: 'The client retries on a rate limit without a backoff, which is outside this change.',
+        },
       },
     ]);
     assert.deepEqual(summary.findings.map((f) => f.id), ['src/client.mjs|the retry loop never stops']);

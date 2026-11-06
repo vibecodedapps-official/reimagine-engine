@@ -168,7 +168,8 @@ test('R300: the checks come from the request, the manifest bundle or the configu
 test('R311 and R317: each review keeps its notes in passes.json and the Log prints them', () => {
   const lines = jsonAfter(read('record.md'), '`passes.json`:');
   assert.ok(lines.some((l) => l.includes('"reviews": [') && l.includes('"denials": 2, "notes": ')), 'the reviews literal of record.md has no notes key');
-  holds('steps/1-pass.md', '"notes": "<notes.before>"');
+  holds('steps/1-pass.md', '"notes": "<notes.text>"', 'the text the reviewer wrote before and after its fence');
+  holds('record.md', '`notes` holds the text before and after the fence');
   holds('report.md', 'denial count and notes, from `reviews[]`');
 });
 

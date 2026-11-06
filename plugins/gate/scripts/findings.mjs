@@ -213,7 +213,8 @@ function readReview(path) {
   if (!parsed && LIMIT_TEXT.test(text)) throw new Fail(1, `findings: ${name}: usage limit`);
   if (isError) throw new Fail(1, `findings: ${name}: is_error is true`);
   if (!parsed) throw new Fail(1, `findings: ${name}: no fenced json array of findings`);
-  return { name, review: { output: name, ...meta, notes: { before: parsed.before, after: parsed.after } }, findings: parsed.findings };
+  const notes = { before: parsed.before, after: parsed.after, text: [parsed.before, parsed.after].filter(Boolean).join('\n\n') };
+  return { name, review: { output: name, ...meta, notes }, findings: parsed.findings };
 }
 
 // A pass number of 1 or more, else a usage failure.

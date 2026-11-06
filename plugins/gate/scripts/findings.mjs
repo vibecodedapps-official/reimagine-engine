@@ -6,6 +6,8 @@
 //   <review-output>    a host result object when the name ends in .json, any other file is a stand-in reply read as text
 // On success prints the pass summary as JSON on stdout and exits 0. On failure writes nothing and prints nothing on stdout:
 // exit 1 for a bad review or ledger, exit 2 for usage or IO, one line per message on stderr.
+// Every review output is read before a bad one fails the run, and each bad output gets its own stderr line, in argument order;
+// a usage limit reads `findings: <name>: usage limit`.
 // On success it also prints a warning line on stderr for each carried or regressed entry new in the latest earlier pass with no match.
 // Usage: node findings.mjs --check <pass> <findings.json>
 //   prints the same warnings for the ledger as it stands, for entries new in <pass>, writes nothing and prints nothing on stdout;
@@ -155,12 +157,19 @@ const parseLedger = (raw, path) => {
 
 const count = (v) => (typeof v === 'number' ? v : null);
 
-// Reads one review output into { review, findings }.
+// The host's wording of a usage limit is not on record, so this pattern is a best guess.
+const LIMIT_TEXT = /\b(usage|rate|session|weekly|5-hour) limit\b|\blimit reached\b|\bhit your (usage )?limit\b/i;
+
+// The sorted keys of a result's modelUsage, or null when it has none.
+const modelsOf = (o) => (isObject(o.modelUsage) ? Object.keys(o.modelUsage).sort() : null);
+
+// Reads one review output into { review, findings }; a bad one throws a Fail of exit 1 with its stderr line.
 function readReview(path) {
   const name = basename(path);
   const raw = read(path);
   let text = raw;
-  let meta = { is_error: null, duration_ms: null, total_cost_usd: null, denials: null };
+  let isError = false;
+  let meta = { is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null };
   if (path.toLowerCase().endsWith('.json')) {
     let o;
     try {
@@ -169,16 +178,20 @@ function readReview(path) {
       throw new Fail(1, `findings: ${name}: not JSON`);
     }
     if (!isObject(o)) throw new Fail(1, `findings: ${name}: not JSON`);
-    if (o.is_error === true) throw new Fail(1, `findings: ${name}: is_error is true`);
+    if (o.api_error_status === 429) throw new Fail(1, `findings: ${name}: usage limit`);
+    isError = o.is_error === true;
     text = typeof o.result === 'string' ? o.result : '';
     meta = {
       is_error: false,
       duration_ms: count(o.duration_ms),
       total_cost_usd: count(o.total_cost_usd),
       denials: Array.isArray(o.permission_denials) ? o.permission_denials.length : null,
+      models: modelsOf(o),
     };
   }
   const parsed = parse(text);
+  if (!parsed && LIMIT_TEXT.test(text)) throw new Fail(1, `findings: ${name}: usage limit`);
+  if (isError) throw new Fail(1, `findings: ${name}: is_error is true`);
   if (!parsed) throw new Fail(1, `findings: ${name}: no fenced json array of findings`);
   return { name, review: { output: name, ...meta, notes: { before: parsed.before, after: parsed.after } }, findings: parsed.findings };
 }
@@ -203,8 +216,17 @@ function ingest(argv) {
 
   const reviews = [];
   const found = new Map();
+  const bad = [];
   for (const path of argv.slice(2)) {
-    const { name, review, findings } = readReview(path);
+    let got;
+    try {
+      got = readReview(path);
+    } catch (e) {
+      if (!(e instanceof Fail) || e.code !== 1) throw e;
+      bad.push(e.message);
+      continue;
+    }
+    const { name, review, findings } = got;
     reviews.push(review);
     for (const f of findings) {
       const id = identity(f.file, f.summary);
@@ -213,6 +235,8 @@ function ingest(argv) {
       else if (!seen.outputs.includes(name)) seen.outputs.push(name);
     }
   }
+
+  if (bad.length > 0) throw new Fail(1, bad.join('\n'));
 
   for (const [id, entry] of Object.entries(ledger.findings)) {
     const earlier = entry.passes[n];

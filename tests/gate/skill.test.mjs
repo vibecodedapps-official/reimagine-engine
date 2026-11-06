@@ -568,3 +568,11 @@ test('R306: the repair of a warning takes the earlier id from passes.json, else 
 test('R300: the snapshot items read each path from a status line unquoted and take the new path of a rename', () => {
   holds('steps/2-fix.md', 'Read each path from a status line unquoted and unescaped when status prints it in double quotes, and for a rename (`old -> new`) take the new path.', 'each path read as item 1 says', "compare the checkout with that call's `post-<n>` files, hashing each path as item 7 does, since `pre-<n>.hashes` uses the filtered hash.");
 });
+
+test('R306 and R307: a usage limit is an infrastructure failure, and each limited group gets one stand-in review', () => {
+  holds('steps/1-pass.md',
+    'a `usage limit` line, which is an infrastructure failure',
+    'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer`, for that group only, without moving the run to the stand-in',
+    'Never a second retry, and never a `--model` flag',
+    'a later run resumes the pass');
+});

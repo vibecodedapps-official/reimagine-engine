@@ -10,6 +10,10 @@ Every spike file below is a headless review result object from the spikes of dec
 - `group-2.json`: derived from spike 4c; the summary of its first finding is replaced by the one in `spike4b.json`, so the two files, read as the outputs of two split groups, share one finding with identical file and summary; paths made relative; no id swapped.
 - `is-error.json`: derived from spike 1b; only `is_error` is set to `true`, the array stays; paths made relative; no id swapped.
 - `standin.md`: written for the suite; a stand-in reply with a short note, the fenced array of two findings (one with a curly apostrophe and quotes) and a note after.
+- `finished-review.json`: written for the suite; a finished review result with one finding and a `modelUsage` of two models listed out of order.
+- `limit-message.json`: written for the suite; a result with `is_error` false, `num_turns` 0 and a `result` that is only a usage limit message.
+- `limit-429.json`: written for the suite; a result with `is_error` true and `api_error_status` 429.
+- `review-with-rate-limit.json`: written for the suite; a finished review whose prose before a valid array mentions a rate limit.
 - `ledger-fixed.json`: written for the suite; a ledger after pass 1 holding the two `spike1b.json` findings, the first `fixed` with a `fix` bucket and an extra `match` field, the second `deferred`.
 - `ledger-rejected.json`: written for the suite; a ledger after pass 1 holding the third `spike4d.json` finding as `rejected` with a reject reason.
 

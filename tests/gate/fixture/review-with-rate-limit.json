@@ -1,0 +1,11 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 61000,
+  "num_turns": 0,
+  "result": "The client retries on a rate limit without a backoff, which is outside this change.\n\n```json\n[{\"file\": \"src/client.mjs\", \"line\": 4, \"summary\": \"The retry loop never stops.\", \"failure_scenario\": \"A permanent 500 retries forever.\"}]\n```",
+  "total_cost_usd": 0.6,
+  "modelUsage": { "model-a": { "inputTokens": 30 } },
+  "permission_denials": []
+}

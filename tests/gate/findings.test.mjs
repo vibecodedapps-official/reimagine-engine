@@ -137,7 +137,7 @@ const STANDIN_NOTES = {
   before: 'Review of the range from the merge-base to HEAD. I read the diff only and ran no check.',
   after: 'Not reviewed: docs/cache.md changed in the same range and holds no code.',
 };
-const STANDIN_REVIEW = { output: 'standin.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, notes: STANDIN_NOTES };
+const STANDIN_REVIEW = { output: 'standin.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null, notes: STANDIN_NOTES };
 const standinFindings = (state, bucket, reason) => [
   {
     id: IDS.cacheKey,
@@ -174,7 +174,7 @@ describe('review outputs', { concurrency }, () => {
     const summary = succeeded(await run(dir, '1', 'findings.json', 'spike1b.json'));
     assert.deepEqual(summary, {
       pass: 1,
-      reviews: [{ output: 'spike1b.json', is_error: false, duration_ms: 80221, total_cost_usd: 0.81797925, denials: 2, notes: { before: '', after: '' } }],
+      reviews: [{ output: 'spike1b.json', is_error: false, duration_ms: 80221, total_cost_usd: 0.81797925, denials: 2, models: ['claude-fable-5-1'], notes: { before: '', after: '' } }],
       findings: [
         { id: IDS.pct, file: 'src/stats.mjs', line: 23, summary: SUMMARIES.pct, failure_scenario: SCENARIOS.pct, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
         { id: IDS.pkg, file: 'package.json', line: 1, summary: SUMMARIES.pkg, failure_scenario: SCENARIOS.pkg, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
@@ -197,6 +197,7 @@ describe('review outputs', { concurrency }, () => {
         duration_ms: 145901,
         total_cost_usd: 1.073416,
         denials: 2,
+        models: ['claude-fable-5-1'],
         notes: {
           before: 'Review of `develop...HEAD src/stats.mjs` (`src/stats.mjs`). Edge cases confirmed by running the function; the existing suite passes when run by file.',
           after:
@@ -225,6 +226,7 @@ describe('review outputs', { concurrency }, () => {
         duration_ms: 98528,
         total_cost_usd: 0.90604225,
         denials: 3,
+        models: ['claude-fable-5-1'],
         notes: {
           before:
             'Check not run: `npm --prefix . test` (the repo suite, run before reporting) was denied by the permission system. I did not substitute another invocation. It does not change either finding: the suite does not import `variance`, so its result cannot affect them.\n\n' +
@@ -232,7 +234,7 @@ describe('review outputs', { concurrency }, () => {
           after: '',
         },
       },
-      { output: 'group-2.json', is_error: false, duration_ms: 101753, total_cost_usd: 0.9521445, denials: 2, notes: { before: '', after: '' } },
+      { output: 'group-2.json', is_error: false, duration_ms: 101753, total_cost_usd: 0.9521445, denials: 2, models: ['claude-fable-5-1'], notes: { before: '', after: '' } },
     ]);
     assert.deepEqual(summary.findings, [
       { id: IDS.guard4b, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.guard4b, failure_scenario: SCENARIOS.guard4b, outputs: ['spike4b.json', 'group-2.json'], state: 'new', bucket: null, reason: null, candidates: [] },
@@ -289,7 +291,7 @@ describe('review outputs', { concurrency }, () => {
     const summary = succeeded(await run(dir, '1', 'findings.json', 'empty.md'));
     assert.deepEqual(summary, {
       pass: 1,
-      reviews: [{ output: 'empty.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, notes: { before: 'Nothing found.', after: 'The range is small.' } }],
+      reviews: [{ output: 'empty.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null, notes: { before: 'Nothing found.', after: 'The range is small.' } }],
       findings: [],
     });
     assert.equal(ledgerText(dir), '{\n  "findings": {}\n}\n');
@@ -841,6 +843,65 @@ describe('validation errors', { concurrency }, () => {
       failed(await run(dir, '1', 'findings.json', 'reply.md'), 1, ['findings: reply.md: no fenced json array of findings'], dir);
     });
   }
+
+  test('a limit message beside a finished review is a usage limit and nothing is written', async () => {
+    const dir = kase(['finished-review.json', 'limit-message.json']);
+    failed(await run(dir, '1', 'findings.json', 'finished-review.json', 'limit-message.json'), 1, ['findings: limit-message.json: usage limit'], dir);
+  });
+
+  test('a 429 error is a usage limit, not is_error true', async () => {
+    const dir = kase(['finished-review.json', 'limit-429.json']);
+    failed(await run(dir, '1', 'findings.json', 'finished-review.json', 'limit-429.json'), 1, ['findings: limit-429.json: usage limit'], dir);
+  });
+
+  test('every bad output is named in argument order and the ledger stays as it was', async () => {
+    const dir = kase(['ledger-fixed.json', 'spike3.json', 'finished-review.json', 'limit-429.json', 'is-error.json']);
+    copyFileSync(join(dir, 'ledger-fixed.json'), join(dir, 'findings.json'));
+    const before = ledgerText(dir);
+    failed(await run(dir, '2', 'findings.json', 'spike3.json', 'finished-review.json', 'limit-429.json', 'is-error.json'), 1, [
+      'findings: spike3.json: no fenced json array of findings',
+      'findings: limit-429.json: usage limit',
+      'findings: is-error.json: is_error is true',
+    ]);
+    assert.equal(ledgerText(dir), before);
+    assert.deepEqual(readdirSync(dir).filter((n) => n.startsWith('findings.json')), ['findings.json']);
+  });
+
+  test('a stand-in reply that is only a limit message is a usage limit', async () => {
+    const dir = kase([], { 'reply.md': "You've reached your session limit. It resets at 5pm.\n" });
+    failed(await run(dir, '1', 'findings.json', 'reply.md'), 1, ['findings: reply.md: usage limit'], dir);
+  });
+
+  test('a finished review that mentions a rate limit beside a valid array is read normally', async () => {
+    const dir = kase(['review-with-rate-limit.json']);
+    const summary = succeeded(await run(dir, '1', 'findings.json', 'review-with-rate-limit.json'));
+    assert.deepEqual(summary.reviews, [
+      {
+        output: 'review-with-rate-limit.json',
+        is_error: false,
+        duration_ms: 61000,
+        total_cost_usd: 0.6,
+        denials: 0,
+        models: ['model-a'],
+        notes: { before: 'The client retries on a rate limit without a backoff, which is outside this change.', after: '' },
+      },
+    ]);
+    assert.deepEqual(summary.findings.map((f) => f.id), ['src/client.mjs|the retry loop never stops']);
+  });
+
+  test('models lists the sorted modelUsage keys, an empty list for an empty object and null without them', async () => {
+    const reply = '```json\n[]\n```\n';
+    const none = JSON.stringify({ is_error: false, result: reply });
+    const empty = JSON.stringify({ is_error: false, result: reply, modelUsage: {} });
+    const dir = kase(['finished-review.json', 'standin.md'], { 'none.json': none, 'empty.json': empty });
+    const summary = succeeded(await run(dir, '1', 'findings.json', 'finished-review.json', 'standin.md', 'none.json', 'empty.json'));
+    assert.deepEqual(summary.reviews.map((r) => [r.output, r.models]), [
+      ['finished-review.json', ['model-a', 'model-b']],
+      ['standin.md', null],
+      ['none.json', null],
+      ['empty.json', []],
+    ]);
+  });
 
   test('one failed review among several writes nothing and leaves the ledger as it was', async () => {
     const dir = kase(['ledger-fixed.json', 'spike1b.json', 'spike3.json']);

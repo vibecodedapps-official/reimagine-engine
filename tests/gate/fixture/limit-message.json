@@ -1,0 +1,11 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 900,
+  "num_turns": 0,
+  "result": "You've hit your usage limit. It resets at 5pm.",
+  "total_cost_usd": 0,
+  "modelUsage": {},
+  "permission_denials": []
+}

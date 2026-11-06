@@ -63,7 +63,10 @@ const ROOT_HOOKS = {
   hooks: { SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/rules.mjs', 'session-start', '${CLAUDE_PLUGIN_DATA}'] }] }] },
 };
 const GUARD_HOOK = {
-  hooks: { PermissionDenied: [{ hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs', 'denied', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] }] },
+  hooks: {
+    PermissionDenied: [{ hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs', 'denied', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] }],
+    SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs', 'session-start', '${CLAUDE_PLUGIN_DATA}'], timeout: 30 }] }],
+  },
 };
 const PRIMER_HOOK = {
   hooks: {
@@ -415,7 +418,7 @@ function hookFailures(ctx) {
   const out = [];
   if (!same(ctx.json(RULES_HOOKS), ROOT_HOOKS)) out.push(`${RULES_HOOKS}: not the SessionStart startup shape`);
   if (!same(ctx.json(PRIMER_HOOKS), PRIMER_HOOK)) out.push(`${PRIMER_HOOKS}: not the PreToolUse Bash|PowerShell and SessionStart startup shape`);
-  if (!same(ctx.json(GUARD_HOOKS), GUARD_HOOK)) out.push(`${GUARD_HOOKS}: not the PermissionDenied shape`);
+  if (!same(ctx.json(GUARD_HOOKS), GUARD_HOOK)) out.push(`${GUARD_HOOKS}: not the PermissionDenied and SessionStart startup shape`);
   const manifests = new Map(ctx.plugins.map((p) => [p.path, p.manifest]));
   const message = (file) => `${file}: hooks outside ${RULES_HOOKS}, ${PRIMER_HOOKS} and ${GUARD_HOOKS}`;
   for (const file of ctx.shipped) {

@@ -484,18 +484,30 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     rmSync(join(dir, 'plugins/primer/hooks/hooks.json'));
     bump(dir, 'primer');
   }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and SessionStart startup shape']);
-  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied shape', (dir) => {
+  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape', (dir) => {
     edit(dir, 'plugins/guard/hooks/hooks.json', '"denied"', '"status"');
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied shape']);
-  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied shape (timeout)', (dir) => {
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (timeout)', (dir) => {
     edit(dir, 'plugins/guard/hooks/hooks.json', '"timeout": 10', '"timeout": 20');
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied shape']);
-  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied shape (missing)', (dir) => {
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart matcher)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"startup"', '"resume"');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart timeout)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"timeout": 30', '"timeout": 60');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart verb)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"session-start"', '"status"');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (missing)', (dir) => {
     rmSync(join(dir, 'plugins/guard/hooks/hooks.json'));
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied shape']);
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
   negative('R8: <file>: hooks outside plugins/rules/hooks/hooks.json, plugins/primer/hooks/hooks.json and plugins/guard/hooks/hooks.json (hooks.json)', (dir) => {
     put(dir, 'plugins/loop/hooks/hooks.json', '{}\n');
     bump(dir, 'loop');

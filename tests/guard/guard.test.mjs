@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Refusal, main, normalizeRemote } from '../../plugins/guard/scripts/guard.mjs';
 
@@ -916,4 +916,54 @@ test('R344: the denials file is created readable by the owner only', { skip: pro
   const w = world();
   denied(w, { cwd: '/work/app', tool_name: 'Bash', tool_input: { command: 'ls' }, reason: '[x]' });
   assert.equal(statSync(DENIALS(w)).mode & 0o777, 0o600);
+});
+
+const sessionStart = (w, claude = w.claude) => main(['session-start', w.data], { env: w.env, now: w.now, home: w.home, cwd: w.work, claude });
+
+test('R341: session-start prints one systemMessage line when a copied default line differs from the host\'s now', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  assert.deepEqual(sessionStart(w), []);
+  w.stand.defaults = { ...structuredClone(FIX), environment: [ORG, '**Repository visibility**: Treat every repository as public.', TRUSTED, SOURCE, DOMAINS] };
+  const timeouts = [];
+  const lines = sessionStart(w, (args, d, timeout) => { timeouts.push(timeout); return w.claude(args, d); });
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0].startsWith('{"systemMessage":"guard: the auto mode entries in '));
+  assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: the auto mode entries in ${w.settings} are stale; run /guard to update them` });
+  assert.deepEqual(timeouts, [20000]);
+  assert.equal(w.calls.at(-1), 'auto-mode defaults @ real');
+});
+
+test('R341: session-start uses the remotes the list records, runs no config check and writes nothing', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  w.repo.g('remote', 'set-url', 'r0', 'https://git.example.invalid/org/app2.git');
+  assert.equal(w.run('status')[0], `state: stale ${w.settings}`);
+  w.calls.length = 0;
+  const before = [read(w.settings), read(w.list), readdirSync(w.data).sort()];
+  assert.deepEqual(sessionStart(w), []);
+  assert.deepEqual(w.calls, ['auto-mode defaults @ real']);
+  assert.deepEqual([read(w.settings), read(w.list), readdirSync(w.data).sort()], before);
+});
+
+test('R341: session-start prints nothing and runs no claude for a missing, empty or unreadable list', () => {
+  const w = repoWorld();
+  assert.deepEqual(sessionStart(w), []);
+  writeFileSync(w.list, '{"version":1,"repos":[]}\n');
+  assert.deepEqual(sessionStart(w), []);
+  rmSync(w.list);
+  mkdirSync(w.list);
+  assert.deepEqual(sessionStart(w), []);
+  assert.deepEqual(w.calls, []);
+});
+
+test('R341: session-start prints nothing when claude cannot run, and the hook exits 0', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  w.stand.throws = Object.assign(new Error('spawn claude ENOENT'), { code: 'ENOENT' });
+  assert.deepEqual(sessionStart(w), []);
+  const env = { ...w.env, PATH: dirname(process.execPath) };
+  const run = spawnSync(process.execPath, [SCRIPT, 'session-start', w.data], { env, encoding: 'utf8' });
+  assert.equal(run.status, 0);
+  assert.equal(run.stdout, '');
 });

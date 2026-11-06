@@ -40,6 +40,10 @@ Only `absent`, `current` and `stale` lead to a write, and `current` leads to non
 
 Before it saves a plan, the script writes the candidate `autoMode` to a temporary configuration directory and runs `claude auto-mode config` there. Every guard entry must appear once, no environment label may appear twice, and every default allow rule must be kept. A plan that fails the check is refused. After the write it runs the check again for your real directory.
 
+## The startup notice
+
+When a session starts, a hook checks the entries against Claude Code's current defaults and prints one line when they are stale, such as after a host release reworded a default line: `guard: the auto mode entries in [path] are stale; run /guard to update them`. It prints nothing when no repository is listed, for any other state, and when `claude` cannot run. It uses the remotes the list records, so a remote that changed on disk shows up at the next `/guard`. It runs `claude auto-mode defaults` with a 20-second limit, and writes nothing.
+
 ## The denial record
 
 Guard ships one hook, which runs when auto mode denies a tool call. It appends one line to `denials.jsonl` in the plugin data directory, created readable by you only: the time in UTC, the reason the classifier gave, which names the matched rule, the tool, the cwd, and the command cut at 300 characters for a Bash or PowerShell call or the file path for another tool that has one; a command is recorded as written, so it holds whatever was typed in it. It never records the rest of the tool input, file contents or command output. The file stays on your machine, and the hook prints nothing and never blocks or retries the call. `/guard denials` prints the lines, oldest first, so you can see which denials the entries do not clear. Delete the file to clear the record.

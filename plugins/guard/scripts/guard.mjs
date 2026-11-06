@@ -6,6 +6,7 @@
 //   plan     show the change and save it; takes --add <path> [--merge], --drop <path or remote> or --clear
 //   apply    write the saved change (a backup first), then check the host's effective configuration
 //   denials  print the classifier denials the PermissionDenied hook recorded
+//   session-start  the startup hook: one notice line when the entries are stale; writes nothing
 //   denied   the hook itself: reads a hook input on stdin and appends one line to the denials file
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -73,8 +74,8 @@ const remotesOf = (env, path) => sorted(git(env, path, ['remote', '-v']).split('
 }));
 
 // On Windows a claude installed through npm is a claude.cmd shim, which only cmd.exe resolves; the words are the script's own.
-function runClaude(args, configDir) {
-  const options = { encoding: 'utf8', env: configDir ? { ...process.env, CLAUDE_CONFIG_DIR: configDir } : process.env, stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000 };
+function runClaude(args, configDir, timeout = 60000) {
+  const options = { encoding: 'utf8', env: configDir ? { ...process.env, CLAUDE_CONFIG_DIR: configDir } : process.env, stdio: ['ignore', 'pipe', 'pipe'], timeout };
   try { return JSON.parse(execFileSync('claude', args, options)); } catch (e) {
     const shim = (process.env.PATH ?? '').split(';').some((d) => d && existsSync(join(d, 'claude.cmd')));
     if (e?.code !== 'ENOENT' || process.platform !== 'win32' || !shim) throw e;
@@ -84,9 +85,9 @@ function runClaude(args, configDir) {
 }
 
 // Runs claude auto-mode <verb>; anything but an object of the four lists of strings makes the state unavailable.
-function ask(claude, verb, dir) {
+function ask(claude, verb, dir, timeout) {
   let out;
-  try { out = claude(['auto-mode', verb], dir); } catch (e) { stop('unavailable', `claude auto-mode ${verb} could not run (${e?.code ?? String(e?.message).split('\n')[0]})`); }
+  try { out = claude(['auto-mode', verb], dir, timeout); } catch (e) { stop('unavailable', `claude auto-mode ${verb} could not run (${e?.code ?? String(e?.message).split('\n')[0]})`); }
   if (!out || typeof out !== 'object' || !LISTS.every((k) => Array.isArray(out[k]) && out[k].every((x) => typeof x === 'string'))) {
     stop('unavailable', `claude auto-mode ${verb} printed no object of the four lists`);
   }
@@ -400,6 +401,7 @@ function body(c, t, request, deep, r) {
   const old = parseList(t.list, list, c.platform);
   r.count = old.length;
   const repos = (request ? change(old, request, c) : old).map((x) => {
+    if (c.recorded) return x;
     try {
       if (!statSync(x.path, { throwIfNoEntry: false })?.isDirectory()) {
         r.notes.push(`note: ${x.path} does not exist on this machine; its recorded remotes are kept`);
@@ -414,7 +416,7 @@ function body(c, t, request, deep, r) {
   const file = readFile(t.path);
   const { auto, scan } = parseSettings(t.path, file);
   const state = loadState(c.dataDir);
-  const defs = ask(c.claude, 'defaults', c.env.CLAUDE_CONFIG_DIR || undefined);
+  const defs = ask(c.claude, 'defaults', c.env.CLAUDE_CONFIG_DIR || undefined, c.timeout);
   if (!GUARD_LABELS.every(([lb]) => defs.environment.some((l) => labelOf(l) === lb))) stop('unavailable', "the host's defaults have no Trusted repo or Source control line");
   const res = render(auto, repos, defs, state);
   const after = same(res.auto, auto) ? file.text : edit(file.text, scan, res.auto, state.created);
@@ -562,6 +564,15 @@ function run(verb, request, c) {
   return [...head, ...r.lines, "check: the dry run's effective configuration holds every guard entry once", 'change: ready'];
 }
 
+// The startup notice: one systemMessage line when listed repositories leave the entries stale. It uses the remotes the list
+// records, runs no config check, and prints nothing for any other state or any error.
+function sessionStart(c) {
+  const { list } = locate(c.env, c.home);
+  if (!parseList(list, readFile(list), c.platform).length) return [];
+  const r = inspect({ ...c, recorded: true, timeout: 20000 }, null, false);
+  return r.state === 'stale' ? [JSON.stringify({ systemMessage: `guard: the auto mode entries in ${r.t.path} are stale; run /guard to update them` })] : [];
+}
+
 // Returns the output lines. A refusal throws.
 export function main(argv, { env = process.env, platform = process.platform, now = new Date(), home = homedir(), cwd = process.cwd(), claude = runClaude, stdin = () => readFileSync(0, 'utf8') } = {}) {
   const [verb, dataDir, ...rest] = argv;
@@ -574,6 +585,9 @@ export function main(argv, { env = process.env, platform = process.platform, now
       }
     } catch {}
     return [];
+  }
+  if (verb === 'session-start') {
+    try { return sessionStart({ env, platform, now, home, cwd, claude, dataDir }); } catch { return []; }
   }
   if (!VERBS.includes(verb)) refuse(`unknown command ${verb}; use status, list, plan, apply or denials`);
   if (!dataDir) refuse('the data directory argument is missing');

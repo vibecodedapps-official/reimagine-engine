@@ -31,7 +31,7 @@ cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <
 
 ## 1.4 The stand-in
 
-1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- <key path>` for a split group and the `.` key's files one by one.
+1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- <key path>` for a split group and the files one by one for a merged group and the `.` key.
 2. Call an Agent at `models.fallback-reviewer` (default `opus`), passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, with the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, repository-relative paths, and `[]` when there are none. A split pass makes its calls in parallel, in one message; the review budget of 1.3 applies.
 3. Save the reply as `review-<n>[-<slug>].md`. Once chosen, the stand-in stays for the run: set `engine` to `stand-in` in `passes.json`. The one review of a usage-limited group (1.5) is no choice: it leaves `engine` as it was.
 

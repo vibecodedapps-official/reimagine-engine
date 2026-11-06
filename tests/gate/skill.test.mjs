@@ -613,6 +613,7 @@ test('R297: groups under a floor of one fifth of split are merged into a group n
     'so they form one group of target `<merge-base>...HEAD docs/a.md lib/b.ts tests/c.ts` and slug `small`, while `tools` is alone under the floor and stays the group `tools`');
   assert.ok(SKILL.includes('groups under one fifth of `split` are merged'), 'SKILL.md lacks the floor');
   assert.ok(README.includes('groups under one fifth of `split` are merged'), 'README.md lacks the floor');
+  holds('steps/1-pass.md', 'with `-- <key path>` for a split group and the files one by one for a merged group and the `.` key.');
 });
 
 test('R305 and R303: at most 6 child sessions run at once, within the review budget for each 6 reviews or part of 6', () => {

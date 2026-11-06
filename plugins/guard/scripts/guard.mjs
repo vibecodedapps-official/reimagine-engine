@@ -76,12 +76,14 @@ const remotesOf = (env, path) => sorted(git(env, path, ['remote', '-v']).split('
 // On Windows a claude installed through npm is a claude.cmd shim, which only cmd.exe resolves; the words are the script's own.
 function runClaude(args, configDir, timeout = 60000) {
   const options = { encoding: 'utf8', env: configDir ? { ...process.env, CLAUDE_CONFIG_DIR: configDir } : process.env, stdio: ['ignore', 'pipe', 'pipe'], timeout };
+  let shim;
   try { return JSON.parse(execFileSync('claude', args, options)); } catch (e) {
-    const shim = (process.env.PATH ?? '').split(';').some((d) => d && existsSync(join(d, 'claude.cmd')));
-    if (e?.code !== 'ENOENT' || process.platform !== 'win32' || !shim) throw e;
+    const dir = (process.env.PATH ?? '').split(';').find((d) => d && existsSync(join(d, 'claude.cmd')));
+    if (e?.code !== 'ENOENT' || process.platform !== 'win32' || !dir) throw e;
+    shim = join(dir, 'claude.cmd');
   }
   if (!args.every((a) => /^[a-z-]+$/.test(a))) throw new Error('claude takes only fixed words here');
-  return JSON.parse(execFileSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `claude ${args.join(' ')}`], options));
+  return JSON.parse(execFileSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `""${shim}" ${args.join(' ')}"`], { ...options, windowsVerbatimArguments: true }));
 }
 
 // Runs claude auto-mode <verb>; anything but an object of the four lists of strings makes the state unavailable.

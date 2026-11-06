@@ -80,7 +80,7 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   assert.notEqual(readme, undefined, 'README.md has no json block');
   assert.equal(skill.lines.join('\n'), readme.lines.join('\n'));
   assert.deepEqual(JSON.parse(skill.lines.join('\n')), {
-    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', 'fallback-reviewer': 'opus' } },
+    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', reviewer: 'opus', 'fallback-reviewer': 'opus' } },
   });
 });
 
@@ -114,6 +114,19 @@ test('R291: the reading block is one fenced block of five lines in a fixed order
   assert.equal(block.lines.length, 5);
   const heads = ['Targets: ', 'Mode: ', 'Budget: ', 'Engine: ', 'Scripts: '];
   block.lines.forEach((line, i) => assert.ok(line.startsWith(heads[i]), `line ${i + 1} does not start with ${heads[i]}`));
+});
+
+test('R291, R305 and R313: the reviewer model is passed to the child session and named on the Engine line', () => {
+  const pass = holds('steps/1-pass.md',
+    'claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json',
+    "`<reviewer>` is the reviewer's model on the reading block's Engine line, `models.reviewer` (default `opus`); always pass it, since a child session without `--model` takes the model its settings files set, not the session's.",
+    'Never a second retry, and never a child session run again at another `--model`.');
+  assert.ok(!pass.includes('never a `--model` flag'), 'steps/1-pass.md still bars a --model flag');
+  assert.ok(fencedLines(pass).some((l) => l.includes('claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json')), 'the fenced command lacks --model <reviewer>');
+  const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
+  assert.notEqual(block, undefined, 'SKILL.md has no reading block');
+  assert.equal(block.lines.find((l) => l.startsWith('Engine: ')), 'Engine: subprocess; reviewer opus, stand-in opus (default)');
+  assert.ok(SKILL.includes("Engine is `subprocess`, or the stand-in with the reason for it, then the reviewer's model (`models.reviewer`) and the stand-in's (`models.fallback-reviewer`), each with its source when it is not the default, so the run names its model before the first review starts."), 'SKILL.md does not describe the Engine line');
 });
 
 test('R289 and R300: the checks phrase is in both grammar lists and ends where another phrase starts', () => {
@@ -341,7 +354,7 @@ test('R310: Step 0 writes passes.json and the run entry, then sends the run to p
 const fencedLines = (text) => fences(text).flatMap((b) => b.lines);
 
 const COMMAND =
-  'cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
+  'cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json';
 
 test('R305: Step 1 holds the child session command as one fenced line', () => {
   holds('SKILL.md', 'In every command the skill and its step files show, a placeholder for a path, such as `<path>`, `<repo>`, `<repo root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.');
@@ -574,7 +587,7 @@ test('R306 and R307: a usage limit is an infrastructure failure, and each limite
   holds('steps/1-pass.md',
     'a `usage limit` line, which is an infrastructure failure',
     'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer`, for that group only, without moving the run to the stand-in',
-    'Never a second retry, and never a `--model` flag',
+    'Never a second retry, and never a child session run again at another `--model`.',
     'a later run resumes the pass');
 });
 
@@ -636,9 +649,9 @@ test('R299 and R313: a reader role at models.reader returns evidence per finding
     'reads the cited code itself for every finding it puts in `fix` and every `unsure`',
     'A failed reader call is retried once; then the orchestrator reads that batch itself.');
   assert.ok(SKILL.includes('| reader |'), 'SKILL.md Roles table has no reader row');
-  assert.ok(SKILL.includes('changes the implementer, the reader and the stand-in reviewer'), 'SKILL.md does not name the reader under models');
-  assert.ok(SKILL.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'SKILL.md models bullet lacks the reader');
-  assert.ok(README.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'README.md lacks the reader under models');
+  assert.ok(SKILL.includes('changes the reviewer, the implementer, the reader and the stand-in reviewer'), 'SKILL.md does not name the reader under models');
+  assert.ok(SKILL.includes('the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer'), 'SKILL.md models bullet lacks the reader');
+  assert.ok(README.includes('the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer'), 'README.md lacks the reader under models');
   holds('report.md', 'each reader call');
 });
 

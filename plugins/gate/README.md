@@ -58,12 +58,12 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
     "max-passes": 4,
     "budget": 120,
     "timeouts": { "subagent": 20, "review": 30, "check": 15 },
-    "models": { "implementer": "sonnet", "reader": "sonnet", "fallback-reviewer": "opus" }
+    "models": { "implementer": "sonnet", "reader": "sonnet", "reviewer": "opus", "fallback-reviewer": "opus" }
   }
 }
 ```
 
-`split` is the number of changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel, at most 6 at once; a group still over `split` is grouped again one segment deeper, and groups under one fifth of `split` are merged. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the three are whole numbers of 1 or more. `timeouts` is the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them; a key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default. `models` names the model of the implementer, of the reader and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
+`split` is the number of changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel, at most 6 at once; a group still over `split` is grouped again one segment deeper, and groups under one fifth of `split` are merged. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the three are whole numbers of 1 or more. `timeouts` is the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them; a key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default. `models` names the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
 
 ## How a run ends
 

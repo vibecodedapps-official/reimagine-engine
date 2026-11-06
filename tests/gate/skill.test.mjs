@@ -590,3 +590,12 @@ test('R301: SKILL.md lists the docs-only rule between the medium stop and the xh
   assert.ok(docs > text.indexOf('2. The latest pass ran at `medium`'), 'the docs-only rule is not after the medium stop');
   assert.ok(docs < text.indexOf('4. The fix round changed an exported signature'), 'the docs-only rule is not before the xhigh re-review');
 });
+
+test('R303: the run budget caps a level when the time left cannot hold one more pass', () => {
+  holds('steps/3-next.md',
+    '<absolute passes.json> <max-passes> <minutes left> <minutes a pass needs>',
+    '`<minutes a pass needs>` is the review budget plus the subagent budget in force',
+    'the report says the next pass was not started for that reason');
+  assert.ok(SKILL.includes('fewer than the review budget plus the subagent budget'), 'SKILL.md does not name the time one more pass needs');
+  holds('report.md', 'the next pass not started because the run budget could not hold it');
+});

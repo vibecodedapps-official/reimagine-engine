@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'plugins', 'gate', 'scripts', 'next.mjs');
 const concurrency = Math.max(1, availableParallelism() - 1);
-const USAGE = 'usage: node next.mjs <passes.json> <max-passes>';
+const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-left> <minutes-a-pass-needs>]';
 const KINDS = 'inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter or docs-only';
 
 let base;
@@ -59,8 +59,8 @@ const exec = (text, args = ['passes.json', '4']) => {
 };
 
 // A successful run: exit 0, nothing on stderr, this one stdout line, and nothing written beside the record.
-const ok = async (passes, expected, max = '4') => {
-  const r = await exec(record(passes), ['passes.json', max]);
+const ok = async (passes, expected, max = '4', budget = []) => {
+  const r = await exec(record(passes), ['passes.json', max, ...budget]);
   assert.equal(r.stderr, '');
   assert.equal(r.stdout, expected + '\n');
   assert.equal(r.status, 0);
@@ -437,8 +437,47 @@ describe('max-passes', { concurrency }, () => {
   });
 });
 
+describe('the run budget', { concurrency }, () => {
+  const fixing = [pass(1, 1, 'xhigh', { fix: ['a|x'] })];
+
+  test('less time left than a pass needs caps the level as budget', async () => {
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['7', '50']);
+  });
+
+  test('exactly the time a pass needs is not capped', async () => {
+    await ok(fixing, HIGH, '4', ['50', '50']);
+  });
+
+  test('a run over its budget, with negative time left, is capped', async () => {
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['-3', '50']);
+  });
+
+  test('a fractional figure is read as a number', async () => {
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['49.5', '50']);
+    await ok(fixing, HIGH, '4', ['50.5', '50']);
+  });
+
+  test('a stop with little time left is not capped', async () => {
+    await ok([pass(1, 1, 'xhigh', { changes: [] })], PASS, '4', ['1', '50']);
+  });
+
+  test('a medium or xhigh level is capped the same way', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] })], '{"level":"medium","rule":"docs-only","capped":"budget"}', '4', ['7', '50']);
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] })], '{"level":"xhigh","rule":"wide-fix","capped":"budget"}', '4', ['7', '50']);
+  });
+
+  test('max-passes wins when both caps apply', async () => {
+    await ok(
+      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'] })],
+      '{"level":"high","rule":"otherwise","capped":"max-passes"}',
+      '2',
+      ['7', '50'],
+    );
+  });
+});
+
 describe('usage and read errors', { concurrency }, () => {
-  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra']]) {
+  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra'], ['passes.json', '4', '7'], ['passes.json', '4', '7', '50', '1'], ['passes.json', '4', 'soon', '50'], ['passes.json', '4', '7', 'long'], ['passes.json', '4', '', '50'], ['passes.json', '4', '7', ''], ['passes.json', '4', 'Infinity', '50'], ['passes.json', '4', '7', '0'], ['passes.json', '4', '7', '-50'], ['passes.json', '4', '7', 'NaN'], ['passes.json', '4', '0x10', '50']]) {
     test(`usage for arguments [${args.join(' ')}]`, async () => {
       await bad(record([pass(1, 1, 'xhigh')]), 2, USAGE, args);
     });

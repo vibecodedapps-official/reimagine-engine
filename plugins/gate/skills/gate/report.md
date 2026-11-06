@@ -88,7 +88,7 @@ Each review with its slug, models, duration, cost, denial count and notes, from 
 ## Rules
 
 - The report has exactly one terminal state, one of the five.
-- Name every cap that ended the run, and the engine when it is the stand-in.
+- Name every cap that ended the run, and the engine when it is the stand-in. A `budget` cap is named as the next pass not started because the run budget could not hold it.
 - For `blocked` and `stopped`, nothing is published after the state.
 - The report may name models, agents and tools, because it stays in the record. The comment follows the deny list of `steps/4-publish.md`, 4.4.
 

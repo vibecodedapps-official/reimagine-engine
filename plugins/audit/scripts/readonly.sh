@@ -521,7 +521,7 @@ check() {
 			key = kind[FILENAME] SUBSEP $0
 			if (side[FILENAME] == "b") cb[key]++
 			else cn[key]++
-			if (kind[FILENAME] == "refs") seen[side[FILENAME] substr($0, index($0, "\t") + 1)] = 1
+			if (kind[FILENAME] == "refs") seen[side[FILENAME] substr($0, index($0, "\t") + 1)] = $0
 		}
 		function newcfg(line,   name) {
 			if (substr(line, 1, 7) != "branch." || match(substr(line, 1, index(line, "=") - 1), /\.[^.]*$/) <= 8) return 0
@@ -529,7 +529,7 @@ check() {
 			return (name in newn) || moved(name)
 		}
 		function moved(name) {
-			return (name in wtn) && (("brefs/heads/" name) in seen) && (("nrefs/heads/" name) in seen) && !(("status" SUBSEP "# branch.head " name) in cb)
+			return (name in wtn) && (("brefs/heads/" name) in seen) && (("nrefs/heads/" name) in seen) && seen["brefs/heads/" name] != seen["nrefs/heads/" name] && !(("status" SUBSEP "# branch.head " name) in cb)
 		}
 		function emit(key, times, sign,   k, line, n, ref, i) {
 			k = index(key, SUBSEP)

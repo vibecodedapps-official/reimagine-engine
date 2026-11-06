@@ -46,7 +46,7 @@ When a session starts, a hook checks the entries against Claude Code's current d
 
 ## The denial record
 
-Guard's second hook runs when auto mode denies a tool call. It appends one line to `denials.jsonl` in the plugin data directory, created readable by you only: the time in UTC, the reason the classifier gave, which names the matched rule, the tool, the cwd, and the command cut at 300 characters for a Bash or PowerShell call or the file path for another tool that has one; a command is recorded as written, so it holds whatever was typed in it. It never records the rest of the tool input, file contents or command output. The file stays on your machine, and the hook prints nothing and never blocks or retries the call. `/guard denials` prints the lines, oldest first, so you can see which denials the entries do not clear. Delete the file to clear the record.
+Guard's second hook runs when auto mode denies a tool call. It appends one line to `denials.jsonl` in the plugin data directory: the time in UTC, the reason the classifier gave, which names the matched rule, the tool, the cwd, and the command cut at 300 characters for a Bash or PowerShell call or the file path for another tool that has one; a command is recorded as written, so it holds whatever was typed in it. It never records the rest of the tool input, file contents or command output. The file is created with mode 0600, readable by you only on macOS and Linux; on Windows it takes the permissions of the plugin data directory. The file stays on your machine, and the hook prints nothing and never blocks or retries the call. `/guard denials` prints the lines, oldest first, so you can see which denials the entries do not clear. Delete the file to clear the record.
 
 ## The list file
 

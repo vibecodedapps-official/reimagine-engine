@@ -42,6 +42,7 @@
 # 37 branch config of an existing branch
 # 38 a branch of a second worktree gets a commit  39 that branch then deleted
 # 40 that branch gets a commit and its remote and merge config
+# 41 branch config of a second worktree's branch that did not move
 #
 # Prints one line per mismatch, then `readonly test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -652,6 +653,17 @@ g -C "$W" config branch.sibling.remote origin
 g -C "$W" config branch.sibling.merge refs/heads/sibling
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
 expect "case 40" 3 "local-branch + $sha_sib commit\trefs/heads/sibling\nlocal-branch + branch.sibling.merge=refs/heads/sibling\nlocal-branch + branch.sibling.remote=origin\nlocal-branch - $sha commit\trefs/heads/sibling\n" ''
+
+# 41. the branch of a second worktree gets no commit, only a config key: it did not move, so
+# the line is blocked.
+case_id="case 41"
+fresh
+W=$root/wt41
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 41: worktree add failed"
+snap "$R/b"
+git -C "$A" config branch.sibling.remote x
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 41" 1 'blocked config + branch.sibling.remote=x\n' ''
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

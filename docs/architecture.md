@@ -40,7 +40,7 @@ reimagine-engine/
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs` | none | own |
 | primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
-| guard | the auto mode classifier's entries for listed repositories | `/guard` | `scripts/guard.mjs` | none | own |
+| guard | the auto mode classifier's entries for listed repositories | `/guard` | `scripts/guard.mjs` | PermissionDenied; SessionStart `startup` | own |
 
 ## Layers on a machine
 
@@ -54,7 +54,7 @@ reimagine-engine/
 
 `loop`, `gate` and `audit` do not require `rules`; without it they still read whatever instruction files exist.
 
-Only three hooks run outside a session request: the rules staleness notice at `startup`, the primer memory notice at `startup`, and the primer drift check before a `git commit`. Everything else happens because the user asked.
+Only five hooks run outside a session request: the rules staleness notice at `startup`, the primer memory notice at `startup`, the primer drift check before a `git commit`, the guard staleness notice at `startup`, and the guard denial record when auto mode denies a tool call. Everything else happens because the user asked.
 
 ## Prompt first
 
@@ -382,20 +382,21 @@ Invoking by name approves fix commits on each target's branch, whether or not th
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or one per path group over `split` | Agent `opus` over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or one per path group over `split` | Agent `opus` over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run. Once, for one group alone, when its child met a usage limit |
+| reader | Agent `sonnet` (`models.reader`), one per batch of at most 40 findings, in parallel, when more than 30 findings have no bucket; returns evidence per finding, never a bucket | the orchestrator reads the batch |
 | implementer | Agent `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
 `.reimagine.json` at the repository root, the `gate` key beside the loop's:
 
 ```json
-{ "gate": { "split": 1500, "max-passes": 4, "budget": 120, "timeouts": { "subagent": 20, "review": 30, "check": 15 }, "models": { "implementer": "sonnet", "fallback-reviewer": "opus" } } }
+{ "gate": { "split": 1500, "max-passes": 4, "budget": 120, "timeouts": { "subagent": 20, "review": 30, "check": 15 }, "models": { "implementer": "sonnet", "reader": "sonnet", "fallback-reviewer": "opus" } } }
 ```
 
 Every value is optional and the values shown are the defaults. The levels a run types lie between the floor `medium` and the ceiling `xhigh`; `low`, `max` and `ultra` are never typed (decisions 122 and 134).
 
 ### Passes and caps
 
-A pass is one review at one typed level, the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Changed lines over `split` (added plus deleted from `git diff --numstat <merge-base>...HEAD`) split the review by path at the shallowest depth that gives more than one group into parallel child sessions, each with the target `<merge-base>...HEAD <path>` and the `.` group naming its files, a group still over `split` whose key is a directory being grouped again by the same rule one segment deeper until no group is over `split` or the one over it is the `.` group or one file (decision 150), each group's slug, made from the final keys, unique within the pass, and the pass's findings are the union. The orchestrator sorts every finding into fix, defer or reject with a one-line reason before anything is edited; implementers apply the fix bucket, one per disjoint file group after a snapshot; the repository's `checks` run; a pass that changed anything ends with one commit and a push after the remote-head check. `next.mjs` then reads `passes.json` and returns, in this order: stop with `pass` or `pass-with-deferred` when the fix bucket is empty and nothing new was rejected; a stop after a `medium` pass, `unconverged` when that pass still found something to fix; `xhigh` once per run when the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files; `medium` after two `high` passes that each fixed nothing and rejected something new; else `high`. At `max-passes` the level is returned marked `capped` and the run ends `unconverged`; a later run resumes from it. A finding is identified by file path and normalized summary; a fixed finding that returns is a regression and goes to the fix bucket, a rejected one that returns is carried and counts as nothing (decision 126), a deferred one keeps its deferral, and a new finding lists the same file's earlier entries as candidates with their line distance (decision 143). `max-passes` 4 with a level still to run, a run budget of 120 minutes and the review budget per review end a run `unconverged` with every open finding listed; an implementer call past the subagent budget or a check past the check budget is a failed call and ends `blocked`. The three budgets are 20, 30 and 15 minutes by default (subagent, review, check), each read from `gate.timeouts`, else the root `timeouts`, else the default (decision 151). "no fixes" runs pass 1 only and names what a fix run would do.
+A pass is one review at one typed level, the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Changed lines over `split` (added plus deleted from `git diff --numstat <merge-base>...HEAD`) split the review by path at the shallowest depth that gives more than one group into parallel child sessions, each with the target `<merge-base>...HEAD <path>` and the `.` group naming its files, a group still over `split` whose key is a directory being grouped again by the same rule one segment deeper until no group is over `split` or the one over it is the `.` group or one file (decision 150), each group's slug, made from the final keys, unique within the pass, sibling groups under one fifth of `split` merged into `-small` groups (decision 194), at most six child sessions at once, and the pass's findings are the union. `findings.mjs` reads every output before it fails, and a usage limit sends that group once to the stand-in (decision 184). The orchestrator sorts every finding into fix, defer or reject with a one-line reason before anything is edited; implementers apply the fix bucket, one per disjoint file group after a snapshot; the repository's `checks` run; any changed path outside the groups' files is restored before staging (decision 196); a pass that changed anything ends with one commit and a push after the remote-head check. `next.mjs` then reads `passes.json` and returns, in this order: stop with `pass` or `pass-with-deferred` when the fix bucket is empty and nothing new was rejected; a stop after a `medium` pass, `unconverged` when that pass still found something to fix; `medium` when the fix round changed only documentation (decision 187); `xhigh` once per run when the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files; `medium` after two `high` passes that each fixed nothing and rejected something new; else `high`. At `max-passes`, or when the minutes left in the run budget are fewer than a pass needs (decision 188), the level is returned marked `capped` and the run ends `unconverged`; a later run resumes from it. A finding is identified by file path and normalized summary; a fixed finding that returns is a regression and goes to the fix bucket, a rejected one that returns is carried and counts as nothing (decision 126), a deferred one keeps its deferral, and a new finding lists the same file's earlier entries as candidates with their line distance (decision 143), then the entries on other files whose summary shares an identifier (decision 185). `max-passes` 4 with a level still to run, a run budget of 120 minutes and the review budget per review end a run `unconverged` with every open finding listed; an implementer call past the subagent budget or a check past the check budget is a failed call and ends `blocked`. The three budgets are 20, 30 and 15 minutes by default (subagent, review, check), each read from `gate.timeouts`, else the root `timeouts`, else the default (decision 151). "no fixes" runs pass 1 only and names what a fix run would do.
 
 ### Engine
 
@@ -427,7 +428,7 @@ The child session is the engine (decision 124). It runs from the repository root
   "runs": [{ "n": 1, "started": "2026-10-25T09:00:40Z", "ended": null, "state": "running" }],
   "passes": [
     { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...",
-      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "notes": "The suite could not be run here." }],
+      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "notes": "The suite could not be run here.", "models": ["<model id>"] }],
       "findings": { "src/stats.mjs|percentile indexes sorted rank ...": { "bucket": "fix", "reason": "off-by-one inside the change" } },
       "changes": ["inside-diff"], "commit": "<sha>", "head": "<sha>",
       "checks": [{ "command": "npm test", "result": "pass" }],
@@ -453,7 +454,7 @@ plugins/primer/
   skills/primer/placement.md       the eleven placement items and the tasks test
   skills/primer/shapes.md          hub, nested file, rule and skill templates with their caps
   skills/fold/SKILL.md             /primer:fold; disable-model-invocation: true; reads the docs live, writes nothing
-  hooks/hooks.json                 PreToolUse Bash|PowerShell -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"
+  hooks/hooks.json                 PreToolUse Bash|PowerShell -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh", onFailure continue
                                    SessionStart startup -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"
   hooks/drift.sh                   the commit check
   hooks/notice.sh                  one line when auto memory has unreviewed notes
@@ -506,7 +507,7 @@ Auto memory is read at `<config>/projects/<key>/memory/`, where `<config>` is `$
 
 ### Drift hook
 
-PreToolUse on `Bash|PowerShell`, POSIX sh with sed, awk, sort, tr, wc and `test`, no `jq`. It reads stdin, extracts `tool_input.command`, and returns at once unless the command runs `git commit` (the grammar of requirement 260). It resolves the repository the commit runs in (decision 50) and finds the hub: the root `CLAUDE.md`, the `AGENTS.md` a one-line `@AGENTS.md` names, or the root `AGENTS.md` when there is no `CLAUDE.md`. Without a hub whose first line is `<!-- primer -->` it prints nothing.
+PreToolUse on `Bash|PowerShell`, POSIX sh with sed, awk, sort, tr, wc and `test`, no `jq`, with `"onFailure": "continue"`: the hooks reference says a shell-form PreToolUse hook on Windows without Git Bash runs in PowerShell and, failing with the field unset, can block the call, so a host without `sh` skips the check and runs the call (decision 193). It reads stdin, extracts `tool_input.command`, and returns at once unless the command runs `git commit` (the grammar of requirement 260). It resolves the repository the commit runs in (decision 50) and finds the hub: the root `CLAUDE.md`, the `AGENTS.md` a one-line `@AGENTS.md` names, or the root `AGENTS.md` when there is no `CLAUDE.md`. Without a hub whose first line is `<!-- primer -->` it prints nothing.
 
 With one it reads the hub, every tracked nested `CLAUDE.md`, every tracked `.claude/rules/**/*.md` and `.claude/skills/*/SKILL.md`, and the changed set of decision 56. It denies, in the JSON deny form with `primer: ` and the findings joined by `; `, on a cap overrun, a backticked token of the hub's opening paragraph that looks like a path (holds a `/` or ends in `.md`, with no space, `<`, `>`, `*`, `{` or `?`) and does not exist spelled exactly, a `paths` value that is neither a list nor a comma string, a `paths` glob that matches no tracked file, or a `SKILL.md` without `description`. A glob is matched with `git ls-files -- ':(glob)<pattern>'` after the hook expands brace groups and prefixes `**/` to a pattern without a slash (verified against the host's matching, decision 80). When nothing denies, a changed file that matches a rule's or skill's `paths` or sits under a nested `CLAUDE.md` whose file is not itself changed puts that file in `additionalContext` as one to recheck (reaches the model under auto mode, decision 85). It never reads git history and never writes.
 
@@ -528,8 +529,9 @@ A repository kept by repo-docs has a `## Spokes` index, spokes under `docs/` or 
 plugins/guard/
   .claude-plugin/plugin.json
   LICENSE  README.md
-  skills/guard/SKILL.md          /guard; disable-model-invocation: true; pre-approves status, list and plan only
-  scripts/guard.mjs              node guard.mjs <verb> <data directory> [args]; verbs: status | list | plan [--add <path> [--merge] | --drop <path or remote> | --clear] | apply
+  skills/guard/SKILL.md          /guard; disable-model-invocation: true; pre-approves status, list, plan and denials only
+  scripts/guard.mjs              node guard.mjs <verb> <data directory> [args]; verbs: status | list | plan [--add <path> [--merge] | --drop <path or remote> | --clear] | apply | denials | session-start | denied
+  hooks/hooks.json               PermissionDenied -> node guard.mjs denied ${CLAUDE_PLUGIN_DATA}; SessionStart startup -> node guard.mjs session-start ${CLAUDE_PLUGIN_DATA}
 ```
 
 Guard renders the auto mode classifier's `environment` and `allow` entries for the repositories the user lists (requirements 334 to 344, decision 181). The host reads `autoMode` from the user settings file, managed settings and `--settings` only, so guard writes the user settings file: `$CLAUDE_CONFIG_DIR/settings.json`, else `~/.claude/settings.json`. The list, `reimagine-guard.json`, sits beside it, since the plugin data directory goes with an uninstall; the plan, the state and the lock sit in the data directory. `--drop` removes a listed repository by its path, a path inside it, or a remote as `list` prints it or as a URL.
@@ -548,9 +550,11 @@ The environment list is written whole, since the host splices `$defaults` in as 
 | managed | another scope adds `autoMode` entries | nothing; names one as an example |
 | unavailable | `claude` cannot run or prints no defaults guard can read | nothing |
 
-`plan` checks the candidate with `claude auto-mode config` in a temporary configuration directory, since `--settings` adds to the user file rather than replacing it, and `apply` checks the real directory after the write: every guard entry once, no environment label twice, every default allow rule present when `$defaults` is. `claude` runs through `execFile` with `CLAUDE_CONFIG_DIR` set; the suite replaces it with a runner that reads the directory's `settings.json` and answers from a literal defaults fixture. Backups, the atomic write and the lock follow `rules.mjs`, except that guard takes over a lock only when it is older than 240 s, where `rules.mjs` uses 60 s.
+`plan` checks the candidate with `claude auto-mode config` in a temporary configuration directory, since `--settings` adds to the user file rather than replacing it, and `apply` checks the real directory after the write: every guard entry once, no environment label twice, every default allow rule present when `$defaults` is. `claude` runs through `execFile` with `CLAUDE_CONFIG_DIR` set, and on Windows through `cmd.exe` when only the npm `claude.cmd` shim is on the PATH (decision 190); the suite replaces it with a runner that reads the directory's `settings.json` and answers from a literal defaults fixture. Backups, the atomic write and the lock follow `rules.mjs`, except that guard takes over a lock only when it is older than 240 s, where `rules.mjs` uses 60 s.
 
 The skill runs `status`, `list` and `plan` pre-approved, shows the output, and asks the user to approve a ready plan by replying "Yes, write guard's change to autoMode in [path].", the sentence that names the permission change the classifier's Self-Modification rule asks for; it runs `apply`, which its `allowed-tools` do not cover, only after that reply, so the write meets the session's permission mode.
+
+Two hooks run outside a request (decisions 191 and 192). The `PermissionDenied` hook appends one line per classifier denial to `denials.jsonl` in the data directory: the time, the reason, which names the matched rule, the tool, the working directory, and the command cut at 300 characters or the file path; never the rest of the tool input or any output. It prints nothing and exits 0. `/guard denials` prints the record. The `SessionStart` hook at `startup` reads the list and, with a repository listed, computes the state with the recorded remotes and no config check, and prints one `systemMessage` line only when the state is `stale`. The host's `PermissionDenied` input carries `tool_name`, `tool_input`, `tool_use_id` and `reason` beside the common fields, and its only output is `hookSpecificOutput.retry` (hooks reference).
 
 ## Versions, tags and release
 

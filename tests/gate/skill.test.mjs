@@ -599,3 +599,21 @@ test('R303: the run budget caps a level when the time left cannot hold one more 
   assert.ok(SKILL.includes('fewer than the review budget plus the subagent budget'), 'SKILL.md does not name the time one more pass needs');
   holds('report.md', 'the next pass not started because the run budget could not hold it');
 });
+
+test('R297: groups under a floor of one fifth of split are merged into a group named small', () => {
+  holds('steps/1-pass.md',
+    'The floor is one fifth of `split`, 300 lines at the default.',
+    'A merged group\'s target names its files one by one, as the `.` key\'s does, and its slug is the parent key\'s slug plus `-small`, `small` at the top',
+    'A group under the floor that is left alone, with no other sibling under the floor, stays as it is.',
+    'so they form one group of target `<merge-base>...HEAD docs/a.md lib/b.ts tests/c.ts` and slug `small`, while `tools` is alone under the floor and stays the group `tools`');
+  assert.ok(SKILL.includes('groups under one fifth of `split` are merged'), 'SKILL.md lacks the floor');
+  assert.ok(README.includes('groups under one fifth of `split` are merged'), 'README.md lacks the floor');
+});
+
+test('R305 and R303: at most 6 child sessions run at once, within the review budget for each 6 reviews or part of 6', () => {
+  holds('steps/1-pass.md',
+    'At most 6 child sessions run at once.',
+    'each later review starts in its own call when one ends',
+    'the review budget for each 6 reviews or part of 6 (two waves of up to 6 get twice the review budget)');
+  assert.ok(SKILL.includes('at most 6 at once'), 'SKILL.md lacks the cap of 6');
+});

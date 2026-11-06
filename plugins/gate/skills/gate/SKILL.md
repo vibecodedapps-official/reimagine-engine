@@ -92,7 +92,7 @@ Invoking this skill by name approves, for this run only: fix commits on each tar
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group, a group still over `split` being grouped again one segment deeper | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing, and stays for the run; also, once, for each group whose child stopped on a usage limit, for that group alone |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --output-format json`, one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group, a group still over `split` being grouped again one segment deeper, and groups under one fifth of `split` merged, at most 6 at once | an Agent at `opus` over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing, and stays for the run; also, once, for each group whose child stopped on a usage limit, for that group alone |
 | implementer | an Agent at `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
 The `models` key of the configuration changes the implementer and the stand-in reviewer. The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was; the report says so in one line.
@@ -114,7 +114,7 @@ Caps:
 
 - `max-passes` (default 4) bounds the passes of one run. When the passes have reached it, the script still returns the rule's level and marks it `capped`, and you end the run `unconverged`. A later run resumes from that level.
 - The run budget is 120 minutes. "budget <n> minutes" in the request wins, then `.reimagine.json` `gate.budget`, then a session instruction. Question waits are outside it. A level is capped as `budget` when the minutes left in it are fewer than the review budget plus the subagent budget, the time one more pass needs.
-- Each review has the review budget, the reviews of a split pass running together within it. Each implementer call has the subagent budget and each check the check budget. The defaults are 30, 20 and 15 minutes; `gate.timeouts` and the root `timeouts` set them as Configuration says.
+- Each review has the review budget, the reviews of a split pass, at most 6 at once, having together that budget for each 6 reviews or part of 6. Each implementer call has the subagent budget and each check the check budget. The defaults are 30, 20 and 15 minutes; `gate.timeouts` and the root `timeouts` set them as Configuration says.
 - Reaching `max-passes` with a level still to run, the run budget or the review budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends `blocked`. The output of the pass is kept and a pushed commit stays.
 - Never pass silently: a cap that ends the run is named in the report.
 
@@ -136,7 +136,7 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 }
 ```
 
-- `split`: the changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel; a group still over `split` is grouped again one segment deeper.
+- `split`: the changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel, at most 6 at once; a group still over `split` is grouped again one segment deeper, and groups under one fifth of `split` are merged.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
 - `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them. A key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default.

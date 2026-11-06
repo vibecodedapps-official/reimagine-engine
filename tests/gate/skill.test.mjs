@@ -641,3 +641,9 @@ test('R300: before staging, the commit compares the changed paths with the group
     'Before staging, run `git status --porcelain --untracked-files=all` again and compare its paths with the groups\' files',
     'a path outside every group\'s files, such as a file a check regenerated, is restored as Snapshots, item 4, restores a path and named in the report, and only then are the fix round\'s paths staged');
 });
+
+test('R314: the comment file is written first with the Write tool and the post runs alone, naming only its path', () => {
+  holds('steps/4-publish.md',
+    'Write the comment to `comment-<n>.md` with the Write tool, in its own call.',
+    'alone in its own Bash call, naming only that path, never one compound command that writes and posts');
+});

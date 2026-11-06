@@ -45,6 +45,8 @@ For a continued branch, also run Step 0.2's pull request query again before the 
 
 Push with `git -C <checkout> push -u <remote> <branch>`. When it returns, take `date -u +%Y-%m-%dT%H:%M:%SZ`, run `git -C <checkout> rev-parse HEAD`, and keep both as the last push time and the last pushed sha. Do the same after every later push.
 
+Every body file is written with the Write tool first, in its own call. The publishing command (`gh pr create`, `gh pr edit`, `gh pr comment`, `gh issue comment`, or `az boards work-item update --discussion` where it takes a file) then runs alone in its own Bash call, naming only the absolute path of that file; never one compound command that writes and posts.
+
 **No open pull request on the branch.** Read `pr-body.md`. Write the body from its `## Pull request body` template to the run's body file: `<record>/pr-body.md`, or `<record>/pr-body-run<n>.md` from run 2 on (`record.md`, Files). Open the pull request against the base branch:
 
 `gh pr create --title "<title>" --body-file <absolute path to the body file> --base <base>`
@@ -55,8 +57,8 @@ A pull request opened on a continued branch lists, under "Decisions for the revi
 
 **One open pull request on the branch.** It is this loop's own when a `runs` entry in `steps.json` names it in `pr` (`record.md`, steps.json, item 2). Read `pr-body.md`. After the push, with `<pr>` the pull request number:
 
-1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, and run `gh pr edit <pr> --body-file <absolute path>`. This is the run's only edit of that body; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
-2. Write the continued pull request comment from the `## Continued pull request comment` template to `<record>/comment-<n>.md`, numbered as `record.md` says, and post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`. This is the run's one comment on the pull request. Under `commit: true` post none here: the report comment at `done` is that one comment (`record.md`, Commit snapshot).
+1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. This is the run's only edit of that body; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
+2. Write the continued pull request comment from the `## Continued pull request comment` template to `<record>/comment-<n>.md`, numbered as `record.md` says, then post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`. This is the run's one comment on the pull request. Under `commit: true` post none here: the report comment at `done` is that one comment (`record.md`, Commit snapshot).
 3. When it is not this loop's own, the comment is all: never edit its body.
 
 Write no `runs[].pr` for a pull request this run did not open. Log in `run.md` the pull request, the body edit and the comment, with their files.
@@ -81,7 +83,7 @@ At most three cycles run. A result still red after the third, or a repair the pa
 
 After the pull request is open and 7.3 has ended without a block (green, or not applicable), post one status comment for each ticket this run took up. A ticket that was done at Step 0 (`record.md`, An existing record) gets no comment, unless no run's `run.md` section logs a comment on it, as after a run that ended before 7.4. Log each comment in `run.md` with its file. Read the `## Ticket comment` template in `pr-body.md` and write each body first.
 
-- GitHub: write the body to `<record>/ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on) and post `gh issue comment <n> --body-file <absolute path>`.
+- GitHub: write the body to `<record>/ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on) and then post `gh issue comment <n> --body-file <absolute path>`.
 - Azure DevOps: use the Azure DevOps MCP tool when one is listed, else `az boards work-item update --id <n> --discussion "<text>"`, reading the text from a file when quoting fails.
 - Salesforce: use the Salesforce MCP tool when one is listed.
 - A host with no tool: put the comment text in the report instead of posting.

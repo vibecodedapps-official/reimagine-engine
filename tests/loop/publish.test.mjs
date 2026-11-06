@@ -182,3 +182,13 @@ test('R135: a block in Step 4 prints the commit and push commands', () => {
   assert.ok(REPORT.includes('`git add <paths>` with the paths of each slice whose `status` in `steps.json` is `complete`'));
   assert.ok(REPORT.includes("Each other slice whose edits are in the tree is named as not done with its paths, which are left out of the commands; say that the rerun's Step 0.3 stops on them until they are committed, restored or moved out of the tree, and then builds the slice again"));
 });
+
+test('R116, R118: each body file is written first and its publishing command runs alone, naming only the file path', () => {
+  const text = section(PUBLISH, '7.2 Push and pull request');
+  assert.notEqual(text, null);
+  assert.ok(text.includes('Every body file is written with the Write tool first, in its own call.'));
+  assert.ok(text.includes('runs alone in its own Bash call, naming only the absolute path of that file; never one compound command that writes and posts'));
+  assert.ok(text.includes('then run `gh pr edit <pr> --body-file <absolute path>`'));
+  assert.ok(text.includes('then post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`'));
+  assert.ok(section(PUBLISH, '7.4 Ticket comments').includes('and then post `gh issue comment <n> --body-file <absolute path>`'));
+});

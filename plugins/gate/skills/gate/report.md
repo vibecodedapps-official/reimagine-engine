@@ -83,7 +83,7 @@ The link of the comment posted. For a host other than GitHub, the comment's text
 
 ### Log
 
-Each review with its slug, models, duration, cost, denial count and notes, from `reviews[]`, a review that stopped on a usage limit named as `usage limit`, the notes printed as the reviewer wrote them, or `none` when empty; each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch; and the elapsed time against the run budget.
+Each review with its slug, models, duration, cost, denial count and notes, from `reviews[]`, a review that stopped on a usage limit named as `usage limit`, the notes printed as the reviewer wrote them, or `none` when empty; each reader call with its batch's size and whether it was retried; each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch; and the elapsed time against the run budget.
 
 ## Rules
 

@@ -80,7 +80,7 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   assert.notEqual(readme, undefined, 'README.md has no json block');
   assert.equal(skill.lines.join('\n'), readme.lines.join('\n'));
   assert.deepEqual(JSON.parse(skill.lines.join('\n')), {
-    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', 'fallback-reviewer': 'opus' } },
+    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', 'fallback-reviewer': 'opus' } },
   });
 });
 
@@ -616,4 +616,22 @@ test('R305 and R303: at most 6 child sessions run at once, within the review bud
     'each later review starts in its own call when one ends',
     'the review budget for each 6 reviews or part of 6 (two waves of up to 6 get twice the review budget)');
   assert.ok(SKILL.includes('at most 6 at once'), 'SKILL.md lacks the cap of 6');
+});
+
+test('R299 and R313: a reader role at models.reader returns evidence per finding for a large triage and never a bucket', () => {
+  holds('steps/1-pass.md',
+    'more than 30 findings whose bucket is `null`',
+    'batches of at most 40',
+    '`models.reader`',
+    'edit nothing, run no git command that writes and start no background command',
+    '`holds` (`yes`, `no` or `unsure`)',
+    '`pre-existing` (`yes`, `no` or `unsure`',
+    'A reader never returns a bucket.',
+    'reads the cited code itself for every finding it puts in `fix` and every `unsure`',
+    'A failed reader call is retried once; then the orchestrator reads that batch itself.');
+  assert.ok(SKILL.includes('| reader |'), 'SKILL.md Roles table has no reader row');
+  assert.ok(SKILL.includes('changes the implementer, the reader and the stand-in reviewer'), 'SKILL.md does not name the reader under models');
+  assert.ok(SKILL.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'SKILL.md models bullet lacks the reader');
+  assert.ok(README.includes('the model of the implementer, of the reader and of the stand-in reviewer'), 'README.md lacks the reader under models');
+  holds('report.md', 'each reader call');
 });

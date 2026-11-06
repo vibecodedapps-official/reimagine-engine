@@ -47,7 +47,7 @@ Judge the fix round's change kinds and write them into `changes`. The diff the p
 - `exported-signature`: an exported function, class, type or public API signature changed.
 - `schema-or-migration`: a schema or migration file changed.
 - `over-quarter`: the fix round changed more than a quarter of that diff's files. Count both lists: it applies when four times the number of changed files is more than the number of that diff's files, so 2 changed of 4 is over a quarter and 2 of 8 is not.
-- `docs-only`: every changed file is documentation, meaning prose for people that no build, test or runtime reads, such as a README, a changelog or a design document. A skill, step, prompt or instruction file that a runtime or an agent loads is not documentation, nor is any code or configuration.
+- `docs-only`: every changed file is documentation, meaning prose for people that no build, test or runtime reads, such as a README, a changelog or a design document. A file the host loads as instructions (a `CLAUDE.md` or `AGENTS.md`, a rule, a skill or step file, an agent or prompt file) is not documentation, nor is any code or configuration, while a document that an instruction file only tells an agent to read is.
 
 A fix round that changed nothing is `[]`.
 

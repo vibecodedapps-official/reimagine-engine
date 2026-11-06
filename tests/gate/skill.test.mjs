@@ -578,6 +578,10 @@ test('R306 and R307: a usage limit is an infrastructure failure, and each limite
     'a later run resumes the pass');
 });
 
+test('R306 and R307: the stand-in retries of limited groups run in parallel beside a sleep of the review budget, and one still running is a failed review', () => {
+  holds('steps/1-pass.md', 'The retry calls, one per limited group, run in parallel in one message beside a new `sleep` of the review budget for each 6 calls or part of 6, started as 1.3 item 2 starts one; a retry still running when it ends is stopped with TaskStop and is a failed review.');
+});
+
 test('R306: Step 1.6 ends the candidate list with entries on other files that share an identifier and matches them the same way', () => {
   holds('steps/1-pass.md',
     'then the entries on other files that share an identifier with the finding, a backticked name or a camelCase or snake_case word, each naming its `file` and the identifiers it `shared`',

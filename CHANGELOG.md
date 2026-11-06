@@ -2,6 +2,16 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## guard 0.1.2 - 2026-11-06
+
+- The startup hook checks nothing in a session the host marks as unattended, which every `claude -p` session is, since each headless child the gate and the loop start launched the host's defaults call, six for a split pass of six, with no one to show the notice to. The entry point is no signal, since a child of a desktop or IDE session keeps its parent's.
+
+## gate 0.1.9 - 2026-11-06
+
+- Each child review runs at `models.reviewer`, which has a default, and the reading block's Engine line names that model for each repository before the first review starts, since a child started with no model ran on the tier the settings files named and nothing the gate printed said which.
+- The one retry of a group that met a usage limit runs on another model than the reviewer's, and the record names the model it ran at, since a retry on the model that met the limit meets it again.
+- A cross-file candidate shares only a name that looks like code, a camelCase or snake_case word or a backticked name with a character other than a letter, a digit or a space, since a backticked plain word such as `null` or a product name linked unrelated findings.
+
 ## rules 0.1.23 - 2026-11-06
 
 - The refactor skill says to run its `git` reads with the Bash tool, which its `allowed-tools` pre-approve, since the skill named no tool and a Windows session could take another shell tool and prompt on each read.

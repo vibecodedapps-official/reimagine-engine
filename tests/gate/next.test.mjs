@@ -457,6 +457,17 @@ describe('the run budget', { concurrency }, () => {
     await ok(fixing, HIGH, '4', ['50.5', '50']);
   });
 
+  test('a figure without a leading digit is read as a number', async () => {
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['.5', '1']);
+    await ok(fixing, HIGH, '4', ['1', '.5']);
+  });
+
+  test('a figure in exponent notation is read as a number', async () => {
+    await ok(fixing, HIGH, '4', ['1e1', '5']);
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['1e1', '50']);
+    await ok(fixing, '{"level":"high","rule":"otherwise","capped":"budget"}', '4', ['7', '1e1']);
+  });
+
   test('a stop with little time left is not capped', async () => {
     await ok([pass(1, 1, 'xhigh', { changes: [] })], PASS, '4', ['1', '50']);
   });
@@ -477,7 +488,7 @@ describe('the run budget', { concurrency }, () => {
 });
 
 describe('usage and read errors', { concurrency }, () => {
-  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra'], ['passes.json', '4', '7'], ['passes.json', '4', '7', '50', '1'], ['passes.json', '4', 'soon', '50'], ['passes.json', '4', '7', 'long'], ['passes.json', '4', '', '50'], ['passes.json', '4', '7', ''], ['passes.json', '4', 'Infinity', '50'], ['passes.json', '4', '7', '0'], ['passes.json', '4', '7', '-50'], ['passes.json', '4', '7', 'NaN'], ['passes.json', '4', '0x10', '50']]) {
+  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra'], ['passes.json', '4', '7'], ['passes.json', '4', '7', '50', '1'], ['passes.json', '4', 'soon', '50'], ['passes.json', '4', '7', 'long'], ['passes.json', '4', '', '50'], ['passes.json', '4', '7', ''], ['passes.json', '4', 'Infinity', '50'], ['passes.json', '4', '7', '0'], ['passes.json', '4', '7', '-50'], ['passes.json', '4', '7', 'NaN'], ['passes.json', '4', '0x10', '50'], ['passes.json', '4', 'abc', '50'], ['passes.json', '4', '7', 'abc'], ['passes.json', '4', ' ', '50'], ['passes.json', '4', '7', ' ']]) {
     test(`usage for arguments [${args.join(' ')}]`, async () => {
       await bad(record([pass(1, 1, 'xhigh')]), 2, USAGE, args);
     });
@@ -596,6 +607,15 @@ describe('validation errors', { concurrency }, () => {
   test('a latest pass with a change kind outside the six', async () => {
     await bad(record([good, { ...second, changes: ['inside-diff', 'rename'] }]), 1, `next: passes.json: passes[1].changes holds "rename", not ${KINDS}`);
     await bad(record([good, { ...second, changes: [7, 'rename'] }]), 1, `next: passes.json: passes[1].changes holds 7, not ${KINDS}`);
+  });
+
+  test('a latest pass with docs-only beside a kind that is code or configuration', async () => {
+    await bad(record([good, { ...second, changes: ['docs-only', 'schema-or-migration'] }]), 1, 'next: passes.json: passes[1].changes holds "docs-only" beside "schema-or-migration", which documentation cannot be');
+    await bad(record([good, { ...second, changes: ['exported-signature', 'inside-diff', 'docs-only'] }]), 1, 'next: passes.json: passes[1].changes holds "docs-only" beside "exported-signature", which documentation cannot be');
+  });
+
+  test('docs-only beside outside-diff or over-quarter stays valid', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only', 'over-quarter'] })], '{"level":"medium","rule":"docs-only"}');
   });
 
   test('changes of a pass before the latest are not read', async () => {

@@ -41,6 +41,7 @@
 # 36 a new branch whose name holds a dot, with its config
 # 37 branch config of an existing branch
 # 38 a branch of a second worktree gets a commit  39 that branch then deleted
+# 40 that branch gets a commit and its remote and merge config
 #
 # Prints one line per mismatch, then `readonly test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -637,6 +638,20 @@ g -C "$A" worktree remove -f "$W" || mismatch "case 39: worktree remove failed"
 g -C "$A" branch -q -D sibling || mismatch "case 39: branch delete failed"
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
 expect "case 39" 1 "blocked refs - $sha commit\trefs/heads/sibling\n" ''
+
+# 40. the branch of a second worktree gets a commit and its remote and merge config, as a first
+# push -u leaves them: the `+` config lines are local-branch too. Byte order: `+` before `-`,
+# and $sha_sib (3) before branch.
+case_id="case 40"
+fresh
+W=$root/wt40
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 40: worktree add failed"
+snap "$R/b"
+g -C "$W" commit -q --allow-empty -m two
+g -C "$W" config branch.sibling.remote origin
+g -C "$W" config branch.sibling.merge refs/heads/sibling
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 40" 3 "local-branch + $sha_sib commit\trefs/heads/sibling\nlocal-branch + branch.sibling.merge=refs/heads/sibling\nlocal-branch + branch.sibling.remote=origin\nlocal-branch - $sha commit\trefs/heads/sibling\n" ''
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

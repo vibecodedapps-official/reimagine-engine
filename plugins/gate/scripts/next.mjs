@@ -7,7 +7,7 @@
 //                    budget, and the time one more pass needs, a number above 0
 // The latest pass is the last entry of `passes`; its `changes` lists the fix round's kinds:
 //   inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter (these four are wide) and docs-only
-//   (every changed file is documentation; not wide).
+//   (every changed file is documentation; not wide; a record that lists it beside exported-signature or schema-or-migration is bad).
 // A reject is new unless the same finding id has bucket `reject` in any earlier pass of the record, in any run.
 // Rules, first match wins:
 //   nothing-to-fix     no fix finding and no new reject: stop `pass`, or `pass-with-deferred` when a pass of the run deferred
@@ -70,6 +70,8 @@ function validate(record, file) {
   if (!Array.isArray(latest.changes)) fail(`${at}.changes is missing or not an array`);
   const bad = latest.changes.find((k) => !KINDS.includes(k));
   if (bad !== undefined) fail(`${at}.changes holds ${show(bad)}, not ${list(KINDS)}`);
+  const code = latest.changes.includes('docs-only') ? latest.changes.find((k) => k === 'exported-signature' || k === 'schema-or-migration') : undefined;
+  if (code !== undefined) fail(`${at}.changes holds "docs-only" beside ${show(code)}, which documentation cannot be`);
 }
 
 const has = (p, bucket) => Object.values(p.findings).some((f) => f.bucket === bucket);
@@ -97,8 +99,8 @@ export function next(passes, max, time = null) {
   return time && time.left < time.need ? { ...result, capped: 'budget' } : result;
 }
 
-// A decimal number, or null.
-const minutes = (s) => (/^-?[0-9]+(\.[0-9]+)?$/.test(s) && Number.isFinite(Number(s)) ? Number(s) : null);
+// A finite number as Number reads it, but not an empty argument or a 0x, 0o or 0b literal; else null.
+const minutes = (s) => (s.trim() !== '' && !/^0[xob]/i.test(s.trim()) && Number.isFinite(Number(s)) ? Number(s) : null);
 
 function main(argv) {
   try {

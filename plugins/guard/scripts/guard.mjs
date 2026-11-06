@@ -458,7 +458,9 @@ function denial(input, now) {
 
 function listDenials(dataDir) {
   const path = join(dataDir, DENIALS_FILE);
-  const entries = (readFile(path).text ?? '').split('\n').flatMap((l) => {
+  let text;
+  try { text = readFile(path).text ?? ''; } catch (e) { refuse(`cannot read ${path} (${e.code})`); }
+  const entries = text.split('\n').flatMap((l) => {
     try { const e = JSON.parse(l); return e && typeof e === 'object' && !Array.isArray(e) ? [e] : []; } catch { return []; }
   });
   if (!entries.length) return [`denials: none recorded in ${path}`];

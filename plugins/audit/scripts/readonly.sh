@@ -73,11 +73,13 @@
 # for such a name. A refs/heads/<name> line, `-` or `+`, is also `local-branch` when the
 # baseline and now both have a line for that ref, and <name> is not the baseline's
 # `# branch.head` and is checked out in another worktree of the repository (a `branch` line
-# of `git worktree list --porcelain` for a worktree that is not the audited one). A branch
-# only in the baseline stays `blocked refs -`. Refs and config are shared by every worktree,
-# so another worktree's new or moved branch shows here. Ignored files are compared with
-# <ignored base prefix>.ignored by path, on size and mtime. `touched` is a file newer than
-# <baseline prefix>.marker that is not ignored and not part of a blocked line.
+# of `git worktree list --porcelain` for a worktree that is not the audited one); a `+`
+# config line `branch.<name>.<key>=<value>` for such a name is `local-branch` too, a `-`
+# config line is not. A branch only in the baseline stays `blocked refs -`. Refs and config
+# are shared by every worktree, so another worktree's new or moved branch shows here.
+# Ignored files are compared with <ignored base prefix>.ignored by path, on size and mtime.
+# `touched` is a file newer than <baseline prefix>.marker that is not ignored and not part
+# of a blocked line.
 #
 # Exit status, the first that holds:
 #   2  a collection or comparison step failed, or the arguments are wrong (one line on
@@ -501,7 +503,8 @@ check() {
 	# `comm` on the sorted files did. Lines only in the baseline are `-`, only now `+`. A
 	# refs line whose ref name starts with refs/remotes/ is a remote-ref line, a new branch's
 	# refs and config lines are local-branch lines, as are both refs lines of a branch that
-	# moved while another worktree has it checked out. The final print sorts each group.
+	# moved while another worktree has it checked out, and its `+` config lines. The final
+	# print sorts each group.
 	BLK=$tmp/blocked REM=$tmp/remote LOC=$tmp/localbr WTB=$tmp/wtbranches awk -v kinds="status stash config hashes refs" '
 		BEGIN {
 			blk = ENVIRON["BLK"]; rem = ENVIRON["REM"]; loc = ENVIRON["LOC"]
@@ -520,8 +523,10 @@ check() {
 			else cn[key]++
 			if (kind[FILENAME] == "refs") seen[side[FILENAME] substr($0, index($0, "\t") + 1)] = 1
 		}
-		function newcfg(line) {
-			return substr(line, 1, 7) == "branch." && match(substr(line, 1, index(line, "=") - 1), /\.[^.]*$/) > 8 && (substr(line, 8, RSTART - 8) in newn)
+		function newcfg(line,   name) {
+			if (substr(line, 1, 7) != "branch." || match(substr(line, 1, index(line, "=") - 1), /\.[^.]*$/) <= 8) return 0
+			name = substr(line, 8, RSTART - 8)
+			return (name in newn) || moved(name)
 		}
 		function moved(name) {
 			return (name in wtn) && (("brefs/heads/" name) in seen) && (("nrefs/heads/" name) in seen) && !(("status" SUBSEP "# branch.head " name) in cb)

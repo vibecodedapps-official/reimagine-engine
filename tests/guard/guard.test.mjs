@@ -912,6 +912,15 @@ test('R344: denials with no file, or an empty one, prints the none line', () => 
   assert.throws(() => w.run('denials', 'extra'), refusal('denials takes no arguments'));
 });
 
+test('R342: denials refuses with one line when the denials file cannot be read', () => {
+  const w = world();
+  mkdirSync(DENIALS(w));
+  assert.throws(() => w.run('denials'), refusal(`cannot read ${DENIALS(w)} (EISDIR)`));
+  const out = spawnSync(process.execPath, [SCRIPT, 'denials', w.data], { env: w.env, encoding: 'utf8' });
+  assert.equal(out.status, 1);
+  assert.equal(out.stdout, `guard: cannot read ${DENIALS(w)} (EISDIR)\n`);
+});
+
 test('R344: the denials file is created readable by the owner only', { skip: process.platform === 'win32' }, () => {
   const w = world();
   denied(w, { cwd: '/work/app', tool_name: 'Bash', tool_input: { command: 'ls' }, reason: '[x]' });

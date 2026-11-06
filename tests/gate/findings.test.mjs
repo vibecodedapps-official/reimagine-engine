@@ -936,9 +936,31 @@ describe('validation errors', { concurrency }, () => {
     assert.deepEqual(readdirSync(dir).filter((n) => n.startsWith('findings.json')), ['findings.json']);
   });
 
-  test('a stand-in reply that is only a limit message is a usage limit', async () => {
-    const dir = kase([], { 'reply.md': "You've reached your session limit. It resets at 5pm.\n" });
-    failed(await run(dir, '1', 'findings.json', 'reply.md'), 1, ['findings: reply.md: usage limit'], dir);
+  test('a stand-in reply that is only a limit message has no array, since only a .json result is read for a limit', async () => {
+    const dir = kase([], { 'reply.md': "You've hit your usage limit. It resets at 5pm.\n" });
+    failed(await run(dir, '1', 'findings.json', 'reply.md'), 1, ['findings: reply.md: no fenced json array of findings'], dir);
+  });
+
+  test('a .json result of more than 500 characters that mentions a rate limit and has no fence has no array', async () => {
+    const result = 'The client hits a rate limit on every retry. ' + 'This is a long review without any fenced block. '.repeat(12);
+    const dir = kase([], { 'long.json': JSON.stringify({ is_error: false, result }) });
+    failed(await run(dir, '1', 'findings.json', 'long.json'), 1, ['findings: long.json: no fenced json array of findings'], dir);
+  });
+
+  test('a .json limit message padded with whitespace past 500 characters is still a usage limit', async () => {
+    const result = "  You've hit your usage limit. It resets at 5pm." + ' '.repeat(600) + '\n';
+    const dir = kase([], { 'padded.json': JSON.stringify({ is_error: false, result }) });
+    failed(await run(dir, '1', 'findings.json', 'padded.json'), 1, ['findings: padded.json: usage limit'], dir);
+  });
+
+  test('an unreadable output after a usage limit keeps the limit line first and exits 2', async () => {
+    const dir = kase(['limit-429.json']);
+    failed(await run(dir, '1', 'findings.json', 'limit-429.json', 'missing.json'), 2, ['findings: limit-429.json: usage limit', 'findings: cannot read missing.json'], dir);
+  });
+
+  test('an unreadable output before a usage limit is named first and exits 2', async () => {
+    const dir = kase(['limit-429.json']);
+    failed(await run(dir, '1', 'findings.json', 'missing.json', 'limit-429.json'), 2, ['findings: cannot read missing.json', 'findings: limit-429.json: usage limit'], dir);
   });
 
   test('a finished review that mentions a rate limit beside a valid array is read normally', async () => {

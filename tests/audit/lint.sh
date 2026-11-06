@@ -896,6 +896,24 @@ for f in skills/audit/report.md skills/audit/stages/8-report.md; do
 	fi
 done
 
+# A `--live` resume takes live results after a plugin update: the version difference does
+# not invalidate stage 1, and the recorded and the current version are named in the first
+# rerun stage's entry and in Coverage.
+for f in skills/audit/resume.md skills/audit/live.md; do
+	if [ -f "$f" ]; then
+		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+		grep -qF 'With `--live`, a recorded `plugin_version` other than the current one does not invalidate stage 1 when every other input of stage 1 is unchanged.' "$tmp/list" ||
+			fail "$f: no --live exception for a plugin version difference"
+	fi
+done
+for f in skills/audit/resume.md skills/audit/report.md; do
+	if [ -f "$f" ]; then
+		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+		grep -qF 'the recorded and the current plugin version' "$tmp/list" ||
+			fail "$f: does not record or name both plugin versions of a --live resume"
+	fi
+done
+
 # Section 3 names its cut by tier: every item in full at low tier; at medium and high tier
 # the challenged items in full and the others as a cut first line with the pass-one path.
 for f in skills/audit/report.md skills/audit/stages/8-report.md; do

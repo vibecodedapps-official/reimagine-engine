@@ -13,7 +13,9 @@ procedure that calls it is `${CLAUDE_PLUGIN_ROOT}/skills/audit/resume.md`.
 A finding result reruns stages 6 to 8, so the second opinion, the late adversary and the
 merger review it; a result that answers only claims reruns stages 7 and 8. Resume refuses
 an import once a bundle's recorded head or base stops matching, and when the rerun it
-would need starts at stage 5 or before.
+would need starts at stage 5 or before. A plugin update between the report and the
+results does not stop it. With `--live`, a recorded `plugin_version` other than the
+current one does not invalidate stage 1 when every other input of stage 1 is unchanged.
 
 ## Ids
 

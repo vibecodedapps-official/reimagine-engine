@@ -297,6 +297,8 @@ A run record.
   `not run: budget expired`, with the reason and the read-only checks it accepted. Then
   the stage 8 line, written as it stands, because the report is hashed before stage 8's
   check runs: ``Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.``
+- Plugin version: when a `--live` resume went on with a recorded `plugin_version` other
+  than the current one, the recorded and the current plugin version.
 - Swaps: every swap, with stage, role, scope, the requested model it left, the requested
   model it went to, and the reason.
 - Failed scopes and the files, rules or questions they left unreviewed, with the last

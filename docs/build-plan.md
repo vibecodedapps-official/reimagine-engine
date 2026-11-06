@@ -1544,6 +1544,24 @@ Work items, in this order:
 
 Check: `npm run test:rules` and `npm run test:lint` before and after item 1; `npm test` and `npm run lint` with the deny tokens before the push.
 
+## Field feedback of 2026-11-06: M76
+
+Added 2026-11-06. Issues 69, 89, 101 to 103 and 107 to 122, decisions 184 to 202, and the requirements those decisions amend: the gate's usage limit, split floor and cap, reader, documentation rule, budget cap, fix-group check, notes and candidates in gate 0.1.8; the sibling worktree, the report's Coverage line and section 3, the run id and ticket slugs and a version-tolerant live resume in audit 0.1.15; the read-only companion question and the publish calls in loop 0.1.16; the `claude` shim on Windows, the denial record and the startup notice in guard 0.1.1; the drift hook's failure mode in primer 0.1.7; and the refactor skill's tool in rules 0.1.23. M76 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/gate/`, `plugins/audit/`, `plugins/loop/`, `plugins/guard/`, `plugins/primer/`, `plugins/rules/`, `tools/lint.mjs`, `tests/gate/`, `tests/audit/`, `tests/loop/`, `tests/guard/`, `tests/primer/`, `tests/lint/` and `tests/rules/`. Tags wait for the owner's merge.
+
+### M76: the fixes
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m76 for the field feedback of 2026-11-06`.
+2. The script defects, each test seen failing against the base script first: `findings.mjs`, then `next.mjs`, then `readonly.sh` under the system awk and mawk, then `guard.mjs` and the primer hook with lint's shapes. Commits: `fix(gate): read a usage limit apart from a failed review and name every bad output` (#109), `fix(gate): offer a candidate on another file that shares an identifier` (#113), `fix(gate): keep the notes a reviewer writes after its fence` (#115), `fix(gate): send a fix round that touched only documentation to medium` (#114), `fix(gate): start no pass with less time left than a pass needs` (#103), `fix(audit): judge a moved branch that another worktree has checked out` (#116), `fix(guard): run the claude command shim on windows` (#101), `feat(guard): record the classifier denials in the plugin data directory` (#107), `feat(guard): say at startup when the entries are stale` (#108) and `fix(primer): let a shell call go ahead when the drift hook cannot run` (#69).
+3. The skill texts with their text tests, each seen failing first. Commits: `fix(gate): merge small sibling groups and cap the reviews that run at once` (#110), `feat(gate): add a reader that returns evidence per finding for a large triage` (#111), `fix(gate): restore a file a check rewrote outside the fix groups` (#112), `fix(loop,gate): write the body first and run the post alone` (#102), `fix(audit): give the stage 8 check one fixed coverage sentence` (#117), `fix(audit): name the cut of section 3 by tier` (#118), `fix(audit): settle the run id slug of a branch bundle` (#119), `fix(audit): slug a file ticket from its export id` (#120), `fix(audit): let a finished run take live results after a plugin update` (#121), `fix(loop): ask whether a read-only companion sees the rows the write touches` (#122) and `fix(rules): say which tool runs the refactor skill's git reads` (#89).
+4. The design documents. Commit: `docs(design): record the field feedback of 2026-11-06`.
+5. `node tools/release.mjs` for gate 0.1.8, audit 0.1.15, loop 0.1.16, guard 0.1.1, primer 0.1.7 and rules 0.1.23, with the catalog `metadata.version` raised to 0.1.43, 0.1.44, 0.1.45, 0.1.46, 0.1.47 and 0.1.48, the `plugin_version` literals of the audit skill files moved and the version literals of `tests/rules/rules.test.mjs` moved. Commits: `release(gate): 0.1.8`, `release(audit): 0.1.15`, `release(loop): 0.1.16`, `release(guard): 0.1.1`, `release(primer): 0.1.7` and `release(rules): 0.1.23`.
+6. The gate on the pull request, its fixes committed on the branch.
+7. After the merge, by the owner: the six changelog headings, the release acceptance items 2 and 5 for each plugin, the tags after a yes, item 14 at audit 0.1.15, items 77 to 80 at guard 0.1.1 with a classifier denial seen in the record, the Windows checks this milestone could not run (issue 69's hook on a host without Git for Windows, issue 89's `/rules` run making no PowerShell call for its script, and issue 101's `status` through an npm install), then item 21 on the merge commit.
+
+Check: the area script of each commit before and after it (`npm run test:gate`, `test:audit`, `test:loop`, `test:guard`, `test:primer`, `test:rules`, `test:lint`); `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

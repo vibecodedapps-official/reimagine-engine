@@ -119,8 +119,10 @@ test('R291: the reading block is one fenced block of five lines in a fixed order
 test('R291, R305 and R313: the reviewer model is passed to the child session and named on the Engine line', () => {
   const pass = holds('steps/1-pass.md',
     'claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json',
-    "`<reviewer>` is `models.reviewer` of the configuration of the repository the target runs in (default `opus`), the model the Engine line names; always pass it, since a child session without `--model` takes the model its settings files set, not the session's.",
-    'Never a second retry, and never a child session run again at another `--model`.');
+    "`<reviewer>` is `models.reviewer` of the configuration of the repository the target runs in (default `opus`); always pass it, since a child session without `--model` takes the model its settings files set, not the session's.",
+    'Never a second retry, and never a child session run again at another `--model`.',
+    'When the Engine line of the reading block starts with `stand-in`, or an earlier review of this run chose it, skip to 1.4.');
+  assert.ok(!pass.includes('the model the Engine line names'), 'steps/1-pass.md still defines <reviewer> by the Engine line');
   assert.ok(!pass.includes('never a `--model` flag'), 'steps/1-pass.md still bars a --model flag');
   assert.ok(fencedLines(pass).some((l) => l.includes('claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json')), 'the fenced command lacks --model <reviewer>');
   const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
@@ -586,10 +588,13 @@ test('R300: the snapshot items read each path from a status line unquoted and ta
 test('R306 and R307: a usage limit is an infrastructure failure, and each limited group gets one stand-in review', () => {
   holds('steps/1-pass.md',
     'a `usage limit` line, which is an infrastructure failure',
-    'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer`, or at `sonnet` when that model is `models.reviewer`, or at `opus` when both are `sonnet`, since a retry on the model that met the limit meets it again, for that group only, without moving the run to the stand-in',
-    'or at `sonnet` when that model is `models.reviewer`, or at `opus` when both are `sonnet`',
+    'Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer` when it differs from `models.reviewer`, else at `sonnet`, or at `opus` when `models.reviewer` is `sonnet`, since a retry on the model that met the limit meets it again, for that group only, without moving the run to the stand-in',
+    'else at `sonnet`, or at `opus` when `models.reviewer` is `sonnet`',
+    'Call an Agent at `models.fallback-reviewer` (default `opus`), or for a group that met a usage limit at the model 1.5 item 2 names,',
     'Never a second retry, and never a child session run again at another `--model`.',
+    'the three numbers `null` and `models` the one model the stand-in was called at, as `["<model>"]`, for a stand-in\'s text.',
     'a later run resumes the pass');
+  holds('record.md', 'for a stand-in\'s text, which names no models, the one model the stand-in was called at, and `null` for a child session result without `modelUsage`.');
 });
 
 test('R306 and R307: the stand-in retries of limited groups run in parallel beside a sleep of the review budget, and one still running is a failed review', () => {

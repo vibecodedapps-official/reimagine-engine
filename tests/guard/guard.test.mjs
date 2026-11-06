@@ -949,10 +949,19 @@ test('R341: session-start prints nothing and runs no claude when no one attends 
   w.stand.defaults = { ...structuredClone(FIX), environment: [ORG, '**Repository visibility**: Treat every repository as public.', TRUSTED, SOURCE, DOMAINS] };
   const calls = [];
   const claude = (args, d, timeout) => { calls.push(args); return w.claude(args, d, timeout); };
-  const start = (attended, entrypoint) => main(['session-start', w.data], { env: { ...w.env, CLAUDE_CODE_SESSION_ATTENDED: attended, CLAUDE_CODE_ENTRYPOINT: entrypoint }, now: w.now, home: w.home, cwd: w.work, claude });
+  const start = (attended, entrypoint) => {
+    const env = { ...w.env, CLAUDE_CODE_ENTRYPOINT: entrypoint };
+    if (attended !== undefined) env.CLAUDE_CODE_SESSION_ATTENDED = attended;
+    return main(['session-start', w.data], { env, now: w.now, home: w.home, cwd: w.work, claude });
+  };
   assert.deepEqual(start('0', 'sdk-cli'), []);
   assert.deepEqual(start('0', 'claude-desktop'), []);
   assert.deepEqual(calls, []);
+  const unset = start(undefined, 'sdk-cli');
+  assert.equal(unset.length, 1);
+  assert.deepEqual(JSON.parse(unset[0]), { systemMessage: `guard: the auto mode entries in ${w.settings} are stale; run /guard to update them` });
+  assert.ok(calls.length > 0);
+  calls.length = 0;
   const lines = start('1', 'cli');
   assert.equal(lines.length, 1);
   assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: the auto mode entries in ${w.settings} are stale; run /guard to update them` });

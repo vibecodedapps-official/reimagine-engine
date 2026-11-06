@@ -594,10 +594,10 @@ test('R301: SKILL.md lists the docs-only rule between the medium stop and the xh
 test('R303: the run budget caps a level when the time left cannot hold one more pass', () => {
   holds('steps/3-next.md',
     '<absolute passes.json> <max-passes> <minutes left> <minutes a pass needs>',
-    '`<minutes a pass needs>` is the review budget for each 6 reviews or part of 6 of the pass just made (its `reviews[]`, which the next pass\'s split will usually match), plus the subagent budget in force',
+    '`<minutes a pass needs>` is the review budget for each 6 groups or part of 6 of the pass just made, the groups being the distinct slugs in its `reviews[]` (a group that a stand-in reviewed again has two entries under one slug), which the next pass\'s split will usually match, plus the subagent budget in force',
     'so a pass of one review needs the review budget plus the subagent budget',
     'the report says the next pass was not started for that reason');
-  assert.ok(SKILL.includes('fewer than the review budget for each 6 reviews or part of 6 of the pass just made, plus the subagent budget'), 'SKILL.md does not name the time one more pass needs');
+  assert.ok(SKILL.includes('fewer than the review budget for each 6 groups or part of 6 of the pass just made, plus the subagent budget'), 'SKILL.md does not name the time one more pass needs');
   holds('report.md', 'the next pass not started because the run budget could not hold it');
 });
 

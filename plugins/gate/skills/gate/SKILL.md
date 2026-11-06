@@ -114,7 +114,7 @@ You do not choose the next level. After the fix round, `next.mjs` reads the reco
 Caps:
 
 - `max-passes` (default 4) bounds the passes of one run. When the passes have reached it, the script still returns the rule's level and marks it `capped`, and you end the run `unconverged`. A later run resumes from that level.
-- The run budget is 120 minutes. "budget <n> minutes" in the request wins, then `.reimagine.json` `gate.budget`, then a session instruction. Question waits are outside it. A level is capped as `budget` when the minutes left in it are fewer than the review budget for each 6 reviews or part of 6 of the pass just made, plus the subagent budget, the time one more pass needs.
+- The run budget is 120 minutes. "budget <n> minutes" in the request wins, then `.reimagine.json` `gate.budget`, then a session instruction. Question waits are outside it. A level is capped as `budget` when the minutes left in it are fewer than the review budget for each 6 groups or part of 6 of the pass just made, plus the subagent budget, the time one more pass needs.
 - Each review has the review budget, the reviews of a split pass, at most 6 at once, having together that budget for each 6 reviews or part of 6. Each implementer call has the subagent budget and each check the check budget. The defaults are 30, 20 and 15 minutes; `gate.timeouts` and the root `timeouts` set them as Configuration says.
 - Reaching `max-passes` with a level still to run, the run budget or the review budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends `blocked`. The output of the pass is kept and a pushed commit stays.
 - Never pass silently: a cap that ends the run is named in the report.

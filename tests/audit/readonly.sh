@@ -43,6 +43,8 @@
 # 38 a branch of a second worktree gets a commit  39 that branch then deleted
 # 40 that branch gets a commit and its remote and merge config
 # 41 branch config of a second worktree's branch that did not move
+# 42 that branch gets a commit and a changed remote config
+# 43 a second worktree whose folder is gone, its branch moved in the audited checkout
 #
 # Prints one line per mismatch, then `readonly test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -664,6 +666,33 @@ snap "$R/b"
 git -C "$A" config branch.sibling.remote x
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
 expect "case 41" 1 'blocked config + branch.sibling.remote=x\n' ''
+
+# 42. the branch of a second worktree gets a commit and its remote key changes, as a push -u to
+# another remote leaves it: the `-` config line is local-branch too. Byte order: `+` before `-`,
+# and within a sign $sha_sib (3) or $sha (2) before branch.
+case_id="case 42"
+fresh
+W=$root/wt42
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 42: worktree add failed"
+git -C "$W" config branch.sibling.remote origin
+snap "$R/b"
+g -C "$W" commit -q --allow-empty -m two
+git -C "$W" config branch.sibling.remote fork
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 42" 3 "local-branch + $sha_sib commit\trefs/heads/sibling\nlocal-branch + branch.sibling.remote=fork\nlocal-branch - $sha commit\trefs/heads/sibling\nlocal-branch - branch.sibling.remote=origin\n" ''
+
+# 43. a second worktree whose folder is gone (still listed, prunable) does not count as one: its
+# branch moved in the audited checkout is blocked, as in case 35. update-ref moves it because
+# branch -f refuses a branch that a listed worktree has checked out.
+case_id="case 43"
+fresh
+W=$root/wt43
+g -C "$A" worktree add -q -b sibling "$W" "$sha" || mismatch "case 43: worktree add failed"
+rm -rf "$W"
+snap "$R/b"
+git -C "$A" update-ref refs/heads/sibling "$sha2"
+ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
+expect "case 43" 1 "blocked refs + $sha2 commit\trefs/heads/sibling\nblocked refs - $sha commit\trefs/heads/sibling\n" ''
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

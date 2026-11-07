@@ -135,7 +135,9 @@ test('R284: the Done item forbids deleting a test to make checks pass, as well a
 test('R345: core.md holds the Working item that keeps a credential out of every file, directly after the scratch item', () => {
   const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
   assert.ok(items.includes("A credential never sits in a file, a scratch file included; it reaches a command through the environment or a tool's own store."));
-  assert.equal(items.indexOf("A credential never sits in a file, a scratch file included; it reaches a command through the environment or a tool's own store."), items.findIndex((n) => n.startsWith('Scratch files go in the repo')) + 1);
+  const scratch = items.findIndex((n) => n.startsWith('Scratch files go in the repo'));
+  assert.notEqual(scratch, -1);
+  assert.equal(items.indexOf("A credential never sits in a file, a scratch file included; it reaches a command through the environment or a tool's own store."), scratch + 1);
 });
 
 test('R36: render joins the parts with one empty line, windows before core, in the line ending given', () => {

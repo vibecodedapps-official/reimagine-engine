@@ -590,11 +590,31 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   negative('R44: <file>: holds <n> fenced blocks, not one (none)', (dir) => {
     put(dir, chat, '# Chat\n\nNo block here.\n');
     bump(dir, 'rules');
-  }, 1, [`${chat}: holds 0 fenced blocks, not one`]);
+  }, 2, [`${chat}: holds 0 fenced blocks, not one`, `${chat}: names no Concise Plain version`]);
   negative('R44: <file>: holds <n> fenced blocks, not one (two)', (dir) => {
     put(dir, chat, '```\na\n```\n\n```\nb\n```\n');
     bump(dir, 'rules');
-  }, 1, [`${chat}: holds 2 fenced blocks, not one`]);
+  }, 2, [`${chat}: holds 2 fenced blocks, not one`, `${chat}: names no Concise Plain version`]);
+  negative('R44: <file>: names Concise Plain v<x>, not v<y> as the style does', (dir) => {
+    edit(dir, chat, '(Concise Plain v4.13)', '(Concise Plain v4.12)');
+    bump(dir, 'rules');
+  }, 1, [`${chat}: names Concise Plain v4.12, not v4.13 as the style does`]);
+  negative('R44: <file>: names Concise Plain v<x>, not v<y> as the style does (style bumped)', (dir) => {
+    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.13.', 'procedures. v4.14.');
+    bump(dir, 'rules');
+  }, 2, [
+    'plugins/rules/output-styles/concise-plain.md: description does not end in v4.13.',
+    `${chat}: names Concise Plain v4.13, not v4.14 as the style does`,
+  ]);
+  negative('R44: <file>: names no Concise Plain version', (dir) => {
+    edit(dir, chat, ' (Concise Plain v4.13).', '.');
+    bump(dir, 'rules');
+  }, 1, [`${chat}: names no Concise Plain version`]);
+  negative('R44: <file>: names no Concise Plain version (Kept line lacks it, another mention holds it)', (dir) => {
+    edit(dir, chat, ' (Concise Plain v4.13).', '.');
+    append(dir, chat, '\nSee (Concise Plain v4.13).\n');
+    bump(dir, 'rules');
+  }, 1, [`${chat}: names no Concise Plain version`]);
 
   const loopSkill = 'plugins/loop/skills/run/SKILL.md';
   negative('R219: <file>: no ## Supporting files section', (dir) => {

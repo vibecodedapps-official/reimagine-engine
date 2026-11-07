@@ -102,7 +102,7 @@ plugins/rules/
   hooks/hooks.json               SessionStart startup -> node rules.mjs session-start ${CLAUDE_PLUGIN_DATA}
   rules/core.md                  the house rules
   rules/windows.md               the Windows paragraph
-  output-styles/concise-plain.md v4.5, keep-coding-instructions: true
+  output-styles/concise-plain.md keep-coding-instructions: true
   chat/instructions.md           one fenced block for a chat product; nothing installs it
 ```
 

@@ -1598,6 +1598,22 @@ Work items, in this order:
 
 Check: `npm run test:rules` and `npm run test:lint` before and after item 3; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Chat block version and architecture tree: M79
+
+Added 2026-11-06. Issues 134 and 135, decision 210 and requirement 44 as it amends it: lint compares the chat block's "Kept in step with" version with the style's, and the architecture tree drops the style's version. M79 touches `docs/`, `tools/lint.mjs` and `tests/lint/`, and no plugin, so nothing is released or tagged.
+
+### M79: the fixes
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m79 for the chat block version check and the architecture tree`.
+2. The lint check, its tests seen failing first. Commit: `feat(lint): check the chat block's style version against the style` (#134).
+3. The architecture tree line. Commit: `docs(architecture): drop the style version from the plugin tree` (#135).
+4. The design documents. Commit: `docs(design): record the chat block version check`.
+5. The gate on the pull request, its fixes committed on the branch.
+
+Check: `npm run test:lint` before and after item 2; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

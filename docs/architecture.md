@@ -35,7 +35,7 @@ reimagine-engine/
 
 | Plugin | Installs | Entry points | Scripts | Hooks | Version line |
 |---|---|---|---|---|---|
-| rules | house rules block, output style, a rule-driven refactor review | `/rules`, `/rules:refactor` | `scripts/rules.mjs` | SessionStart `startup` | own |
+| rules | house rules block, output style, a rule-driven refactor review, a handoff prompt skill | `/rules`, `/rules:refactor`, `/rules:handoff-prompt`, prose "handoff prompt" | `scripts/rules.mjs` | SessionStart `startup` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs` | none | own |
@@ -98,6 +98,7 @@ plugins/rules/
   LICENSE  README.md
   skills/rules/SKILL.md          /rules; disable-model-invocation: true
   skills/refactor/SKILL.md       /rules:refactor; disable-model-invocation: true; reads core.md live; writes ticket files only on a yes
+  skills/handoff-prompt/SKILL.md /rules:handoff-prompt; model-invocable; reads core.md live; writes no file
   scripts/rules.mjs              status | plan [--adopt] [--options a,b] | apply | remove | decline | session-start
   hooks/hooks.json               SessionStart startup -> node rules.mjs session-start ${CLAUDE_PLUGIN_DATA}
   rules/core.md                  the house rules

@@ -1,7 +1,7 @@
 {
   "name": "rules",
   "version": "0.1.25",
-  "description": "House rules for Claude Code sessions: one block in your CLAUDE.md, kept current, plus the Concise Plain output style and a refactor review against them.",
+  "description": "House rules for Claude Code sessions: one block in your CLAUDE.md, kept current, plus the Concise Plain output style, a refactor review against them and a handoff prompt skill.",
   "author": { "name": "vibecodedapps.net" },
   "repository": "https://github.com/vibecodedapps-official/reimagine-engine",
   "license": "Apache-2.0"

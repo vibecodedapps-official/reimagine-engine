@@ -1,4 +1,4 @@
-// The rules skill's steps and the refactor skill's files. The skills are text the model follows, so these read the text.
+// The rules skill's steps and the refactor and handoff prompt skills' files. The skills are text the model follows, so these read the text.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -173,4 +173,83 @@ test('R330: refactor runs each git read with the Bash tool, before its first git
   assert.notEqual(sentence, -1);
   assert.ok(sentence < text.indexOf('`git check-ignore`'));
   assert.equal(text.includes('PowerShell'), false);
+});
+
+const HANDOFF_DIR = new URL('../../plugins/rules/skills/handoff-prompt/', import.meta.url);
+
+function readHandoff() {
+  return readFileSync(new URL('SKILL.md', HANDOFF_DIR), 'utf8');
+}
+
+function handoffFront() {
+  const lines = readHandoff().split(/\r?\n/);
+  assert.equal(lines[0], '---');
+  const end = lines.indexOf('---', 1);
+  assert.ok(end > 1, 'the frontmatter has a closing ---');
+  return lines.slice(1, end);
+}
+
+test('R347: the handoff-prompt skill directory holds SKILL.md only', () => {
+  assert.deepEqual(readdirSync(HANDOFF_DIR), ['SKILL.md']);
+});
+
+test('R347: the handoff-prompt frontmatter names the skill and its description claims the handoff prompt and not the audit\'s file', () => {
+  const front = handoffFront();
+  assert.ok(front.includes('name: handoff-prompt'));
+  const description = front.find((l) => l.startsWith('description:'));
+  assert.ok(description, 'a description line exists');
+  assert.ok(description.includes('handoff prompt'));
+  assert.ok(description.includes('Not the typed handoff file an audit reads.'));
+  assert.ok(description.includes('or for a prompt that carries work to a later session.'));
+  assert.equal(description.includes('handoff to another session'), false);
+});
+
+test('R347: the handoff-prompt skill is model-invocable and takes no tools list or arguments', () => {
+  const front = handoffFront();
+  assert.ok(!front.some((l) => l.startsWith('disable-model-invocation:')), 'no disable-model-invocation line');
+  assert.ok(!front.some((l) => l.startsWith('allowed-tools:')), 'no allowed-tools line');
+  assert.ok(!front.some((l) => l.startsWith('argument-hint:')), 'no argument-hint line');
+});
+
+test('R347: the handoff-prompt SKILL.md is within its cap of 150 lines', () => {
+  const n = lineCount(readHandoff());
+  assert.ok(n <= 150, `handoff-prompt SKILL.md has ${n} lines`);
+});
+
+test('R347: the handoff-prompt skill holds no numbered step list', () => {
+  const numbered = readHandoff().split(/\r?\n/).filter((l) => /^\d+\. /.test(l));
+  assert.deepEqual(numbered, []);
+});
+
+test('R347: the handoff-prompt skill reads the definition from core.md at each run', () => {
+  const text = readHandoff();
+  assert.ok(text.includes('`${CLAUDE_PLUGIN_ROOT}/rules/core.md`'));
+  assert.ok(text.includes('Read that file at the start of each run and work from the item as that file words it, never from memory.'));
+});
+
+test('R347: the handoff-prompt skill sends an idea as the idea, marked as not worked out', () => {
+  assert.ok(readHandoff().includes('An idea goes as the idea in the user\'s words, with why it came up and what is known, and says it is not worked out; it gains no option, plan or answer.'));
+});
+
+test('R347: the handoff-prompt skill suggests nothing and asks nothing of anyone else', () => {
+  assert.ok(readHandoff().includes('An unsettled item is an open question for the user, never an ask of anyone else and never a suggested answer.'));
+});
+
+test('R347: the handoff-prompt skill writes for a receiver that has nothing of this session', () => {
+  assert.ok(readHandoff().includes('The receiver has nothing of this session. Unless the user names another, it is a Claude Code session: name the repository, branch, commit and the files worth reading.'));
+});
+
+test('R347: the handoff-prompt skill keeps both kinds of handoff no more specific than the user was', () => {
+  assert.ok(readHandoff().includes('Both stay no more specific than the user was.'));
+});
+
+test('R347: the handoff-prompt skill sends a summary with what was settled, its facts and the open questions', () => {
+  assert.ok(readHandoff().includes('A summary carries what was settled, the facts it rests on with when and how each was checked, and the open questions for the user.'));
+});
+
+test('R347: the handoff-prompt skill gives the prompt in one fenced block, writes no file, and adds one line after it', () => {
+  const text = readHandoff();
+  assert.ok(text.includes('Give the prompt in one fenced block for pasting.'));
+  assert.ok(text.includes('Write no file.'));
+  assert.ok(text.includes('After the block, add one line on what was left out on purpose or is unverified.'));
 });

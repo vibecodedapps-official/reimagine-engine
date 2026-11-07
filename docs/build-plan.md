@@ -1614,6 +1614,24 @@ Work items, in this order:
 
 Check: `npm run test:lint` before and after item 2; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Handoff prompt: M80
+
+Added 2026-11-07. Decision 211, requirements 346 and 347, and requirements 273 and 324 as decision 211 amends them: house-rule edit twenty-one, a handoff prompt defined in the house rules and carried by the chat block, and `/rules:handoff-prompt`, a model-invocable skill that writes it, in rules 0.1.25. M80 touches `docs/`, `CHANGELOG.md`, `README.md`, `.claude-plugin/marketplace.json`, `plugins/rules/`, `tests/rules/` and `tests/evals/`. Rules 0.1.25 is released by it; the tag waits for the owner's merge.
+
+### M80: the handoff prompt item and skill
+
+Work items, in this order:
+
+1. The design documents. Commit: `docs(design): specify the handoff prompt item and skill`.
+2. `node tools/release.mjs rules 0.1.25`, with the catalog `metadata.version` raised to 0.1.52 and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.25`.
+3. The R346 test in `tests/rules/rules.test.mjs` first, seen failing; then the item in `core.md`, the line and the bullet in `chat/instructions.md`, and the shipped digest and rule-count literals moved. Commit: `feat(rules): define a handoff prompt in the house rules`.
+4. `tests/rules/skill.test.mjs` first: the handoff prompt skill's frontmatter, directory, cap and sentences, each seen failing; then `skills/handoff-prompt/SKILL.md`, the eval case under `tests/evals/rules/handoff-prompt/`, one line each in the root and the plugin `README.md`, and the plugin and catalog descriptions. Commit: `feat(rules): add the handoff prompt skill`.
+5. The `## rules 0.1.25 - <date>` heading. Commit: `docs(changelog): add the rules 0.1.25 heading`.
+6. Item 81, and the release items 2, 4, 5, 22, 38 (for the new eval case), 39 and 44, each run's tokens and minutes recorded. A fix a run calls for is its own `fix(rules)` commit, and the item runs again after it. Commit: `docs(acceptance): record rules 0.1.25`.
+7. After the merge, by the owner: the tag `rules--v0.1.25` after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:rules` after each commit that touches it; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

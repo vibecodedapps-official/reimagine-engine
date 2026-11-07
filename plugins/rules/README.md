@@ -1,6 +1,6 @@
 # rules
 
-House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style and a refactor review against them.
+House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style, a refactor review against them and a handoff prompt skill.
 
 ## What it installs
 
@@ -8,6 +8,7 @@ House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept curren
 - The output style `rules:Concise Plain`.
 - A chat block, in `chat/instructions.md` inside the plugin. It is for pasting into a chat product's custom instructions. Nothing installs it.
 - The skill `/rules:refactor`, which you invoke yourself. It reviews a repository against the house rules and the repository's own instruction files and, on your yes, writes one ticket file per bundle to the repository's ignored scratch directory, else to the plugin's data directory.
+- The skill `/rules:handoff-prompt`, which also answers a plain request for a handoff prompt. It writes a prompt that carries this session's work to a later one, from a summary of a discussion or a single idea, for you to paste. It writes no file.
 
 The plugin never edits `settings.json`.
 
@@ -36,6 +37,8 @@ Run `/rules` (also reachable as `/rules:rules`). It shows the change as a diff a
 Any other argument is refused, and nothing runs.
 
 Run `/rules:refactor` in a repository for a read-only review of the whole tree against the house rules and the repository's own instruction files, with findings grouped into bundles; on your yes it writes one ticket file per bundle and prints the `reimagine loop` line to ship each one.
+
+Ask for a handoff prompt, or run `/rules:handoff-prompt`, for a prompt that carries this session's work to a later session, from a summary or a single idea, in one block for you to paste; it states what was settled and what is open as you left it, suggests nothing, and writes no file.
 
 ## What the block looks like
 

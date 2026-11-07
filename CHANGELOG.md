@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.24 - 2026-11-06
+
+- Concise Plain 4.13 says in its opening paragraph that a revised draft comes back whole, and its Drafts bullet returns one paragraph alone only when the ask is to see just that paragraph, since after feedback on one paragraph revisions kept coming back as that paragraph and the whole draft had to be asked for each time. The chat block carries both lines.
+- The Working house rules gain an item after the scratch item: a credential never sits in a file, a scratch file included, and reaches a command through the environment or a tool's own store, since a token written to a scratch file would have stayed on disk until a yes to delete it. The rule count moves to 37; the block updates through /rules.
+
 ## guard 0.1.2 - 2026-11-06
 
 - The startup hook checks nothing in a session the host marks as unattended, which every `claude -p` session is, since each headless child the gate and the loop start launched the host's defaults call, six for a split pass of six, with no one to show the notice to. The entry point is no signal, since a child of a desktop or IDE session keeps its parent's.

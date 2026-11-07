@@ -1580,6 +1580,24 @@ Work items, in this order, except that the gate's items and the guard's item of 
 
 Check: the area script of each commit before and after it (`npm run test:gate`, `test:guard`, `test:release`, `test:lint`); `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Drafts and credentials feedback of 2026-11-06: M78
+
+Added 2026-11-06. Issues 130 and 131, decisions 208 and 209, requirement 43 as decision 208 amends it and requirement 345: a revised draft that comes back whole in Concise Plain 4.13, and house-rule edit twenty, a credential that never sits in a file, in rules 0.1.24. M78 touches `docs/`, `.claude-plugin/marketplace.json`, `plugins/rules/`, `tools/lint.mjs`, `tests/lint/` and `tests/rules/`. Tags wait for the owner's merge.
+
+### M78: the fixes
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m78 for the drafts and credentials feedback of 2026-11-06`.
+2. The R345 test in `tests/rules/rules.test.mjs`, seen failing against the base `core.md` first.
+3. The style and the chat block at 4.13, with lint and its test pinning it, and the `core.md` item with the shipped digest literals moved. Commits: `feat(rules): a revised draft comes back whole` (#130) and `feat(rules): a credential never sits in a file` (#131).
+4. The design documents. Commit: `docs(design): record the drafts and credentials feedback of 2026-11-06`.
+5. `node tools/release.mjs` for rules 0.1.24, with the catalog `metadata.version` raised to 0.1.51 and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.24`.
+6. The gate on the pull request, its fixes committed on the branch.
+7. After the merge, by the owner: the changelog heading for 0.1.24, the release acceptance items 2 and 5 for rules, the tag `rules--v0.1.24` after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:rules` and `npm run test:lint` before and after item 3; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

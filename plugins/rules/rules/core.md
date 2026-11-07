@@ -57,6 +57,10 @@ Any instruction file can add an ask-first rule; none removes one.
 - Prose written for an agent, such as skills, prompts, and instruction files, states
   principles in the fewest words that get the job done. A procedure or an output shape
   the request didn't ask for is added only for a failure that happened.
+- A handoff prompt carries work to a later session: enough context and background that
+  the session understands what the work is and why, my settled decisions and open
+  questions as I left them, and nothing more specific than I was. It suggests nothing,
+  asks nothing of anyone else, and leaves the thinking to that session.
 
 ## Tests
 

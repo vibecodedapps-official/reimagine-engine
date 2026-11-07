@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.25 - 2026-11-07
+
+- The Code house rules gain an item after the prose-for-an-agent item that defines a handoff prompt: enough context and background for a later session to understand the work, the settled decisions and open questions as they were left, nothing more specific than they were, nothing suggested and nothing asked of anyone else, since the same request was restated across sessions with nothing in the suite defining it. The rule count moves to 38; the block updates through /rules.
+- The chat block carries the item, since a handoff often starts in chat.
+- A new `/rules:handoff-prompt` skill writes the prompt and answers a plain request for one, since the definition alone left each session to write the prompt on its own.
+
 ## rules 0.1.24 - 2026-11-06
 
 - Concise Plain 4.13 says in its opening paragraph that a revised draft comes back whole, and its Drafts bullet returns one paragraph alone only when the ask is to see just that paragraph, since after feedback on one paragraph revisions kept coming back as that paragraph and the whole draft had to be asked for each time. The chat block carries both lines.

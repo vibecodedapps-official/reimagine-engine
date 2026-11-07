@@ -504,9 +504,15 @@ function fileFailures(ctx) {
 
 function chatFailures(ctx) {
   const out = [];
-  const lines = (ctx.text(CHAT) ?? '').split('\n');
-  const fences = lines.filter((l) => FENCE.test(l)).length;
+  const text = ctx.text(CHAT) ?? '';
+  const fences = text.split('\n').filter((l) => FENCE.test(l)).length;
   if (fences !== 2) out.push(`${CHAT}: holds ${Math.floor(fences / 2)} fenced blocks, not one`);
+  const style = /v(\d+(?:\.\d+)+)\.$/.exec(String(frontmatter(ctx.text(STYLE)).get('description') ?? '').trim());
+  if (style) {
+    const kept = /\(Concise Plain v(\d+(?:\.\d+)+)\)/.exec(text);
+    if (!kept) out.push(`${CHAT}: names no Concise Plain version`);
+    else if (kept[1] !== style[1]) out.push(`${CHAT}: names Concise Plain v${kept[1]}, not v${style[1]} as the style does`);
+  }
   return out;
 }
 

@@ -32,6 +32,8 @@ Any instruction file can add an ask-first rule; none removes one.
   it, by exact name, noting which existed already. When done, from that list and the
   disk, say which you made are safe to delete and why, and nothing more; delete only on
   my yes.
+- A credential never sits in a file, a scratch file included; it reaches a command
+  through the environment or a tool's own store.
 - Before opening an issue or starting a fix, search for an issue or PR that covers it.
   One symptom per issue; a side finding gets its own, linked.
 - When a tool, integration, or file in the session can answer a question, use it before

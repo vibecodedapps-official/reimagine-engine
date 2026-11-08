@@ -103,6 +103,8 @@ before(() => {
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   delete env.GIT_INDEX_FILE;
+  delete env.CLAUDE_CONFIG_DIR;
+  delete env.CLAUDE_CODE_PROJECT_DIR_NAME;
   gitEnv = { ...env, GIT_AUTHOR_DATE: '2026-09-01T10:00:00Z', GIT_COMMITTER_DATE: '2026-09-01T10:00:00Z' };
   const build = spawnSync('sh', ['tests/primer/fixture/memory/build.sh'], { cwd: root, env: { ...process.env, TMPDIR: base.replaceAll('\\', '/') }, encoding: 'utf8' });
   assert.equal(build.status, 0, build.stderr);
@@ -183,6 +185,62 @@ describe('primer notice hook', () => {
     const { config, data } = place(dir, { stamp: true });
     appendFileSync(join(memoryDir(config, dir), 'MEMORY.md'), '- [Again](item-ids-are-numbers.md) - listed again\n');
     assert.equal(notice(dir, config, data), line(1));
+  });
+
+  // A memory directory away from the derived one, and a run whose derived directory holds nothing.
+  const away = (name) => {
+    const unique = join(base, `run-${++seq}`);
+    const memory = join(unique, name);
+    cpSync(join(fixture, 'memory'), memory, { recursive: true });
+    const config = join(unique, 'config');
+    const data = join(unique, 'data');
+    mkdirSync(data, { recursive: true });
+    return { memory, config, data };
+  };
+
+  test('reads the directory autoMemoryDirectory names in the project settings', () => {
+    const { memory, config, data } = away('moved');
+    const dir = repo('moved-project', { 'CLAUDE.md': hub, '.claude/settings.json': `{\n  "autoMemoryDirectory": ${JSON.stringify(memory)}\n}\n` });
+    assert.equal(notice(dir, config, data), line(2));
+  });
+
+  test('takes autoMemoryDirectory from the local settings before the project and user settings', () => {
+    const { memory, config, data } = away('local');
+    const empty = join(base, `run-${seq}`, 'empty');
+    mkdirSync(empty);
+    write(config, 'settings.json', JSON.stringify({ autoMemoryDirectory: empty }));
+    const dir = repo('moved-local', {
+      'CLAUDE.md': hub,
+      '.claude/settings.json': JSON.stringify({ autoMemoryDirectory: empty }),
+      '.claude/settings.local.json': JSON.stringify({ autoMemoryDirectory: memory }),
+    });
+    assert.equal(notice(dir, config, data), line(2));
+  });
+
+  test('reads a ~/ autoMemoryDirectory from the user settings against the home folder', () => {
+    const { config, data } = away('unused');
+    const home = join(base, `run-${seq}`, 'home');
+    cpSync(join(fixture, 'memory'), join(home, 'mem'), { recursive: true });
+    write(config, 'settings.json', '{"autoMemoryDirectory": "~/mem"}');
+    const dir = repo('moved-user');
+    assert.equal(notice(dir, config, data, undefined, { HOME: home }), line(2));
+  });
+
+  test('reads <config>/projects/<name>/memory when the host named the project directory', () => {
+    const { config, data } = away('unused');
+    cpSync(join(fixture, 'memory'), join(config, 'projects', 'work_1', 'memory'), { recursive: true });
+    const dir = repo('named');
+    assert.equal(notice(dir, config, data, 'work_1', { CLAUDE_CONFIG_DIR: config, CLAUDE_CODE_PROJECT_DIR_NAME: 'work_1' }), line(2));
+  });
+
+  test('reads the derived directory when the host did not take the project directory name', () => {
+    const dir = repo('name-not-taken');
+    for (const extra of [{ CLAUDE_CODE_PROJECT_DIR_NAME: 'work_1' }, { CLAUDE_CODE_PROJECT_DIR_NAME: 'con' }, { CLAUDE_CODE_PROJECT_DIR_NAME: 'a b' }]) {
+      const { config, data } = place(dir, { stamp: false });
+      cpSync(join(fixture, 'memory'), join(config, 'projects', 'work_1', 'memory'), { recursive: true });
+      const r = notice(dir, config, data, undefined, extra.CLAUDE_CODE_PROJECT_DIR_NAME === 'work_1' ? extra : { CLAUDE_CONFIG_DIR: config, ...extra });
+      assert.equal(r, line(2), JSON.stringify(extra));
+    }
   });
 
   test('writes nothing', () => {

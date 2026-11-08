@@ -2,6 +2,26 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.8 - 2026-11-08
+
+- The startup notice reads the memory directory that `autoMemoryDirectory` names in the local, project or user settings, else the one `CLAUDE_CODE_PROJECT_DIR_NAME` names when the host took the name, since with either set it looked in the derived directory, found no index and never printed. Promotion's fallback, used when the session's instructions name no memory directory, takes the same order.
+- The skill shape adds `allowed-tools` only for the reads a skill runs in the turn that invokes it, since the grant clears at the user's next message and does not cover a read after a reply; a grant for the session is a permission allow rule in the user's settings.
+
+## audit 0.1.16 - 2026-11-08
+
+- Act's opening paragraph, hard rule 3 and the skill's rule 3 keep the trailer the host's attribution setting adds, as the commit step already did, since the three still forbade any model or tool name in a commit message with no exception for it.
+- The Boundaries list of the auditor, the adversary and the mapper names `cat` of an exported file, which hard rule 2 allows, so an agent's own list no longer bars a read its rules allow.
+- The awk headers of `handoff.sh`, `live.sh`, `readonly.sh`, `revert-tests.sh` and `working-tree.sh` name BSD awk beside mawk and gawk, as the other scripts and their suites on macOS do.
+- The README no longer lists Node, since the audit runs no Node code.
+
+## loop 0.1.17 - 2026-11-08
+
+- The echo's credential scan carries the key shape of Step 0.1 whole: any letter case, anywhere in a line, and where the value ends, since the shorter copy could let an echo through that Step 0.1 would redact.
+
+## gate 0.1.10 - 2026-11-08
+
+- The pull request comment no longer lists the passes and their levels, and neither it nor a fix commit names a review pass or its level, since both are kept out of pull request text and commit messages; the report in the run directory keeps them.
+
 ## rules 0.1.26 - 2026-11-07
 
 - `/rules:handoff-prompt` carries the handoff prompt item and the item on prose written for an agent in place of reading them from the plugin's rule file, since that read asked for permission and, where no one could answer, was refused and left the prompt written without its definition.

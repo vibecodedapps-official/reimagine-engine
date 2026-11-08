@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // build.mjs: build the gate's seeded repository, a small Node module whose feature branch holds an off-by-one
 // in a new function beside a test that passes only because of it, in a diff of 8 or 10 files (3 for split), for
-// the gate's eval cases and acceptance items.
+// the gate's acceptance items.
 // Usage: node tests/gate/fixture/build.mjs <converges|defers|cap|carried|split> <dir>
 // <dir> does not exist yet or is empty. It gets origin.git (a bare repository with main and feat/percentile, HEAD
 // on main), repo (a clone of it, on main) and audit-manifest.json; stdout is the manifest's absolute path.

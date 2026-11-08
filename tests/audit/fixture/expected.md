@@ -625,7 +625,7 @@ fixture repo never changes. Each failed check prints one line that starts with t
 
 Stage 1 step 6b runs `tests/test_log.sh` and `tests/test_users.sh` with `sh`, in a copy of
 the head and in a copy of the merge-base with `tests/` at its head state.
-`tests/revert-tests.sh` (case 12) checks these verdicts:
+`tests/audit/revert-tests.sh` (case 12) checks these verdicts:
 
 - `tests/test_log.sh`: passes at head only. Without the change `src/warnings.sh` is
   absent, and the file exits 1.
@@ -1174,7 +1174,7 @@ fixed identity.
 Stage 1 step 6b runs bundle 1's eleven changed files under `tests/test_*.sh` and
 `tests/scenario_*.sh` with `sh`, in a copy of the head and in a copy of the merge-base
 with the test code (the default `test_paths`, so all of `tests/`) at its head state.
-`tests/revert-tests.sh` (case 13) checks these verdicts:
+`tests/audit/revert-tests.sh` (case 13) checks these verdicts:
 
 - Passes at head and without the change: `tests/scenario_dates.sh` (T3's file) and
   `tests/scenario_hrn_lookup.sh` (H1's file).

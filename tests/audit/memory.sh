@@ -5,7 +5,7 @@
 #
 # Builds the solo fixture and runs `find` on its claims-verdicts.md against a temp memory
 # directory, then on inline verdicts files that cover each key grammar, the boundary rule,
-# the entries that print nothing, a 0.2.0 entry with no ticket: sub-line, lines over 8,192
+# the entries that print nothing, an entry with no ticket: sub-line, lines over 8,192
 # bytes, and usage errors. Expected output is literal; the memory files are written here.
 #
 # Prints one line per mismatch and `memory test: ok` on success; exits 1 on any mismatch.
@@ -177,13 +177,13 @@ cat > "$tmp/re.md" <<'EOF'
 EOF
 run "regex characters" 0 "claim 1${tab}a+b${tab}$tmp/emptydir/re.md${nl}claim 1${tab}owner.app#12${tab}none${nl}claim 1${tab}x/y${tab}none" find "$tmp/re.md" "$tmp/emptydir"
 
-# A 0.2.0 entry has no ticket: sub-line; the text's literals are the only keys.
+# An entry with no ticket: sub-line; the text's literals are the only keys.
 cat > "$tmp/old.md" <<'EOF'
 - claim 1 [code] /x/h.md:1 -: false; finding: C1; evidence: e
   text: APP-1: type Story; state Active; owner Developer
   correction: none
 EOF
-run "0.2.0 entry" 0 "claim 1${tab}APP-1${tab}$M/sub/d.md" find "$tmp/old.md" "$M"
+run "entry with no ticket sub-line" 0 "claim 1${tab}APP-1${tab}$M/sub/d.md" find "$tmp/old.md" "$M"
 
 # ---------------------------------------------------------------------------
 # Lines over 8,192 bytes: a text line and a memory file line that holds a key.

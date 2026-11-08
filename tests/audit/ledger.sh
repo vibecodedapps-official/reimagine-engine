@@ -883,7 +883,7 @@ run "check 7, CRLF input" 0 "" check "$tmp/n3" --through 7 --tier medium --stage
 run "gate, CRLF input" 0 "$gate_base" gate "$tmp/n3" --tier medium --stage6 complete --late complete
 
 # ---------------------------------------------------------------------------
-# Review round 2.
+# Altered and malformed ledger, inventory and state lines, and edge cases of each op.
 cp -R "$B" "$tmp/r1"
 sed 's/^- demonstrated: the guard uses a greater-than$/- demonstrated: altered/' "$B/ledger/5.md" > "$tmp/r1/ledger/5.md"
 run "check 5, altered Original line" 1 "ledger: ledger/5.md differs from the build5 output at line 10" check "$tmp/r1" --through 5
@@ -1029,7 +1029,7 @@ status: complete
 run "verdict heading with no space after the colon" 1 "" build5 "$tmp/q3"
 errmsg "verdict heading with no space" "ledger: pass2/app.md:46: malformed verdict heading"
 
-# Round 4: malformed input an op reads fails that op closed.
+# Malformed input an op reads fails that op closed.
 cp -R "$B" "$tmp/u1"
 sed 's/^- verdict: survives by audit:adversary (late, model m-c)$/- verdict: pending by audit:adversary (late, model m-c)/' "$B/ledger/7.md" > "$tmp/u1/ledger/7.md"
 run "gate, invalid late verdict word" 1 "" gate "$tmp/u1" --tier medium --stage6 complete --late complete
@@ -1058,7 +1058,7 @@ mk6 "$tmp/u5" "app-F1 app-F3 app-F4 app-P1 web-F1" "app-F2 app-T1 cfg-F1" "X1 X1
 run "gate, duplicate X addition" 1 "" gate "$tmp/u5" --tier medium --stage6 complete --late complete
 errmsg "gate, duplicate X addition" "ledger: ledger/6.md:39: duplicate addition X1"
 
-# Round 5: fenced lines in the second-opinion response files never count.
+# Fenced lines in the second-opinion response files never count.
 cp -R "$B" "$tmp/v1"
 printf '```\n### X99: Quoted example\n```\n' >> "$tmp/v1/second-opinion/response.md"
 run "check 6, fenced X heading is not required" 0 "" check "$tmp/v1" --through 6 --stage6 complete
@@ -1073,7 +1073,7 @@ mk6 "$tmp/v3" "app-F1 app-F2 app-F3 app-F4 app-P1 web-F1" "app-T1 cfg-F1" "X1"
 printf '```\nunclosed\napp-F2: agree\n' >> "$tmp/v3/second-opinion/response.md"
 run "check 6, response ends inside a fence" 1 "ledger: ledger/6.md:12: no line starting 'app-F2:' in the second-opinion response files" check "$tmp/v3" --through 6 --stage6 complete
 
-# Round 6: findings in failed outputs are kept, malformed blocks there are counted.
+# Findings in failed outputs are kept, malformed blocks there are counted.
 FD=$tmp/fd
 mkdir -p "$FD/pass1" "$FD/pass2" "$FD/ledger"
 printf 'pass1 s pass1/s.md m-a complete\npass1 t pass1/t.md m-a failed\npass2 s pass2/s.md m-b failed\n' > "$FD/ledger/inventory.txt"
@@ -1221,7 +1221,7 @@ cp -R "$B" "$tmp/y3"
 run "missing, batch boundary after an open fence" 0 "" missing "$tmp/y3"
 
 # ---------------------------------------------------------------------------
-# 0.5.1: completion from the file, mis-cased ids, block ends, list numbers, map
+# Completion from the file, mis-cased ids, block ends, list numbers, map
 # headings, late-ids.
 cp -R "$B" "$tmp/z1"
 grep -v '^status: complete$' "$B/pass1/web.md" > "$tmp/z1/pass1/web.md"
@@ -1321,7 +1321,7 @@ want="ledger: ledger/7.md: no late verdict for app-T1, which late-ids lists
 ledger: gate.md:6: 'app-T1: counts; late verdict, stage 6 acknowledged (low or note)', expected 'app-T1: provisional; no late verdict'"
 run "check 7, late-ids id without a late verdict" 1 "$want" check "$tmp/z11" --through 7 --tier medium --stage6 complete --late complete
 
-# Review round 1 of 0.5.1.
+# late-ids without a ledger file, trailing blanks and headings that only resemble an id.
 cp -R "$B" "$tmp/aa1"
 rm "$tmp/aa1/ledger/6.md"
 run "late-ids, stage 6 complete, no ledger/6.md" 2 "" late-ids "$tmp/aa1" --tier medium --stage6 complete
@@ -1341,10 +1341,10 @@ printf '### api-v2: notes\nfree text\nstatus: complete\n' >> "$tmp/aa3/pass1/cfg
 runf "build5, heading that resembles an id" 0 "$tmp/want5.txt" build5 "$tmp/aa3"
 
 # ---------------------------------------------------------------------------
-# Outward trace sections (#17): a pass-one `## Outward trace` and a pass-two
+# Outward trace sections: a pass-one `## Outward trace` and a pass-two
 # `## Outward trace challenged` are read by no op. The files below carry them, with a
 # fence that holds finding and section headings, and the ops give what they would give
-# without the sections. An entry carries indented decision lines (#32); they change
+# without the sections. An entry carries indented decision lines; they change
 # nothing either.
 OT=$tmp/ot
 mkdir -p "$OT/pass1" "$OT/pass2" "$OT/ledger"
@@ -1530,15 +1530,14 @@ run "unclosed fence in the outward trace challenged section" 1 "" build5 "$tmp/o
 errmsg "unclosed fence in the outward trace challenged section" "ledger: pass2/app.md: the file ends inside a code fence
 ledger: pass2/app.md: no '## Coverage gaps' section"
 
-# 0.5.2.
-# Item 7: X and L ids never belong in a pass file, so a lower-case x<n> subheading is
+# X and L ids never belong in a pass file, so a lower-case x<n> subheading is
 # text there (it ends the finding block, like any H3); a mis-cased -f|p|t<n> id is not.
 cp -R "$B" "$tmp/ab1"
 printf '### x86: notes\nfree text\nstatus: complete\n' >> "$tmp/ab1/pass1/cfg.md"
 runf "build5, x<n> subheading in a pass file" 0 "$tmp/want5.txt" build5 "$tmp/ab1"
 run "check 5, x<n> subheading in a pass file" 0 "" check "$tmp/ab1" --through 5
 
-# Item 5: a restore request is matched in any letter case, and a restore position that
+# A restore request is matched in any letter case, and a restore position that
 # does not start with the phrase is a problem of check.
 cp -R "$B" "$tmp/ab2"
 sed '13s/.*/- position: Restore requested for app-F3/' "$B/ledger/6.md" > "$tmp/ab2/ledger/6.md"
@@ -1552,7 +1551,7 @@ cp -R "$B" "$tmp/ab4"
 sed '13s/.*/- position: restores the original wording/' "$B/ledger/6.md" > "$tmp/ab4/ledger/6.md"
 run "check 6, position that merely begins with restore" 0 "" check "$tmp/ab4" --through 6 --stage6 complete
 
-# Item 6: with stage 6 failed, a malformed addition heading or an X block that holds an
+# With stage 6 failed, a malformed addition heading or an X block that holds an
 # unclosed fence is left out of late-ids and gate, and check still reports it; with
 # stage 6 complete both stay errors of every op.
 cp -R "$B" "$tmp/ab5"
@@ -1584,7 +1583,7 @@ errmsg "late-ids, stage 6 complete, malformed addition heading" "ledger: ledger/
 run "gate, stage 6 complete, unclosed fence" 1 "" gate "$tmp/ab6" --tier medium --stage6 complete --late complete
 errmsg "gate, stage 6 complete, unclosed fence" "ledger: ledger/6.md: the file ends inside a code fence"
 
-# Item 4: --late complete needs a late file that ends with status: complete.
+# --late complete needs a late file that ends with status: complete.
 cp -R "$B" "$tmp/ab7"
 sed '$d' "$B/late/adversary.md" > "$tmp/ab7/late/adversary.md"
 run "check 7, late file without status: complete" 1 "ledger: late/adversary.md: --late complete, but the file does not end with status: complete" check "$tmp/ab7" --through 7 --tier medium --stage6 complete --late complete
@@ -1593,7 +1592,7 @@ cp -R "$B" "$tmp/ab8"
 printf '\n \t\n' >> "$tmp/ab8/late/adversary.md"
 run "check 7, blank lines after the late file's status line" 0 "" check "$tmp/ab8" --through 7 --tier medium --stage6 complete --late complete
 
-# Item 2: late-check reads late/adversary.md as check 7 does and also needs a verdict
+# late-check reads late/adversary.md as check 7 does and also needs a verdict
 # block for every id late-ids lists.
 run "late-check, base" 0 "" late-check "$B" --tier medium --stage6 complete
 run "late-check, stage 6 failed" 0 "" late-check "$B" --tier medium --stage6 failed

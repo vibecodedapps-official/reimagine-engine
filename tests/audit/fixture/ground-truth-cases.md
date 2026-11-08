@@ -1,6 +1,6 @@
-# Ground-truth set for audit issue #21: 20 confirmed review findings, de-identified
+# Ground-truth set: 20 confirmed review findings, de-identified
 
-Source: one senior reviewer's threads on 36 pull requests by one author over three months, across a .NET service with a PostgreSQL schema, a SQL-based ETL, and a C# integration-test harness. Every case below was raised by the human reviewer and confirmed; none was raised by the authoring agent or by the adversarial second-review pass that ran on the same diffs. Names, identifiers, tickets, and data are replaced. Each case gives the shape needed to plant it in a small shell or Python fixture.
+Every case below is a defect a reviewer raised on a finished change and confirmed, which neither the change's author nor a second review of the same diff raised. Names, identifiers, tickets, and data are generic. Each case gives the shape needed to plant it in a small shell or Python fixture.
 
 Severity: the reviewer labeled findings as "blocking", "non-blocking", or left them unlabeled with a request. The mapped severity in each case is the set author's, from that label and the blast radius. "Confirmed by" says how the reviewer or the author showed it was real.
 

@@ -9,7 +9,7 @@
 # two-space sub-lines, and it is false when the main line holds ": false; finding: ".
 # For each false entry the keys are, in order, each once:
 #   1. the "ticket:" sub-line value with a leading "github:" removed, unless none or absent
-#      (a file from 0.2.0 has no such sub-line);
+#      (an entry may have no such sub-line);
 #   2. each non-empty span of the "text:" value between two backticks or two double quotes,
 #      unless it holds a tab (a tab would split the output line);
 #   3. each word of the text outside those spans, stripped of leading ([{< and trailing

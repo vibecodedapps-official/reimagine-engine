@@ -10,7 +10,7 @@
 # be empty again afterwards, so the script's temporary index is always removed. An object
 # count is the `count:` of `git count-objects -v`, so a temporary file git leaves under
 # .git/objects is not one (case 21). The script under test runs under `sh`, or under
-# $WT_SH when set, for example `WT_SH=dash sh tests/working-tree.sh`.
+# $WT_SH when set, for example `WT_SH=dash sh tests/audit/working-tree.sh`.
 #
 # The literal shas: the solo app's feature head, 0c23936980b254c4abd489d3ecfd296f5e7bc0db,
 # is the parent of every build. The synthetic head and tree are the script's output for

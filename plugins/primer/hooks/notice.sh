@@ -62,7 +62,10 @@ projects=${sdir%/*}
 # autoMemoryDirectory from the local, project or user settings: the first file that sets the key
 # decides, and a value that is not a string, or is neither absolute nor ~/, counts as unset. ~/ is
 # read against the host's home folder: USERPROFILE when set, else HOME, on Windows; HOME elsewhere.
-# Managed settings and --settings are out of reach.
+# Absolute is the host's reading: a drive path only on Windows, where /x without a drive takes the
+# drive of the input cwd (// stays as is). Managed settings and --settings are out of reach.
+win=
+case $(uname -s) in MINGW* | MSYS* | CYGWIN*) win=1 ;; esac
 memory=
 for f in "$root/.claude/settings.local.json" "$root/.claude/settings.json" "${projects%/*}/settings.json"; do
 	[ -f "$f" ] || continue
@@ -72,9 +75,16 @@ for f in "$root/.claude/settings.local.json" "$root/.claude/settings.json" "${pr
 	case $v in
 	"~/"*)
 		home=$HOME
-		case $(uname -s) in MINGW* | MSYS* | CYGWIN*) home=${USERPROFILE:-$HOME} ;; esac
+		[ -z "$win" ] || home=${USERPROFILE:-$HOME}
 		memory=$(printf '%s\n' "$home" | LC_ALL=C sed 's/\\/\//g')/${v#"~/"} ;;
-	/* | [A-Za-z]:/*) memory=$v ;;
+	"//"*) memory=$v ;;
+	/*)
+		memory=$v
+		if [ -n "$win" ]; then
+			drive=$(printf '%s\n' "$cwd" | LC_ALL=C sed -n 's/^\([A-Za-z]\):.*$/\1/p')
+			[ -z "$drive" ] || memory=$drive:$v
+		fi ;;
+	[A-Za-z]:/*) [ -z "$win" ] || memory=$v ;;
 	esac
 	break
 done

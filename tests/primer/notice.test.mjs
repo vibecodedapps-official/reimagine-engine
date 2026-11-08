@@ -265,6 +265,36 @@ describe('primer notice hook', () => {
     });
   }
 
+  // The derived directory holds the notes and a lower settings file names an empty directory, so only a value that
+  // counts as unset leads to the notes.
+  const derivedOr = (name, value) => {
+    const dir = repo(name, { 'CLAUDE.md': hub, '.claude/settings.local.json': `{"autoMemoryDirectory": ${value}}` });
+    const { config, data } = place(dir, { stamp: false });
+    const empty = join(base, `run-${seq}`, 'empty');
+    mkdirSync(empty);
+    write(config, 'settings.json', JSON.stringify({ autoMemoryDirectory: empty }));
+    return notice(dir, config, data);
+  };
+
+  test('falls through to the derived directory when a local autoMemoryDirectory is a relative path', () => {
+    assert.equal(derivedOr('derived-relative', '"mem"'), line(2));
+  });
+
+  test('falls through to the derived directory when a local autoMemoryDirectory is an empty string', () => {
+    assert.equal(derivedOr('derived-empty', '""'), line(2));
+  });
+
+  test('falls through to the derived directory when a local autoMemoryDirectory is a drive path off Windows', { skip: process.platform === 'win32' }, () => {
+    assert.equal(derivedOr('derived-drive', '"C:/mem"'), line(2));
+  });
+
+  test('reads an autoMemoryDirectory rooted with / but no drive on the drive of the working directory on Windows', { skip: process.platform !== 'win32' }, () => {
+    const { memory, config, data } = away('rooted');
+    const rooted = memory.replace(/^[A-Za-z]:/, '').replaceAll('\\', '/');
+    const dir = repo('rooted-project', { 'CLAUDE.md': hub, '.claude/settings.local.json': JSON.stringify({ autoMemoryDirectory: rooted }) });
+    assert.equal(notice(dir, config, data), line(2));
+  });
+
   test('reads <config>/projects/<name>/memory when the host named the project directory', () => {
     const { config, data } = away('unused');
     cpSync(join(fixture, 'memory'), join(config, 'projects', 'work_1', 'memory'), { recursive: true });

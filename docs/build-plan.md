@@ -1649,6 +1649,29 @@ Work items, in this order:
 
 Check: `npm run test:rules` after each commit that touches it; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Refactor review and documentation fold: M82
+
+Added 2026-11-08. Decisions 213 to 215, and requirements 59, 162, 254, 256, 258, 300 and 314 as they amend them: the findings of a refactor review of the tree against the house rules, the hub and `.claude/rules/plugins.md`, and of a fold of the host documentation, that the owner accepted. The comment drops its passes and levels in gate 0.1.10; the echo carries the whole key shape of the credential scan in loop 0.1.17; act's opening, hard rule 3 and the skill's rule 3 keep the host's trailer, the agents' Boundaries list `cat` of an exported file, the awk headers name BSD awk and the README drops Node in audit 0.1.16; the notice finds a moved memory directory and `allowed-tools` holds only the reads of the invoking turn in primer 0.1.8. Test and fixture comments lose change history and stale paths. M82 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/gate/`, `plugins/loop/`, `plugins/audit/`, `plugins/primer/`, `tests/gate/`, `tests/loop/`, `tests/audit/`, `tests/primer/` and `tests/lint/`. Tags wait for the owner's merge. Not in it: the documentation and comment pass of acceptance item 73 and decision 172 beyond the audit test comments, and the audit, gate, loop and primer prose cuts of audit-14 to audit-25 and decisions 161 and 162.
+
+### M82: the fixes
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m82 for the refactor review and documentation fold`.
+2. The gate's text test first, seen failing; then `steps/4-publish.md` and `steps/2-fix.md`. Commit: `fix(gate): name no review pass or level in the comment`.
+3. The loop's echo test first, seen failing; then `SKILL.md`, with the word-cap padding of `tests/lint/lint.test.mjs` moved to its new count. Commit: `fix(loop): give the echo the whole key shape of the credential scan`.
+4. The audit lint checks first, each seen failing; then `stages/9-act.md`, `common.md`, `SKILL.md` and the three Boundaries lists. Commits: `fix(audit): keep the host's attribution trailer wherever the naming rule is stated` and `fix(audit): list cat of an exported file in the agents' boundaries`.
+5. The audit's awk headers and README. Commit: `docs(audit): name bsd awk in the script headers and drop node from the requirements`.
+6. The notice tests first, each seen failing; then `hooks/notice.sh`; then the promotion test, seen failing, and `SKILL.md`. Commit: `fix(primer): find a memory directory that a setting moved`.
+7. `shapes.md`. Commit: `fix(primer): keep allowed-tools to the reads of the invoking turn`.
+8. The comments and fixture text of `tests/audit/` and `tests/gate/`, and the change-history comment of `plugins/audit/scripts/memory.sh`. Commit: `chore(audit,gate): drop change history and stale paths from comments and fixtures`.
+9. The design documents. Commit: `docs(design): record the refactor review and documentation fold`.
+10. `node tools/release.mjs` for gate 0.1.10, loop 0.1.17, audit 0.1.16 and primer 0.1.8, with the catalog `metadata.version` raised to 0.1.54, 0.1.55, 0.1.56 and 0.1.57 and the `plugin_version` literals of the audit skill files moved. Commits: `release(gate): 0.1.10`, `release(loop): 0.1.17`, `release(audit): 0.1.16` and `release(primer): 0.1.8`.
+11. The four changelog headings. Commit: `docs(changelog): add the gate 0.1.10, loop 0.1.17, audit 0.1.16 and primer 0.1.8 headings`.
+12. After the merge, by the owner: the release acceptance items 2 and 5 for each plugin, the tags after a yes, item 50 on the comment template, items 32 and 34 on the moved memory directory, item 15 on act's commit, the check decision 215 leaves unverified, then item 21 on the merge commit.
+
+Check: the area script of each commit before and after it (`npm run test:gate`, `test:loop`, `test:lint`, `test:audit`, `test:primer`, `test:release`); `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

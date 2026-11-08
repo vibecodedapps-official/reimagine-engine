@@ -9,7 +9,10 @@ Write one prompt that carries this session's work to a later session, for the us
 
 ## The definition
 
-The definition is the handoff prompt item in `${CLAUDE_PLUGIN_ROOT}/rules/core.md`. Read that file at the start of each run and work from the item as that file words it, never from memory. The item on prose written for an agent in the same file also holds.
+These two house-rule items, in the user's voice, define the prompt. Work from them as worded here.
+
+- A handoff prompt carries work to a later session: enough context and background that the session understands what the work is and why, my settled decisions and open questions as I left them, and nothing more specific than I was. It suggests nothing, asks nothing of anyone else, and leaves the thinking to that session.
+- Prose written for an agent, such as skills, prompts, and instruction files, states principles in the fewest words that get the job done. A procedure or an output shape the request didn't ask for is added only for a failure that happened.
 
 ## What travels
 

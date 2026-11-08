@@ -15,4 +15,4 @@ Done when the user has a list of proposed changes, each with file and lines, ord
 
 - The house rules' Code items on reusable files and on prose written for an agent hold for every proposal.
 - The record states the failure and the fix at a level that names no setting, role, host or quoted words; counts stay only where the argument turns on them.
-- Each change names its requirement, its decision entry and whether the chat block mirrors it.
+- Each change names its requirement, its decision entry, whether the chat block mirrors it, and whether `/rules:handoff-prompt` carries it.

@@ -59,16 +59,18 @@ transcript=$(printf '%s\n' "$transcript" | LC_ALL=C sed 's/\\/\//g')
 sdir=${transcript%/*}
 projects=${sdir%/*}
 
-# autoMemoryDirectory from the local, project or user settings, the first that sets an absolute
-# or ~/ path; managed settings and --settings are out of reach.
+# autoMemoryDirectory from the local, project or user settings: the first file that sets the key
+# decides, and a value that is neither absolute nor ~/ counts as unset. ~/ is read against the
+# host's home folder, USERPROFILE when set, else HOME. Managed settings and --settings are out
+# of reach.
 memory=
 for f in "$root/.claude/settings.local.json" "$root/.claude/settings.json" "${projects%/*}/settings.json"; do
 	[ -f "$f" ] || continue
 	v=$(field autoMemoryDirectory "$(tr -d '\r\n' < "$f")" | LC_ALL=C sed 's/\\/\//g')
+	[ -n "$v" ] || continue
 	case $v in
-	"~/"*) memory=$(printf '%s\n' "$HOME" | LC_ALL=C sed 's/\\/\//g')/${v#"~/"} ;;
+	"~/"*) memory=$(printf '%s\n' "${USERPROFILE:-$HOME}" | LC_ALL=C sed 's/\\/\//g')/${v#"~/"} ;;
 	/* | [A-Za-z]:/*) memory=$v ;;
-	*) continue ;;
 	esac
 	break
 done

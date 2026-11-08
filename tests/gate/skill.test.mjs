@@ -516,6 +516,7 @@ test('R11 and R314: the comment names no review pass or its level', () => {
   const body = fences(text).find((b) => b.lines[0]?.startsWith('Gate verdict:')).lines;
   assert.ok(!body.includes('Passes:'), 'the comment template still has a Passes section');
   assert.ok(!body.some((l) => l.includes('<level>')), 'the comment template still names a level');
+  holds('steps/4-publish.md', 'Check them also for a review pass or its level: a reason names no pass number and none of the level words `xhigh`, `high` and `medium`, so a carried rejection reads as carried from an earlier review.');
 });
 
 test('R314: the comment writes the home directory as ~ in text quoted from a review', () => {

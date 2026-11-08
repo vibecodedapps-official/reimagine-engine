@@ -223,7 +223,26 @@ describe('primer notice hook', () => {
     cpSync(join(fixture, 'memory'), join(home, 'mem'), { recursive: true });
     write(config, 'settings.json', '{"autoMemoryDirectory": "~/mem"}');
     const dir = repo('moved-user');
-    assert.equal(notice(dir, config, data, undefined, { HOME: home }), line(2));
+    assert.equal(notice(dir, config, data, undefined, { HOME: home, USERPROFILE: home }), line(2));
+  });
+
+  test('reads a ~/ autoMemoryDirectory against USERPROFILE when it is set and differs from HOME', () => {
+    const { config, data } = away('unused');
+    const unique = join(base, `run-${seq}`);
+    const home = join(unique, 'home');
+    const profile = join(unique, 'profile');
+    mkdirSync(home);
+    cpSync(join(fixture, 'memory'), join(profile, 'mem'), { recursive: true });
+    write(config, 'settings.json', '{"autoMemoryDirectory": "~/mem"}');
+    const dir = repo('moved-profile');
+    assert.equal(notice(dir, config, data, undefined, { HOME: home, USERPROFILE: profile }), line(2));
+  });
+
+  test('lets the first settings file that sets autoMemoryDirectory decide, even when its value is not a path', () => {
+    const { memory, config, data } = away('lower');
+    write(config, 'settings.json', JSON.stringify({ autoMemoryDirectory: memory }));
+    const dir = repo('invalid-local', { 'CLAUDE.md': hub, '.claude/settings.local.json': '{"autoMemoryDirectory": "mem"}' });
+    assert.equal(notice(dir, config, data), '');
   });
 
   test('reads <config>/projects/<name>/memory when the host named the project directory', () => {
@@ -237,7 +256,6 @@ describe('primer notice hook', () => {
     const dir = repo('name-not-taken');
     for (const extra of [{ CLAUDE_CODE_PROJECT_DIR_NAME: 'work_1' }, { CLAUDE_CODE_PROJECT_DIR_NAME: 'con' }, { CLAUDE_CODE_PROJECT_DIR_NAME: 'a b' }]) {
       const { config, data } = place(dir, { stamp: false });
-      cpSync(join(fixture, 'memory'), join(config, 'projects', 'work_1', 'memory'), { recursive: true });
       const r = notice(dir, config, data, undefined, extra.CLAUDE_CODE_PROJECT_DIR_NAME === 'work_1' ? extra : { CLAUDE_CONFIG_DIR: config, ...extra });
       assert.equal(r, line(2), JSON.stringify(extra));
     }

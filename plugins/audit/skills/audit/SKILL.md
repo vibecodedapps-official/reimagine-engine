@@ -407,7 +407,7 @@ For `command: act`, find the run in `runs.json` by `run-id`, append the invocati
 - It recomputes the report's revision and compares it before it starts and before every commit, rebase or merge. An unknown item id stops act. Open live checks warn.
 - HEAD must equal the bundle branch and the tracked tree must be clean. Act never stashes, resets, cleans or checks out. Untracked files are logged, never staged.
 - A commit in `<audited head>..HEAD` that act did not log is drift; act shows it and asks before going on.
-- Act asks before each commit, never pushes, and edits tickets only when told per item. Its commit messages follow the repository's convention and name no model, agent or tool.
+- Act asks before each commit, never pushes, and edits tickets only when told per item. Its commit messages follow the repository's convention and name no model, agent or tool. The trailer the host's attribution setting adds to a commit stays, even where it names a model or tool.
 
 ## Resume
 

@@ -122,7 +122,9 @@
 #   commit body; step 7 reruns each `demonstrate` command after the change and logs its
 #   result as `demonstrate`; the file is read as one line.
 # - skills/audit/stages/9-act.md's commit step types no attribution trailer and keeps
-#   the host's (requirement 11).
+#   the host's (requirement 11), and its opening paragraph, hard rule 3 of
+#   skills/audit/common.md and rule 3 of skills/audit/SKILL.md keep it too; each file is
+#   read as one line.
 # - The roles table in skills/audit/SKILL.md carries the swap rung off the top tier and
 #   the second opinion row defaults to opus; the stage 6 summary line in that file and
 #   the README's second opinion row carry the same ladder; no stage 2 to 7 file says
@@ -884,6 +886,14 @@ if [ -f "$f" ]; then
 	grep -qF 'with no trailer that does' "$tmp/list" &&
 		fail "$f: the commit step still drops a trailer that names a model"
 fi
+# The rule that nothing external names a model, agent or tool keeps the host's trailer
+# wherever it is stated; each file is read as one line.
+for f in skills/audit/stages/9-act.md skills/audit/common.md skills/audit/SKILL.md; do
+	[ -f "$f" ] || continue
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF "trailer the host's attribution setting adds to a commit stays, even where it names a model or tool" "$tmp/list" ||
+		fail "$f: the rule on model, agent and tool names does not keep the host's attribution trailer"
+done
 
 # Coverage lists stages 1 to 7 with the checks each accepted, and stage 8's line is one
 # fixed sentence, since stage 8's own check runs after the report is hashed; the files

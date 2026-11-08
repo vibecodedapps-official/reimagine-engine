@@ -6,7 +6,7 @@
 #   sh readonly.sh snapshot <repo> <run dir> <out prefix>
 #   sh readonly.sh check <repo> <run dir> <baseline prefix> <ignored base prefix> <out prefix>
 #
-# Portability: POSIX sh (dash, bash, Git Bash), and awk in forms mawk and gawk accept.
+# Portability: POSIX sh (dash, bash, Git Bash), and awk in forms mawk, gawk, and BSD awk accept.
 # Every intermediate goes to a temporary file, removed on exit, and every command's exit
 # status is checked, so an incomplete collection exits 2, except the optional
 # `touched` walk, whose `find` errors are printed and ignored.

@@ -30,7 +30,7 @@
 # read in byte order and results files in numeric order of <k>, so results-10.md follows
 # results-9.md.
 #
-# POSIX sh plus awk; the awk programs use only features that mawk and gawk both accept.
+# POSIX sh plus awk; the awk programs use only features that mawk, gawk, and BSD awk accept.
 set -u
 
 LC_ALL=C

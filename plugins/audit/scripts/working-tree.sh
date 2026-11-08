@@ -6,7 +6,7 @@
 #   sh working-tree.sh build <repo>
 #   sh working-tree.sh check <repo>
 #
-# Portability: POSIX sh (dash, bash, Git Bash), and awk in forms mawk and gawk accept.
+# Portability: POSIX sh (dash, bash, Git Bash), and awk in forms mawk, gawk, and BSD awk accept.
 # Every intermediate goes to a file in one temporary directory, removed on every exit, and
 # every git step's exit status is checked.
 #

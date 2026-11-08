@@ -60,16 +60,20 @@ sdir=${transcript%/*}
 projects=${sdir%/*}
 
 # autoMemoryDirectory from the local, project or user settings: the first file that sets the key
-# decides, and a value that is neither absolute nor ~/ counts as unset. ~/ is read against the
-# host's home folder, USERPROFILE when set, else HOME. Managed settings and --settings are out
-# of reach.
+# decides, and a value that is not a string, or is neither absolute nor ~/, counts as unset. ~/ is
+# read against the host's home folder: USERPROFILE when set, else HOME, on Windows; HOME elsewhere.
+# Managed settings and --settings are out of reach.
 memory=
 for f in "$root/.claude/settings.local.json" "$root/.claude/settings.json" "${projects%/*}/settings.json"; do
 	[ -f "$f" ] || continue
-	v=$(field autoMemoryDirectory "$(tr -d '\r\n' < "$f")" | LC_ALL=C sed 's/\\/\//g')
-	[ -n "$v" ] || continue
+	text=$(tr -d '\r\n' < "$f")
+	printf '%s\n' "$text" | LC_ALL=C grep -q '"autoMemoryDirectory"[[:space:]]*:' || continue
+	v=$(field autoMemoryDirectory "$text" | LC_ALL=C sed 's/\\/\//g')
 	case $v in
-	"~/"*) memory=$(printf '%s\n' "${USERPROFILE:-$HOME}" | LC_ALL=C sed 's/\\/\//g')/${v#"~/"} ;;
+	"~/"*)
+		home=$HOME
+		case $(uname -s) in MINGW* | MSYS* | CYGWIN*) home=${USERPROFILE:-$HOME} ;; esac
+		memory=$(printf '%s\n' "$home" | LC_ALL=C sed 's/\\/\//g')/${v#"~/"} ;;
 	/* | [A-Za-z]:/*) memory=$v ;;
 	esac
 	break

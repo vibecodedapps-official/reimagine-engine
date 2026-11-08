@@ -226,16 +226,27 @@ describe('primer notice hook', () => {
     assert.equal(notice(dir, config, data, undefined, { HOME: home, USERPROFILE: home }), line(2));
   });
 
-  test('reads a ~/ autoMemoryDirectory against USERPROFILE when it is set and differs from HOME', () => {
+  // The notes sit under one of two home folders; the hook reads the other one's ~/mem only when it picks the wrong folder.
+  const homes = (name, withNotes) => {
     const { config, data } = away('unused');
     const unique = join(base, `run-${seq}`);
     const home = join(unique, 'home');
     const profile = join(unique, 'profile');
     mkdirSync(home);
-    cpSync(join(fixture, 'memory'), join(profile, 'mem'), { recursive: true });
+    mkdirSync(profile);
+    cpSync(join(fixture, 'memory'), join(withNotes === 'profile' ? profile : home, 'mem'), { recursive: true });
     write(config, 'settings.json', '{"autoMemoryDirectory": "~/mem"}');
-    const dir = repo('moved-profile');
-    assert.equal(notice(dir, config, data, undefined, { HOME: home, USERPROFILE: profile }), line(2));
+    return { config, data, dir: repo(name), env: { HOME: home, USERPROFILE: profile } };
+  };
+
+  test('reads a ~/ autoMemoryDirectory against USERPROFILE on Windows when it is set and differs from HOME', { skip: process.platform !== 'win32' }, () => {
+    const { config, data, dir, env: homeEnv } = homes('moved-profile', 'profile');
+    assert.equal(notice(dir, config, data, undefined, homeEnv), line(2));
+  });
+
+  test('reads a ~/ autoMemoryDirectory against HOME off Windows even when USERPROFILE is set', { skip: process.platform === 'win32' }, () => {
+    const { config, data, dir, env: homeEnv } = homes('moved-home', 'home');
+    assert.equal(notice(dir, config, data, undefined, homeEnv), line(2));
   });
 
   test('lets the first settings file that sets autoMemoryDirectory decide, even when its value is not a path', () => {
@@ -244,6 +255,15 @@ describe('primer notice hook', () => {
     const dir = repo('invalid-local', { 'CLAUDE.md': hub, '.claude/settings.local.json': '{"autoMemoryDirectory": "mem"}' });
     assert.equal(notice(dir, config, data), '');
   });
+
+  for (const [name, value] of [['an empty string', '""'], ['null', 'null']]) {
+    test(`lets a local autoMemoryDirectory of ${name} decide over a user directory with notes`, () => {
+      const { memory, config, data } = away('lower');
+      write(config, 'settings.json', JSON.stringify({ autoMemoryDirectory: memory }));
+      const dir = repo(`unset-local-${name.replace(' ', '-')}`, { 'CLAUDE.md': hub, '.claude/settings.local.json': `{"autoMemoryDirectory": ${value}}` });
+      assert.equal(notice(dir, config, data), '');
+    });
+  }
 
   test('reads <config>/projects/<name>/memory when the host named the project directory', () => {
     const { config, data } = away('unused');

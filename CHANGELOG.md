@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.26 - 2026-11-07
+
+- `/rules:handoff-prompt` carries the handoff prompt item and the item on prose written for an agent in place of reading them from the plugin's rule file, since that read asked for permission and, where no one could answer, was refused and left the prompt written without its definition.
+
 ## rules 0.1.25 - 2026-11-07
 
 - The Code house rules gain an item after the prose-for-an-agent item that defines a handoff prompt: enough context and background for a later session to understand the work, the settled decisions and open questions as they were left, nothing more specific than they were, nothing suggested and nothing asked of anyone else, since the same request was restated across sessions with nothing in the suite defining it. The rule count moves to 38; the block updates through /rules.

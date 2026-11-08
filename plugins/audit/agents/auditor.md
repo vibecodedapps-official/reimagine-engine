@@ -179,7 +179,8 @@ A top-up prompt names a digest or map and the group.
    `git hash-object --no-filters <file>` for the `consumed:` list, and the read-only forms
    of `sed -n`, `awk`, `diff`, `wc`, `sort`, `head`, `tail`, `cut`, `uniq` and `grep`, as
    commands or pipe stages over an exported file under the run directory or over
-   `git show` output. Barred: `sed -i` or any other in-place change, `awk -i inplace`, a
+   `git show` output, and `cat` of an exported file. Barred: `sed -i` or any other
+   in-place change, `awk -i inplace`, a
    sed `w`, `W` or `e` command or `w` or `e` flag, `sort -o`, `--output` or
    `--compress-program`, `uniq` with an output file operand, and inside an awk program
    `system()`, output redirection, `getline` from a command or a pipe to a command; no

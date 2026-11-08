@@ -87,9 +87,9 @@
 # - The command list in hard rule 2 of skills/audit/common.md and in Boundaries item 2
 #   of agents/auditor.md, adversary.md, mapper.md and digester.md, read as one line,
 #   names `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with `-t`,
-#   `-s` or `-p`, and `git branch --list`; all but the digester's also name `cut` and
-#   `uniq`, and bar `sort -o`, `--output` or `--compress-program` and `uniq` with an
-#   output file operand.
+#   `-s` or `-p`, and `git branch --list`; all but the digester's also name `cut`,
+#   `uniq` and `cat` of an exported file, and bar `sort -o`, `--output` or
+#   `--compress-program` and `uniq` with an output file operand.
 # - The default rank in skills/audit/stages/1-orient.md lists `AGENTS.md`, `CLAUDE.md`,
 #   `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and `REVIEW.md` in that
 #   order, and says `REVIEW.md` is read at the pinned base with `git show <base>:<path>`;
@@ -655,7 +655,8 @@ fi
 
 # The command list of hard rule 2 and of each Bash agent's Boundaries item 2 holds the
 # read-only git commands agents use; all but the digester's also hold the pipe stages
-# cut and uniq and bar the sort and uniq forms that write a file.
+# cut and uniq and cat of an exported file, and bar the sort and uniq forms that write
+# a file.
 for f in skills/audit/common.md agents/auditor.md agents/adversary.md agents/mapper.md agents/digester.md; do
 	[ -f "$f" ] || continue
 	case $f in
@@ -668,7 +669,7 @@ for f in skills/audit/common.md agents/auditor.md agents/adversary.md agents/map
 		'`git cat-file` with `-t`, `-s` or `-p`' '`git branch --list`'
 	case $f in
 	agents/digester.md) ;;
-	*) set -- "$@" '`cut`' '`uniq`' '`sort -o`, `--output` or `--compress-program`' '`uniq` with an output file operand' ;;
+	*) set -- "$@" '`cut`' '`uniq`' '`cat` of an exported file' '`sort -o`, `--output` or `--compress-program`' '`uniq` with an output file operand' ;;
 	esac
 	for c in "$@"; do
 		grep -qF "$c" "$tmp/list" || fail "$f: the command list lacks $c"

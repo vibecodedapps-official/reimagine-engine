@@ -98,7 +98,7 @@ plugins/rules/
   LICENSE  README.md
   skills/rules/SKILL.md          /rules; disable-model-invocation: true
   skills/refactor/SKILL.md       /rules:refactor; disable-model-invocation: true; reads core.md live; writes ticket files only on a yes
-  skills/handoff-prompt/SKILL.md /rules:handoff-prompt; model-invocable; reads core.md live; writes no file
+  skills/handoff-prompt/SKILL.md /rules:handoff-prompt; model-invocable; carries its core.md items; reads none of the plugin's files; writes no file
   scripts/rules.mjs              status | plan [--adopt] [--options a,b] | apply | remove | decline | session-start
   hooks/hooks.json               SessionStart startup -> node rules.mjs session-start ${CLAUDE_PLUGIN_DATA}
   rules/core.md                  the house rules

@@ -1632,6 +1632,23 @@ Work items, in this order:
 
 Check: `npm run test:rules` after each commit that touches it; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Handoff prompt definition in the skill: M81
+
+Added 2026-11-07. Decision 212 and requirements 324, 346 and 347 as it amends them: `/rules:handoff-prompt` carries the handoff prompt item and the item on prose written for an agent word for word and asks for no read of the plugin's files, in rules 0.1.26. M81 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `.claude/skills/rules-feedback/`, `plugins/rules/` and `tests/rules/`. Rules 0.1.26 is released by it; the tag waits for the owner's merge.
+
+### M81: the skill carries its definition
+
+Work items, in this order:
+
+1. The design documents. Commit: `docs(design): specify the handoff prompt skill carrying its definition`.
+2. `node tools/release.mjs rules 0.1.26`, with the catalog `metadata.version` raised to 0.1.53 and the version literals of `tests/rules/rules.test.mjs` moved. Commit: `release(rules): 0.1.26`.
+3. The R347 tests in `tests/rules/skill.test.mjs` first, seen failing; then the skill's definition section and the `rules-feedback` line. Commit: `fix(rules): carry the handoff prompt definition in its skill`.
+4. The `## rules 0.1.26 - <date>` heading. Commit: `docs(changelog): add the rules 0.1.26 heading`.
+5. Item 81, headless and interactive, and the release items 2, 4, 5, 22, 38, 39 and 44, each run's tokens and minutes recorded. A fix a run calls for is its own `fix(rules)` commit, and the item runs again after it. Commit: `docs(acceptance): record rules 0.1.26`.
+6. After the merge, by the owner: the tag `rules--v0.1.26` after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:rules` after each commit that touches it; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

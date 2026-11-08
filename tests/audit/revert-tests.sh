@@ -8,7 +8,7 @@
 # commit-tree), with a pinned identity and date, so a symlink, a submodule, and a path with
 # a newline need no support from the file system. Git runs with no global or system
 # config. The script under test is started with `sh`, or with $RT_SH when set, for example
-# `RT_SH=dash sh tests/revert-tests.sh`, and re-executes itself under bash; the test files
+# `RT_SH=dash sh tests/audit/revert-tests.sh`, and re-executes itself under bash; the test files
 # it runs use `sh` either way. Every
 # verdict is compared as a literal line of the result file. A test file that starts a
 # process writes its pid under $RT_PIDS, and that process must be gone when the script

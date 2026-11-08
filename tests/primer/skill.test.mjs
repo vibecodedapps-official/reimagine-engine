@@ -98,7 +98,7 @@ test('R250 and R251: maintain verifies against the code, prints no drift, and na
 });
 
 test('R256 and R257: promote reads auto memory by type, proposes per note, and writes the stamp', () => {
-  assert.ok(SKILL.includes('3. Promote auto memory. Its directory is the one the session\'s instructions name for auto memory, else `<config>/projects/<key>/memory/`: `<config>` is `$CLAUDE_CONFIG_DIR`, else `~/.claude`; `<key>` is the main worktree\'s root, the parent of `git rev-parse --path-format=absolute --git-common-dir`, with every character outside `A-Za-z0-9` replaced by `-`. Without that directory, skip this step. Read `MEMORY.md` and each topic file it lists, taking `type` and `modified` from the frontmatter\'s `metadata`, and propose in the memory note form of Proposals:'));
+  assert.ok(SKILL.includes('3. Promote auto memory. Its directory is the one the session\'s instructions name for auto memory; else the `autoMemoryDirectory` of `.claude/settings.local.json`, `.claude/settings.json` or `<config>/settings.json`, the first file that sets it deciding, and a value that is not an absolute or `~/` path counting as unset; else `<config>/projects/<name>/memory/` when `$CLAUDE_CONFIG_DIR` and `$CLAUDE_CODE_PROJECT_DIR_NAME` are both set and the name is 1 to 64 letters, digits, `-` or `_` and not a Windows device name such as `con`; else `<config>/projects/<key>/memory/`: `<config>` is `$CLAUDE_CONFIG_DIR`, else `~/.claude`; `<key>` is the main worktree\'s root, the parent of `git rev-parse --path-format=absolute --git-common-dir`, with every character outside `A-Za-z0-9` replaced by `-`. Without that directory, skip this step. Read `MEMORY.md` and each topic file it lists, taking `type` and `modified` from the frontmatter\'s `metadata`, and propose in the memory note form of Proposals:'));
   assert.ok(SKILL.includes('   - a `feedback` note about this repository\'s code or conventions, placed by `placement.md`; one about how the user works stays;'));
   assert.ok(SKILL.includes('   - a `project` note with no date, as a rule or a `docs/` page; a dated or ongoing item stays;'));
   assert.ok(SKILL.includes('   - a `reference` note a teammate would need, as a sentence in the hub\'s opening paragraph;'));
@@ -259,4 +259,9 @@ test('R328: the reviewing session\'s own instructions, settings and environment 
 test('Decision 166: placement says a skill with disable-model-invocation is not listed at launch', () => {
   assert.ok(!PLACEMENT.includes('A skill\'s description is always listed.'));
   assert.ok(PLACEMENT.includes('- A skill\'s description is listed at launch unless the skill sets `disable-model-invocation: true`; then only the user invokes it. Its body loads when the skill is invoked or judged relevant. A skill with `paths` stays hidden until a matching file is touched.'));
+});
+
+test('the allowed-tools rule limits the grant to the invoking turn and no longer names read-only commands every run needs', () => {
+  assert.ok(SHAPES.includes("- Add `allowed-tools` only for read-only commands the skill runs in the turn that invokes it. The grant clears at the user's next message, so it does not cover a command run after a reply; a grant that lasts the session is a permission allow rule in the user's settings, which primer never writes."));
+  assert.ok(!SHAPES.includes('read-only commands every run needs'));
 });

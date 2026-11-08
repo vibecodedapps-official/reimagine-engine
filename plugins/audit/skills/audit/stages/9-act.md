@@ -4,8 +4,9 @@ Stage 9 runs only on `/audit:act <run-id> <item-id...> [--per-item]`, after a ru
 written its report, and it is the audit's one write phase. The read-only boundary of a
 run does not apply, but every write below waits for the user's yes, and no commit
 message, ticket text, pull request text or drafted comment names a model, an agent or a
-tool. Act takes the run id and the item ids the user approved and never widens that
-list. It changes the user's checkout on the bundle's branch, never the exports under
+tool; the trailer the host's attribution setting adds to a commit stays, even where it
+names a model or tool. Act takes the run id and the item ids the user approved and
+never widens that list. It changes the user's checkout on the bundle's branch, never the exports under
 `trees/`, and it leaves the audit's state and `runs.json` as they are. Inputs: the run's
 entry in `${CLAUDE_PLUGIN_DATA}/runs.json`, `report.md`, `converged.md`, `manifest.json`,
 `audit-brief.md`, `stages.json` (the audited bundle shas) and `act/log.md` when it

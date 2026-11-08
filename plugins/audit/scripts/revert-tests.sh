@@ -34,7 +34,7 @@
 # tests/audit/revert-tests.sh sets it low.
 #
 # Portability: bash (Linux, macOS, Git Bash), which the script re-executes itself under
-# when another sh starts it, and awk in forms mawk and gawk accept. Each command needs its
+# when another sh starts it, and awk in forms mawk, gawk, and BSD awk accept. Each command needs its
 # own process group, from job control, and dash turns job control off when it has no
 # controlling terminal, as under CI; bash does not. Under `set -m` bash can print
 # `child setpgid (N to N): ...` at a job's start, when the child's own setpgid call fails

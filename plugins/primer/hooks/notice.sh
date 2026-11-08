@@ -2,7 +2,8 @@
 # notice.sh: SessionStart hook for the startup source. Reads stdin (transcript_path and cwd),
 # the hub (CLAUDE.md, or AGENTS.md behind the adapter, or AGENTS.md alone) and, only when its
 # first line is <!-- primer -->, `git rev-parse` for the repository root and the main worktree,
-# the auto memory index <config>/projects/<key>/memory/MEMORY.md, the topic files it lists, and
+# the autoMemoryDirectory key of the local, project and user settings files, the auto memory
+# index MEMORY.md (by default <config>/projects/<key>/memory/), the topic files it lists, and
 # the review stamp $CLAUDE_PLUGIN_DATA/reviewed/<key>; never writes a file. Prints at most one
 # JSON object and always exits 0:
 #   notice:  the count of listed feedback or project notes modified after the stamp, every one
@@ -14,9 +15,10 @@ while IFS= read -r in_line || [ -n "$in_line" ]; do
 	json=$json$in_line
 done
 
-# field <name>: the string value of a top-level key, with \\ and \" unescaped.
+# field <name> [<text>]: the string value of a key in the JSON text, the input by default,
+# with \\ and \" unescaped.
 field() {
-	printf '%s\n' "$json" | LC_ALL=C sed -n -E 's/^.*"'"$1"'"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*$/\1/p' | LC_ALL=C sed -e 's/\\\\/\\/g' -e 's/\\"/"/g'
+	printf '%s\n' "${2-$json}" | LC_ALL=C sed -n -E 's/^.*"'"$1"'"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*$/\1/p' | LC_ALL=C sed -e 's/\\\\/\\/g' -e 's/\\"/"/g'
 }
 
 transcript=$(field transcript_path)
@@ -55,7 +57,43 @@ key=$(printf '%s\n' "$main" | LC_ALL=C sed 's/[^A-Za-z0-9]/-/g')
 # The transcript is <config>/projects/<session key>/<session>.jsonl.
 transcript=$(printf '%s\n' "$transcript" | LC_ALL=C sed 's/\\/\//g')
 sdir=${transcript%/*}
-memory=${sdir%/*}/$key/memory
+projects=${sdir%/*}
+
+# autoMemoryDirectory from the local, project or user settings: the first file that sets the key
+# decides, and a value that is not a string, or is neither absolute nor ~/, counts as unset. ~/ is
+# read against the host's home folder: USERPROFILE when set, else HOME, on Windows; HOME elsewhere.
+# Absolute is the host's reading: a drive path only on Windows, where /x without a drive takes the
+# drive of the input cwd (// stays as is). Managed settings and --settings are out of reach.
+win=
+case $(uname -s) in MINGW* | MSYS* | CYGWIN*) win=1 ;; esac
+memory=
+for f in "$root/.claude/settings.local.json" "$root/.claude/settings.json" "${projects%/*}/settings.json"; do
+	[ -f "$f" ] || continue
+	text=$(tr -d '\r\n' < "$f")
+	printf '%s\n' "$text" | LC_ALL=C grep -q '"autoMemoryDirectory"[[:space:]]*:' || continue
+	v=$(field autoMemoryDirectory "$text" | LC_ALL=C sed 's/\\/\//g')
+	case $v in
+	"~/"*)
+		home=$HOME
+		[ -z "$win" ] || home=${USERPROFILE:-$HOME}
+		memory=$(printf '%s\n' "$home" | LC_ALL=C sed 's/\\/\//g')/${v#"~/"} ;;
+	"//"*) memory=$v ;;
+	/*)
+		memory=$v
+		if [ -n "$win" ]; then
+			drive=$(printf '%s\n' "$cwd" | LC_ALL=C sed -n 's/^\([A-Za-z]\):.*$/\1/p')
+			[ -z "$drive" ] || memory=$drive:$v
+		fi ;;
+	[A-Za-z]:/*) [ -z "$win" ] || memory=$v ;;
+	esac
+	break
+done
+# A project directory name the host took names the transcript's directory as well.
+if [ -z "$memory" ] && [ -n "$CLAUDE_CODE_PROJECT_DIR_NAME" ] && [ "${sdir##*/}" = "$CLAUDE_CODE_PROJECT_DIR_NAME" ]; then
+	memory=$sdir/memory
+fi
+[ -n "$memory" ] || memory=$projects/$key/memory
+memory=${memory%/}
 [ -f "$memory/MEMORY.md" ] || exit 0
 
 stamp=

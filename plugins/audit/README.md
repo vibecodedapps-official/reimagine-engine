@@ -11,7 +11,6 @@ Audit a set of pull requests or branches against their tickets, and stop at a re
 
 ## Requirements
 
-- Node 22 or later.
 - On Windows, Git for Windows.
 - `jq` for four parts: reading a GitHub pull request, the live checks, the validation of `work-items.jsonl`, and the check for collisions with open pull requests. On Windows, `winget install jqlang.jq`; on macOS, `brew install jq`, or the `/usr/bin/jq` that macOS 15 and later ship.
 

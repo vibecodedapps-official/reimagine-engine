@@ -113,7 +113,7 @@ Done when <one sentence>.
 - A written `description` holds no `<` or `>`: the skill list shows them as `&lt;` and `&gt;`, so write a placeholder as `[name]`.
 - Add `disable-model-invocation: true` when the procedure publishes, deploys, pushes or touches a live system.
 - Add `paths`, in the form a rule uses, when the skill belongs to one area. The skill stays hidden until a matching file is touched.
-- Add `allowed-tools` only for read-only commands every run needs.
+- Add `allowed-tools` only for read-only commands the skill runs in the turn that invokes it. The grant clears at the user's next message, so it does not cover a command run after a reply; a grant that lasts the session is a permission allow rule in the user's settings, which primer never writes.
 - Name a fact that the hub or a rule holds by its file. Do not repeat it. A skill never imports.
 - Move a reference longer than a screen into a supporting file beside `SKILL.md`. Name it from the body and say when to read it.
 

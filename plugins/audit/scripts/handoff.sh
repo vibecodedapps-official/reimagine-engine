@@ -19,7 +19,7 @@
 # A UTF-8 byte order mark at the start of line 1 is ignored.
 # A claim line over 8000 bytes is a rule failure, since a claim is read as one line.
 #
-# POSIX sh plus awk; the awk program uses only features that mawk and gawk both accept.
+# POSIX sh plus awk; the awk program uses only features that mawk, gawk, and BSD awk accept.
 set -u
 
 LC_ALL=C

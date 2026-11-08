@@ -201,3 +201,9 @@ test('R76: Step 0.2 defines the start commit and 0.4 compares the snapshot with 
   assert.ok(PREFLIGHT.includes('10. The start commit is the commit the build starts from, held as a full sha for `run.md`. For a branch that exists neither locally nor on the remote, it is the base commit. For a continued branch that exists it is the branch tip: `refs/remotes/<remote>/<branch>` when the branch exists on the remote, else the local branch, and in a plan-only run, which never fast-forwards, the local tip item 5 plans at.'));
   assert.ok(PREFLIGHT.includes('Record HEAD (`git rev-parse HEAD` in the checkout in use) as the planning snapshot. When it is not the start commit (0.2 item 10), note that in `run.md`. Steps 1 and 2 read the snapshot; Step 3.7 reverifies against the start commit.'));
 });
+
+test('R52 and R53: the echo carries the key shape of the Step 0.1 credential scan whole', () => {
+  const shape = 'A key named `password`, `passwd`, `secret`, `token`, `api_key`, `apikey`, `client_secret`, `private_key` or `connection_string` (case-insensitive) anywhere in a line, in the form `key: value`, `"key": "value"` or `key=value`, with a non-empty value. The value runs from the first character after `:` or `=`, with spaces and an opening quote skipped, to the next space, comma or quote.';
+  assert.ok(PREFLIGHT.includes(shape), 'Step 0.1 lacks the key shape');
+  assert.ok(SKILL.includes(shape), 'the echo in SKILL.md lacks the key shape of Step 0.1');
+});

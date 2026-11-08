@@ -75,8 +75,9 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    checks every audited repository after every stage, and a write that check does not
    accept ends the run `blocked`. The user's own edits during a run trip it too.
 3. **No model, agent or tool names** in anything external: commit messages, pull request
-   and ticket text, and drafted comments. The report and the run records stay in the run
-   directory and may name them.
+   and ticket text, and drafted comments. The trailer the host's attribution setting adds
+   to a commit stays, even where it names a model or tool. The report and the run records
+   stay in the run directory and may name them.
 4. **No advisor tool**, in the orchestrator or in any agent.
 5. **Live data only from a `--live` file.** Credentials and live systems (databases,
    dashboards, production APIs) serve only a question the code cannot answer, and only

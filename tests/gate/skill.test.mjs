@@ -437,7 +437,7 @@ test('R300: Step 2 stages each path by name and never stages everything', () => 
 });
 
 test('R11: Step 2 types no attribution trailer of its own and keeps the host\'s', () => {
-  holds('steps/2-fix.md', 'The commit message follows it and names no model, agent or tool. Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.');
+  holds('steps/2-fix.md', 'The commit message follows it and names no model, agent, tool, review pass or its level. Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.');
 });
 
 test('R295: Step 2 reads the remote head with git ls-remote and compares it before every push', () => {
@@ -509,6 +509,14 @@ test('R314: the comment template is one fenced block with no deny word, and Step
   const body = blocks[0].lines.join('\n');
   for (const w of DENY) assert.ok(!wholeWord(w).test(body), `the comment template holds ${w}`);
   for (const w of DENY) assert.ok(text.includes(`\`${w}\``), `steps/4-publish.md does not list ${w}`);
+});
+
+test('R11 and R314: the comment names no review pass or its level', () => {
+  const text = holds('steps/4-publish.md', 'The comment names no model, agent, tool, run-internal path, review pass or its level.');
+  const body = fences(text).find((b) => b.lines[0]?.startsWith('Gate verdict:')).lines;
+  assert.ok(!body.includes('Passes:'), 'the comment template still has a Passes section');
+  assert.ok(!body.some((l) => l.includes('<level>')), 'the comment template still names a level');
+  holds('steps/4-publish.md', 'Check every reason in the filled comment also for a review pass or its level, the ones the record carries from the scripts and earlier passes as well as your own words: a reason names no pass number and none of the level words `xhigh`, `high` and `medium`, so a carried rejection reads as carried from an earlier review and a regression as `regression: fixed in an earlier review`.');
 });
 
 test('R314: the comment writes the home directory as ~ in text quoted from a review', () => {

@@ -7,7 +7,7 @@
 # snapshot, makes one change, runs `readonly.sh check`, and compares stdout, stderr, and
 # the exit status with literals. The run directory is outside the app repository, except
 # in cases 10 and 19. The script under test runs under `sh`, or under $RO_SH when set, for
-# example `RO_SH=dash sh tests/readonly.sh`. Cases 13 to 18 and 21 build their extra repos inline,
+# example `RO_SH=dash sh tests/audit/readonly.sh`. Cases 13 to 18 and 21 build their extra repos inline,
 # with a pinned identity and commit date, so their shas are literals. Cases 26 and 27 add
 # a linked worktree to the fixture's app repo, whose files are those committed at its head.
 #

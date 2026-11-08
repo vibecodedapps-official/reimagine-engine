@@ -103,6 +103,8 @@ before(() => {
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   delete env.GIT_INDEX_FILE;
+  delete env.CLAUDE_CONFIG_DIR;
+  delete env.CLAUDE_CODE_PROJECT_DIR_NAME;
   gitEnv = { ...env, GIT_AUTHOR_DATE: '2026-09-01T10:00:00Z', GIT_COMMITTER_DATE: '2026-09-01T10:00:00Z' };
   const build = spawnSync('sh', ['tests/primer/fixture/memory/build.sh'], { cwd: root, env: { ...process.env, TMPDIR: base.replaceAll('\\', '/') }, encoding: 'utf8' });
   assert.equal(build.status, 0, build.stderr);
@@ -183,6 +185,130 @@ describe('primer notice hook', () => {
     const { config, data } = place(dir, { stamp: true });
     appendFileSync(join(memoryDir(config, dir), 'MEMORY.md'), '- [Again](item-ids-are-numbers.md) - listed again\n');
     assert.equal(notice(dir, config, data), line(1));
+  });
+
+  // A memory directory away from the derived one, and a run whose derived directory holds nothing.
+  const away = (name) => {
+    const unique = join(base, `run-${++seq}`);
+    const memory = join(unique, name);
+    cpSync(join(fixture, 'memory'), memory, { recursive: true });
+    const config = join(unique, 'config');
+    const data = join(unique, 'data');
+    mkdirSync(data, { recursive: true });
+    return { memory, config, data };
+  };
+
+  test('reads the directory autoMemoryDirectory names in the project settings', () => {
+    const { memory, config, data } = away('moved');
+    const dir = repo('moved-project', { 'CLAUDE.md': hub, '.claude/settings.json': `{\n  "autoMemoryDirectory": ${JSON.stringify(memory)}\n}\n` });
+    assert.equal(notice(dir, config, data), line(2));
+  });
+
+  test('takes autoMemoryDirectory from the local settings before the project and user settings', () => {
+    const { memory, config, data } = away('local');
+    const empty = join(base, `run-${seq}`, 'empty');
+    mkdirSync(empty);
+    write(config, 'settings.json', JSON.stringify({ autoMemoryDirectory: empty }));
+    const dir = repo('moved-local', {
+      'CLAUDE.md': hub,
+      '.claude/settings.json': JSON.stringify({ autoMemoryDirectory: empty }),
+      '.claude/settings.local.json': JSON.stringify({ autoMemoryDirectory: memory }),
+    });
+    assert.equal(notice(dir, config, data), line(2));
+  });
+
+  test('reads a ~/ autoMemoryDirectory from the user settings against the home folder', () => {
+    const { config, data } = away('unused');
+    const home = join(base, `run-${seq}`, 'home');
+    cpSync(join(fixture, 'memory'), join(home, 'mem'), { recursive: true });
+    write(config, 'settings.json', '{"autoMemoryDirectory": "~/mem"}');
+    const dir = repo('moved-user');
+    assert.equal(notice(dir, config, data, undefined, { HOME: home, USERPROFILE: home }), line(2));
+  });
+
+  // The notes sit under one of two home folders; the hook reads the other one's ~/mem only when it picks the wrong folder.
+  const homes = (name, withNotes) => {
+    const { config, data } = away('unused');
+    const unique = join(base, `run-${seq}`);
+    const home = join(unique, 'home');
+    const profile = join(unique, 'profile');
+    mkdirSync(home);
+    mkdirSync(profile);
+    cpSync(join(fixture, 'memory'), join(withNotes === 'profile' ? profile : home, 'mem'), { recursive: true });
+    write(config, 'settings.json', '{"autoMemoryDirectory": "~/mem"}');
+    return { config, data, dir: repo(name), env: { HOME: home, USERPROFILE: profile } };
+  };
+
+  test('reads a ~/ autoMemoryDirectory against USERPROFILE on Windows when it is set and differs from HOME', { skip: process.platform !== 'win32' }, () => {
+    const { config, data, dir, env: homeEnv } = homes('moved-profile', 'profile');
+    assert.equal(notice(dir, config, data, undefined, homeEnv), line(2));
+  });
+
+  test('reads a ~/ autoMemoryDirectory against HOME off Windows even when USERPROFILE is set', { skip: process.platform === 'win32' }, () => {
+    const { config, data, dir, env: homeEnv } = homes('moved-home', 'home');
+    assert.equal(notice(dir, config, data, undefined, homeEnv), line(2));
+  });
+
+  test('lets the first settings file that sets autoMemoryDirectory decide, even when its value is not a path', () => {
+    const { memory, config, data } = away('lower');
+    write(config, 'settings.json', JSON.stringify({ autoMemoryDirectory: memory }));
+    const dir = repo('invalid-local', { 'CLAUDE.md': hub, '.claude/settings.local.json': '{"autoMemoryDirectory": "mem"}' });
+    assert.equal(notice(dir, config, data), '');
+  });
+
+  for (const [name, value] of [['an empty string', '""'], ['null', 'null']]) {
+    test(`lets a local autoMemoryDirectory of ${name} decide over a user directory with notes`, () => {
+      const { memory, config, data } = away('lower');
+      write(config, 'settings.json', JSON.stringify({ autoMemoryDirectory: memory }));
+      const dir = repo(`unset-local-${name.replace(' ', '-')}`, { 'CLAUDE.md': hub, '.claude/settings.local.json': `{"autoMemoryDirectory": ${value}}` });
+      assert.equal(notice(dir, config, data), '');
+    });
+  }
+
+  // The derived directory holds the notes and a lower settings file names an empty directory, so only a value that
+  // counts as unset leads to the notes.
+  const derivedOr = (name, value) => {
+    const dir = repo(name, { 'CLAUDE.md': hub, '.claude/settings.local.json': `{"autoMemoryDirectory": ${value}}` });
+    const { config, data } = place(dir, { stamp: false });
+    const empty = join(base, `run-${seq}`, 'empty');
+    mkdirSync(empty);
+    write(config, 'settings.json', JSON.stringify({ autoMemoryDirectory: empty }));
+    return notice(dir, config, data);
+  };
+
+  test('falls through to the derived directory when a local autoMemoryDirectory is a relative path', () => {
+    assert.equal(derivedOr('derived-relative', '"mem"'), line(2));
+  });
+
+  test('falls through to the derived directory when a local autoMemoryDirectory is an empty string', () => {
+    assert.equal(derivedOr('derived-empty', '""'), line(2));
+  });
+
+  test('falls through to the derived directory when a local autoMemoryDirectory is a drive path off Windows', { skip: process.platform === 'win32' }, () => {
+    assert.equal(derivedOr('derived-drive', '"C:/mem"'), line(2));
+  });
+
+  test('reads an autoMemoryDirectory rooted with / but no drive on the drive of the working directory on Windows', { skip: process.platform !== 'win32' }, () => {
+    const { memory, config, data } = away('rooted');
+    const rooted = memory.replace(/^[A-Za-z]:/, '').replaceAll('\\', '/');
+    const dir = repo('rooted-project', { 'CLAUDE.md': hub, '.claude/settings.local.json': JSON.stringify({ autoMemoryDirectory: rooted }) });
+    assert.equal(notice(dir, config, data), line(2));
+  });
+
+  test('reads <config>/projects/<name>/memory when the host named the project directory', () => {
+    const { config, data } = away('unused');
+    cpSync(join(fixture, 'memory'), join(config, 'projects', 'work_1', 'memory'), { recursive: true });
+    const dir = repo('named');
+    assert.equal(notice(dir, config, data, 'work_1', { CLAUDE_CONFIG_DIR: config, CLAUDE_CODE_PROJECT_DIR_NAME: 'work_1' }), line(2));
+  });
+
+  test('reads the derived directory when the host did not take the project directory name', () => {
+    const dir = repo('name-not-taken');
+    for (const extra of [{ CLAUDE_CODE_PROJECT_DIR_NAME: 'work_1' }, { CLAUDE_CODE_PROJECT_DIR_NAME: 'con' }, { CLAUDE_CODE_PROJECT_DIR_NAME: 'a b' }]) {
+      const { config, data } = place(dir, { stamp: false });
+      const r = notice(dir, config, data, undefined, extra.CLAUDE_CODE_PROJECT_DIR_NAME === 'work_1' ? extra : { CLAUDE_CONFIG_DIR: config, ...extra });
+      assert.equal(r, line(2), JSON.stringify(extra));
+    }
   });
 
   test('writes nothing', () => {

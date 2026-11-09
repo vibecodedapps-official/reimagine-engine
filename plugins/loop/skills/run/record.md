@@ -7,7 +7,7 @@ Read this file at Step 0.2 when the run's record directory exists, else at Step 
 1. The record directory is `.reimagine/loop/<branch-slug>/` in the primary repository's record root: the toplevel of the session's repository (Step 0, Primary checkout), or the checkout "primary <path>" names, or, when that named checkout is a linked worktree, its main checkout, the path of the first `worktree` line of `git -C <checkout> worktree list --porcelain`. It stays there in a worktree run and in a multi-repository run; no additional repository, no detached worktree and no named linked worktree holds a record.
 2. The branch and `<branch-slug>` are set as SKILL.md, Record, says.
 3. `steps.json` keeps the exact branch name. A record whose `steps.json` branch differs from this run's branch is a slug collision and ends preflight `blocked`, naming both branches.
-4. `.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, never into `.gitignore`. A path it prints that is not absolute is read against the folder git ran in, `<checkout>` for `git -C <checkout>`. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
+4. `.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, never into `.gitignore`. A path it prints that is not absolute is read against the folder git ran in, the one `git -C` names. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
 5. Every shell argument that names a record file is its absolute path, for example `C:/src/app/.reimagine/loop/feat-68-4567-export/pr-body.md`.
 6. A file outside the record is never overwritten by a record write.
 

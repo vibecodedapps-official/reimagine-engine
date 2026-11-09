@@ -704,7 +704,7 @@ test('R314: the comment file is written first with the Write tool and the post r
 
 test('R295 and R312: a commit a run made and did not push is recorded, let through preflight and pushed by the next run', () => {
   holds('steps/2-fix.md',
-    'Read the sha with `git rev-parse HEAD` and write it as the pass\'s `commit` at once, so a run that ends before the push leaves the commit in the record and the next run pushes it (`steps/3-next.md`, Resume, item 1).',
+    'Read the sha with `git rev-parse HEAD` and write it as the pass\'s `commit` at once, with the round\'s `changes` and `checks`, which Reading the fix and Checks have settled, so a run that ends before the push leaves the commit in the record as it was judged and the next run pushes it (`steps/3-next.md`, Resume, item 1).',
     'A denied push ends the run `blocked` with the pass recorded `failed`; the local commit is kept and named, and the next run on the branch pushes it (`steps/3-next.md`, Resume, item 1).');
   holds('steps/0-preflight.md', 'except, outside "no fixes" mode, a tip one commit ahead, whose parent (`git rev-parse refs/heads/<head>^`) is the remote head and whose sha is the `commit` of the pass not `complete` that Resume takes its expected head from (`steps/3-next.md`, Resume, item 1) in the record\'s `passes.json` (0.8, item 1): a run that committed and did not push kept it, and Resume pushes it. In "no fixes" mode that tip ends the run `blocked`, naming the commit and that a run with fixes pushes it. Never reset.');
   const text = holds('steps/3-next.md', '## Resume');
@@ -712,9 +712,10 @@ test('R295 and R312: a commit a run made and did not push is recorded, let throu
   for (const phrase of [
     'The expected head is the `head` of the last `complete` pass, or the `commit` of the first pass not `complete` after it, or of the first pass when none is `complete`, when that pass has one, since its fix round made that commit.',
     'With no `complete` pass and no such commit, only the merge-base is compared.',
-    'When the head is the expected head and the `commit` of a pass not `complete`, a commit a run made and did not push, it is pushed before items 2 to 4, so a changed merge-base restarts only after the push.',
-    'In "no fixes" mode end the run `blocked` instead, naming the commit and that a run with fixes pushes it, since that mode pushes nothing.',
-    'Otherwise push it unless it is the remote head Step 0.7 fetched, as `steps/2-fix.md`, The remote head and the push, says, items 1 to 5, a `blocked` ending keeping the pass\'s `changes` and `checks` as recorded; then set each fix-bucket entry of that pass in `findings.json` to state `fixed` unless it already is, as Step 2, The commit, item 6, does.',
+    'When the head is the expected head and the `commit` of a pass not `complete`, first write that pass\'s `run` as this run\'s number, since this run carries it on.',
+    'Unless that commit is the remote head Step 0.7 fetched, a run made it and did not push it: in "no fixes" mode end the run `blocked`, naming the commit and that a run with fixes pushes it, since that mode pushes nothing; otherwise push it before items 2 to 4, so a changed merge-base restarts only after the push, as `steps/2-fix.md`, The remote head and the push, says, items 1 to 5, a `blocked` ending keeping the pass\'s `changes` and `checks` as recorded.',
+    'Then set each fix-bucket entry of that pass in `findings.json` to state `fixed` unless it already is, as Step 2, The commit, item 6, does.',
+    'When item 3 or 4 then restarts, first write that pass\'s `"status": "complete"` and `ended` in one write, since its commit is on the remote and the new sequence reviews the branch, so no later Resume takes it as the pass not `complete`.',
     'Unless its `commit` is already the head, in which case write that pass\'s `run` as this run\'s number, `head` as `git rev-parse HEAD`, `"status": "running"` and `"ended": null` in one write, since `next.mjs` takes no `failed` pass and counts a pass in its `run`, and the pass continues at the decision of the section Decide, item 1.',
     'or go to the section Decide, item 1, for a committed pass that is not `complete`.',
   ]) assert.ok(resume.includes(phrase), `Resume lacks ${phrase}`);
@@ -724,6 +725,6 @@ test('R295 and R312: a commit a run made and did not push is recorded, let throu
     'A denied push keeps its commit, which the next run on the branch pushes, judging and asking as before any push.');
   holds('record.md',
     'A pass that ended without them is `failed`, and so is one whose push was denied.',
-    'A pass not `complete` whose `commit` was never pushed has it pushed by the next run, which sets the pass `running` again under its own run number when it resumes that pass (`steps/3-next.md`, Resume, items 1 and 2).');
+    'A pass not `complete` whose `commit` was never pushed has it pushed by the next run, which writes the pass under its own run number and sets it `running` again when it resumes that pass, or `complete` when a restart follows (`steps/3-next.md`, Resume, items 1 and 2).');
   assert.ok(README.includes('A commit the gate made and did not push, as after a denied push, is pushed by the next run on the branch, which asks again where a push must ask.'), 'README.md does not say the next run pushes a kept commit');
 });

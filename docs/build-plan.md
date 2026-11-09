@@ -1690,6 +1690,24 @@ Work items, in this order:
 
 Check: `npm run test:gate` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Deploy check: M84
+
+Added 2026-11-08. Issue 144, decision 217 and requirement 56 as it amends it: the loop's deploy judgment lists the workflows GitHub runs from the repository root before each push in loop 0.1.18. M84 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/loop/`, `tests/loop/` and `tests/lint/`. Issue 145, gated on this branch first, goes to a pull request of its own, since each review of its text found new cases. Tags wait for the owner's merge.
+
+### M84: the fix
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m84 for the deploy check`.
+2. The design documents. Commit: `docs(design): specify the loop's deploy listing`.
+3. The text test first, seen failing; then the loop's `SKILL.md` and `steps/7-publish.md`, with the word-cap padding of `tests/lint/lint.test.mjs` moved to its new count. Commit: `fix(loop): list the deploy check's workflows from the repository root`.
+4. `node tools/release.mjs loop 0.1.18`, with the catalog `metadata.version` raised to 0.1.59. Commit: `release(loop): 0.1.18`.
+5. The `## loop 0.1.18 - 2026-11-08` heading. Commit: `docs(changelog): add the loop 0.1.18 heading`.
+6. The gate on the branch, its fixes committed on the branch.
+7. After the merge, by the owner: the release acceptance items 2 and 5, the tag `loop--v0.1.18` after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:loop` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

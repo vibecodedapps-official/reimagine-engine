@@ -440,7 +440,7 @@ The child session is the engine (decision 124). It runs at `gate.models.reviewer
 }
 ```
 
-An entry is written `running` when the pass starts and `complete` after the fix round and its commit, through a temporary file and a rename; it is the only record of completion. A fix commit is recorded with its pass as soon as it exists, and when a run ends without pushing it, the next run lets that one commit through preflight and pushes it before it resumes (decision 218). A second run resumes at the first pass not `complete` when the head is the one the last complete pass left, or continues from that pass's `next` with the cap counted afresh; a new head starts a new sequence at `xhigh` with the ledger kept; a changed merge-base restarts at pass 1 the same way. `.reimagine/` is excluded through the file `git rev-parse --git-path info/exclude` names, run in the target's repository and read relative to its folder.
+An entry is written `running` when the pass starts and `complete` after the fix round and its commit, through a temporary file and a rename; it is the only record of completion. A second run resumes at the first pass not `complete` when the head is the one the last complete pass left, or continues from that pass's `next` with the cap counted afresh; a new head starts a new sequence at `xhigh` with the ledger kept; a changed merge-base restarts at pass 1 the same way. `.reimagine/` is excluded through the file `git rev-parse --git-path info/exclude` names, run in the target's repository and read relative to its folder.
 
 ### Publication texts
 

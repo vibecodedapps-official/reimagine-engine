@@ -85,7 +85,7 @@ Invoking this skill by name approves, for this run only: fix commits on each tar
 
 1. Instruction files win. Before changing anything, read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, the repository's instruction files, the instruction files of each folder above it and `.reimagine.json`. Record every ask-first rule and prompt for any approved action those rules cover.
 2. Always ask. Force push, `--no-verify`, merge, rebase, amend, reset, anything that deploys (including a push that triggers a deploy, judged before each push from the workflow files of the target's base branch and of the commit being pushed, in the target's repository), editing repository settings and opening an issue always prompt.
-3. A denial is final. A permission denied by the user or by the permission mode is never retried and never routed around. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A denied check is recorded as denied and never run another way.
+3. A denial is final. A permission denied by the user or by the permission mode is never retried and never routed around. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A commit kept by a refused push is pushed first by the next run on the branch only when its parent is still the remote head, under the conditions of `steps/3-next.md`, Resume, judged and asked as any push, and a "no fixes" run blocks on it. A denied check is recorded as denied and never run another way.
 4. Blocked at preflight and before a push. A dirty tree, meaning `git status --porcelain` prints anything or `git diff --cached --quiet` fails, ends `blocked`; the gate never stashes, resets or cleans. A merged or closed pull request ends `blocked`. On GitHub, a `gh` that is not authenticated ends `blocked`. Before every push, read the remote head with `git ls-remote` and compare it with what preflight fetched, or with the last sha this run pushed; a head that is neither ends `blocked` with the local commit kept and named. A record whose branch differs from the run's branch is a slug collision and ends `blocked`.
 
 ## Roles
@@ -153,7 +153,7 @@ Every run ends in exactly one state.
 - `pass`: a stop with the fix bucket empty and nothing deferred in any pass of the run, under rule 1 or 2 or under "no fixes".
 - `pass-with-deferred`: the same stop, with deferred findings that go to the comment and the report.
 - `unconverged`: a cap was reached, a review failed, a `medium` pass still found something to fix, or a "no fixes" run has a non-empty fix bucket. Every open finding is listed.
-- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, or a check still failing after three fixes.
+- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.
 - `stopped`: no target resolved, or a question the run cannot decide, before any commit.
 
 After `blocked` nothing more is pushed or posted; pushed commits stay and are named.
@@ -177,7 +177,7 @@ The files:
 
 From run 2 on, a per-run name without a counter takes `-run<n>`.
 
-`passes.json` is the only record of completion. An entry is written `running` when a pass starts and `complete` after the fix round and its commit, through a temporary file and a rename. A second invocation on the same branch appends a run to the record. When the head and the merge-base are those the last complete pass left, it resumes at the first pass not `complete`, else at the level in that pass's `next` with `max-passes` counted afresh, and a `next` that is a stop ends the run with that verdict, unless it is the `no-fixes` stop and this run fixes; a new head, or a changed merge-base, starts a new pass sequence at `xhigh` with the ledger kept, so earlier rejections carry.
+`passes.json` is the only record of completion. An entry is written `running` when a pass starts and `complete` after the fix round and its commit, through a temporary file and a rename. A second invocation on the same branch appends a run to the record. When the head and the merge-base are those the last complete pass left, it resumes at the first pass not `complete`, else at the level in that pass's `next` with `max-passes` counted afresh, and a `next` that is a stop ends the run with that verdict, unless it is the `no-fixes` stop and this run fixes; a new head, or a changed merge-base, starts a new pass sequence at `xhigh` with the ledger kept, so earlier rejections carry. A `failed` pass that names a `commit` made it before its run ended `blocked`. The next run, outside "no fixes", pushes that commit first only when its parent is still the remote head, under the conditions of `steps/3-next.md`, Resume, then starts a new pass sequence at `xhigh`, leaving that pass as it is; a "no fixes" run blocks on it.
 
 ## Supporting files
 

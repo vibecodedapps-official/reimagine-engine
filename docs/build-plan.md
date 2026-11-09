@@ -1726,6 +1726,24 @@ Work items, in this order:
 
 Check: `npm run test:loop` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Kept commit: M86
+
+Added 2026-11-09. Issue 145, decision 219 and requirements 295, 311, 312, 314, 316 and 317 as it amends them: the next gate run pushes the commit a refused push kept, then reviews the branch afresh, in gate 0.1.12. M86 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/gate/` and `tests/gate/`. Gate 0.1.12 is released by it; the tag waits for the owner's merge.
+
+### M86: the push of a kept commit
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m86 for the gate's kept commit`.
+2. The design documents, with acceptance item 82. Commit: `docs(design): specify the push of the gate's kept commit`.
+3. The gate's text test first, seen failing; then `SKILL.md`, `record.md`, `report.md`, `steps/0-preflight.md`, `steps/2-fix.md`, `steps/3-next.md`, `steps/4-publish.md` and `README.md`. Commit: `fix(gate): push the commit a refused push kept on the next run`.
+4. `node tools/release.mjs gate 0.1.12`, with the catalog `metadata.version` raised to 0.1.61. Commit: `release(gate): 0.1.12`.
+5. The `## gate 0.1.12 - 2026-11-09` heading. Commit: `docs(changelog): add the gate 0.1.12 heading`.
+6. The gate on the branch, its fixes committed on the branch.
+7. After the merge, by the owner: the tag `gate--v0.1.12` after a yes, then item 21 on the merge commit, and item 82.
+
+Check: `npm run test:gate` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

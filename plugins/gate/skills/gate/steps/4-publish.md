@@ -9,7 +9,7 @@ The run has one state, and the state decides what is published:
 - `pass`: a stop with the fix bucket empty and nothing deferred in any pass of the run. Publishes the comment.
 - `pass-with-deferred`: the same stop, with deferred findings. Publishes the comment, which lists them.
 - `unconverged`: a cap was reached, a review failed, a `medium` pass still found something to fix, or a "no fixes" run has a non-empty fix bucket. Publishes the comment; the report lists every open finding.
-- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, or a check still failing after three fixes.
+- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.
 - `stopped`: no target resolved, or a question the run cannot decide, before any commit.
 
 `blocked` and `stopped` post nothing. After `blocked` nothing more is pushed or posted; the commits already pushed stay, and the report names them, with any local commit kept.
@@ -22,7 +22,7 @@ A run that Step 3, Resume, ended on a stop already in the record posts nothing: 
 
 Run `date -u +%Y-%m-%dT%H:%M:%SZ` and copy its output.
 
-1. With a record, which Step 0.8 makes, write this run's entry in `runs` with `ended` that time and `state` the terminal state.
+1. With a record, which Step 0.8 makes, write this run's entry in `runs` with `ended` that time and `state` the terminal state, keeping every other key of the entry, `kept` among them.
 2. With no record yet, a stop or block before Step 0.8, write nothing: skip 4.3, post nothing, and print the report of 4.5 without writing it.
 
 ## 4.3 The manifest
@@ -46,7 +46,7 @@ The report's Audit line suggests `/audit:run "<absolute manifest path>"`: the ma
 
 One comment per run, for `pass`, `pass-with-deferred` and `unconverged`, on a pull request target on GitHub. A branch target has no pull request and gets none. A host other than GitHub gets the text in the report's Comment section in its place.
 
-Write the comment from `passes.json` and `findings.json`, for the passes of this run, never from memory. Write it to `comment-<n>.md`:
+Write the comment from `passes.json` and `findings.json`, for the passes of this run, with the additions of item 1 for a kept commit, never from memory. Write it to `comment-<n>.md`:
 
 ```
 Gate verdict: <pass | pass-with-deferred | unconverged>
@@ -72,7 +72,7 @@ Commits:
 - <short sha> <subject>
 ```
 
-1. Fixed lists the findings of state `fixed`, Deferred and Rejected the findings of those buckets, each with its reason, and Commits the passes' commits. A section with nothing to say holds the word `none`.
+1. Fixed lists the findings of state `fixed`, and also the findings of the pass whose `commit` is the `kept` of this run's entry in `runs` that are in ledger state `fixed`, Deferred and Rejected the findings of those buckets, each with its reason, and Commits the passes' commits, and also that `kept` commit. A finding that a pass of this run also has in its fix bucket is listed once, under this run's pass, not again as fixed by the kept commit. A section with nothing to say holds the word `none`.
 2. Keep Would fix in a fix run for "no fixes", where it lists the fix bucket with its reasons and Fixed says `none`; in any other run delete that section.
 3. The comment names no model, agent, tool, run-internal path, review pass or its level. These words never appear in it, matched without regard to case and as whole words: `Claude`, `Anthropic`, `Opus`, `Sonnet`, `Haiku`, `Fable`, `model`, `agent`, `subagent`, `LLM`, `AI`, `code-review`, `child session`, `stand-in`, `Skill`, `TaskStop`, `Bash`, `.reimagine`. The template holds none. Before posting, check your own words in the filled comment against the list and rewrite any that match. Check every reason in the filled comment also for a review pass or its level, the ones the record carries from the scripts and earlier passes as well as your own words: a reason names no pass number and none of the level words `xhigh`, `high` and `medium`, so a carried rejection reads as carried from an earlier review and a regression as `regression: fixed in an earlier review`. A finding's file path or summary, quoted as the review wrote it, is left as it is, except that the user's home directory in it is written `~`: the path `$HOME` holds, in each spelling of it, with `/` or `\` between its parts, the drive letter in either case, or the `/c/` form of Git Bash.
 4. The deferred list goes to the comment and the report, never to a pull request body, and no pull request body is edited.

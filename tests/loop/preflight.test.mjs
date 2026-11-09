@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const PREFLIGHT = read('../../plugins/loop/skills/run/steps/0-preflight.md');
 const SKILL = read('../../plugins/loop/skills/run/SKILL.md');
+const RECORD = read('../../plugins/loop/skills/run/record.md');
 
 // The text of a "## <heading>" section, up to the next "## " heading.
 const section = (text, heading) => {
@@ -98,6 +99,31 @@ test('R281: Step 0 resolves the named checkout before host detection and ends bl
   assert.ok(text.includes('`blocked`'));
   assert.ok(text.includes('`git -C <checkout>`'), 'the section does not give the git -C form');
   assert.ok(text.includes('`cd <checkout> && <command>`'), 'the section does not give the cd form');
+});
+
+test('R281: without "primary <path>" Step 0 takes the toplevel of the session repository and, from a subfolder, the named checkout forms', () => {
+  const text = section(PREFLIGHT, 'Primary checkout');
+  assert.notEqual(text, null);
+  assert.ok(!text.includes(`Without "primary <path>" in the request it is the session's repository.`), 'the session repository is still taken as it stands');
+  assert.ok(text.includes("run `git rev-parse --show-toplevel` and `git rev-parse --show-prefix` in the session's folder"), 'Step 0 does not resolve the session repository to its toplevel');
+  assert.ok(text.includes('the session started below it when the prefix is not empty'), 'Step 0 does not read a subfolder start from the prefix');
+  assert.ok(text.includes('With a named checkout, or a session started below the toplevel, every git command'), 'a subfolder start does not take the git -C and cd forms');
+  const statement = section(PREFLIGHT, '0.1 Instruction files, configuration, credential scan, permission statement');
+  assert.ok(statement.includes('a named primary, a session started below the toplevel or an additional repository'), 'the permission statement does not count the forms of a subfolder start');
+  assert.ok(statement.includes("in each folder from the session's folder up to `<checkout>`"), 'Step 0.1 does not read the instruction files the session loads below the toplevel');
+  const record = section(PREFLIGHT, '0.5 The record');
+  assert.ok(record.includes('read against the folder the command ran in when it is not absolute'), 'Step 0.5 does not read a relative exclude path against its folder');
+});
+
+test('R55: the approval rules of SKILL.md read the instruction files from the session folder up to the toplevel', () => {
+  assert.ok(SKILL.includes("the repository's instruction files, those of each folder from the session's folder up to the toplevel, the instruction files of each folder above it"), 'SKILL.md does not read the instruction files below the toplevel');
+});
+
+test('R82: the record root is the toplevel of the session repository, not the session folder', () => {
+  const text = section(RECORD, 'Location');
+  assert.notEqual(text, null);
+  assert.ok(text.includes("record root: the toplevel of the session's repository (Step 0, Primary checkout)"), 'record.md does not name the toplevel as the record root');
+  assert.ok(!text.includes("record root: the session's checkout,"), 'record.md still names the session checkout as the record root');
 });
 
 test('R77: the worktree failure of Step 0.2 names "primary <that path>" as a way around it', () => {

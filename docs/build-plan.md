@@ -1690,6 +1690,26 @@ Work items, in this order:
 
 Check: `npm run test:gate` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Deploy check and kept commit: M84
+
+Added 2026-11-08. Issues 144 and 145, decisions 217 and 218, and requirements 56, 295 and 312 as those decisions amend them: the loop's deploy judgment lists the workflows GitHub runs from the repository root before each push in loop 0.1.18, and the gate's next run pushes a commit a denied push kept in gate 0.1.12. M84 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/loop/`, `plugins/gate/`, `tests/loop/`, `tests/gate/` and `tests/lint/`. Tags wait for the owner's merge.
+
+### M84: the fixes
+
+Work items, in this order, one commit per issue in item 3:
+
+1. This section. Commit: `docs(build-plan): add m84 for the deploy check and the kept commit`.
+2. The design documents. Commit: `docs(design): specify the loop's deploy listing and the gate's kept commit`.
+3. Each text test first, seen failing; then the loop's `SKILL.md` and `steps/7-publish.md`, with the word-cap padding of `tests/lint/lint.test.mjs` moved to its new count (#144), and the gate's `SKILL.md`, `README.md`, `record.md`, `steps/0-preflight.md`, `steps/2-fix.md` and `steps/3-next.md` (#145). Commits: `fix(loop): list the deploy check's workflows from the repository root` and `fix(gate): push the commit a denied push kept on the next run`.
+4. `node tools/release.mjs` for loop 0.1.18 and gate 0.1.12, with the catalog `metadata.version` raised to 0.1.59 and 0.1.60. Commits: `release(loop): 0.1.18` and `release(gate): 0.1.12`.
+5. The `## loop 0.1.18 - 2026-11-08` and `## gate 0.1.12 - 2026-11-08` headings. Commit: `docs(changelog): add the loop 0.1.18 and gate 0.1.12 headings`.
+6. The gate on the branch, its fixes committed on the branch.
+7. After the merge, by the owner: the release acceptance items 2 and 5 for each plugin, the tags `loop--v0.1.18` and `gate--v0.1.12` after a yes, then item 21 on the merge commit.
+
+No acceptance item denies a gate push, so the push of a kept commit is shown by no run until one does.
+
+Check: `npm run test:loop` and `npm run test:gate` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

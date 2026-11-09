@@ -450,15 +450,16 @@ test('R294: the always-ask list holds a deploy and Step 2 judges one before each
   assert.ok(README.includes('a push that triggers a deploy'), 'README.md lacks: a push that triggers a deploy');
   holds('steps/2-fix.md',
     '1. Before each push, judge whether it triggers a deploy.',
-    '`git show "refs/remotes/<remote>/<base>:<file>"` for each `<file>` that `git ls-tree -r --full-tree --name-only refs/remotes/<remote>/<base> .github/workflows` lists',
-    '`git show "HEAD:<file>"` for each `<file>` that `git ls-tree -r --full-tree --name-only HEAD .github/workflows` lists',
+    '`git show "refs/remotes/<remote>/<base>:<file>"` for each `<file>` ending in `.yml` or `.yaml` that `git ls-tree --full-tree --name-only refs/remotes/<remote>/<base> .github/workflows/` lists, `<remote>` and `<base>` being the remote and the base Step 0.6 fetched',
+    '`git show "HEAD:<file>"` for each such `<file>` that `git ls-tree --full-tree --name-only HEAD .github/workflows/` lists, since GitHub runs only the `.yml` and `.yaml` files directly in that folder',
     '`<file>` is the repository-relative path `ls-tree` prints, unquoted and unescaped when it prints it in double quotes, never an absolute path',
-    'with its filters as GitHub applies them to this push, since a push to a pull request\'s head branch starts its `pull_request` workflows',
-    'a workflow that deploys in either set counts, and so does one whose deploy the files cannot settle.',
+    'Judge a `push` trigger, and a `pull_request` trigger when the branch has an open pull request, from either set, with its filters as GitHub applies them to this push',
+    '`gh pr list --head <branch> --state open --json number`',
+    'A workflow that deploys in either set counts, and so does one whose deploy the files cannot settle.',
     'A `pull_request_target` workflow is judged from the base branch\'s file.',
     'ask first, naming the workflow, and treat any answer but a clear yes as a denial of the push (item 4)',
     'A yes covers that push only, since a fix round can change what the next push deploys.');
-  for (const old of ['whose judgment names the same workflows', 'git diff --quiet <asked> HEAD', 'such as one that runs a script']) assert.ok(!read('steps/2-fix.md').includes(old), `steps/2-fix.md still holds: ${old}`);
+  for (const old of ['whose judgment names the same workflows', 'git diff --quiet <asked> HEAD', 'such as one that runs a script', 'ls-tree -r']) assert.ok(!read('steps/2-fix.md').includes(old), `steps/2-fix.md still holds: ${old}`);
   holds('steps/0-preflight.md', 'Outside "no fixes" mode, a push that triggers a deploy prompts', 'the Prompts line ends with `deploy: judged before each push`', 'comment: yes; deploy: judged before each push', 'the comment, and before a push that triggers a deploy');
 });
 

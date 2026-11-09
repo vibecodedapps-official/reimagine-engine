@@ -450,12 +450,16 @@ test('R294: the always-ask list holds a deploy and Step 2 judges one before each
   assert.ok(README.includes('a push that triggers a deploy'), 'README.md lacks: a push that triggers a deploy');
   holds('steps/2-fix.md',
     '1. Before each push, judge whether it triggers a deploy.',
-    '`git show refs/remotes/<remote>/<base>:<path>` for each path that `git ls-tree -r --name-only refs/remotes/<remote>/<base> .github/workflows` lists',
-    '`git show HEAD:<path>` for each path that `git ls-tree -r --name-only HEAD .github/workflows` lists',
-    'since a push to a pull request\'s head branch starts its `pull_request` workflows',
+    '`git show refs/remotes/<remote>/<base>:<file>` for each `<file>` that `git ls-tree -r --full-tree --name-only refs/remotes/<remote>/<base> .github/workflows` lists',
+    '`git show HEAD:<file>` for each `<file>` that `git ls-tree -r --full-tree --name-only HEAD .github/workflows` lists',
+    '`<file>` is the repository-relative path `ls-tree` prints, never an absolute path',
+    'since a push to a pull request\'s head branch starts its `pull_request` workflows, reading its `branches`, `tags` and `paths` filters against the branch and the commits being pushed',
     'A `pull_request_target` workflow is judged from the base branch\'s file.',
+    'A workflow whose effect the files cannot settle, such as one that runs a script or calls a reusable workflow outside the tree, counts as one that deploys.',
     'ask first, naming the workflow, and treat any answer but a clear yes as a denial of the push (item 4)',
-    'A clear yes covers this run\'s later pushes of the same target whose judgment names the same workflows; a workflow it did not name asks again.');
+    'which `git diff --quiet <asked> HEAD -- .github/workflows` shows');
+  assert.ok(!read('steps/2-fix.md').includes('whose judgment names the same workflows'), 'steps/2-fix.md still covers a later push by workflow name');
+  holds('steps/0-preflight.md', 'the Prompts line ends with `deploy: judged before each push`', 'comment: yes; deploy: judged before each push');
 });
 
 test('R301: Step 2 judges the fix round with the six change kinds next.mjs accepts', () => {

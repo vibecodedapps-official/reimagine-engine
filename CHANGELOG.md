@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## gate 0.1.11 - 2026-11-08
 
-- Before each push the gate judges whether the push triggers a deploy, from the workflow files of the target's base branch and of the commit being pushed, in the target's repository, and asks first, naming the workflow, since it pushed fix commits without that judgment and an instruction that asks before a deploy had nothing to apply to. A clear yes covers the run's later pushes of that target that start the same workflows, and any other answer is a denial that ends the run `blocked`.
+- Before each push the gate judges whether the push triggers a deploy, from the workflow files of the target's base branch and of the commit being pushed, in the target's repository, and asks first, naming the workflow, since it pushed fix commits without that judgment and an instruction that asks before a deploy had nothing to apply to. A workflow whose effect the files cannot settle counts as a deploy. A clear yes covers the run's later pushes of that target while its workflow files stay as they were; a fix that changes one is judged and asked again, and any answer but a clear yes is a denial that ends the run `blocked`. The permission statement says the deploy is judged before each push.
 
 ## primer 0.1.8 - 2026-11-08
 

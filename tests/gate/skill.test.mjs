@@ -708,6 +708,7 @@ test('R295 and R312: the next run pushes a commit a blocked push kept, then revi
     'A commit so recorded and not pushed is a kept commit, which the next run on the branch pushes when its parent is still the remote head (`steps/0-preflight.md`, 0.7.3, and `steps/3-next.md`, Resume).',
     'A denied or failed push ends the run `blocked` with the pass recorded `failed`; the local commit is kept and named.');
   holds('steps/0-preflight.md',
+    'as the fetched remote head only when item 1\'s fetch found the branch on the remote; otherwise the run keeps no remote head.',
     '3. This item applies only when item 1\'s fetch found the branch on the remote, since a tracking ref left from an earlier fetch can outlive a branch deleted on the remote.',
     'Ahead or diverged ends the run `blocked`, naming the branch, except a tip one commit ahead whose parent (`git rev-parse refs/heads/<head>^`) is the remote head and whose sha is the `commit` of a `failed` pass in the record\'s `passes.json` (0.8, item 1), that file\'s `branch` being this run\'s branch, when no entry of `runs` names that sha as `kept` and no `complete` pass names it as its `head`, since either shows the commit was pushed once',
     'this tip passes in every mode, since Resume pushes it, or ends a "no fixes" run `blocked` on it (`steps/3-next.md`, Resume). A `passes.json` that is missing or does not parse gives no exception, so the ahead tip ends the run `blocked` as any other. Never reset.');
@@ -742,5 +743,5 @@ test('R295 and R312: the next run pushes a commit a blocked push kept, then revi
     'with `ended` that time and `state` the terminal state, keeping every other key of the entry, `kept` among them.',
     'a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.');
   assert.ok(README.includes('a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes'), 'README.md does not list the kept commit causes of blocked');
-  assert.ok(README.includes('The commit of a refused push stays local, and the next run on the branch pushes it first when the remote still ends at its parent, asking again where a push must ask, then reviews the branch afresh; otherwise it is handled as before'), 'README.md does not say when the next run pushes a kept commit');
+  assert.ok(README.includes('The commit of a refused push stays local, and the next run on the branch pushes it first when the remote still ends at its parent, asking again where a push must ask, then reviews the branch afresh; when the remote has moved on, the run ends `blocked`, naming the branch, and on a branch the remote does not have, the run reviews the branch as new'), 'README.md does not say when the next run pushes a kept commit');
 });

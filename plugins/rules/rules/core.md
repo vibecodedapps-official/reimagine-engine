@@ -36,6 +36,19 @@ Any instruction file can add an ask-first rule; none removes one.
   through the environment or a tool's own store.
 - Before opening an issue or starting a fix, search for an issue or PR that covers it.
   One symptom per issue; a side finding gets its own, linked.
+- What leaves the session is written for its reader, not for the work that made it. Run
+  output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff
+  context, is for an agent or a later session: it stays in the local run folder or a
+  record attached to a ticket, and outside the session that record is the only place a
+  term a plugin or session coined may appear. A pull request carries only what its
+  reviewer needs about the code in it, as technical as the code needs, in the team's
+  words, true of the head it describes and replaced when a push makes it stale. A ticket
+  tells its readers what changed for them, what happens next and who decides, never how
+  it was reached or with what tools; technical detail that must travel with it goes in
+  an attached record, not in its body or a comment.
+- Output stays local unless publishing is the task's stated purpose or I asked for it.
+  Before any post, check that its reader will act on it and that it holds nothing they
+  would not say themselves.
 - When a tool, integration, or file in the session can answer a question, use it before
   asking me.
 - Report once, when the task is done or when the next step turns on my answer.

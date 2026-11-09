@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = '322d794f61e1bd2b';
+const SHIPPED_CORE_DIGEST = 'b6125df1202be57d';
 
 test('R25: the block version is the version in the manifest of the plugin root, and the shipped manifest is 0.1.26', () => {
   assert.equal(pluginVersion(), '0.1.26');
@@ -39,8 +39,8 @@ test('R25: the block version is the version in the manifest of the plugin root, 
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, '322d794f61e1bd2b');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '206fac4d362d03cf');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, 'b6125df1202be57d');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '7e98de2c6f2afd84');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -90,6 +90,21 @@ test('R346: the chat block carries the handoff prompt item as the last line of C
   const item = '- A handoff prompt carries work to a later session: enough context and background that the session understands what the work is and why, my settled decisions and open questions as I left them, and nothing more specific than I was. It suggests nothing, asks nothing of anyone else, and leaves the thinking to that session.';
   assert.equal(lines[lines.indexOf('Leave out.') - 2], item);
   assert.ok(before.includes('- Chat carries the handoff prompt item, since a handoff often starts in chat.'));
+});
+
+test('R348: the two Working items on what leaves the session follow the issue-search item in order, and the chat block holds neither', () => {
+  const list = units(loadTexts()['core.md']).list;
+  const a = 'What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team\'s words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.';
+  const b = 'Output stays local unless publishing is the task\'s stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.';
+  const at = list.findIndex((u) => u.kind === 'item' && u.norm === a);
+  assert.ok(at > 0);
+  assert.ok(list[at - 1].kind === 'item' && list[at - 1].norm.startsWith('Before opening an issue or starting a fix'));
+  assert.ok(list[at + 1].kind === 'item' && list[at + 1].norm === b);
+  assert.ok(list[at + 2].kind === 'item' && list[at + 2].norm.startsWith('When a tool, integration, or file in the session'));
+  assert.equal(list.slice(0, at).reverse().find((u) => u.kind === 'head').norm, '## Working');
+  const chat = readFileSync(fileURLToPath(new URL('../../plugins/rules/chat/instructions.md', import.meta.url)), 'utf8');
+  assert.equal(chat.includes('What leaves the session is written for its reader'), false);
+  assert.equal(chat.includes('Output stays local unless publishing'), false);
 });
 
 test('R232: the first Code item asks for the simplest change as one instruction with three qualities, and follows the code over a stale instruction file', () => {
@@ -1024,12 +1039,12 @@ test('R35, R34: the plan names what each import holds, and the units of a file a
   put(s.claude, '# Mine\n\n@toolkit/a.md\n@b.md\n@half.md\n@missing.md\n');
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 10), [`target: ${s.claude}`, 'state: absent', 'options: core',
-    'note: line 3: @toolkit/a.md imports a file that holds 38 of 38 rules; it is left as it is',
+    'note: line 3: @toolkit/a.md imports a file that holds 40 of 40 rules; it is left as it is',
     'note: line 4: @b.md imports a file that holds none of the rules; it is left as it is',
-    'note: line 5: @half.md imports a file that holds at least 2 of 38 rules; 1 import could not be read; it is left as it is',
+    'note: line 5: @half.md imports a file that holds at least 2 of 40 rules; 1 import could not be read; it is left as it is',
     'note: line 6: @missing.md imports a file that cannot be read; it is left as it is',
     'change: ready', 'recommend: decline',
-    'note: 38 of 38 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
+    'note: 40 of 40 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
   assert.equal(out.some((l) => l.includes('already present outside the block')), false);
   assert.deepEqual(s.run('status').filter((l) => l.includes('note')), []);
 }));
@@ -1039,7 +1054,7 @@ test('R34: the overlap note and the recommendation for a hand copy, and adopt th
   put(s.claude, copy);
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 7), [`target: ${s.claude}`, 'state: absent', 'options: core',
-    'note: 38 of 38 rules already present outside the block; applying duplicates them', 'change: ready', 'recommend: adopt',
+    'note: 40 of 40 rules already present outside the block; applying duplicates them', 'change: ready', 'recommend: adopt',
     'note: /rules --adopt moves those lines into the block']);
   const adopted = s.run('plan', ['--adopt', '--options', 'core']);
   assert.deepEqual(adopted.slice(0, 5), [`target: ${s.claude}`, 'state: absent', 'options: core', 'change: ready', 'recommend: apply']);
@@ -1137,8 +1152,8 @@ test('R35: a house-rules marker line is a hard boundary for units, so a managed 
   const [row] = scan(s, '@managed.md\n');
   assert.equal(row.missed, 0);
   const p = plan('mine\n', { texts: SHIPPED, imported: [{ ref: '1: @managed.md', units: new Set(row.units), missed: 0, unreadable: false }] });
-  assert.equal(p.overlap.k, 38);
-  assert.equal(p.overlap.total, 38);
+  assert.equal(p.overlap.k, 40);
+  assert.equal(p.overlap.total, 40);
   assert.deepEqual(kinds(`- user\n${END}\n- next\n`), ['item:user', 'item:next']);
   assert.deepEqual(kinds(`- user\n${begin('core', 'none', 'cb477dddc15de845')}\nafter\n`), ['item:user', 'para:after']);
 }));
@@ -1181,7 +1196,7 @@ test('R33: only a plain shape may match a rule, so indented code, tabs, and deep
     assert.equal(p.after, plan(text, { texts: only }).after, name);
   }
   assert.equal(plan(`- ${rule}\n`, { texts: only, adopt: true }).after, `${begin('core', 'none', '6f5144b9eecde4b6', '9.9.9')}\n- ${rule}\n${END}\n`);
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 38);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 40);
 });
 
 test('R33: adopt keeps text that only looks like a rule because the parser flattened a construct around it', () => {
@@ -1276,7 +1291,7 @@ test('R33: indented text is never a rule, since it may belong to a container', (
   for (const [name, text] of Object.entries(cases)) {
     assert.equal(plan(text, { texts: only, adopt: true }).after, plan(text, { texts: only }).after, name);
   }
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 38);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 40);
   assert.equal(plan(`mine\n\n${SHIPPED['core.md'].replace(/^/gm, '  ')}`, { texts: SHIPPED }).overlap.n, 0);
 });
 
@@ -1298,8 +1313,8 @@ test('R33: a unit followed by anything but a blank line, the end, a heading, or 
   }
   // The shipped texts still match in full, alone and with the Windows paragraph.
   const all = render(['windows', 'core'], SHIPPED);
-  assert.equal(plan(`mine\n\n${all}`, { texts: SHIPPED, platform: 'win32', options: ['core', 'windows'] }).overlap.n, 39);
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 38);
+  assert.equal(plan(`mine\n\n${all}`, { texts: SHIPPED, platform: 'win32', options: ['core', 'windows'] }).overlap.n, 41);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 40);
 });
 
 test('R33: a file that holds Markdown adopt does not handle is left alone, and plan recommends decline for it', () => {
@@ -1411,12 +1426,12 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n${ruleLines(1)}\n\nUse a | b\n`);
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
-    'note: 1 of 38 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 113 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: 1 of 40 rules are also present outside the block, duplicating it',
+    'note: adopt leaves this file alone because line 126 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
-    'note: 1 of 38 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 113 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: 1 of 40 rules are also present outside the block, duplicating it',
+    'note: adopt leaves this file alone because line 126 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1435,7 +1450,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 111: @shared.md imports a file that holds 38 of 38 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 124: @shared.md imports a file that holds 40 of 40 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));
@@ -1454,7 +1469,7 @@ test('R34: decline only when the rules already present cover every rule, else ap
   put(join(s.claudeDir, 'shared.md'), core);
   const all = s.run('plan');
   assert.ok(all.includes('recommend: decline'));
-  assert.ok(all.includes('note: 38 of 38 rules come from imports; applying duplicates them; declining leaves this file unchanged'));
+  assert.ok(all.includes('note: 40 of 40 rules come from imports; applying duplicates them; declining leaves this file unchanged'));
 }));
 
 test('R35: a backslash escapes only an opening backtick; a closing run pairs and spans hide what they hold', () => {
@@ -1539,10 +1554,10 @@ test('R34: with nothing to change, a copy beside the block is called a duplicate
   const installed = readFileSync(s.claude, 'latin1');
   put(s.claude, `${installed}\n${SHIPPED['core.md']}`);
   const keep = (out) => out.filter((l) => /^(state|note|change)/.test(l));
-  assert.deepEqual(keep(s.run('plan')), ['state: current', 'note: 38 of 38 rules are also present outside the block, duplicating it',
+  assert.deepEqual(keep(s.run('plan')), ['state: current', 'note: 40 of 40 rules are also present outside the block, duplicating it',
     'note: /rules --adopt moves those lines into the block', 'change: none']);
   put(s.claude, `${installed}\n${SHIPPED['core.md']}\nUse a | b\n`);
-  assert.deepEqual(keep(s.run('plan')).slice(0, 2), ['state: current', 'note: 38 of 38 rules are also present outside the block, duplicating it']);
+  assert.deepEqual(keep(s.run('plan')).slice(0, 2), ['state: current', 'note: 40 of 40 rules are also present outside the block, duplicating it']);
   assert.equal(keep(s.run('plan')).some((l) => l.includes('--adopt moves')), false);
 }));
 

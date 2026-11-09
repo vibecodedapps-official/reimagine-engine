@@ -219,11 +219,14 @@ compaction, read the item ids and `--per-item` from the block recorded there.
    9. On yes, recompute the revision, write the message to
       `<run dir>/act/msg-<group>.txt`, and run `git -C <repo> commit -F <file>`. The
       message follows the repository's convention, read from its `git log`, and names
-      no model, agent or tool. Type no attribution trailer of your own, and keep one
-      the host's attribution setting adds, even where it names a model or tool. Its
-      body carries, for each item, the demonstration result before the change and the
-      same command's result after it, or why there was none. No hook is skipped and
-      `--no-verify` is never passed; when a hook fails, stop and report it.
+      no model, agent or tool and no term the audit or a run coined, such as an item
+      id (`C<n>`, `claim <n>`, `W<n>`), a stage or a verdict; where its body speaks of
+      an item, it names the item by what it fixes. Type no attribution trailer of your
+      own, and keep one the host's attribution setting adds, even where it names a
+      model or tool. Its body carries, for each item, the demonstration result before
+      the change and the same command's result after it, or why there was none. No hook
+      is skipped and `--no-verify` is never passed; when a hook fails, stop and report
+      it.
    10. Log the commit.
 
 8. **No push and no forge edits.** Act never pushes, and never edits a ticket or a pull

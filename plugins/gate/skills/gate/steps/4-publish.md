@@ -16,8 +16,6 @@ The gate posts nothing to a forge: the findings, the deferred list, the checks, 
 
 "no fixes" is one pass. Step 3 already wrote its verdict under the rule `no-fixes`: `pass` or `pass-with-deferred` on an empty fix bucket, else `unconverged`. The report names the fix bucket, with its reasons, as what a fix run would do, beside the deferred and the rejected. Nothing was edited, committed or pushed, so the report lists no commits.
 
-A run that Step 3, Resume, ended on a stop already in the record writes 4.2, 4.3 and 4.4 only.
-
 ## 4.2 The run entry
 
 Run `date -u +%Y-%m-%dT%H:%M:%SZ` and copy its output.

@@ -59,7 +59,25 @@ test('R194: act keeps the evidence and the item ids in the run directory', () =>
 });
 
 test('R194: the naming rule in SKILL.md points at What leaves the run and keeps the host trailer', () => {
+  const lines = read(SKILL).split('\n');
+  for (const start of ['3. Nothing external names a model, an agent or a tool', '- Act asks before each commit']) {
+    const line = lines.find((l) => l.startsWith(start));
+    assert.ok(line, `SKILL.md has no line that starts "${start}"`);
+    assert.ok(line.includes('as What leaves the run says'), `the line that starts "${start}" lacks the pointer`);
+  }
   const text = flat(SKILL);
-  assert.ok(text.includes('What leaves the run'));
   assert.ok(text.includes("trailer the host's attribution setting adds to a commit stays, even where it names a model or tool"));
 });
+
+const COINED =
+  'no model, agent or tool and no term the audit or a run coined, such as an item id (`C<n>`, `claim <n>`, `W<n>`), a stage or a verdict; where';
+
+for (const [file, body] of [
+  ['stages/9-act.md', 'its body speaks of an item, it names the item by what it fixes'],
+  ['SKILL.md','the body speaks of an item, it names the item by what it fixes'],
+]) {
+  test(`R194: ${file} bars coined terms from act's commit messages and names each item by what it fixes`, () => {
+    const text = flat(DIR + file);
+    assert.ok(text.includes(COINED + ' ' + body), `${file} lacks the commit message rule`);
+  });
+}

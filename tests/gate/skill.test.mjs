@@ -630,6 +630,11 @@ test('R317: Step 4 prints the written report whole as the last text, with nothin
   holds('steps/4-publish.md', 'print the whole text of the report, unchanged, as the last text of this target', 'Nothing follows it: no summary, note or offer.');
 });
 
+test('R290: Step 4 limits no run to a list of its sections, so 4.5 Next moves a resumed stop on to the next target', () => {
+  const text = holds('steps/4-publish.md', '## 4.5 Next', 'With another target left in the order of the reading block, read `steps/0-preflight.md` for it');
+  assert.ok(!/\b4\.\d(?:,| and)?(?: 4\.\d(?:,| and)?)* only\b/.test(text), 'steps/4-publish.md limits a run to a list of its sections');
+});
+
 test('R303: a check whose budget is over the foreground limit runs in the background and is stopped at expiry', () => {
   holds('steps/2-fix.md', "3. Each check runs with its budget as the Bash call's timeout, since the default is 2 minutes.");
   holds('steps/2-fix.md', 'A check whose budget is over 10 minutes, the foreground limit of the shell, runs with `run_in_background` instead, beside a `sleep` of the budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends; whichever ends first, the other is stopped with TaskStop.');

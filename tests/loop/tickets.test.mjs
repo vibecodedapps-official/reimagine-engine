@@ -117,7 +117,8 @@ test('R96: the committed snapshot has no Open items, since no item has an outcom
 
 test('R351: every draft, on any run, is logged, listed in the report and kept in the handoff with a local id', () => {
   assert.ok(TICKETS.includes('It says to add each filed ticket to the body\'s Follow-ups before publishing.'));
-  assert.ok(TICKETS.includes('Every draft, on any run, including each ticket of a non-yes reply, is logged in `run.md` as `- draft <file>: <one line>`, is listed in the report\'s Open items with its files and the command that files it, and keeps a local id in the handoff (`handoff.md`, Raised tickets).'));
+  assert.ok(TICKETS.includes('Every draft, on any run, including each ticket of a non-yes reply, is logged in `run.md` as `- draft <file>: <one line>`, is listed in the report\'s Open items with its files and the command that files it, and, when the run writes a handoff, keeps a local id there (`handoff.md`, Raised tickets).'));
+  assert.ok(!TICKETS.includes('keeps a local id in the handoff'));
   assert.ok(TICKETS.includes('and the answer comes in a later run\'s request on the branch.'));
   assert.ok(!TICKETS.includes('a later run on the branch takes up'));
   assert.ok(section(REPORT, 'Sections').includes('the instruction to add each filed ticket to the body\'s Follow-ups before publishing'));
@@ -130,7 +131,7 @@ test('R351: an item is settled by the run only with no edit in Step 7', () => {
 });
 
 test('R352: the attach forms name the record, capture both numbers and share one no-retry rule', () => {
-  assert.ok(TICKETS.includes('`gh issue create --title "<title>" --body-file <absolute path>`, whose printed URL ends in the issue number `<n>`'));
+  assert.ok(TICKETS.includes('`gh issue create -R <owner>/<repo> --title "<title>" --body-file <absolute path>`, whose printed URL ends in the issue number `<n>`'));
   assert.ok(TICKETS.includes('with `<name>` the text `Record for <branch>`, and add `--jq .number` to that command to print the artifact number, which the record keeps.'));
   assert.ok(TICKETS.includes('A failed, refused or impossible attach, on any tracker, is not retried and not done another way; the report names the local record and says it was not attached and why. For a `prepared` draft the report gives the file command, then the attach command with the issue number to fill in.'));
   assert.ok(!section(TICKETS, 'Backends').split('\n').find((l) => l.startsWith('- GitHub issues')).includes('not retried'));
@@ -141,10 +142,10 @@ test('R351: tickets.md settles each open item as one of three outcomes', () => {
     '- Settled by the run: ',
     '- A decision for the user: ',
     '- Filed to a ticket: ',
-    'An item already resolved elsewhere (an open or merged pull request, a ticket that covers it) is settled by naming where, and is not listed in the body.',
+    'An item already resolved elsewhere (an open or merged pull request that resolves it, or a ticket that already holds everything the item would add) is settled by naming where, and is not listed in the body.',
     'It does not block publishing: the pull request publishes with its pointers, and the answer comes in a later run\'s request on the branch.',
     'the assumption every option shares, each option, the recommendation first, and what would overturn it',
-    'Search the tracker first.',
+    'Search the tracker first, closed tickets included.',
     'The remainder of a source ticket the run took up stays on that ticket',
     'it is not a new ticket',
     'Any other deferred finding is a note: report only, never published, never filed.',
@@ -185,15 +186,15 @@ test('R351: Step 7.5 keeps a deferred finding that is not an open item as a note
 
 test('R352: tickets.md holds the four backend forms, one per tracker', () => {
   for (const needle of [
-    'gh issue list --search "<terms>" --state all --json number,title,state,url',
-    'gh issue create --title "<title>" --body-file <absolute path>',
-    'gh issue comment <n> --body-file <absolute path>',
+    'gh issue list -R <owner>/<repo> --search "<terms>" --state all --json number,title,state,url',
+    'gh issue create -R <owner>/<repo> --title "<title>" --body-file <absolute path>',
+    'gh issue comment <n> -R <owner>/<repo> --body-file <absolute path>',
     'gh api --hostname <host> --method POST repos/<owner>/<repo>/issues/<n>/artifacts -f name="<name>" -F body=@<absolute path>',
     'gh api --hostname <host> --method PATCH repos/<owner>/<repo>/issues/<n>/artifacts/<number> -F body=@<absolute path>',
     'One artifact per ticket and branch.',
-    '`az boards query --wiql`',
-    '`az boards work-item create --type <type> --title "<title>" --description "<text>"`',
-    '`az boards work-item update --id <n> --discussion "<text>"`',
+    '`az boards query --org https://dev.azure.com/<org> --project <project> --wiql`',
+    '`az boards work-item create --org https://dev.azure.com/<org> --project <project> --type <type> --title "<title>" --description "<text>"`',
+    '`az boards work-item update --org https://dev.azure.com/<org> --id <n> --discussion "<text>"`',
     '`wit_work_item_attachment_upload` and `wit_work_item_attachment_link`',
     '- Salesforce: comment only, through its MCP tool; no ticket is filed there and no record attached;',
   ]) assert.ok(TICKETS.includes(needle), `tickets.md lacks: ${needle}`);
@@ -313,11 +314,63 @@ test('R137: a filed open item is a raised ticket with the filed ticket\'s refere
   for (const needle of [
     'One `### R<n>` per filed open item',
     '`ticket`: the filed ticket\'s reference, in the form the Tickets section uses',
-    '`state`: `new` for a ticket the run opened, else the existing ticket\'s state.',
+    '`state`: the forge\'s state for a filed ticket. A draft: `new`.',
     '`in_bundle_confidence`: `defer`',
     'a draft keeps the local id `<branch-slug>/deferred-<k>`',
     'one entry per ticket',
   ]) assert.ok(text.includes(needle), `Raised tickets lacks: ${needle}`);
   assert.ok(!text.includes('per deferred item'));
-  assert.ok(HANDOFF.includes('- ticket: github:acme/widget-app#31\n- type: task\n- state: new\n'));
+  assert.ok(HANDOFF.includes('- ticket: github:acme/widget-app#31\n- type: issue\n- state: open\n- iteration: none\n- owner: none\n'));
+});
+
+test('R137: a filed ticket\'s type, state, iteration and owner are what the forge shows, and a draft keeps the fixed values', () => {
+  const text = HANDOFF.slice(HANDOFF.indexOf('### Raised tickets'), HANDOFF.indexOf('\n## Manifest'));
+  for (const needle of [
+    'Read a filed GitHub ticket with `gh issue view <n> -R <owner>/<repo> --json state,milestone,assignees,labels`.',
+    '- `type`: for a filed ticket, new or existing, what the forge shows: on GitHub the first label, else `issue`; on Azure DevOps the work item\'s type. A draft: `task`.',
+    '- `iteration`: the forge\'s milestone (GitHub) or iteration path (Azure DevOps) for a filed ticket, `none` where it shows none. A draft: `none`.',
+    '- `owner`: the forge\'s assignee (GitHub) or assigned-to (Azure DevOps) for a filed ticket, `none` where it shows none. A draft: `none`.',
+  ]) assert.ok(text.includes(needle), `Raised tickets lacks: ${needle}`);
+  assert.ok(!text.includes('- `type`: `task`\n'));
+  assert.ok(!text.includes('- `owner`: `none`\n'));
+});
+
+test('R352: every gh issue form names the item\'s tracker, so the filing and the attach hit one repository', () => {
+  const github = section(TICKETS, 'Backends').split('\n').find((l) => l.startsWith('- GitHub issues'));
+  assert.ok(github.includes('Each of the three passes `-R` with the `<owner>/<repo>` of the item\'s tracker (off github.com, `-R <host>/<owner>/<repo>`, as `multi-repo.md`, Host, says), so every command names the repository the attach does.'));
+  assert.ok(read('multi-repo.md').includes('every `gh` command except `gh api` that names a repository passes `-R <host>/<owner>/<repo>`'));
+});
+
+test('R351: an open ticket takes the comment and record, a closed match is linked from a new ticket', () => {
+  assert.ok(TICKETS.includes('Search the tracker first, closed tickets included. An open ticket that covers the same symptom but lacks what the item adds gets a comment and a record; a closed one is not commented on, and the new ticket\'s body links it; else a new ticket, one symptom each.'));
+  assert.ok(!TICKETS.includes('A ticket that covers the same symptom gets a comment and a record'));
+  assert.ok(TICKETS.includes('--state all --json'));
+});
+
+test('R351: a run that ends blocked or stopped before tickets.md is read lists its open items as open', () => {
+  assert.ok(TICKETS.split('\n')[2].includes('A run that ends `blocked` or `stopped` before it is read lists each open item in the report\'s Open items as open, with its description and why it is owed, for a later run on the branch to settle.'));
+  assert.ok(section(REPORT, 'Sections').split('### Open items')[1].split('\n### ')[0].includes('on a run that ended `blocked` or `stopped` before `tickets.md` was read, open, with its description and why it is owed, for a later run on the branch to settle'));
+});
+
+test('R351: a filing or comment that fails or is refused leaves a draft and does not hold back the pull request', () => {
+  assert.ok(TICKETS.includes('A filing or comment for an open item that fails, or is refused, is not retried and not done another way: the item stays a draft with its files, logged as a draft, the body carries no line for it, and the pull request, which does not depend on it, still publishes. The report names a failure and the run goes on; a refusal is a denial, so the run ends `blocked` after its independent steps (SKILL.md, Approval scope, rule 3).'));
+});
+
+test('R352: one log line per ticket per run, after its last post, and a later run reads the latest', () => {
+  assert.ok(TICKETS.includes('After a ticket\'s last post in the run (its filing or comment, then its attach), log one line for it in `run.md`: `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`. A later run reads the latest line for a ticket.'));
+  assert.ok(!TICKETS.includes('After each post, log a line'));
+  assert.ok(RECORD.includes('as one line, written after that ticket\'s last post of the run, `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`; a later run reuses the ticket and the artifact number by the latest line for a ticket.'));
+});
+
+test('R352: several open items on one ticket share one comment and one record under the lowest item number', () => {
+  assert.ok(TICKETS.includes('Several open items that go to one ticket take one comment and one record holding a section per item, written as `item-<k>.md` and `item-<k>-record.md` under the lowest `<k>` of them, so the ticket keeps one artifact per branch.'));
+  const files = section(RECORD, 'Files');
+  for (const row of ['| `item-<k>.md` |', '| `item-<k>-record.md` |']) {
+    const line = files.split('\n').find((l) => l.startsWith(row));
+    assert.ok(/lowest `<k>`, a section each/.test(line), `${row} does not name the shared file`);
+  }
+});
+
+test('R352: an Azure DevOps work item type and organization come from the source ticket\'s reference', () => {
+  assert.ok(TICKETS.includes('`<type>` is the work item type of the source ticket the item came from, which its project\'s process has; `<org>` and `<project>` are those of that ticket\'s `ado:<org>/<project>#<n>` reference.'));
 });

@@ -101,7 +101,7 @@ Each rejected finding with its source (a plan review round, the Step 5 pass or a
 
 ### Open items
 
-Each open item with what became of it: settled, with its evidence, or where it was already resolved; filed, with the ticket link, new or existing, and whether its record was attached, or that it was not attached and why; a draft, on any run, with its files and the command that files it; or put to the user. Then the notes: deferred findings that are not open items, with their reasons (`tickets.md`).
+Each open item with what became of it: settled, with its evidence, or where it was already resolved; filed, with the ticket link, new or existing, and whether its record was attached, or that it was not attached and why; a draft, on any run, with its files and the command that files it; or put to the user; on a run that ended `blocked` or `stopped` before `tickets.md` was read, open, with its description and why it is owed, for a later run on the branch to settle. Then the notes: deferred findings that are not open items, with their reasons (`tickets.md`).
 
 ### Decisions for you
 

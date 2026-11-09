@@ -92,13 +92,13 @@ One `### D<n>` per choice in the report's Decisions section, numbered in that or
 
 ### Raised tickets
 
-One `### R<n>` per filed open item and per draft, in the report's Open items order, one entry per ticket when several items went to one existing ticket (`tickets.md`). Keys, in this order:
+One `### R<n>` per filed open item and per draft, in the report's Open items order, one entry per ticket when several items went to one existing ticket (`tickets.md`). Read a filed GitHub ticket with `gh issue view <n> -R <owner>/<repo> --json state,milestone,assignees,labels`. Keys, in this order:
 
 - `ticket`: the filed ticket's reference, in the form the Tickets section uses (`github:<owner>/<repo>#<n>` or `ado:<org>/<project>#<n>`); a draft keeps the local id `<branch-slug>/deferred-<k>`, where `<k>` is the item's rank. A source ticket is never one, since the ids of Tickets and Raised tickets stay apart.
-- `type`: `task`
-- `state`: `new` for a ticket the run opened, else the existing ticket's state.
-- `iteration`: `none`
-- `owner`: `none`
+- `type`: for a filed ticket, new or existing, what the forge shows: on GitHub the first label, else `issue`; on Azure DevOps the work item's type. A draft: `task`.
+- `state`: the forge's state for a filed ticket. A draft: `new`.
+- `iteration`: the forge's milestone (GitHub) or iteration path (Azure DevOps) for a filed ticket, `none` where it shows none. A draft: `none`.
+- `owner`: the forge's assignee (GitHub) or assigned-to (Azure DevOps) for a filed ticket, `none` where it shows none. A draft: `none`.
 - `bundles`: the bundle names the item touches, else the first bundle.
 - `summary`: one line.
 - `rank`: the item's position in the report's Open items, from 1.
@@ -174,8 +174,8 @@ generated: 2026-10-14T19:41:07Z
 ### R1
 
 - ticket: github:acme/widget-app#31
-- type: task
-- state: new
+- type: issue
+- state: open
 - iteration: none
 - owner: none
 - bundles: widget-app

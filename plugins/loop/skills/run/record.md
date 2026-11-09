@@ -30,8 +30,8 @@ All names are relative to the record directory. Times in every file are copied f
 | `comment-<n>.md` | Step 7, or the end of Step 6 on an Azure DevOps remote | The text of the pull request comment, one per comment; on an Azure DevOps remote, the full body to post as the first comment. `<n>` is one more than the highest number among the record's `comment-*.md` files, or 1 when there is none |
 | `ticket-<id-slug>.md` | Step 7.4 | The comment text for one source ticket |
 | `record-<id-slug>.md` | Step 7.4 | The record attached to that ticket: its criteria with their evidence |
-| `item-<k>.md` | Step 7.2 or 7.3, or on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`) | The body of the new ticket for open item `<k>`, its rank in the report's Open items, or the comment on the existing ticket that covers it; a draft when nothing is filed |
-| `item-<k>-record.md` | Step 7.2 or 7.3, or on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`) | The record attached to that ticket: the handoff context a later session needs |
+| `item-<k>.md` | Step 7.2 or 7.3, or on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`) | The body of the new ticket for open item `<k>`, its rank in the report's Open items, or the comment on the existing ticket that covers it; several items for one existing ticket share the file of the lowest `<k>`, a section each; a draft when nothing is filed |
+| `item-<k>-record.md` | Step 7.2 or 7.3, or on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`) | The record attached to that ticket: the handoff context a later session needs; for several items on one ticket, one record under the lowest `<k>`, a section each |
 | `text-<k>.md` | Step 0.5 | One ad-hoc description, `<k>` numbered from 1 across runs, so the handoff can name it. A description whose text, after the credentials decision, equals an existing `text-<k>.md` is that input, and no new file is written |
 
 The bodies, comment texts and ticket records (`pr-body*.md`, `comment-<n>.md`, `ticket-*.md`, `record-*.md`, `item-*.md`) are never committed.
@@ -52,7 +52,7 @@ No run rewrites a file a prior run wrote, except `steps.json`, `plan.md` (append
 - Every decision: the choice, the reason, the options weighed with why each was rejected, who decided (`user`, `plan confirmation`, `review` or `run`), and where it was published.
 - Each commit the run made (slice commits, the snapshot commit, CI repairs), as a line `- commit <full sha> <subject>`. A later run tells the loop's own commits from foreign ones by these lines alone.
 - Each pull request the run opened, whose body it edited, or on which it commented, with the file it posted, and each ticket it commented on, with its file.
-- Each open item with its outcome and evidence (`tickets.md`). Each ticket the run filed, commented on or attached a record to, as a line `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`; a later run reuses the ticket and the artifact number by these lines alone. A draft is a line `- draft <file>: <one line>`.
+- Each open item with its outcome and evidence (`tickets.md`). Each ticket the run filed, commented on or attached a record to, as one line, written after that ticket's last post of the run, `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`; a later run reuses the ticket and the artifact number by the latest line for a ticket. A draft is a line `- draft <file>: <one line>`.
 - The budget in force and every change to it, and every time taken from `date`.
 
 ## steps.json

@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.11 - 2026-11-08
+
+- Before each push the gate judges whether the push triggers a deploy, from the workflow files of the target's base branch and of the commit being pushed, in the target's repository, and asks first, naming the workflow, since it pushed fix commits without that judgment and an instruction that asks before a deploy had nothing to apply to. A clear yes covers the run's later pushes of that target that start the same workflows, and any other answer is a denial that ends the run `blocked`.
+
 ## primer 0.1.8 - 2026-11-08
 
 - The startup notice reads the memory directory that `autoMemoryDirectory` names in the local, project or user settings, else the one `CLAUDE_CODE_PROJECT_DIR_NAME` names when the host took the name, since with either set it looked in the derived directory, found no index and never printed. Promotion's fallback, used when the session's instructions name no memory directory, takes the same order.

@@ -7,6 +7,8 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const PREFLIGHT = read('../../plugins/loop/skills/run/steps/0-preflight.md');
 const SKILL = read('../../plugins/loop/skills/run/SKILL.md');
 const RECORD = read('../../plugins/loop/skills/run/record.md');
+const MULTI_REPO = read('../../plugins/loop/skills/run/multi-repo.md');
+const PUBLISH = read('../../plugins/loop/skills/run/steps/7-publish.md');
 
 // The text of a "## <heading>" section, up to the next "## " heading.
 const section = (text, heading) => {
@@ -109,10 +111,23 @@ test('R281: without "primary <path>" Step 0 takes the toplevel of the session re
   assert.ok(text.includes('the session started below it when the prefix is not empty'), 'Step 0 does not read a subfolder start from the prefix');
   assert.ok(text.includes('With a named checkout, or a session started below the toplevel, every git command'), 'a subfolder start does not take the git -C and cd forms');
   const statement = section(PREFLIGHT, '0.1 Instruction files, configuration, credential scan, permission statement');
+  assert.notEqual(statement, null);
   assert.ok(statement.includes('a named primary, a session started below the toplevel or an additional repository'), 'the permission statement does not count the forms of a subfolder start');
   assert.ok(statement.includes("in each folder from the session's folder up to `<checkout>`"), 'Step 0.1 does not read the instruction files the session loads below the toplevel');
   const record = section(PREFLIGHT, '0.5 The record');
+  assert.notEqual(record, null);
   assert.ok(record.includes('read against the folder git ran in when it is not absolute'), 'Step 0.5 does not read a relative exclude path against its folder');
+});
+
+test('R82, R281: the record root is named in the continued-branch record paths, in Step 0.2, in multi-repo.md and in Step 7', () => {
+  const guard = section(PREFLIGHT, 'Input guard');
+  assert.notEqual(guard, null, 'Step 0 has no Input guard section');
+  assert.ok(guard.includes('`.reimagine/loop/<branch-slug>/steps.json` in the record root'), 'Input guard does not read the continued branch record in the record root');
+  const base = section(PREFLIGHT, '0.2 Base branch, base commit, continued branch, open pull requests');
+  assert.notEqual(base, null, 'Step 0.2 is not headed Base branch');
+  assert.ok(base.includes('under `.reimagine/loop/` in the record root'), 'Step 0.2 does not look for records in the record root');
+  assert.ok(MULTI_REPO.includes('The primary is the `<checkout>` of Step 0, Primary checkout'), 'multi-repo.md does not name the primary as the checkout of Step 0');
+  assert.ok(PUBLISH.includes('except when Step 0, Primary checkout, item 2 leaves the plain forms in use'), 'Step 7 does not say when the plain forms stay in use');
 });
 
 test('R55: the approval rules of SKILL.md read the instruction files from the session folder up to the toplevel', () => {

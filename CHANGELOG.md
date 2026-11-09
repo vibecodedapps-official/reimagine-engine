@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## gate 0.1.12 - 2026-11-09
 
-- The next run on a branch pushes a fix commit that a refused push left local, judging the deploy and asking again as before any push, then reviews the branch afresh at `xhigh`, leaving the failed pass as it was, since preflight blocked on the branch ahead of its remote and resume skipped the push, so the commit had to be pushed or dropped by hand. A "no fixes" run blocks on that commit, naming it. The comment and the report list the kept commit the run pushed and the findings it fixed, since they listed only the passes' own commits and findings, so the pushed commit and its fixes went unreported.
+- The next run on a branch pushes a fix commit that a refused push left local, judging the deploy and asking again as before any push, then reviews the branch afresh at `xhigh`, leaving the failed pass as it was, since preflight blocked on the branch ahead of its remote and resume skipped the push, so the commit had to be pushed or dropped by hand. A "no fixes" run blocks on that commit, naming it. The comment and the report list the kept commit the run pushed and the findings it fixed, since they listed only the passes' own commits and findings, so the pushed commit and its fixes went unreported. A push that fails without a denial now ends the run `blocked` with its commit kept, like a denied one, since the step named only a denied push.
 
 ## loop 0.1.19 - 2026-11-09
 

@@ -52,7 +52,7 @@ No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`,
 
 A `reviews[]` entry's `notes` holds the text before and after the fence, joined with a blank line, as `findings.mjs` prints `notes.text`. The entry also holds `models`, the sorted model names of the review as `findings.mjs` prints them, for a stand-in's text, which names no models, the one model the stand-in was called at, and `null` for a child session result without `modelUsage`. The entry of a review that stopped on a usage limit holds `"failure": "usage limit"` and `null` numbers and `models`. The second pass in the literal is shortened to show a pass that has only started; Step 1 writes every field of a pass entry when it appends it. The values `...` and `<sha>` stand for a time and a full sha.
 
-Step 0 writes the top level and the run entry, Step 1 appends the pass entry and fills `reviews` and `findings`, Step 2 writes `changes`, `checks`, `commit` and `head`, Step 3 writes `next`, `ended` and `status`, and Step 4 closes the run entry, each as its step shows. A run's `state` is `running`, then the terminal state, or `interrupted` when a later Step 0 finds it still `running`. A pass's `status` is `running`, `complete` or `failed`, and `n` counts across runs, so pass 3 may be run 2's first pass. A failed pass has `ended` and a `next` of `null`.
+Step 0 writes the top level and the run entry, Step 1 appends the pass entry and fills `reviews` and `findings`, Step 2 writes `changes`, `checks`, `commit` and `head`, Step 3 writes `next`, `ended` and `status`, and Step 4 closes the run entry, each as its step shows. A run's `state` is `running`, then the terminal state, or `interrupted` when a later Step 0 finds it still `running`. A run entry may also hold `kept`, the sha of the kept commit that run pushed. A pass's `status` is `running`, `complete` or `failed`, and `n` counts across runs, so pass 3 may be run 2's first pass. A failed pass has `ended` and a `next` of `null`.
 
 ## Findings ledger
 
@@ -73,7 +73,7 @@ When a `new` finding and one of its `candidates` are one defect worded two ways,
 ## Write discipline
 
 1. Every write of `passes.json` and `findings.json` by you writes the whole file to `<record>/<name>.tmp` and moves it over the file with `mv <tmp> <file>`, with no flags (a flag makes the host ask) and both as absolute paths, keeping every entry you did not change. `findings.mjs` does its own rename.
-2. An entry is written `running` when its pass starts and `complete` only after the fix round and its commit exist, or after Step 3 decides for a pass with nothing to fix. A pass that ended without them is `failed`. A `failed` pass that names a `commit` kept that commit unpushed; no later run changes that pass (`steps/3-next.md`, Resume).
+2. An entry is written `running` when its pass starts and `complete` only after the fix round and its commit exist, or after Step 3 decides for a pass with nothing to fix. A pass that ended without them is `failed`. A `failed` pass that names a `commit` made that commit before its run ended `blocked`; no later run changes that pass, and the run that pushes the commit writes `kept` in its own run entry (`steps/3-next.md`, Resume).
 3. Only you write these two files; an implementer never does.
 
 Return to the step that sent you here.

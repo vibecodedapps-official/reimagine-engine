@@ -67,7 +67,7 @@ The section names the source of the checks: the request, the manifest bundle or 
 
 ### Commits and pushes
 
-Each commit of this run with its full sha and subject, and whether it was pushed or kept local only, from `git ls-remote <remote> refs/heads/<branch>`, and a kept commit this run pushed or left kept, with its sha, subject and the pass that made it. After `blocked`, name every pushed commit and every local commit kept.
+Each commit of this run with its full sha and subject, and whether it was pushed or kept local only, from `git ls-remote <remote> refs/heads/<branch>`, and the kept commit this run pushed, the `kept` of this run's entry in `runs`, with its sha, subject and the pass that made it. A run that ends `blocked` while HEAD is still a failed pass's `commit` that the remote does not hold names that commit as kept local, from git and the record, not from memory. After `blocked`, name every pushed commit and every local commit kept.
 
 ### Open findings
 

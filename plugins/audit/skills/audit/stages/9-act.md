@@ -230,8 +230,12 @@ compaction, read the item ids and `--per-item` from the block recorded there.
    request unless the user says so for that item. Work-item fixes and decision comments
    from the report are shown as drafts, and so are the operations of
    `work-items.jsonl`, none of which act applies. When the user says to post one for an
-   item, post that one only, its text free of model, agent and tool names, and log it
-   with its URL as `post`.
+   item, post that one only, its text written for its reader as `SKILL.md`, What leaves
+   the run, says: on a ticket, what changed for its readers, what happens next and who
+   decides; on a pull request, what its reviewer needs about the code; never an audit id
+   (`C<n>`, `claim <n>`, `W<n>`), a stage, a verdict or another term the audit coined,
+   and never a model, agent or tool. The evidence and the item ids stay in the run
+   directory. Log it with its URL as `post`.
 
 9. **`act/log.md`.** Append one line per action, in order:
 

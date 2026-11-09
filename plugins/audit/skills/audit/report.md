@@ -209,8 +209,12 @@ By repository, then file: each change, with the item ids it resolves.
 
 ### 7. Work-item fixes
 
-Per ticket: the ticket text to change, drafted, with the item ids. Drafted text names no
-model, agent or tool.
+Per ticket: the ticket text to change, drafted, with the item ids beside it, never in it.
+Drafted text is written for its reader as `SKILL.md`, What leaves the run, says: on a
+ticket, what changed for its readers, what happens next and who decides; on a pull
+request, what its reviewer needs about the code; never an audit id (`C<n>`, `claim <n>`,
+`W<n>`), a stage, a verdict or another term the audit coined, and never a model, agent
+or tool.
 
 Then each operation of `work-items.jsonl`, one line each: its `W<n>` id, the op, the
 target, the item ids it covers and its reason. These are drafts for a person or an

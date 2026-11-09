@@ -73,7 +73,7 @@ When a `new` finding and one of its `candidates` are one defect worded two ways,
 ## Write discipline
 
 1. Every write of `passes.json` and `findings.json` by you writes the whole file to `<record>/<name>.tmp` and moves it over the file with `mv <tmp> <file>`, with no flags (a flag makes the host ask) and both as absolute paths, keeping every entry you did not change. `findings.mjs` does its own rename.
-2. An entry is written `running` when its pass starts and `complete` only after the fix round and its commit exist, or after Step 3 decides for a pass with nothing to fix. A pass that ended without them is `failed`.
+2. An entry is written `running` when its pass starts and `complete` only after the fix round and its commit exist, or after Step 3 decides for a pass with nothing to fix. A pass that ended without them is `failed`. A `failed` pass that names a `commit` kept that commit unpushed; no later run changes that pass (`steps/3-next.md`, Resume).
 3. Only you write these two files; an implementer never does.
 
 Return to the step that sent you here.

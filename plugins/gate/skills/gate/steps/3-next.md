@@ -24,6 +24,10 @@ Read this file from Step 2 when its commit and push are done, from Step 1 when t
 
 Step 0 sends the run here when the record holds passes, after it has rechecked the tree and re-sized the diff. This run's entry is already in `runs`.
 
+A `failed` pass that names a `commit` kept that commit when its run ended `blocked` after the commit (`steps/2-fix.md`). Items 1 and 2 read the record as if that pass were not there: its commit is never an expected head, and the pass is never resumed, closed or rewritten. It is found by its sha, never by its place in the record.
+
+When `git rev-parse HEAD` is the `commit` of such a pass and not the remote head Step 0.7 kept, and the run is not "no fixes", push it first, as `steps/2-fix.md`, The remote head and the push, items 1 to 5, says, judging the deploy and asking as before any push; a `blocked` ending there writes no pass entry. Then start a new pass sequence at `xhigh` as item 3 says, or as item 4 says when the merge-base changed, since no pass reviewed the branch with that commit on it. Otherwise, when the record holds no pass but such passes, start a new pass sequence the same way.
+
 1. Run `git rev-parse HEAD`. The expected head is the `head` of the last `complete` pass, or the `commit` of the first pass not `complete` after it when that pass has one, since its fix round made that commit. With no `complete` pass, only the merge-base is compared. Compare the new merge-base with the record's `merge_base`.
 2. The same head and the same merge-base: the run resumes.
    - A pass is not `complete`: resume at the first pass not `complete` after the last complete one. Repeat its review: rewrite its entry for this run as Step 1 appends it, with `run` this run's number, `status` `running` and a new `started`, and its review files are rewritten. Unless its `commit` is already the head, in which case that pass continues at the decision of the section Decide, item 1, with its entry as it is.

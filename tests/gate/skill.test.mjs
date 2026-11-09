@@ -701,3 +701,28 @@ test('R314: the comment file is written first with the Write tool and the post r
     'Write the comment to `comment-<n>.md` with the Write tool, in its own call.',
     'alone in its own Bash call, naming only that path, never one compound command that writes and posts');
 });
+
+test('R295 and R312: the next run pushes a commit a blocked push kept, then reviews the branch afresh', () => {
+  holds('steps/2-fix.md',
+    'writes the `changes` and `checks` known so far, and the commit\'s sha as `commit` once The commit, item 4, has made it, leaves `next` null',
+    'A commit so recorded and not pushed is a kept commit, which the next run on the branch pushes when its parent is still the remote head (`steps/0-preflight.md`, 0.7.3, and `steps/3-next.md`, Resume).',
+    'A denied or failed push ends the run `blocked` with the pass recorded `failed`; the local commit is kept and named.');
+  holds('steps/0-preflight.md',
+    'Ahead or diverged ends the run `blocked`, naming the branch, except a tip one commit ahead whose parent (`git rev-parse refs/heads/<head>^`) is the remote head and whose sha is the `commit` of a `failed` pass in the record\'s `passes.json` (0.8, item 1), that file\'s `branch` being this run\'s branch',
+    'In "no fixes" mode, which pushes nothing, that tip ends the run `blocked` too, naming the commit and that a run with fixes pushes it.');
+  const text = holds('steps/3-next.md', '## Resume');
+  const resume = text.slice(text.indexOf('## Resume'));
+  for (const phrase of [
+    'Items 1 and 2 read the record as if that pass were not there: its commit is never an expected head, and the pass is never resumed, closed or rewritten. It is found by its sha, never by its place in the record.',
+    'When `git rev-parse HEAD` is the `commit` of such a pass and not the remote head Step 0.7 kept, and the run is not "no fixes", push it first, as `steps/2-fix.md`, The remote head and the push, items 1 to 5, says, judging the deploy and asking as before any push; a `blocked` ending there writes no pass entry.',
+    'Otherwise, when the record holds no pass but such passes, start a new pass sequence the same way.',
+    'Then start a new pass sequence at `xhigh` as item 3 says, or as item 4 says when the merge-base changed',
+  ]) assert.ok(resume.includes(phrase), `Resume lacks ${phrase}`);
+  holds('SKILL.md',
+    'A commit kept by a refused push is pushed by the next run on the branch before its first pass, judged and asked as any push, and a "no fixes" run blocks on it.',
+    'the next run pushes that commit first, outside "no fixes", and starts a new pass sequence at `xhigh`, leaving that pass as it is.');
+  holds('record.md', 'A `failed` pass that names a `commit` kept that commit unpushed; no later run changes that pass (`steps/3-next.md`, Resume).');
+  holds('report.md', 'and a kept commit this run pushed or left kept, with its sha, subject and the pass that made it.');
+  holds('steps/4-publish.md', 'Commits the passes\' commits and a kept commit this run pushed.');
+  assert.ok(README.includes('The commit of a refused push stays local, and the next run on the branch pushes it before anything else'), 'README.md does not say the next run pushes a kept commit');
+});

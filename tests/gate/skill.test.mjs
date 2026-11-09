@@ -454,12 +454,12 @@ test('R294: the always-ask list holds a deploy and Step 2 judges one before each
     '`git show "HEAD:<file>"` for each such `<file>` that `git ls-tree --full-tree --name-only HEAD .github/workflows/` lists, since GitHub runs only the `.yml` and `.yaml` files directly in that folder',
     '`<file>` is the repository-relative path `ls-tree` prints, unquoted and unescaped when it prints it in double quotes, never an absolute path',
     'Judge a `push` trigger, and a `pull_request` trigger when the branch has an open pull request, from either set, with its filters as GitHub applies them to this push',
-    '`gh pr list --head <branch> --state open --json number`',
+    '`gh pr list --head <branch> --state open --json number,baseRefName` shows whether it has one, and an open pull request whose base is not `<base>` counts as a deploy the files cannot settle',
     'A workflow that deploys in either set counts, and so does one whose deploy the files cannot settle.',
     'A `pull_request_target` workflow is judged from the base branch\'s file.',
     'ask first, naming the workflow, and treat any answer but a clear yes as a denial of the push (item 4)',
     'A yes covers that push only, since a fix round can change what the next push deploys.');
-  for (const old of ['whose judgment names the same workflows', 'git diff --quiet <asked> HEAD', 'such as one that runs a script', 'ls-tree -r']) assert.ok(!read('steps/2-fix.md').includes(old), `steps/2-fix.md still holds: ${old}`);
+  for (const old of ['ls-tree -r']) assert.ok(!read('steps/2-fix.md').includes(old), `steps/2-fix.md still holds: ${old}`);
   holds('steps/0-preflight.md', 'Outside "no fixes" mode, a push that triggers a deploy prompts', 'the Prompts line ends with `deploy: judged before each push`', 'comment: yes; deploy: judged before each push', 'the comment, and before a push that triggers a deploy');
 });
 

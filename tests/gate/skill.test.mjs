@@ -444,6 +444,20 @@ test('R295: Step 2 reads the remote head with git ls-remote and compares it befo
   holds('steps/2-fix.md', 'git ls-remote', 'what preflight fetched', 'the last sha this run pushed', 'no force');
 });
 
+test('R294: the always-ask list holds a deploy and Step 2 judges one before each push', () => {
+  holds('SKILL.md', 'anything that deploys (including a push that triggers a deploy, judged before each push from the workflow files of the target\'s base branch and of the commit being pushed, in the target\'s repository)', '  - Bash(git ls-tree *)');
+  holds('steps/0-preflight.md', 'Always asked: force push, --no-verify, merge, rebase, amend, reset, deploy, repository settings, a new issue.');
+  assert.ok(README.includes('a push that triggers a deploy'), 'README.md lacks: a push that triggers a deploy');
+  holds('steps/2-fix.md',
+    '1. Before each push, judge whether it triggers a deploy.',
+    '`git show refs/remotes/<remote>/<base>:<path>` for each path that `git ls-tree -r --name-only refs/remotes/<remote>/<base> .github/workflows` lists',
+    '`git show HEAD:<path>` for each path that `git ls-tree -r --name-only HEAD .github/workflows` lists',
+    'since a push to a pull request\'s head branch starts its `pull_request` workflows',
+    'A `pull_request_target` workflow is judged from the base branch\'s file.',
+    'ask first, naming the workflow, and treat any answer but a clear yes as a denial of the push (item 4)',
+    'A clear yes covers this run\'s later pushes of the same target whose judgment names the same workflows; a workflow it did not name asks again.');
+});
+
 test('R301: Step 2 judges the fix round with the six change kinds next.mjs accepts', () => {
   holds('steps/2-fix.md', '`inside-diff`', '`outside-diff`', '`exported-signature`', '`schema-or-migration`', '`over-quarter`', '`docs-only`: every changed file is documentation');
 });

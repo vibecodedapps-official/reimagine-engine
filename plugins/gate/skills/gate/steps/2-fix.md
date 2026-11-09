@@ -71,10 +71,11 @@ A fix round that changed nothing commits nothing: write `commit` as null and `he
 
 ## The remote head and the push
 
-1. Read the remote head with `git ls-remote <remote> refs/heads/<branch>`, the remote and branch being those of preflight.
-2. Compare it with what preflight fetched or with the last sha this run pushed. A head that is neither ends the run `blocked`; keep the local commit and name its sha, the remote head and the branch in the report.
-3. Push the branch with `git push <remote> <branch>`, no force. A denied push ends the run `blocked` with the pass recorded `failed`; the local commit is kept and named.
-4. This push is the run's last pushed sha from here on: read `git rev-parse HEAD` after it.
+1. Before each push, judge whether it triggers a deploy. Read the base branch's workflow files with `git show refs/remotes/<remote>/<base>:<path>` for each path that `git ls-tree -r --name-only refs/remotes/<remote>/<base> .github/workflows` lists, `<base>` being the base Step 0.6 fetched, and the workflow files of the commit being pushed with `git show HEAD:<path>` for each path that `git ls-tree -r --name-only HEAD .github/workflows` lists. Judge a `push` or `pull_request` trigger from either set, since a push to a pull request's head branch starts its `pull_request` workflows; a workflow that deploys in either set counts. A `pull_request_target` workflow is judged from the base branch's file. When the push triggers a deploy, ask first, naming the workflow, and treat any answer but a clear yes as a denial of the push (item 4). A clear yes covers this run's later pushes of the same target whose judgment names the same workflows; a workflow it did not name asks again.
+2. Read the remote head with `git ls-remote <remote> refs/heads/<branch>`, the remote and branch being those of preflight.
+3. Compare it with what preflight fetched or with the last sha this run pushed. A head that is neither ends the run `blocked`; keep the local commit and name its sha, the remote head and the branch in the report.
+4. Push the branch with `git push <remote> <branch>`, no force. A denied push ends the run `blocked` with the pass recorded `failed`; the local commit is kept and named.
+5. This push is the run's last pushed sha from here on: read `git rev-parse HEAD` after it.
 
 ## Writing the record
 

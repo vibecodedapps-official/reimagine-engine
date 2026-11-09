@@ -27,7 +27,7 @@ Do this once, before the first fetch. With a manifest, read every bundle's repos
 
 ```
 Approved for this run: fix commits on each target's branch, push it, one comment per target pull request.
-Always asked: force push, --no-verify, merge, rebase, amend, reset, repository settings, a new issue. Instruction directory read: ~/.claude. Ask-first rules found: 2 (<repo>/CLAUDE.md).
+Always asked: force push, --no-verify, merge, rebase, amend, reset, deploy, repository settings, a new issue. Instruction directory read: ~/.claude. Ask-first rules found: 2 (<repo>/CLAUDE.md).
 Prompts: fetch: no; checkout: no; exclude and record: yes (no allow rule); child sessions: yes; subagents: no; checks: yes; node scripts: yes; commit: yes; push: yes; comment: yes
 this run will prompt at: the record, the child sessions, the checks, the node scripts, the commit, the push, the comment
 ```

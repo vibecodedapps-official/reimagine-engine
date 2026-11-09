@@ -19,10 +19,9 @@ All names are relative to the record directory. Times in every file are copied f
 | `diff-<n>[-<slug>].patch` | Step 1, before a stand-in review | The stand-in's input; `<n>` and `<slug>` as for `review-<n>` |
 | `pre-<n>.status`, `pre-<n>.patch`, `pre-<n>.hashes` | Step 2, before each implementer call | `git status`, a patch and file hashes, for restoring after a failed call. `<n>` is one more than the highest number among the record's `pre-*.status` files, or 1 when there is none; a parallel batch takes one snapshot per file group before any call of the batch starts |
 | `post-<n>.status`, `post-<n>.hashes` | Step 2, when an implementer call returns | `git status` and file hashes of the checkout as the call left it, for comparing the checkout after a late notification for that call. `<n>` is the call's own `pre-<n>` number |
-| `comment-<n>.md` | When the run publishes | The comment as posted, never committed. `<n>` is the run number |
 | `audit-manifest.json` | When the run did not come from a manifest | The minimal manifest for the audit |
 
-No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`, `report.md` and the review files of a pass that Resume repeats. The counters keep the other names apart: `review-<n>` and `diff-<n>` take the pass number, `pre-<n>` its own counter, `post-<n>` shares its call's number with `pre-<n>` and `comment-<n>` the run number. The one per-run name with no counter is `audit-manifest.json`, which from run 2 on is `audit-manifest-run<n>.json`, with `<n>` the run's number, as in `audit-manifest-run2.json`. Within one run, a later write of the same file replaces it.
+No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`, `report.md` and the review files of a pass that Resume repeats. The counters keep the other names apart: `review-<n>` and `diff-<n>` take the pass number, `pre-<n>` its own counter, and `post-<n>` shares its call's number with `pre-<n>`. The one per-run name with no counter is `audit-manifest.json`, which from run 2 on is `audit-manifest-run<n>.json`, with `<n>` the run's number, as in `audit-manifest-run2.json`. Within one run, a later write of the same file replaces it.
 
 ## passes.json
 

@@ -36,7 +36,7 @@ allowed-tools:
 
 The gate runs after the loop and before the audit: the loop ships a reviewed pull request, the gate converges the reviewer on it, the audit challenges the result.
 
-You orchestrate one run over one pull request, several, or a loop manifest. You run `code-review` passes over the whole change from the merge-base, sort what each pass finds, have implementers fix what is worth fixing, decide from the record of the pass whether to run another and at what level, and stop at a verdict. The allowed-tools list pre-approves only date, sleep for a budget timer, and read-only git and gh; every write, push and comment stays under the session's permission mode. In every command the skill and its step files show, a placeholder for a path, such as `<path>`, `<repo>`, `<repo root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.
+You orchestrate one run over one pull request, several, or a loop manifest. You run `code-review` passes over the whole change from the merge-base, sort what each pass finds, have implementers fix what is worth fixing, decide from the record of the pass whether to run another and at what level, and stop at a verdict. The allowed-tools list pre-approves only date, sleep for a budget timer, and read-only git and gh; every write and push stays under the session's permission mode. In every command the skill and its step files show, a placeholder for a path, such as `<path>`, `<repo>`, `<repo root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.
 
 ## Reading the request
 
@@ -53,7 +53,7 @@ Recognized phrases, and nothing else is read from the request:
 - "base <branch>": name the base branch of a branch target.
 - "checks <command>[; <command>]": the checks the fix round runs. It runs to the next comma that another recognized phrase follows, such as ", no fixes", else to the end of the request, since a command may hold a comma; split it at `;` and trim each command.
 
-A pull request target must be open, in the session's repository and not cross-repository. Its head branch is fetched with the explicit refspec and checked out, which needs a clean tree. Several pull requests run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or one of the same shape; it runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order, with every git and gh command running against that bundle's `repo`. A branch target or a manifest bundle on a host other than GitHub runs with the comment skipped, and the report says so. A pull request number on such a host cannot resolve, so it is an unresolved target.
+A pull request target must be open, in the session's repository and not cross-repository. Its head branch is fetched with the explicit refspec and checked out, which needs a clean tree. Several pull requests run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or one of the same shape; it runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order, with every git and gh command running against that bundle's `repo`. A pull request number on a host other than GitHub cannot resolve, so it is an unresolved target.
 
 The path of "repo <path>" must be a git toplevel or a linked worktree: `git -C <path> rev-parse --is-inside-work-tree --show-prefix` exits 0 and prints `true` and then an empty line, else the target is unresolved, since a `.git` folder prints `false` with an empty prefix. The check compares no strings, so a path typed in another case or as `/c/...` resolves, and a leading `~` is written as `$HOME`, since git does not expand a quoted `~`; and `git -C <path> rev-parse --show-toplevel` gives the toplevel the Targets line names. The head branch is the one checked out there, and the preflight runs the target's commands in the forms of a manifest bundle's. Beside a pull request or manifest target, "repo <path>" is one unresolved line and the run continues with those targets, since they name their own repository.
 
@@ -81,12 +81,19 @@ After the block, read `steps/0-preflight.md` and start Step 0.
 
 ## Approval scope
 
-Invoking this skill by name approves, for this run only: fix commits on each target's branch, whether or not the loop opened its pull request; pushing that branch; and one comment per run on each target pull request. Nothing else is approved: no branch, no pull request, no edit of a pull request body, no ticket comment and no issue.
+Invoking this skill by name approves, for this run only: fix commits on each target's branch, whether or not the loop opened its pull request; and pushing that branch. Nothing else is approved: no branch, no pull request, no comment, no body edit, no ticket comment and no issue.
 
 1. Instruction files win. Before changing anything, read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, the repository's instruction files, the instruction files of each folder above it and `.reimagine.json`. Record every ask-first rule and prompt for any approved action those rules cover.
 2. Always ask. Force push, `--no-verify`, merge, rebase, amend, reset, anything that deploys (including a push that triggers a deploy, judged before each push from the workflow files of the target's base branch and of the commit being pushed, in the target's repository), editing repository settings and opening an issue always prompt.
 3. A denial is final. A permission denied by the user or by the permission mode is never retried and never routed around. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A commit kept by a refused push is pushed first by the next run on the branch only when its parent is still the remote head, under the conditions of `steps/3-next.md`, Resume, judged and asked as any push, and a "no fixes" run blocks on it. A denied check is recorded as denied and never run another way.
 4. Blocked at preflight and before a push. A dirty tree, meaning `git status --porcelain` prints anything or `git diff --cached --quiet` fails, ends `blocked`; the gate never stashes, resets or cleans. A merged or closed pull request ends `blocked`. On GitHub, a `gh` that is not authenticated ends `blocked`. Before every push, read the remote head with `git ls-remote` and compare it with what preflight fetched, or with the last sha this run pushed; a head that is neither ends `blocked` with the local commit kept and named. A record whose branch differs from the run's branch is a slug collision and ends `blocked`.
+
+## What leaves the run
+
+The gate posts nothing to a forge. Its findings, deferred list, checks, commits and verdict live in `passes.json`, `findings.json` and `report.md` in the run directory, and the report is printed as the run's last message.
+
+- What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team's words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.
+- Output stays local unless publishing is the task's stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.
 
 ## Roles
 
@@ -120,7 +127,7 @@ Caps:
 - Reaching `max-passes` with a level still to run, the run budget or the review budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends `blocked`. The output of the pass is kept and a pushed commit stays.
 - Never pass silently: a cap that ends the run is named in the report.
 
-With "no fixes" the run makes pass 1 only. The review and the triage run, nothing is edited, committed or pushed, and the comment and the report name what a fix run would do. The verdict is `pass` or `pass-with-deferred` when the fix bucket is empty, else `unconverged`.
+With "no fixes" the run makes pass 1 only. The review and the triage run, nothing is edited, committed or pushed, and the report names what a fix run would do. The verdict is `pass` or `pass-with-deferred` when the fix bucket is empty, else `unconverged`.
 
 ## Configuration
 
@@ -151,14 +158,14 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 Every run ends in exactly one state.
 
 - `pass`: a stop with the fix bucket empty and nothing deferred in any pass of the run, under rule 1 or 2 or under "no fixes".
-- `pass-with-deferred`: the same stop, with deferred findings that go to the comment and the report.
+- `pass-with-deferred`: the same stop, with deferred findings in the report.
 - `unconverged`: a cap was reached, a review failed, a `medium` pass still found something to fix, or a "no fixes" run has a non-empty fix bucket. Every open finding is listed.
 - `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.
 - `stopped`: no target resolved, or a question the run cannot decide, before any commit.
 
-After `blocked` nothing more is pushed or posted; pushed commits stay and are named.
+After `blocked` nothing more is pushed; pushed commits stay and are named.
 
-Every terminal state reads `steps/4-publish.md` for the target that just ended, to write the run's end, the manifest, the comment and the report.
+Every terminal state reads `steps/4-publish.md` for the target that just ended, to write the run's end, the manifest and the report.
 
 ## Record
 
@@ -172,7 +179,6 @@ The files:
 - `review-<n>[-<slug>].json` or `.md`: each review's saved output.
 - `pre-<n>.status`, `pre-<n>.patch` and `pre-<n>.hashes`: snapshots before implementer calls.
 - `diff-<n>[-<slug>].patch`: a stand-in's input.
-- `comment-<n>.md`: the comment as posted, never committed.
 - `audit-manifest.json`: written when the run did not come from a manifest.
 
 From run 2 on, a per-run name without a counter takes `-run<n>`.
@@ -185,7 +191,7 @@ From run 2 on, a per-run name without a counter takes `-run<n>`.
 - `steps/1-pass.md`: at the start of each pass, for the review and the triage.
 - `steps/2-fix.md`: after a triage that leaves a fix bucket, outside "no fixes".
 - `steps/3-next.md`: after the fix round, or after a triage with nothing to fix or in "no fixes"; its Resume section when Step 0 finds a record that holds passes.
-- `steps/4-publish.md`: at every terminal state, for the run's end, the manifest, the comment and the next target.
+- `steps/4-publish.md`: at every terminal state, for the run's end, the manifest, the report and the next target.
 - `record.md`: when a step writes a record file, for the files, the `passes.json` and `findings.json` shapes and the write discipline.
 - `report.md`: from Step 4, for the report's header and sections.
 - `scripts/findings.mjs`: after each review, to turn its saved output into the pass's findings and the ledger.

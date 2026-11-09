@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.19 - 2026-11-09
+
+- Step 0 takes the primary checkout from the toplevel of the session's repository in every run, not only for "primary <path>", since a session started in a subfolder could take that folder, and then make its record under it, where a run from the root does not find it, and compare only that folder's flagged files. A session started below the toplevel runs the primary's commands in the `git -C` and `cd` forms of a named checkout, which the permission statement counts as prompts, reads the instruction files of each folder from its own up to the toplevel, and keeps its record at the toplevel. Step 0 ends `blocked` outside a git work tree.
+
 ## loop 0.1.18 - 2026-11-08
 
 - The deploy judgment lists the workflow files from the repository root, since from a subfolder it listed none and pushed without asking. It reads only the `.yml` and `.yaml` files directly in `.github/workflows`, which are the ones GitHub runs, unquotes a quoted path, reads trigger filters as GitHub applies them, and counts a workflow it cannot settle as one that deploys, as the gate does. A CI repair push is judged too, since a repair can change a workflow, and `git ls-tree` is pre-approved beside `git show`.

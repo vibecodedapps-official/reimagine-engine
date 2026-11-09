@@ -32,7 +32,7 @@ After the run's first push returns, commit only CI repairs (item 5 of Step 7.3).
 
 ## 7.2 Push and pull request
 
-Before pushing, judge whether the push or the pull request triggers a deploy. Read the base branch's workflow files with `git -C <checkout> show <remote>/<base>:<path>` for each path that `git -C <checkout> ls-tree -r --name-only <remote>/<base> .github/workflows` lists, and the workflow files of the commit being pushed with `git -C <checkout> show HEAD:<path>` for each path that `git -C <checkout> ls-tree -r --name-only HEAD .github/workflows` lists. Judge a `push` or `pull_request` trigger from either set; a workflow that deploys in either set counts. A `pull_request_target` workflow is judged from the base branch's file. When a push or the pull request triggers a deploy, ask first, naming the workflow, and treat any answer but a clear yes as a denial.
+Before each push, judge whether the push or the pull request triggers a deploy. Read the base branch's workflow files with `git -C <checkout> show "<remote>/<base>:<file>"` for each `<file>` ending in `.yml` or `.yaml` that `git -C <checkout> ls-tree --full-tree --name-only <remote>/<base> .github/workflows/` lists, and the workflow files of the commit being pushed with `git -C <checkout> show "HEAD:<file>"` for each such `<file>` that `git -C <checkout> ls-tree --full-tree --name-only HEAD .github/workflows/` lists, since GitHub runs only the `.yml` and `.yaml` files directly in that folder. `<file>` is the repository-relative path `ls-tree` prints, unquoted and unescaped when it prints it in double quotes, never an absolute path, and `--full-tree` keeps the listing from depending on the current folder. Judge a `push` or `pull_request` trigger from either set, with its filters as GitHub applies them to this push and the pull request. A workflow that deploys in either set counts, and so does one whose deploy the files cannot settle. A `pull_request_target` workflow is judged from the base branch's file. When a push or the pull request triggers a deploy, ask first, naming the workflow, and treat any answer but a clear yes as a denial.
 
 Before every push read the remote head with `git -C <checkout> ls-remote --heads <remote> refs/heads/<branch>`:
 
@@ -74,7 +74,7 @@ Read `ci-watch.md` and carry out its items 1 to 4 for the pull request, starting
 1. Read the failure from the failing run's log with `gh run view <run-id> --log-failed`, in its own Bash call.
 2. Fix it through the implementer that owns the failing code, after a snapshot, as Step 5.1 fixes a regression.
 3. Re-enter Step 5 for one pass over the whole diff from the merge-base at the level of `risk.md`, with its triage and fix batch (5.2 to 5.5), then run Step 6 in full once.
-4. Commit the repair under the rules of 7.1, read the remote head as 7.2 says (it must equal the last pushed sha), push, and take `date` and the new sha.
+4. Commit the repair under the rules of 7.1, judge the deploy as 7.2 says, since a repair can change what the push deploys, read the remote head as 7.2 says (it must equal the last pushed sha), push, and take `date` and the new sha.
 5. Return to `ci-watch.md` item 1 for the new head.
 
 At most three cycles run. A result still red after the third, or a repair the pass cannot fix, ends the run `blocked` with the pull request linked in the report and nothing further pushed. A pull request that is not OPEN, a changed base and a merge conflict end it `blocked` at once, as `ci-watch.md` says. An expired run budget ends it `blocked` with the pull request left as it is.

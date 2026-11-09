@@ -192,3 +192,20 @@ test('R116, R118: each body file is written first and its publishing command run
   assert.ok(text.includes('then post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`'));
   assert.ok(section(PUBLISH, '7.4 Ticket comments').includes('and then post `gh issue comment <n> --body-file <absolute path>`'));
 });
+
+test('R56: Step 7.2 judges a deploy from the workflows GitHub runs, listed from the root, before each push', () => {
+  const text = section(PUBLISH, '7.2 Push and pull request');
+  for (const needle of [
+    'Before each push, judge whether the push or the pull request triggers a deploy.',
+    '`git -C <checkout> show "<remote>/<base>:<file>"` for each `<file>` ending in `.yml` or `.yaml` that `git -C <checkout> ls-tree --full-tree --name-only <remote>/<base> .github/workflows/` lists',
+    '`git -C <checkout> show "HEAD:<file>"` for each such `<file>` that `git -C <checkout> ls-tree --full-tree --name-only HEAD .github/workflows/` lists, since GitHub runs only the `.yml` and `.yaml` files directly in that folder',
+    '`<file>` is the repository-relative path `ls-tree` prints, unquoted and unescaped when it prints it in double quotes, never an absolute path, and `--full-tree` keeps the listing from depending on the current folder',
+    'Judge a `push` or `pull_request` trigger from either set, with its filters as GitHub applies them to this push and the pull request.',
+    'A workflow that deploys in either set counts, and so does one whose deploy the files cannot settle.',
+    'A `pull_request_target` workflow is judged from the base branch\'s file.',
+  ]) assert.ok(text.includes(needle), `Step 7.2 lacks: ${needle}`);
+  assert.ok(!PUBLISH.includes('ls-tree -r'), 'Step 7 still lists workflows with ls-tree -r');
+  assert.ok(section(PUBLISH, '7.3 CI').includes('judge the deploy as 7.2 says'), 'a CI repair push is not judged for a deploy');
+  assert.ok(SKILL.includes('  - Bash(git ls-tree *)'), 'SKILL.md does not pre-approve git ls-tree');
+  assert.ok(SKILL.includes('judged before each push from the workflow files of the base branch and of the commit being pushed'), 'SKILL.md does not say what the deploy is judged from');
+});

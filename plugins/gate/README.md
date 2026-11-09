@@ -45,7 +45,7 @@ The gate never types a review level of `low`, `max` or `ultra`, and a run leaves
 
 Invoking the gate by name approves, for that run only: fix commits on each target's branch, pushing that branch, and one comment per run on each target pull request. Nothing else: no new branch, no pull request, no edit of a pull request body, no ticket comment and no issue. Your instruction files win: an ask-first rule there still prompts.
 
-These always ask: a force push, `--no-verify`, a merge, a rebase, an amend, a reset, anything that deploys, such as a push that triggers a deploy, a change to repository settings and a new issue. A permission you deny is final; the gate does not retry it or work around it, and a denied commit or push ends the run `blocked`. A dirty working tree ends the run `blocked` before it starts; the gate never stashes, resets or cleans.
+These always ask: a force push, `--no-verify`, a merge, a rebase, an amend, a reset, anything that deploys, such as a push that triggers a deploy, a change to repository settings and a new issue. A permission you deny is final; the gate does not retry it or work around it, and a denied commit or push ends the run `blocked`. A denied push keeps its commit, and the next run on the branch pushes it, asking again where a push must ask. A dirty working tree ends the run `blocked` before it starts; the gate never stashes, resets or cleans.
 
 ## Configuration
 

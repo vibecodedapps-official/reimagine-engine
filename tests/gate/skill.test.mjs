@@ -701,3 +701,17 @@ test('R314: the comment file is written first with the Write tool and the post r
     'Write the comment to `comment-<n>.md` with the Write tool, in its own call.',
     'alone in its own Bash call, naming only that path, never one compound command that writes and posts');
 });
+
+test('R295 and R312: a commit a denied push kept is recorded, let through preflight and pushed by the next run', () => {
+  holds('steps/2-fix.md', 'A denied push ends the run `blocked` with the pass recorded `failed`; the local commit is kept and named, and the pass\'s `commit` and `head` are written with it, so the next run on the branch pushes it.');
+  holds('steps/0-preflight.md', 'Ahead or diverged ends the run `blocked`, naming the branch, except a tip one commit ahead, whose parent (`git rev-parse refs/heads/<head>^`) is the remote head and whose sha is the `commit` of the last pass in the record\'s `passes.json` (0.8, item 1), that pass `failed`: a denied push kept it, and Resume pushes it.');
+  const text = holds('steps/3-next.md', '## Resume');
+  const resume = text.slice(text.indexOf('## Resume'));
+  for (const phrase of [
+    'When that pass is `failed` and its `commit` is not the remote head Step 0.7 fetched, first push it as `steps/2-fix.md`, The remote head and the push, says, items 1 to 5 with their endings, then write `git rev-parse HEAD` as its `head`, `"status": "running"` and `"ended": null` in one write, since a denied push kept that commit and `next.mjs` takes no `failed` pass.',
+    'or go to the section Decide, item 1, for a committed pass that is not `complete`.',
+  ]) assert.ok(resume.includes(phrase), `Resume lacks ${phrase}`);
+  holds('SKILL.md', 'A denied push keeps its commit, which the next run on the branch pushes, judging and asking as before any push.');
+  holds('record.md', 'A pass that ended without them is `failed`, and so is one whose push was denied, which keeps its `commit` and `head`; Resume pushes that commit and sets the pass `running` again (`steps/3-next.md`).');
+  assert.ok(README.includes('A denied push keeps its commit, and the next run on the branch pushes it, asking again where a push must ask.'), 'README.md does not say the next run pushes a kept commit');
+});

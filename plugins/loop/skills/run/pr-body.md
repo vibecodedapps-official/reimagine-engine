@@ -2,7 +2,7 @@
 
 Read this file from `steps/7-publish.md` when you write a pull request body, a continued pull request comment or a ticket comment, and from `steps/4-build.md` at the end of Step 6 on a host other than `github`, to write the run's body file.
 
-These texts are published. Name the activity and the date, never a model, an agent type, a tool, a review pass or its level, and never a run-internal path such as one under `.reimagine/`. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool. Write a bare `@token` in backticks. Write each section from the record's facts, not from a subagent's claim; check a claim before you repeat it. A section with nothing to say holds the word "none".
+These texts are published, and each is written for its reader (SKILL.md, What leaves the run). Name the activity and the date, never a model, an agent type, a tool, a review pass or its level, never a term the suite or this run coined, and never a run-internal path such as one under `.reimagine/`. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool. Write a bare `@token` in backticks. Write each section from the record's facts, not from a subagent's claim; check a claim before you repeat it. A section with nothing to say holds the word "none".
 
 ## Pull request body
 
@@ -10,18 +10,20 @@ Write the body to the run's body file in the record: `pr-body.md`, or `pr-body-<
 
 ```
 ## What changed
-<per input: the ticket, file or description, "complete" or "partial", what changed, and what is left>
-<deferred items: each with its reason>
+<per input: the ticket, file or description, "complete" or "partial", and what changed>
 
-## Drift corrections
+## Where the ticket and the code differ
 <where a ticket and the code disagreed, and what the change follows>
 
 ## Decisions for the reviewer
 <design choices; options rejected and why; behavior a reader could take for a bug>
-<on a continued branch: this branch carries <n> commits from before the run; they were reviewed as part of this run's diff, and they are listed here>
+<on a continued branch: this branch carries <n> commits from before this change; they were reviewed with it, and they are listed here>
 
 ## Checks not run
-<each check not run, with the reason; each check deferred to CI, by job name; each check failing at baseline, with the evidence>
+<each check not run, with the reason and, for one someone must still run, the ticket that tracks it; each check deferred to CI, by job name; each check failing at baseline, with the evidence>
+
+## Follow-ups
+<one line per filed open item: the item in one line and its ticket reference; "none">
 
 ## Related pull requests
 <"none" in a single-repository run; "pending" first in a multi-repository run, then the sibling links>
@@ -29,6 +31,8 @@ Write the body to the run's body file in the record: `pr-body.md`, or `pr-body-<
 ## Closes
 <one line per ticket>
 ```
+
+`## Follow-ups` holds one line per filed open item of every run of the record, from the `new` and `existing` `- ticket` lines of `run.md`; an item settled, put to the user or not yet filed is not listed (`tickets.md`).
 
 In a multi-repository run on a host other than `github`, Related pull requests says the links between the pull requests are added by hand.
 
@@ -51,34 +55,18 @@ Use this when the branch has one open pull request: after the body edit when thi
 ```
 ## Issues
 <ref>: complete
-<ref>: partial. <what is left>
+<ref>: partial
 ```
 
 One line per ticket. End the comment with the sentence "The pull request's own body decides what merging it closes."
 
 ## Ticket comment
 
-Write one comment for each ticket this run took up to `ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on):
-
-```
-Status from the loop run on <branch>: <complete | partial | blocked>
-
-Pull request: <link>
-<sibling links, one per line, in a multi-repository run>
-
-Criteria:
-- <criterion>: <met | not met | not confirmed>. <evidence>
-
-Not done:
-- <item, or "none">
-
-Deferred:
-- <item with its reason, or "none">
-```
+Write one comment for each ticket this run took up to `ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on), for the ticket's readers (`tickets.md`, Ticket text and records): what changed for them, what happens next and who it waits on, and what is not done with the ticket that tracks it. No label on a paragraph or bullet.
 
 - State "partial" plainly when it is partial.
-- Cite evidence for every criterion: a check, a test name, a commit or a line of output.
-- Mark a criterion "not confirmed" when you did not see it met yourself.
-- Name no run-internal path, no model, no agent, no tool, no review pass and no level.
+- Give the pull request link, and each sibling link in a multi-repository run, as where to follow the change.
+- Put the criteria and their evidence in the ticket's record, `record-<id-slug>.md` (`record-<id-slug>-run<n>.md` from run 2 on): each criterion met, not met or not confirmed, with a check, a test name, a commit or a line of output; mark "not confirmed" when you did not see it met yourself.
+- Name no run-internal path, no model, no agent, no tool, no review pass, no level and no term the loop coined.
 
 Return to the step that sent you here.

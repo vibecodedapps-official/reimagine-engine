@@ -44,9 +44,13 @@ A reference to an open pull request in the repository continues that pull reques
 
 ## What invoking approves
 
-Invoking the loop by name approves, for that run only: creating a branch, committing, pushing that branch, opening one pull request per repository, editing the body of a pull request the loop opened, one comment per run on it, and comments on the source tickets. Your instruction files win: an ask-first rule there still prompts.
+Invoking the loop by name approves, for that run only: creating a branch, committing, pushing that branch, opening one pull request per repository, editing the body of a pull request the loop opened, one comment per run on it, and comments on the source tickets. For the open items it cannot settle, it also opens a ticket or comments on an existing one and attaches a record to each ticket it comments on or opens. Your instruction files win: an ask-first rule there still prompts, and one question covers all the tickets of a run's open items.
 
-These always ask: a force push, `--no-verify`, a merge, anything that deploys, a change to repository settings, and a new issue. A permission you deny is final; the loop does not retry it or work around it.
+These always ask: a force push, `--no-verify`, a merge, anything that deploys, a change to repository settings, and any other new issue. A permission you deny is final; the loop does not retry it or work around it.
+
+## Open items
+
+What the run leaves open is sorted before anything is published: settled by the run, put to you in the report as a decision, or filed to a ticket on the tracker of the source tickets with a record attached for the next session. The pull request carries one line per filed item and the ticket says what changed for its readers. On a run that ends `prepared` nothing is filed: the report holds each ticket as a draft.
 
 ## The record
 
@@ -76,7 +80,7 @@ An optional `.reimagine.json` at the repository root. Every key is optional; the
 }
 ```
 
-- `commit`: with `true`, the run commits a snapshot of the plan and report to the branch and posts the report as a pull request comment.
+- `commit`: with `true`, the run commits a snapshot of the plan and report to the branch.
 - `checks`: the commands to run as checks. Without it the loop finds the repository's test, lint, typecheck and build commands. With a `checks` key those commands are the ones run, and Step 6.1 still reads the manifests and the CI jobs and names each CI job no configured check covers as deferred to CI in `run.md` and the report.
 - `timeouts`: minutes for each implementer call (`subagent`), each review pass (`review`), each check (`check`) and the CI wait (`ci`), and the whole run (`run`).
 - `models`: the model for each role. Values are `sonnet`, `opus`, `haiku` or `fable`. This never changes the risk floor or the final review.

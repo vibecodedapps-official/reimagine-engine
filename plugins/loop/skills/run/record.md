@@ -28,12 +28,15 @@ All names are relative to the record directory. Times in every file are copied f
 | `diff.patch`, `diff-<slug>.patch` | Before a review that reads a patch | The review patch of the primary checkout, and of an additional repository named by `<slug>` |
 | `pr-body.md`, `pr-body-<slug>.md` | Step 7.2, or the end of Step 6 on `other` | The pull request body, and the body for an additional repository |
 | `comment-<n>.md` | Step 7, or the end of Step 6 on an Azure DevOps remote | The text of the pull request comment, one per comment; on an Azure DevOps remote, the full body to post as the first comment. `<n>` is one more than the highest number among the record's `comment-*.md` files, or 1 when there is none |
-| `ticket-<id-slug>.md` | Step 7.4 | The status comment text for one ticket |
+| `ticket-<id-slug>.md` | Step 7.4 | The comment text for one source ticket |
+| `record-<id-slug>.md` | Step 7.4 | The record attached to that ticket: its criteria with their evidence |
+| `item-<k>.md` | Step 7.2 or 7.3, or on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`) | The body of the new ticket for open item `<k>`, its rank in the report's Open items, or the comment on the existing ticket that covers it; a draft when nothing is filed |
+| `item-<k>-record.md` | Step 7.2 or 7.3, or on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`) | The record attached to that ticket: the handoff context a later session needs |
 | `text-<k>.md` | Step 0.5 | One ad-hoc description, `<k>` numbered from 1 across runs, so the handoff can name it. A description whose text, after the credentials decision, equals an existing `text-<k>.md` is that input, and no new file is written |
 
-The bodies and comment texts (`pr-body*.md`, `comment-<n>.md`, `ticket-*.md`) are never committed.
+The bodies, comment texts and ticket records (`pr-body*.md`, `comment-<n>.md`, `ticket-*.md`, `record-*.md`, `item-*.md`) are never committed.
 
-No run rewrites a file a prior run wrote, except `steps.json`, `plan.md` (appended), and `report.md`, `handoff.md` and `audit-manifest.json` (rewritten). The counters keep `pre-<n>` (which `post-<n>` shares with its call), `comment-<n>` and `text-<k>` apart. The other per-run files (`diff*.patch`, `pr-body*.md`, `ticket-*.md`) take a run suffix from run 2 on: `-run<n>` before the extension, with `<n>` the run's number, as in `diff-run2.patch`, `pr-body-run2.md`, `pr-body-app-infra-run2.md` and `ticket-68-run2.md`. Within one run, a later write of the same file replaces it.
+No run rewrites a file a prior run wrote, except `steps.json`, `plan.md` (appended), and `report.md`, `handoff.md` and `audit-manifest.json` (rewritten). The counters keep `pre-<n>` (which `post-<n>` shares with its call), `comment-<n>` and `text-<k>` apart. The other per-run files (`diff*.patch`, `pr-body*.md`, `ticket-*.md`, `record-*.md`, `item-*.md`) take a run suffix from run 2 on: `-run<n>` before the extension, with `<n>` the run's number, as in `diff-run2.patch`, `pr-body-run2.md`, `pr-body-app-infra-run2.md`, `ticket-68-run2.md` and `item-2-record-run2.md`. Within one run, a later write of the same file replaces it.
 
 `run.md` holds, per run:
 
@@ -49,6 +52,7 @@ No run rewrites a file a prior run wrote, except `steps.json`, `plan.md` (append
 - Every decision: the choice, the reason, the options weighed with why each was rejected, who decided (`user`, `plan confirmation`, `review` or `run`), and where it was published.
 - Each commit the run made (slice commits, the snapshot commit, CI repairs), as a line `- commit <full sha> <subject>`. A later run tells the loop's own commits from foreign ones by these lines alone.
 - Each pull request the run opened, whose body it edited, or on which it commented, with the file it posted, and each ticket it commented on, with its file.
+- Each open item with its outcome and evidence (`tickets.md`). Each ticket the run filed, commented on or attached a record to, as a line `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`; a later run reuses the ticket and the artifact number by these lines alone. A draft is a line `- draft <file>: <one line>`.
 - The budget in force and every change to it, and every time taken from `date`.
 
 ## steps.json
@@ -124,8 +128,8 @@ With `.reimagine.json` `commit: true`:
 
 1. A run that publishes commits a snapshot at Step 7.1, after its slice commits and before its first push. It writes `docs/runs/<branch-slug>/plan.md`, a copy of the record's `plan.md`, and `docs/runs/<branch-slug>/report-<n>.md`, the report filled as at a terminal state but with the terminal state `publishing`, in its external form (item 3), where `<n>` is this run's number and `<branch-slug>` the record's slug. Stage the two paths by name and commit them alone, as `docs(runs): record the plan and report of run <n>`, with a body that says the repository keeps a snapshot of each run. Log it in `run.md` with its `- commit` line, like every commit of the run.
 2. A run that publishes nothing (no new work on published work, `plan-only`, `prepared`, or `blocked` before its first push) commits no snapshot.
-3. The external form of the report keeps, in this order: the header without its Record, Worktree, Repositories, Handoff and Audit lines, which name local paths; What changed; Checks; Deferred items; and Blocked, stopped or prepared. It leaves out Attended or unattended, Risk, Decisions, Findings rejected and why, and Log. Like every published text (`pr-body.md`), it names no model, agent or tool and no local path; a check's directory is written relative to the repository root.
-4. At `done`, except on the no-new-work path of published work (An existing record, item 8), which posts nothing, post the report's external form as the run's pull request comment: write it to `comment-<n>.md` and post `gh pr comment <pr> --body-file <absolute path>`. Under `commit: true` this comment takes the place of Step 7.2's continued pull request comment, so the run still posts one comment on the pull request.
+3. The external form of the report keeps, in this order: the header without its Record, Worktree, Repositories, Handoff and Audit lines, which name local paths; What changed; Checks; and Blocked, stopped or prepared. It leaves out Attended or unattended, Risk, Decisions, Decisions for you, Findings rejected and why, Open items, and Log. Like every published text (`pr-body.md`), it names no model, agent or tool and no local path; a check's directory is written relative to the repository root.
+4. The report is not posted on the pull request: the run posts what it posts without `commit: true`.
 
 ## Redaction
 

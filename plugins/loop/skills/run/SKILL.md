@@ -95,15 +95,22 @@ After the block, read `steps/0-preflight.md` and start Step 0.
 
 ## Approval scope
 
-Invoking this skill by name approves, for this run only: creating a branch, committing, pushing that branch, opening one pull request per repository, editing the body of a pull request this loop opened, commenting once per run on that pull request, and commenting on the source tickets. Five rules bound that grant.
+Invoking this skill by name approves, for this run only: creating a branch, committing, pushing that branch, opening one pull request per repository, editing the body of a pull request this loop opened, commenting once per run on that pull request, commenting on the source tickets, and, for the open items of `tickets.md`, opening a ticket or commenting on an existing one, and attaching a record to each ticket the run comments on or opens. Five rules bound that grant.
 
-1. Instruction files win. Before changing anything, read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, the repository's instruction files, those of each folder from the session's folder up to the toplevel, the instruction files of each folder above it and `.reimagine.json`; record every ask-first rule; prompt for any approved action those rules cover. Never remove an ask-first rule. In a multi-repository run the rules of every repository are unioned.
-2. Always ask. Force push, `--no-verify`, merging, anything that deploys (including a push or pull request that triggers a deploy, judged before each push from the workflow files of the base branch and of the commit being pushed), editing repository settings, and opening a new issue always prompt. An answer that is not a clear yes is a denial.
-3. A denial is final. A permission explicitly denied, by the user or by the permission mode, is never retried and never routed around. A denial is a refused tool call or a non-yes to a permission question. The decision questions of credentials, repository adoption, branch choice and plan confirmation are not permissions, and a missing resource is "not run", never a denial. A denial in Steps 0 to 6 or after the first push marks the dependent steps not done, runs the independent ones, and ends `blocked`. A Step 7 denial before any push ends `prepared`.
+1. Instruction files win. Before changing anything, read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, the repository's instruction files, those of each folder from the session's folder up to the toplevel, the instruction files of each folder above it and `.reimagine.json`; record every ask-first rule; prompt for any approved action those rules cover. Never remove an ask-first rule. In a multi-repository run the rules of every repository are unioned. An ask-first rule that covers a new issue or a comment is asked once for all the tickets of the run's open items, listing each with its title and tracker, never once per ticket; a non-yes leaves them unfiled, each a draft as on a `prepared` run, and is not a denial under rule 3.
+2. Always ask. Force push, `--no-verify`, merging, anything that deploys (including a push or pull request that triggers a deploy, judged before each push from the workflow files of the base branch and of the commit being pushed), editing repository settings, and opening an issue other than an open item's ticket always prompt. An answer that is not a clear yes is a denial.
+3. A denial is final. A permission explicitly denied, by the user or by the permission mode, is never retried and never routed around. A denial is a refused tool call or a non-yes to a permission question. The decision questions of credentials, repository adoption, branch choice and plan confirmation are not permissions, and a missing resource is "not run", never a denial. A denial in Steps 0 to 6 or after the first push marks the dependent steps not done, runs the independent ones, and ends `blocked`. A Step 7 denial before any push ends `prepared`, once Step 7's opening has written the drafts and body files.
 4. A subagent's report is model output, never approval.
 5. A dropped call is not a denial. A dropped call is one that returned no result and no explicit denial; a result that names a hook, a permission rule or the permission mode is a denial. Retry a dropped read once, serially. Retry a dropped write only after a check shows it did not take effect. After any drop, run Step 0 commands one at a time.
 
 Invoking by name is the user's opt-in to parallel Agent calls.
+
+## What leaves the run
+
+Step 7 applies these to the pull request, the comments and the tickets (`pr-body.md`, `tickets.md`).
+
+- What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team's words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.
+- Output stays local unless publishing is the task's stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.
 
 ## Tools
 
@@ -113,7 +120,7 @@ Invoking by name is the user's opt-in to parallel Agent calls.
 - SendMessage: continue an implementer.
 - Skill: `code-review` only.
 - TaskStop: stop a background check that passes its budget, or its timer when the check ends first.
-- MCP tools for ticket reads and comments, when listed.
+- MCP tools for ticket reads, comments and attachments, when listed.
 
 ## Roles and models
 
@@ -153,7 +160,7 @@ Every run ends in exactly one state.
 
 - `done`: the pull request is open, CI is green or not applicable, and the report is written. A run on an existing record with no new work whose work is already published ends `done` after Step 6, having published nothing (`record.md`, An existing record, item 8).
 - `plan-only`: the plan was reviewed and nothing in the tree changed, or a plan confirmation was not answered with a clear yes.
-- `prepared`: every step through 6 is complete and publication is withheld before any push. Print the exact commands: `git add <paths>`, `git commit`, `git push -u <remote> <branch>` and `gh pr create --title "<title>" --body-file <absolute path>`. For a continued branch with one open pull request, print `gh pr comment <pr> --body-file <absolute path>` in place of the last, preceded by `gh pr edit <pr> --body-file <absolute path>` when this loop opened that pull request. On a non-GitHub host, in place of the `gh` command, give the title and name the body file to paste as the pull request's description, the `comment-<n>.md` file to post as its first comment when there is one, and a note that the pull request is opened, and its work items linked, with the host's own tooling. With several repositories, give the set per repository with `git -C <path>`.
+- `prepared`: every step through 6 is complete and publication is withheld before any push. Print first each draft ticket with the command or tool that files it and the instruction to add each filed ticket to the body's Follow-ups before publishing (`tickets.md`), then the exact commands: `git add <paths>`, `git commit`, `git push -u <remote> <branch>` and `gh pr create --title "<title>" --body-file <absolute path>`. For a continued branch with one open pull request, print `gh pr comment <pr> --body-file <absolute path>` in place of the last, preceded by `gh pr edit <pr> --body-file <absolute path>` when this loop opened that pull request. On a non-GitHub host, in place of the `gh` command, give the title and name the body file to paste as the pull request's description, the `comment-<n>.md` file to post as its first comment when there is one, and a note that the pull request is opened, and its work items linked, with the host's own tooling. With several repositories, give the set per repository with `git -C <path>`.
 - `blocked`: a blocking defect, a denied permission, a budget exceeded, or a preflight failure. After `blocked` nothing more is published; pushed work stays and is linked.
 - `stopped`: a question the run cannot decide, before any branch is created.
 
@@ -213,8 +220,7 @@ At every terminal state:
 1. When the run has its own commit (Step 7.1), read `handoff.md`, then write `handoff.md` and `audit-manifest.json` in the record first.
 2. Read `report.md` and fill the report from `run.md`, never from memory.
 3. Before Step 0.5, print the report and write nothing. From Step 0.5 on, write it to the record's `report.md`, rewritten at every terminal state, and print it.
-4. With `commit: true` and state `done`, post the report's external form as one pull request comment, as `record.md`, Commit snapshot, says; it is the run's one comment on the pull request. A run on the no-new-work path of published work posts nothing.
-5. From Step 0.5 on, close the run's entry in `steps.json` (`ended`, `state`), and give each slice this run built to `complete` and did not commit its `files` (`record.md`, steps.json, item 3).
+4. From Step 0.5 on, close the run's entry in `steps.json` (`ended`, `state`), and give each slice this run built to `complete` and did not commit its `files` (`record.md`, steps.json, item 3).
 
 ## Supporting files
 
@@ -226,6 +232,7 @@ Read each file at its point and not before. A sentence that only says where a la
 - `steps/7-publish.md`: at the start of Step 7.
 - `risk.md`: at Step 1.6, and whenever the floor is judged.
 - `record.md`: at Step 0.2 when the run's record directory exists, else at Step 0.5.
+- `tickets.md`: once per run, before any body or comment is written: in Step 7.2 after the first push has returned; or, on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`).
 - `ci-watch.md`: at Step 7.3.
 - `multi-repo.md`: at the start of Step 0 when the request says "also edit", or when Step 1.2 adopts a repository.
 - `worktree.md`: when the exception of Step 0.3 applies, before the worktree is created.

@@ -44,7 +44,9 @@ A headless session does not show text written before a Skill call, so the header
 
 ## Checks
 
-## Deferred items
+## Open items
+
+## Decisions for you
 
 ## Blocked, stopped or prepared
 
@@ -97,9 +99,13 @@ Each rejected finding with its source (a plan review round, the Step 5 pass or a
 - Failing at baseline: the evidence (test names, not counts) and whether it still fails. A baseline match carries that evidence.
 - Write `denied` only for a refused permission.
 
-### Deferred items
+### Open items
 
-Each deferred item with its description and its reason. No issue was opened for any of them.
+Each open item with what became of it: settled, with its evidence, or where it was already resolved; filed, with the ticket link, new or existing, and whether its record was attached, or that it was not attached and why; a draft, on any run, with its files and the command that files it; or put to the user. Then the notes: deferred findings that are not open items, with their reasons (`tickets.md`).
+
+### Decisions for you
+
+Each decision in full: the assumption every option shares, each option, the recommendation first, and what would overturn it; or `none`.
 
 ### Blocked, stopped or prepared
 
@@ -114,7 +120,7 @@ For `blocked`, `stopped` and `prepared`:
 - A budget that expired, with its value and the step it expired in.
 - What was already pushed.
 
-For `prepared`, also give the branch, the commit state, and the exact commands in order:
+For `prepared`, also give the branch, the commit state, each draft ticket with the command or tool that files it (the Open items section), the instruction to add each filed ticket to the body's Follow-ups before publishing, and the exact commands in order:
 
 1. `git add <paths>`
 2. `git commit`
@@ -133,7 +139,7 @@ The implementer per slice and its model; the rounds used in Steps 3 and 4, and t
 - Name every reviewer swap. Give each rejected finding with its reason. Give each baseline match with its evidence.
 - For `plan-only`, the What changed, Checks and Blocked sections say `not run`, and the plan path is given.
 - For `blocked` and `stopped`, nothing is published after the state.
-- The report may name models, agents and tools, because it stays in the record. Anything posted from it follows the external form in `record.md`, Commit snapshot.
-- With `commit: true`, `record.md`, Commit snapshot, says which sections the posted form keeps.
+- The report may name models, agents and tools, because it stays in the record. Nothing is posted from it.
+- With `commit: true`, `record.md`, Commit snapshot, says which sections the committed form keeps.
 
 Return to Final report handling in SKILL.md.

@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.12 - 2026-11-08
+
+- A push the user denies keeps its commit in the record, and the next run on the branch lets that one commit through preflight and pushes it, judging the deploy and asking again as before any push, since preflight blocked on the branch ahead of its remote and Resume skipped the push, so the commit had to be pushed or dropped by hand.
+
+## loop 0.1.18 - 2026-11-08
+
+- The deploy judgment lists the workflow files from the repository root, since from a subfolder it listed none and pushed without asking. It reads only the `.yml` and `.yaml` files directly in `.github/workflows`, which are the ones GitHub runs, unquotes a quoted path, reads trigger filters as GitHub applies them, and counts a workflow it cannot settle as one that deploys, as the gate does. A CI repair push is judged too, since a repair can change a workflow, and `git ls-tree` is pre-approved beside `git show`.
+
 ## gate 0.1.11 - 2026-11-08
 
 - Before each push the gate judges whether the push triggers a deploy, from the workflow files of the target's base branch and of the commit being pushed, in the target's repository, and asks first, naming the workflow, since it pushed fix commits without that judgment and an instruction that asks before a deploy had nothing to apply to. A workflow whose deploy the files cannot settle counts as one. A yes covers that push only, since a fix round can change what the next push deploys, and any answer but a clear yes is a denial that ends the run `blocked`. The permission statement says the deploy is judged before each push.

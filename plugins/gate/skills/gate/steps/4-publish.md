@@ -46,7 +46,7 @@ The report's Audit line suggests `/audit:run "<absolute manifest path>"`: the ma
 
 One comment per run, for `pass`, `pass-with-deferred` and `unconverged`, on a pull request target on GitHub. A branch target has no pull request and gets none. A host other than GitHub gets the text in the report's Comment section in its place.
 
-Write the comment from `passes.json` and `findings.json`, for the passes of this run, never from memory. Write it to `comment-<n>.md`:
+Write the comment from `passes.json` and `findings.json`, for the passes of this run, with the additions of item 1 for a kept commit, never from memory. Write it to `comment-<n>.md`:
 
 ```
 Gate verdict: <pass | pass-with-deferred | unconverged>

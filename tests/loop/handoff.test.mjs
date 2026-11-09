@@ -93,3 +93,11 @@ test('R120: the Gate rule suggests the gate at 500 changed lines and the Audit r
     assert.ok(header.includes(phrase), `the Header section lacks ${phrase}`);
   }
 });
+
+test('R281: the handoff and the manifest name the primary by the checkout of Step 0, not the session folder', () => {
+  const bundles = HANDOFF.slice(HANDOFF.indexOf('\n### Bundles\n'), HANDOFF.indexOf('\n### Tickets\n'));
+  const manifest = HANDOFF.slice(HANDOFF.indexOf('\n## Manifest\n'), HANDOFF.indexOf('\n## Example\n'));
+  for (const [name, text] of [['Bundles', bundles], ['Manifest', manifest]]) {
+    assert.ok(text.includes("the primary's repo is the `<checkout>` of Step 0, Primary checkout"), `${name} does not tie the primary's repo to <checkout>`);
+  }
+});

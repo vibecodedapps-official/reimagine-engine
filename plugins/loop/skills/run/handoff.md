@@ -48,7 +48,7 @@ One item per repository with a diff of its own, primary first, then the "also ed
 `- <name>: repo <absolute path>; pr <github:owner/repo#n or none>; branch <branch>; base <remote>/<base branch>`
 
 - `<name>` is the base name of the repository directory, lowercased, with each run of characters outside `a-z0-9._-` turned into `-`, prefixed with `r-` when it does not start with `a-z0-9`, and suffixed `-2`, `-3` on a clash.
-- In a worktree run the repo is the worktree path. The worktree must stay until the audit has run.
+- In this list, the primary's repo is the `<checkout>` of Step 0, Primary checkout, never the folder below it that the session started in, and in a worktree run the worktree path. The worktree must stay until the audit has run.
 
 ### Tickets
 
@@ -115,7 +115,7 @@ Write `audit-manifest.json` beside the handoff:
 
 - One bundle per Bundles item, in the same order. `tickets` lists the ids of the tickets whose `bundles` value names that bundle.
 - A bundle names its pull request only when the live remote head equals the local HEAD of that branch: compare the first field of `git -C <repo> ls-remote --heads <remote> refs/heads/<branch>` with `git -C <repo> rev-parse HEAD`. Otherwise the bundle carries `branch` and `base` and no `pr`.
-- In a worktree run, `repo` is the worktree path.
+- In `repo`, the primary's repo is the `<checkout>` of Step 0, Primary checkout, never the folder below it that the session started in, and in a worktree run the worktree path.
 - `reviews` holds the level of the Step 5 pass (`steps/4-build.md`, 5.2) and every finding of this run's Step 5 pass and CI repair passes in the bucket the triage gave it: `fixed` for the `fix` bucket, `deferred` for `defer` (a fix restored and deferred counts here), `rejected` for `reject`. Each finding is its repository-relative `file` and a one-line `summary`. A list the pass left empty is written `[]`. The audit ignores the key.
 
 ## Example

@@ -1708,6 +1708,24 @@ Work items, in this order:
 
 Check: `npm run test:loop` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Primary checkout from a subfolder: M85
+
+Added 2026-11-09. Issue 149, decision 218 and requirements 281, 82 and 55 as it amends them: the loop resolves the session's repository to its toplevel in every run, and a session started below it runs the primary's commands in the named checkout's forms, in loop 0.1.19. M85 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/loop/`, `tests/loop/` and `tests/lint/`. Tags wait for the owner's merge.
+
+### M85: the fix
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m85 for the loop's checkout`.
+2. The design documents. Commit: `docs(design): resolve the loop's checkout to its toplevel`.
+3. The text test first, seen failing; then the loop's `SKILL.md`, `steps/0-preflight.md` and `record.md`, with the word-cap padding of `tests/lint/lint.test.mjs` moved to its new count. Commit: `fix(loop): resolve the session's checkout to its toplevel`.
+4. `node tools/release.mjs loop 0.1.19`, with the catalog `metadata.version` raised to 0.1.60. Commit: `release(loop): 0.1.19`.
+5. The `## loop 0.1.19 - 2026-11-09` heading. Commit: `docs(changelog): add the loop 0.1.19 heading`.
+6. The gate on the branch, its fixes committed on the branch.
+7. After the merge, by the owner: the release acceptance items 2 and 5, item 45, since Step 0 changed, the tag `loop--v0.1.19` after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:loop` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

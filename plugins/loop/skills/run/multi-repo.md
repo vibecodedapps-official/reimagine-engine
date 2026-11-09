@@ -2,7 +2,7 @@
 
 Read this file at the start of Step 0 when the request says "also edit", and at Step 1.2 when the user adopts additional repositories. It says how each step changes when more than one repository is writable.
 
-The primary is the session's repository, or its worktree when Step 0.3 made one. Each "also edit <path>" is an additional writable checkout; "also edit <path> on <branch>" continues that branch there.
+The primary is the `<checkout>` of Step 0, Primary checkout (the toplevel of the session's repository, or the checkout "primary <path>" names), or its worktree when Step 0.3 made one. Each "also edit <path>" is an additional writable checkout; "also edit <path> on <branch>" continues that branch there.
 
 ## Rules by step
 

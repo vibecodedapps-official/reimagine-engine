@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.19 - 2026-11-09
+
+- Step 0 takes the primary checkout from the toplevel of the session's repository in every run, not only for "primary <path>", since a session started in a subfolder could take that folder, and then make its record under it, where a run from the root does not find it, and compare only that folder's flagged files. A session started below the toplevel runs the primary's commands in the `git -C` and `cd` forms of a named checkout, which the permission statement counts as prompts, reads the instruction files of each folder from its own up to the toplevel, keeps its record at the toplevel, and names the toplevel as the primary's repository in the handoff and the audit manifest, so the gate and the audit do not start from the subfolder. Step 0 ends `blocked` outside a git work tree. A record that loop 0.1.18 made under a start subfolder is not found from this release on: a run that finds its branch by ticket ends `blocked`, since the predicted branch exists with no record, and a run that names the branch ("continue <branch>", "on branch <name>" or a pull request reference) starts a new record at the toplevel and ignores the old one, so the new record holds none of the earlier run's commits or pull request, the loop treats the branch's earlier commits as not its own, and it may build their slices again.
+
 ## loop 0.1.18 - 2026-11-08
 
 - The deploy judgment lists the workflow files from the repository root, since from a subfolder it listed none and pushed without asking. It reads only the `.yml` and `.yaml` files directly in `.github/workflows`, which are the ones GitHub runs, unquotes a quoted path, reads trigger filters as GitHub applies them, and counts a workflow it cannot settle as one that deploys, as the gate does. A CI repair push is judged too, since a repair can change a workflow, and `git ls-tree` is pre-approved beside `git show`.

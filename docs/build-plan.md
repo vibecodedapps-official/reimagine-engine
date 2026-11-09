@@ -1744,6 +1744,29 @@ Work items, in this order:
 
 Check: `npm run test:gate` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Output written for its reader: M87
+
+Added 2026-11-09. Decisions 220 to 227, requirements 348 to 352, the retirement of 119 and 314, and the requirements they amend: house-rule edit twenty-two and Concise Plain 4.14 in rules 0.1.27; the two items carried word for word by the loop, the gate and the audit; the gate posts nothing in gate 0.1.13; the loop settles, puts to the owner or files every open item, writes ticket text for its readers and attaches a record to each ticket in loop 0.1.20; the audit's post and drafts follow the items in audit 0.1.17. M87 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `.claude/skills/rules-feedback/`, `tools/lint.mjs`, `plugins/rules/`, `plugins/gate/`, `plugins/loop/`, `plugins/audit/`, `tests/rules/`, `tests/gate/`, `tests/loop/`, `tests/audit/` and `tests/lint/`. Tags wait for the owner's merge.
+
+### M87: the fixes
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m87 for output written for its reader`.
+2. The design documents, with acceptance items 83 to 86 and item 50 retired. Commit: `docs(design): specify output written for its reader`.
+3. The R348 test first, seen failing; then the two items in `core.md`, and the shipped digest, count and line-number literals of `tests/rules/rules.test.mjs` moved. Commit: `feat(rules): write what leaves a session for its reader`.
+4. The lint version literals first, seen failing; then `concise-plain.md` 4.14, the chat block and `tools/lint.mjs`. Commit: `feat(rules): take a draft's detail from its reader in concise plain 4.14`.
+5. The `rules-feedback` line naming the three copies. Commit: `docs(rules-feedback): name the loop, gate and audit copies of a house-rule item`.
+6. The gate's tests first, seen failing; then `SKILL.md`, `steps/0-preflight.md`, `steps/3-next.md`, `steps/4-publish.md`, `record.md`, `report.md` and `README.md`. Commit: `fix(gate): post nothing to the pull request`.
+7. The loop's tests first, seen failing; then `SKILL.md`, the new `tickets.md`, the step files, `pr-body.md`, `record.md`, `report.md`, `handoff.md` and `README.md`, with the word-cap padding of `tests/lint/lint.test.mjs` moved to its new count. Commit: `feat(loop): settle, decide or file every open item`.
+8. The audit's tests first, seen failing; then `SKILL.md`, `stages/9-act.md`, `common.md`, `report.md`, `stages/8-report.md` and `work-items.md`. Commit: `fix(audit): write act's post and the drafted texts for their readers`.
+9. `node tools/release.mjs` for rules 0.1.27, gate 0.1.13, loop 0.1.20 and audit 0.1.17, with the catalog `metadata.version` raised to 0.1.62, 0.1.63, 0.1.64 and 0.1.65, the version literals of `tests/rules/rules.test.mjs` and the `plugin_version` literals of the audit skill files moved. Commits: `release(rules): 0.1.27`, `release(gate): 0.1.13`, `release(loop): 0.1.20` and `release(audit): 0.1.17`.
+10. The four changelog headings. Commit: `docs(changelog): add the rules 0.1.27, gate 0.1.13, loop 0.1.20 and audit 0.1.17 headings`.
+11. The gate on the branch, its fixes committed on the branch.
+12. After the merge, by the owner: the release acceptance items 2, 4 and 5 for rules, 2 and 5 for each other plugin, items 83 to 86, the tags after a yes, then item 21 on the merge commit.
+
+Check: the area script of each commit before and after it (`npm run test:rules`, `test:lint`, `test:gate`, `test:loop`, `test:audit`, `test:release`); `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

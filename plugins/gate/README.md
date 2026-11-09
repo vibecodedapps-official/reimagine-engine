@@ -70,7 +70,7 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 - `pass`: a pass found nothing left to fix, and nothing was deferred.
 - `pass-with-deferred`: the same, with deferred findings listed in the report and the comment.
 - `unconverged`: the pass cap or the budget was reached, a review failed, a `medium` pass still found something to fix, or a `no fixes` run found something to fix. Every open finding is listed.
-- `blocked`: a failed preflight, a denied permission, a remote branch that moved, a failed implementer call, or a check still failing after three fixes. Nothing more is pushed or posted; pushed commits stay.
+- `blocked`: a failed preflight, a denied permission, a remote branch that moved, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes. Nothing more is pushed or posted; pushed commits stay.
 - `stopped`: no target resolved, or a question the run could not settle, before any commit.
 
 `blocked` and `stopped` post no comment.

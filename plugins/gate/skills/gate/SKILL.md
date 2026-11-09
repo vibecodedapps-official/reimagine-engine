@@ -153,7 +153,7 @@ Every run ends in exactly one state.
 - `pass`: a stop with the fix bucket empty and nothing deferred in any pass of the run, under rule 1 or 2 or under "no fixes".
 - `pass-with-deferred`: the same stop, with deferred findings that go to the comment and the report.
 - `unconverged`: a cap was reached, a review failed, a `medium` pass still found something to fix, or a "no fixes" run has a non-empty fix bucket. Every open finding is listed.
-- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, or a check still failing after three fixes.
+- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.
 - `stopped`: no target resolved, or a question the run cannot decide, before any commit.
 
 After `blocked` nothing more is pushed or posted; pushed commits stay and are named.

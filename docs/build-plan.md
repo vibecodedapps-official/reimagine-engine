@@ -1728,7 +1728,7 @@ Check: `npm run test:loop` before and after item 3; `npm run test:release` after
 
 ## Kept commit: M86
 
-Added 2026-11-09. Issue 145, decision 219 and requirements 295 and 312 as it amends them: the next gate run pushes the commit a refused push kept, then reviews the branch afresh, in gate 0.1.12. M86 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/gate/` and `tests/gate/`. Gate 0.1.12 is released by it; the tag waits for the owner's merge.
+Added 2026-11-09. Issue 145, decision 219 and requirements 295, 311, 312 and 314 as it amends them: the next gate run pushes the commit a refused push kept, then reviews the branch afresh, in gate 0.1.12. M86 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/gate/` and `tests/gate/`. Gate 0.1.12 is released by it; the tag waits for the owner's merge.
 
 ### M86: the push of a kept commit
 

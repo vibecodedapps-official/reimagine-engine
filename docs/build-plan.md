@@ -1672,6 +1672,24 @@ Work items, in this order:
 
 Check: the area script of each commit before and after it (`npm run test:gate`, `test:loop`, `test:lint`, `test:audit`, `test:primer`, `test:release`); `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## Gate deploy ask: M83
+
+Added 2026-11-08. Decision 216 and requirement 294 as it amends it: before each push the gate judges, in the target's repository, whether the push triggers a deploy, and asks first when it does, in gate 0.1.11. M83 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/gate/` and `tests/gate/`. Gate 0.1.11 is released by it; the tag waits for the owner's merge.
+
+### M83: the deploy ask
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m83 for the gate's deploy ask`.
+2. The design documents. Commit: `docs(design): specify the gate's deploy ask`.
+3. The gate's text test first, seen failing; then `SKILL.md`, `steps/0-preflight.md`, `steps/2-fix.md` and `README.md`. Commit: `feat(gate): ask before a push that triggers a deploy`.
+4. `node tools/release.mjs gate 0.1.11`, with the catalog `metadata.version` raised to 0.1.58. Commit: `release(gate): 0.1.11`.
+5. The `## gate 0.1.11 - 2026-11-08` heading. Commit: `docs(changelog): add the gate 0.1.11 heading`.
+6. The gate on the branch, its fixes committed on the branch.
+7. After the merge, by the owner: the release acceptance items 2 and 5, the tag `gate--v0.1.11` after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:gate` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

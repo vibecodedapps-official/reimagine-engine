@@ -177,7 +177,7 @@ The files:
 
 From run 2 on, a per-run name without a counter takes `-run<n>`.
 
-`passes.json` is the only record of completion. An entry is written `running` when a pass starts and `complete` after the fix round and its commit, through a temporary file and a rename. A second invocation on the same branch appends a run to the record. When the head and the merge-base are those the last complete pass left, it resumes at the first pass not `complete`, else at the level in that pass's `next` with `max-passes` counted afresh, and a `next` that is a stop ends the run with that verdict, unless it is the `no-fixes` stop and this run fixes; a new head, or a changed merge-base, starts a new pass sequence at `xhigh` with the ledger kept, so earlier rejections carry.
+`passes.json` is the only record of completion. An entry is written `running` when a pass starts and `complete` after the fix round and its commit, through a temporary file and a rename. A second invocation on the same branch appends a run to the record. When the head and the merge-base are those the last complete pass left, it resumes at the first pass not `complete`, else at the level in that pass's `next` with `max-passes` counted afresh, and a `next` that is a stop ends the run with that verdict, unless it is the `no-fixes` stop and this run fixes; a new head, or a changed merge-base, starts a new pass sequence at `xhigh` with the ledger kept, so earlier rejections carry. A commit a run made and did not push, after a denied push or a run that ended first, is let through the next run's preflight and pushed before it resumes, outside "no fixes".
 
 ## Supporting files
 

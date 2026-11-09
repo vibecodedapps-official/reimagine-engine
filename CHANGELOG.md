@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## gate 0.1.12 - 2026-11-08
 
-- A push the user denies keeps its commit in the record, and the next run on the branch lets that one commit through preflight and pushes it, judging the deploy and asking again as before any push, since preflight blocked on the branch ahead of its remote and Resume skipped the push, so the commit had to be pushed or dropped by hand.
+- A commit the gate made and did not push, after a denied push or a run that ended before its push, stays in the record, and the next run on the branch lets that one commit through preflight and pushes it, judging the deploy and asking again as before any push, since preflight blocked on the branch ahead of its remote and Resume skipped the push, so the commit had to be pushed or dropped by hand. A "no fixes" run blocks on it instead.
 
 ## loop 0.1.18 - 2026-11-08
 

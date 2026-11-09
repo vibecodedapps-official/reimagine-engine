@@ -708,6 +708,7 @@ test('R295 and R312: the next run pushes a commit a blocked push kept, then revi
     'A commit so recorded and not pushed is a kept commit, which the next run on the branch pushes when its parent is still the remote head, or when the branch has no remote head, as on a branch target never pushed (`steps/0-preflight.md`, 0.7.3, and `steps/3-next.md`, Resume).',
     'A denied or failed push ends the run `blocked` with the pass recorded `failed`; the local commit is kept and named.');
   holds('steps/0-preflight.md',
+    '3. This item applies only when item 1 kept a remote head; a branch with none skips the comparison.',
     'Ahead or diverged ends the run `blocked`, naming the branch, except a tip one commit ahead whose parent (`git rev-parse refs/heads/<head>^`) is the remote head and whose sha is the `commit` of a `failed` pass in the record\'s `passes.json` (0.8, item 1), that file\'s `branch` being this run\'s branch, when no entry of `runs` names that sha as `kept` and no `complete` pass names it as its `head`, since either shows the commit was pushed once',
     'this tip passes in every mode, since Resume pushes it, or ends a "no fixes" run `blocked` on it (`steps/3-next.md`, Resume).');
   const text = holds('steps/3-next.md', '## Resume');
@@ -724,7 +725,7 @@ test('R295 and R312: the next run pushes a commit a blocked push kept, then revi
   ]) assert.ok(resume.includes(phrase), `Resume lacks ${phrase}`);
   holds('SKILL.md',
     'A commit kept by a refused push is pushed by the next run on the branch before its first pass, judged and asked as any push, and a "no fixes" run blocks on it.',
-    'the next run pushes that commit first, outside "no fixes", and starts a new pass sequence at `xhigh`, leaving that pass as it is.',
+    'The next run, outside "no fixes", pushes that commit first only when it is the head, its parent is still the remote head or the branch has none, and no entry of `runs` names it as `kept` and no `complete` pass names it as its `head`, then starts a new pass sequence at `xhigh`, leaving that pass as it is.',
     'a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.');
   holds('record.md',
     'A `failed` pass that names a `commit` made that commit before its run ended `blocked`; the pass is never resumed or closed, and its `status`, `run` and `commit` stay as they are, and the run that pushes the commit writes `kept` in its own run entry (`steps/3-next.md`, Resume).',

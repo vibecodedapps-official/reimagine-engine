@@ -710,7 +710,7 @@ test('R295 and R312: the next run pushes a commit a blocked push kept, then revi
   holds('steps/0-preflight.md',
     '3. This item applies only when item 1 kept a remote head; a branch with none skips the comparison.',
     'Ahead or diverged ends the run `blocked`, naming the branch, except a tip one commit ahead whose parent (`git rev-parse refs/heads/<head>^`) is the remote head and whose sha is the `commit` of a `failed` pass in the record\'s `passes.json` (0.8, item 1), that file\'s `branch` being this run\'s branch, when no entry of `runs` names that sha as `kept` and no `complete` pass names it as its `head`, since either shows the commit was pushed once',
-    'this tip passes in every mode, since Resume pushes it, or ends a "no fixes" run `blocked` on it (`steps/3-next.md`, Resume).');
+    'this tip passes in every mode, since Resume pushes it, or ends a "no fixes" run `blocked` on it (`steps/3-next.md`, Resume). A `passes.json` that is missing or does not parse gives no exception, so the ahead tip ends the run `blocked` as any other. Never reset.');
   const text = holds('steps/3-next.md', '## Resume');
   const resume = text.slice(text.indexOf('## Resume'));
   for (const phrase of [
@@ -731,6 +731,7 @@ test('R295 and R312: the next run pushes a commit a blocked push kept, then revi
     'A `failed` pass that names a `commit` made that commit before its run ended `blocked`; the pass is never resumed or closed, and its `status`, `run` and `commit` stay as they are, and the run that pushes the commit writes `kept` in its own run entry (`steps/3-next.md`, Resume).',
     'A run entry may also hold `kept`, the sha of the kept commit that run pushed.');
   holds('report.md',
+    'Under the pass whose `commit` is the `kept` of this run\'s entry in `runs`, also that pass\'s findings in ledger state `fixed`, marked as fixed by the kept commit.',
     'and the kept commit this run pushed, the `kept` of this run\'s entry in `runs`, with its sha, subject and the pass that made it.',
     'names that commit as kept local, from git and the record, not from memory.');
   holds('steps/4-publish.md',
@@ -740,5 +741,5 @@ test('R295 and R312: the next run pushes a commit a blocked push kept, then revi
     'with `ended` that time and `state` the terminal state, keeping every other key of the entry, `kept` among them.',
     'a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.');
   assert.ok(README.includes('a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes'), 'README.md does not list the kept commit causes of blocked');
-  assert.ok(README.includes('The commit of a refused push stays local, and the next run on the branch pushes it before anything else'), 'README.md does not say the next run pushes a kept commit');
+  assert.ok(README.includes('The commit of a refused push stays local, and the next run on the branch pushes it first when its parent is still the remote head or the branch has none on the remote, asking again where a push must ask, then reviews the branch afresh, and otherwise blocks on it as before'), 'README.md does not say when the next run pushes a kept commit');
 });

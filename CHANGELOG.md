@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## loop 0.1.19 - 2026-11-09
 
-- Step 0 takes the primary checkout from the toplevel of the session's repository in every run, not only for "primary <path>", since a session started in a subfolder could take that folder, and then make its record under it, where a run from the root does not find it, and compare only that folder's flagged files. A session started below the toplevel runs the primary's commands in the `git -C` and `cd` forms of a named checkout, which the permission statement counts as prompts, reads the instruction files of each folder from its own up to the toplevel, and keeps its record at the toplevel. Step 0 ends `blocked` outside a git work tree.
+- Step 0 takes the primary checkout from the toplevel of the session's repository in every run, not only for "primary <path>", since a session started in a subfolder could take that folder, and then make its record under it, where a run from the root does not find it, and compare only that folder's flagged files. A session started below the toplevel runs the primary's commands in the `git -C` and `cd` forms of a named checkout, which the permission statement counts as prompts, reads the instruction files of each folder from its own up to the toplevel, and keeps its record at the toplevel. Step 0 ends `blocked` outside a git work tree. A record that loop 0.1.18 made under a start subfolder is not found at the toplevel: move it by hand to `.reimagine/loop/` at the toplevel to continue its branch.
 
 ## loop 0.1.18 - 2026-11-08
 

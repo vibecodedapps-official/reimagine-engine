@@ -112,7 +112,7 @@ test('R281: without "primary <path>" Step 0 takes the toplevel of the session re
   assert.ok(statement.includes('a named primary, a session started below the toplevel or an additional repository'), 'the permission statement does not count the forms of a subfolder start');
   assert.ok(statement.includes("in each folder from the session's folder up to `<checkout>`"), 'Step 0.1 does not read the instruction files the session loads below the toplevel');
   const record = section(PREFLIGHT, '0.5 The record');
-  assert.ok(record.includes('read against the folder the command ran in when it is not absolute'), 'Step 0.5 does not read a relative exclude path against its folder');
+  assert.ok(record.includes('read against the folder git ran in when it is not absolute'), 'Step 0.5 does not read a relative exclude path against its folder');
 });
 
 test('R55: the approval rules of SKILL.md read the instruction files from the session folder up to the toplevel', () => {

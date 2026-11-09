@@ -2,10 +2,6 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
-## gate 0.1.12 - 2026-11-08
-
-- A commit the gate made and did not push, after a denied push or a run that ended before its push, stays in the record, and the next run on the branch lets that one commit through preflight and pushes it, judging the deploy and asking again as before any push, since preflight blocked on the branch ahead of its remote and Resume skipped the push, so the commit had to be pushed or dropped by hand. A "no fixes" run blocks on it instead.
-
 ## loop 0.1.18 - 2026-11-08
 
 - The deploy judgment lists the workflow files from the repository root, since from a subfolder it listed none and pushed without asking. It reads only the `.yml` and `.yaml` files directly in `.github/workflows`, which are the ones GitHub runs, unquotes a quoted path, reads trigger filters as GitHub applies them, and counts a workflow it cannot settle as one that deploys, as the gate does. A CI repair push is judged too, since a repair can change a workflow, and `git ls-tree` is pre-approved beside `git show`.

@@ -377,7 +377,7 @@ Scripts: <the plugin's directory>/scripts
 
 ### Approval scope
 
-Invoking by name approves fix commits on each target's branch, whether or not the loop opened its pull request, pushing that branch, and one comment per run on each target pull request (decision 127). Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, rebase, amend, reset, repository settings and a new issue always ask. A denial is final: never retried, never routed around. A dirty tree, a merged or closed pull request and a remote head that is neither the one preflight fetched nor the run's own last push end `blocked`.
+Invoking by name approves fix commits on each target's branch, whether or not the loop opened its pull request, pushing that branch, and one comment per run on each target pull request (decision 127). Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, rebase, amend, reset, a push that triggers a deploy, repository settings and a new issue always ask; the deploy is judged before each push, in the target's repository (decision 216). A denial is final: never retried, never routed around. A dirty tree, a merged or closed pull request and a remote head that is neither the one preflight fetched nor the run's own last push end `blocked`.
 
 ### Roles
 

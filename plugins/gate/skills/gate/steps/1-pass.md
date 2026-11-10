@@ -12,6 +12,8 @@ Read this file at the start of every pass. It holds the pass entry, the size and
 
 Run `git diff --numstat -z --no-renames <merge-base>...HEAD | node "<scripts>/split.mjs" <split>`, with `<split>` the `split` of the configuration. It prints the changed lines and the reviews of the pass, `{"lines": <n>, "groups": [{"slug", "paths", "files", "lines"}]}`, in byte order of slug. A non-zero exit ends the run `blocked` with the script's stderr line.
 
+In the first pass of a run, print one line before the reviews start: the changed lines, the number of groups, the minutes a pass needs (`steps/3-next.md`, Decide, item 4) and how many such passes the minutes left in the run budget hold. When they hold one or none, say that the fixes of this pass will be pushed with no review after them, and that "budget <n> minutes" in the request raises it. Tell, do not ask: the run goes on.
+
 1. The one group `all`, which has no paths, is an unsplit pass: its target is `<merge-base>...HEAD` and its files carry no suffix, `review-<n>.json`.
 2. Any other group is one review at the pass's level, all of them in parallel. Its target is `<merge-base>...HEAD` followed by its `paths` as printed, in that order, and its files are `review-<n>-<slug>.json` and `diff-<n>-<slug>.patch`. The script names each group, so two reviews of one pass never write the same file.
 

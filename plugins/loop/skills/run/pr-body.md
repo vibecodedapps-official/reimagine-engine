@@ -41,7 +41,7 @@ On an Azure DevOps remote the description is capped at 4,000 characters, so the 
 
 Closing rules:
 
-- Write `Closes <ref>` only when every acceptance criterion of the ticket is confirmed met and no run of the record left a remainder on it that is still owed (`tickets.md`, Open items). Otherwise write `Refs <ref>`.
+- Write `Closes <ref>` only when every acceptance criterion of the ticket is confirmed met. Otherwise write `Refs <ref>`.
 - One line per ticket.
 - A file input and a text input get no closing line.
 - Across repositories only the pull request in the ticket's own repository closes it. Every other pull request cites it as `Refs <owner>/<repo>#<n>`.
@@ -63,7 +63,7 @@ One line per ticket. End the comment with the sentence "The pull request's own b
 
 ## Ticket comment
 
-Write one comment for each ticket Step 7.4 names to `ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on), for the ticket's readers (`tickets.md`, Ticket text and records): what changed for them, what happens next and who it waits on, and what is not done with the ticket that tracks it. No label on a paragraph or bullet.
+Write one comment for each ticket this run took up to `ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on), for the ticket's readers (`tickets.md`, Ticket text and records): what changed for them, what happens next and who it waits on, and what is not done with the ticket that tracks it. No label on a paragraph or bullet.
 
 - State "partial" plainly when it is partial.
 - Give the pull request link, and each sibling link in a multi-repository run, as where to follow the change.

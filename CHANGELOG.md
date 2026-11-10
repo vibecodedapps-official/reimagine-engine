@@ -4,11 +4,12 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## audit 0.1.17 - 2026-11-09
 
-- Act's post of an item the owner names, and the ticket and pull request texts that the report and `work-items.jsonl` draft, are written for their readers, with no item id, stage or verdict of the audit's own, since such a text could carry terms its readers do not use. The skill carries the house rules' two items on what leaves a run, word for word.
+- Act's post of an item the owner names, and the ticket and pull request texts that the report and `work-items.jsonl` draft, are written for their readers, with no item id, stage or verdict of the audit's own, since such a text could carry terms its readers do not use; act's commit messages carry none either. The skill carries the house rules' two items on what leaves a run, word for word.
 
 ## loop 0.1.20 - 2026-11-09
 
-- After the first push and before any pull request text is written, each open item is settled with its evidence, put to the owner in full in the report, or filed to a ticket, new or existing, with its handoff context attached as a record; the body carries one line per filed item with its ticket. Items left as prose in the body never reached the ticket board and could be lost on merge. Invoking the loop now approves those tickets, and an ask-first rule that covers them asks once for all of them.
+- After the first push and before any pull request text is written, each open item is settled with its evidence, put to the owner in full in the report, or filed to a ticket, new or existing, with its handoff context attached as a record; the body carries one line per ticket. Items left as prose in the body never reached the ticket board and could be lost on merge. Invoking the loop now approves those tickets, and an ask-first rule that covers them asks once for all of them; a declined ask, or a filing that is refused or fails, leaves the item a draft and the pull request still publishes.
+- After a CI repair push that makes the body untrue of the new head, the loop rewrites the body of a pull request it opened once, since the body describes its head.
 - Ticket comments are written for the ticket's readers, with the criteria and their evidence in a record attached to the ticket, an issue artifact on GitHub or a work item attachment on Azure DevOps, since the comment carried the run's own vocabulary.
 - Under `commit: true` the report is no longer posted on the pull request, since it is run output and the committed snapshot carries it.
 - The skill carries the house rules' two items on what leaves a run, word for word.
@@ -16,6 +17,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 ## gate 0.1.13 - 2026-11-09
 
 - The gate posts nothing to the pull request: the verdict, the findings, the checks and the commits stay in the report, since the comment carried the gate's own verdict and commit ids that a later push made stale. The skill carries the house rules' two items on what leaves a run, word for word.
+- A run that resumes on a stop already in the record goes on to its next target, since the end of the run skipped the step that moves on.
 
 ## rules 0.1.27 - 2026-11-09
 

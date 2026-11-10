@@ -13,6 +13,16 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const AUDIT = read('../../plugins/audit/skills/audit/handoff.md');
 const LOOP = read('../../plugins/loop/skills/run/handoff.md');
 const ORIENT = read('../../plugins/audit/skills/audit/stages/1-orient.md');
+const LOOP_RECORD = read('../../plugins/loop/skills/run/record.md');
+
+test('R137: the audit looks for the loop\'s record where the loop keeps it, and tells it by the branch in steps.json', () => {
+  const path = '`.reimagine/loop/<branch-slug>/`';
+  assert.ok(LOOP_RECORD.includes(`The record directory is ${path}`), 'record.md does not put the record there');
+  assert.ok(AUDIT.includes(`a loop record under ${path}`), 'the audit does not look there');
+  const example = JSON.parse(LOOP_RECORD.split('\n## steps.json\n')[1].split('```json\n')[1].split('\n```')[0]);
+  assert.equal(typeof example.branch, 'string');
+  assert.ok(AUDIT.includes('branch in its `steps.json` equals the session\'s branch'));
+});
 
 // The decided_by table: from its "- `decided_by`" line through the line that bars names.
 const decidedByTable = (text) => {

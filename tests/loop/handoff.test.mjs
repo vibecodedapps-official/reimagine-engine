@@ -133,6 +133,13 @@ test('R120, R134: the report header lines run in the template\'s order, the Gate
   ]);
 });
 
+test('R120: the report offers the gate and the audit by the commands those plugins answer to', () => {
+  const header = fencedBlocks(REPORT)[0];
+  for (const command of ['/gate PR <n>', '/gate this branch', '/audit:run "<absolute path of audit-manifest.json>"']) {
+    assert.ok(header.includes(command), `the report template lacks ${command}`);
+  }
+});
+
 test('R120: the changed-line count that suggests the gate is the README\'s', () => {
   const count = (text) => text.match(/(\d+) or more changed lines/)?.[1];
   assert.equal(count(section(REPORT, 'Header')), '500');

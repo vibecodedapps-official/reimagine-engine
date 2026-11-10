@@ -61,6 +61,33 @@ test('every step and item a skill file names is defined in one of them', () => {
   assert.ok(named >= 150, `only ${named} step references found`);
 });
 
+// The text of the section a citation names: by its heading, or by the step id that opens the heading.
+const sections = (name) => FILES.flatMap((file) => {
+  const lines = TEXT[file].split('\n');
+  const at = lines.findIndex((line) => /^#{2,3} /.test(line) && (line.replace(/^#+ /, '') === name || line.replace(/^#+ (?:Step )?/, '').startsWith(`${name} `)));
+  if (at < 0) return [];
+  const level = lines[at].match(/^#+/)[0].length;
+  const end = lines.findIndex((line, i) => i > at && /^#{2,3} /.test(line) && line.match(/^#+/)[0].length <= level);
+  return [lines.slice(at + 1, end < 0 ? undefined : end).join('\n')];
+});
+
+test('every item a skill file cites by number is an item of the section it names', () => {
+  let cited = 0;
+  for (const file of FILES) {
+    for (const [, before, first, second] of TEXT[file].matchAll(/([A-Za-z0-9.' ]+), items? (\d+)(?: (?:and|to) (\d+))?/g)) {
+      // The section's name is the end of the words before ", item": try each suffix, longest first.
+      const words = before.trim().split(' ');
+      const found = words.map((_, i) => sections(words.slice(i).join(' '))).find((list) => list.length > 0);
+      if (!found) continue;
+      cited++;
+      for (const n of [first, second].filter(Boolean)) {
+        assert.ok(found.some((text) => new RegExp(`^${n}\\. `, 'm').test(text)), `${file} cites "${before.trim()}, item ${n}", and that section has no item ${n}`);
+      }
+    }
+  }
+  assert.ok(cited >= 15, `only ${cited} item citations found`);
+});
+
 const ROWS = TEXT['record.md'].split('\n').filter((line) => line.startsWith('| `')).flatMap((line) => [...line.split('|')[1].matchAll(/`([^`]+)`/g)].map((m) => m[1]));
 
 test('every file a skill file tells the run to read is a skill file or a file of the record', () => {

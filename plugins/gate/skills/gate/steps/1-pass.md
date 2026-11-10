@@ -1,61 +1,94 @@
 # Step 1: A pass
 
-Read this file at the start of every pass. It holds the pass entry, the size and split, the reviews, the scripts `split.mjs` and `findings.mjs`, and the triage. SKILL.md stays in force: its Approval scope, Levels and caps and Terminal states apply to every item here. `<record>` is the record directory, `<merge-base>` the full sha from `passes.json`, `<repo root>` the absolute path of the target's root, `<scripts>` the path on the reading block's Scripts line, and every path handed to a command is absolute and in double quotes, since a folder name may hold a space. Every write of `passes.json` and `findings.json` follows `record.md`, Write discipline. For a target that runs from outside the session's folder (SKILL.md, Reading the request), every git command this file names runs as `git -C "<root>" <command>`, and every other command as `cd "<root>" && <command>` in one Bash call.
+Read this file at the start of every pass, for its entry, its reviews, its findings and the triage. `<record>` is the record directory, `<merge-base>` the full sha in `passes.json` and `<n>` the pass number. Nothing is edited while a review runs.
 
-## 1.1 The pass entry
+## The pass entry
 
-1. Take `date -u +%Y-%m-%dT%H:%M:%SZ`. The pass number `n` is one more than the highest `n` in `passes[]`; it counts across runs. The level is the one the run arrived with: `xhigh` for pass 1, else the level Step 3 or Resume gave. Type only `xhigh`, `high` or `medium`, never `low`, `max` or `ultra`.
-2. Before the first review starts, append `{"n": <n>, "run": <run>, "level": "<level>", "status": "running", "started": "<utc>", "ended": null, "reviews": [], "findings": {}, "changes": [], "files": [], "commit": null, "head": null, "checks": [], "next": null}` to `passes[]`. A pass that Resume repeats keeps its `n` and the entry Resume rewrote, and nothing is appended.
-3. Nothing is edited while a review runs.
-
-## 1.2 Size and split
-
-Run `git diff --numstat -z --no-renames <merge-base>...HEAD | node "<scripts>/split.mjs" <split>`, with `<split>` the `split` of the configuration. It prints the changed lines and the reviews of the pass, `{"lines": <n>, "groups": [{"slug", "paths", "files", "lines"}]}`, in byte order of slug. A non-zero exit ends the run `blocked` with the script's stderr line.
-
-In the first pass of a run, print one line before the reviews start: the changed lines, the number of groups, the minutes a pass needs (`steps/3-next.md`, Decide, item 4) and how many such passes the minutes left in the run budget hold. When they hold one or none, say that the fixes of this pass will be pushed with no review after them, and that "budget <n> minutes" in the request raises it. Tell, do not ask: the run goes on.
-
-1. The one group `all`, which has no paths, is an unsplit pass: its target is `<merge-base>...HEAD` and its files carry no suffix, `review-<n>.json`.
-2. Any other group is one review at the pass's level, all of them in parallel. Its target is `<merge-base>...HEAD` followed by its `paths` as printed, in that order, and its files are `review-<n>-<slug>.json` and `diff-<n>-<slug>.patch`. The script names each group, so two reviews of one pass never write the same file.
-
-## 1.3 The child session
-
-When the word after `Engine:` on the reading block's Engine line is `stand-in`, or an earlier review of this run chose it, skip to 1.4. Otherwise run each review as one Bash call with `run_in_background`, the calls of a split pass in one message, up to the cap of item 4:
+The pass number is one more than the highest `n` in `passes[]`, counted across runs. The level is `xhigh` for pass 1, else the one Step 3 or Resume gave. Before the first review starts, append the entry to `passes[]`:
 
 ```
-cd <repo root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json
+{"n": <n>, "run": <run>, "level": "<level>", "status": "running", "started": "<utc>", "ended": null, "reviews": [], "findings": {}, "changes": [], "files": [], "commit": null, "head": null, "checks": [], "next": null}
 ```
 
-1. `<level>` is the pass's level. `[ <path>]` is the group's target from 1.2 and is absent for an unsplit pass. `<reviewer>` is `gate.models.reviewer` of the configuration of the repository the target runs in (default `opus`), never the root `models` key, which is the loop's; always pass it, since a child session without `--model` takes the model its settings files set, not the session's. `MSYS_NO_PATHCONV=1` keeps Git Bash on Windows from rewriting the prompt's leading `/` into a path; elsewhere it changes nothing. `[,Bash(<check>*)...]` adds one entry per command of the run's checks (SKILL.md, Reading the request). Never add `--comment`, `--fix` or `--max-findings`, and never call `code-review` through the Skill tool.
-2. Take `date` before the calls and start a `sleep` of the review budget in seconds in its own Bash call with `run_in_background`, since a background command notifies only when it ends. Wait for each command's completion notice; do not poll. The review budget is the one on the reading block's Budget line, the reviews of a split pass having together the total of item 4, and the `sleep` is of that total. A review still running when the sleep ends is stopped with TaskStop, the pass is recorded `failed` (1.5) and the run ends `unconverged`; when every review has ended first, the sleep is stopped with TaskStop.
-3. The redirect saves the output as `review-<n>[-<slug>].json` before anything parses it. Read the saved file's `result`. A result that says the `code-review` skill is not available (the exact wording is not fixed; the signal is that no review ran for want of the skill) moves the run to the stand-in for the rest of the run, and that group is reviewed again by 1.4. A result that is only a usage limit message, or that carries `api_error_status` 429, is an infrastructure failure, not a failed review; `findings.mjs` names it and 1.5 handles it. Only after these checks is a result with no findings array a failed review.
-4. At most `parallel` child sessions run at once, `gate.parallel` of the configuration, 3 by default. The first of them, in byte order of slug, start in one message; each later review starts in its own call when one ends. The reviews of the pass have together the review budget for each `parallel` reviews or part of them (two waves get twice the review budget).
+A pass that Resume repeats keeps its `n` and the entry Resume rewrote.
 
-## 1.4 The stand-in
+## Size and split
+
+Run `git diff --numstat -z --no-renames <merge-base>...HEAD | node "<scripts>/split.mjs" <split>`, `<split>` being the configuration's `split`. It prints `{"lines": <n>, "groups": [{"slug", "paths", "files", "lines"}]}`, the reviews of the pass in byte order of slug. A non-zero exit ends the run `blocked` with the script's stderr line.
+
+- The one group `all` has no paths: one review of `<merge-base>...HEAD`, saved as `review-<n>.json`.
+- Any other group is one review of `<merge-base>...HEAD` followed by its `paths` as printed, saved as `review-<n>-<slug>.json`.
+
+In the first pass of a run, print one line before the reviews start: the changed lines, the number of groups, the minutes a pass needs (`steps/3-next.md`, Decide) and how many such passes the minutes left in the run budget hold. When they hold one or none, say that the fixes of this pass will be pushed with no review after them, and that "budget <n> minutes" in the request raises it. Tell, do not ask.
+
+## The reviews
+
+With `stand-in` on the block's Engine line, or once a review of this run has chosen it, go to The stand-in. Otherwise each review is one Bash call with `run_in_background`:
+
+```
+cd <root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json
+```
+
+- `[ <path>]` is the group's paths and is absent for the group `all`. `[,Bash(<check>*)...]` adds one entry per command of the run's checks.
+- `<reviewer>` is `gate.models.reviewer` of the target's configuration. Always pass it, since a child session without `--model` takes the model of its settings files, not the session's.
+- `MSYS_NO_PATHCONV=1` keeps Git Bash on Windows from rewriting the prompt's leading `/` into a path.
+- Never add `--comment`, `--fix` or `--max-findings`.
+- At most `parallel` reviews run at once. The first ones, in byte order of slug, start in one message; each later one starts in its own call when one ends.
+- Beside them, start a `sleep` of the pass's review time in seconds, in its own Bash call with `run_in_background`, since a background command notifies only when it ends: the review budget once for each `parallel` reviews or part of them. Wait for the completion notices; do not poll. A review still running when the sleep ends is stopped with TaskStop and is a failed review. When every review ends first, stop the sleep with TaskStop.
+
+The redirect saves each output before anything parses it. Read the saved file's `result`:
+
+- A result that says no review ran because the `code-review` skill is not available, in whatever words, moves the run to the stand-in for the rest of the run, and that group is reviewed again there.
+- A result that is only a usage limit message, or that carries `api_error_status` 429, is an infrastructure failure, which Findings handles.
+- Only then is a result with no findings array a failed review.
+
+## The stand-in
 
 1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- ` and the group's `paths` for a split pass.
-2. Call an Agent at `models.fallback-reviewer` (default `opus`), or for a group that met a usage limit at the model 1.5 item 2 names, passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, with the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, repository-relative paths, and `[]` when there are none. A split pass makes its calls in parallel, in one message; the review budget of 1.3 applies.
-3. Save the reply as `review-<n>[-<slug>].md`. Once chosen, the stand-in stays for the run: set `engine` to `stand-in` in `passes.json`. The one review of a usage-limited group (1.5) is no choice: it leaves `engine` as it was.
+2. Call an Agent at `models.fallback-reviewer`, passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, with repository-relative paths, and `[]` when there are none. The calls of a split pass go in one message, within the review time above.
+3. Save the reply as `review-<n>[-<slug>].md`, and set `engine` to `stand-in` in `passes.json`: once chosen, the stand-in stays for the run. The one review of a group that met a usage limit (Findings) is no such choice and leaves `engine` as it is.
 
-## 1.5 Findings
+## Findings
 
-1. Run `node "<scripts>/findings.mjs" <n> <record>/findings.json <output>...` with every review output of the pass. It reads them all and prints one stderr line per bad output, in argument order.
-2. A non-zero exit is a failed review, except for a `usage limit` line, which is an infrastructure failure: the finished outputs of the pass stay on disk. Review each limited group once more by the stand-in (1.4) at `models.fallback-reviewer` when it differs from `models.reviewer`, else at `sonnet`, or at `opus` when `models.reviewer` is `sonnet`, since a retry on the model that met the limit meets it again, for that group only, without moving the run to the stand-in, then run item 1 once more with the finished outputs and the stand-in replies. The retry calls, one per limited group, run in parallel in one message beside a new `sleep` of the review budget for each `parallel` calls or part of them, started as 1.3 item 2 starts one; a retry still running when it ends is stopped with TaskStop and is a failed review. Never a second retry, and never a child session run again at another `--model`. A stand-in reply that fails, one that is only a limit message included, is a failed review like any other, since only a `.json` result is read for a limit. When any output is a non-limit failure or a stand-in reply fails, write the pass `"status": "failed"` with `ended` and one `reviews[]` entry per output, its numbers `null` and `models` `null`, or for a stand-in's reply the one model it was called at, as item 3 says, so the record names the saved result text, and a limited output's entry with `"failure": "usage limit"`; leave `next` `null`, keep the script's stderr lines for the report, and go to SKILL.md, Terminal states, as `unconverged`. For a limit, the record and the report give `usage limit` as the reason and say that a later run resumes the pass. Never write a finding list of your own.
-3. On exit 0 read the printed summary. For each review in `reviews[]` write `{"slug": "<slug>", "target": "<the exact range typed>", "output": "<output>", "duration_ms": <n>, "total_cost_usd": <n>, "denials": <n>, "denied": [<call>...], "models": [<model>...], "notes": "<notes.text>"}`: the slug is `all` or the group's, and the other fields come from the summary entry of that output, the three numbers and `denied` `null` and `models` the one model the stand-in was called at, as `["<model>"]`, for a stand-in's text. `denied` is the summary's list of the calls the review was refused, each once. `notes` is the `notes.text` of that output in the summary, the text the reviewer wrote before and after its fence, where it says what it could not run; an empty string when there is none. A limited output that a stand-in reply replaced gets its own entry too, with the same slug and target, its numbers, `denied` and `models` `null`, `"notes": ""` and `"failure": "usage limit"`.
-4. A `findings: warning:` line on stderr names an entry an earlier triage matched without writing its `match`. Before this triage, add that `match` to the entry in `findings.json`, the earlier id being the one that pass's `findings` in `passes.json` already keys the finding under, else the one its reason names; with neither, leave the entry as it is and name it in the Log. With an earlier id, also key that finding under it in the `findings` of that earlier pass in `passes.json`, and note the repair in the report's Log.
+Run `node "<scripts>/findings.mjs" <n> <record>/findings.json <output>...` with every review output of the pass. It reads them all. On exit 0 it has written the ledger and prints a summary on stdout; otherwise it writes nothing and prints one stderr line per bad output.
 
-## 1.6 Triage
+On exit 0, write one `reviews[]` entry per output from the summary:
 
-Before any fix, sort every finding of the pass into one bucket with a one-line reason. Read each finding against the code it cites first. Finding issues is a judgment, not a count.
+```
+{"slug": "<slug>", "target": "<the exact range typed>", "output": "<output>", "duration_ms": <n>, "total_cost_usd": <n>, "denials": <n>, "denied": [<call>...], "models": [<model>...], "notes": "<notes.text>"}
+```
+
+`denied` lists each call the review was refused, and `notes` is what the reviewer wrote around its fence, where it says what it could not run. For a stand-in's reply the three numbers and `denied` are `null` and `models` is the one model it was called at.
+
+A `usage limit` line on a non-zero exit is not a failed review. The finished outputs stay. Review each limited group once by the stand-in, for that group only and with `engine` left as it is, at `models.fallback-reviewer` when it differs from `models.reviewer`, else at `sonnet`, or at `opus` when the reviewer is `sonnet`, since the model that met the limit meets it again. The retries run in one message beside a new `sleep`, as the reviews do. Then run the script again over the finished outputs and the replies. The limited output keeps an entry of its own in `reviews[]`, with its slug and target, `"failure": "usage limit"`, `"notes": ""` and the other fields `null`. There is never a second retry, and never a child session run again at another `--model`.
+
+Any other non-zero exit, a retry that fails or runs past its time, or a review stopped at its budget is a failed review. Write the pass `"status": "failed"` with its `ended`, one `reviews[]` entry per output with `null` numbers, and `next` left `null`; keep the stderr lines for the report; end the run `unconverged`. After a limit, the record and the report give `usage limit` as the reason and say that a later run resumes the pass. Never write a finding list of your own.
+
+A `findings: warning:` line on stderr names an entry that an earlier triage matched without writing its `match`. Before this triage, add the `match` to that entry in `findings.json`, the earlier id being the one that pass's `findings` in `passes.json` keys the finding under, else the one its reason names, and key the finding under that id in the earlier pass. With neither, leave the entry. Either way the report's Log names it.
+
+## Triage
+
+Before any fix, sort every finding of the pass into one bucket with a one-line reason, reading each against the code it cites. Finding issues is a judgment, not a count.
 
 - `fix`: a correctness finding inside the change, or a regression.
-- `defer`: reuse, simplification, efficiency, or a pre-existing issue the change did not introduce.
+- `defer`: reuse, simplification, efficiency, or an issue the change did not introduce.
 - `reject`: a false positive.
 
-When the pass has more than 30 findings whose bucket is `null`, readers do the reading: read-only Agents at `models.reader` (default `sonnet`), the findings split into batches of at most 40, one reader per batch, all calls in one message. Each reader gets its findings with file, line, summary and failure scenario, each `new` finding with its `candidates` as the summary prints them, the merge-base, the checkout path and the instruction files to read, and is told to edit nothing, run no git command that writes and start no background command. It returns, per finding, the id; `same as`, the id of the one candidate that is the same defect in other words, or `none`; `holds` (`yes`, `no` or `unsure`); the kind (correctness, reuse, simplification, efficiency, style or other); `pre-existing` (`yes`, `no` or `unsure`, read from the file at the merge-base); a recorded decision or rule the finding conflicts with, or `none`; and one line of evidence with its file and line. A reader never returns a bucket. The orchestrator sorts from the replies. A `same as` is the match of item 2: it is taken as the reader gives it when the candidate is rejected, carried or deferred, and checked against the code when the candidate is fixed or regressed, since that match puts the finding in `fix`. The orchestrator reads the cited code itself for every finding it puts in `fix` and every `unsure`. A failed reader call is retried once; then the orchestrator reads that batch itself. The Log names each reader call.
+1. A finding the script printed with a bucket keeps it and its reason: a regression arrives as `fix`, a carried rejection as `reject`, a returning deferral as `defer`. Sort the rest.
+2. A finding the script marked `new` may be a defect an earlier review worded differently. The summary prints its `candidates`: earlier entries of the same file that no review of this pass reported, nearest line first, then entries of other files that share an identifier with it. When the finding is the same defect as a candidate, it takes what the script gives a returning entry of the candidate's state: `fix` and `regressed` for a fixed one, `reject` and `carried` for a rejected or carried one, `defer` and `deferred` for a deferred one. A match to a regressed entry gives no bucket: sort it with the rest, its state staying `regressed`.
+3. Write each ledger entry's bucket and reason in its `passes.<n>` and set its state: `open` for `fix`, with a regression staying `regressed`, `deferred` for `defer`, `rejected` for `reject`. A matched finding's `match`, `{"of": "<earlier id>", "reason": "<why>"}`, goes in this same write, never a later one.
+4. Write `findings` in the pass entry, `{"<id>": {"bucket": "<bucket>", "reason": "<reason>"}}` for every finding of the pass, a matched one under the earlier id, and write `findings.json`, both before the fix round. Then run `node "<scripts>/findings.mjs" --check <n> <record>/findings.json`, and repair each entry a `findings: warning:` line names, as above.
 
-1. A finding the script printed with a bucket keeps it and its reason: a regression arrives as `fix`, a carried rejection as `reject` and a returning deferral as `defer`, its state still `deferred`. Sort the rest, whose bucket is `null`.
-2. A finding the script marked `new` may be one defect that an earlier review worded differently. The summary prints its `candidates`: the same file's `fixed`, `rejected`, `carried`, `deferred` and `regressed` entries that no review of this pass reported, each with the line of its latest pass and the line distance, nearest first, then the entries on other files that share an identifier with the finding, a camelCase or snake_case word or a backticked name that holds a character other than a letter, a digit or a space, each naming its `file` and the identifiers it `shared`. Read the finding against each candidate; when it is the same defect, the match decides its bucket and state, which are those the script gives a returning entry of that state, `fix` and `regressed` for a fixed one, `reject` and `carried` for a rejected or carried one, `defer` and `deferred` for a deferred one, and for a regressed one no bucket, its state staying `regressed`, so it is sorted with the rest. Item 3 writes the match; a match to an entry on another file is written the same way. With `"candidates": []` there is nothing to match.
-3. Write the ledger entry's bucket and reason in its `passes.<n>` and set its state: `open` for `fix` (a regression stays `regressed`), `deferred` for `defer`, `rejected` for `reject`. For a matched finding, its `match`, `{"of": "<earlier id>", "reason": "<why>"}`, and the bucket and state of item 2 go in this same write, never in a later one.
-4. Write `findings` in the pass entry, `{"<id>": {"bucket": "<bucket>", "reason": "<reason>"}}` for every finding of the pass, each under its id and a matched finding under the earlier id, and write `findings.json`, both before the fix round starts. Then run `node "<scripts>/findings.mjs" --check <n> <record>/findings.json`. Each `findings: warning:` line on stderr names an entry this triage matched without writing its `match`: add the `match` to the entry in `findings.json` and key the finding under the earlier id in the pass's `findings` of `passes.json`, before the fix round starts.
+With more than 30 findings to sort, readers do the reading: read-only Agents at `models.reader`, one per batch of at most 40 findings, all calls in one message, each named in the Log. A reader gets its findings with file, line, summary and failure scenario, each `new` finding's `candidates`, the merge-base, the checkout path and the instruction files, and is told to edit nothing, run no git command that writes and start no background command. Per finding it returns:
 
-In "no fixes" mode, or with an empty `fix` bucket, read `steps/3-next.md`. Otherwise read `steps/2-fix.md`. A failed review goes to SKILL.md, Terminal states, as `unconverged`.
+- the id;
+- `same as`: the id of the one candidate that is the same defect, or `none`;
+- `holds`: `yes`, `no` or `unsure`;
+- the kind: correctness, reuse, simplification, efficiency, style or other;
+- `pre-existing`: `yes`, `no` or `unsure`, read from the file at the merge-base;
+- a recorded decision or rule the finding conflicts with, or `none`;
+- one line of evidence with its file and line.
+
+A reader never returns a bucket; you sort from the replies. Take a `same as` as given when its candidate is rejected, carried or deferred, and check it against the code when the candidate is fixed or regressed, since that match puts the finding in `fix`. Read the cited code yourself for every finding you put in `fix` and for every `unsure`. A failed reader call is retried once; then you read that batch.
+
+In "no fixes" mode, or with an empty `fix` bucket, the run goes to `steps/3-next.md`. Otherwise it goes to `steps/2-fix.md`.

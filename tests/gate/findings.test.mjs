@@ -814,7 +814,7 @@ describe('a match written without its link', { concurrency }, () => {
     ...extra,
   });
   const EMPTY = 'Nothing found.\n\n```json\n[]\n```\n';
-  const WARNING = `findings: warning: ${ID} is carried with no match; write the match of Step 1.6\n`;
+  const WARNING = `findings: warning: ${ID} is carried with no match; write the match of Step 1, Triage\n`;
   const ingestOnce = async (findings, pass = '2') => {
     const dir = kase([], { 'findings.json': text({ findings }), 'reply.md': EMPTY });
     const r = await run(dir, pass, 'findings.json', 'reply.md');
@@ -835,7 +835,7 @@ describe('a match written without its link', { concurrency }, () => {
 
   test('a regressed entry new in the latest pass with no match is warned about as regressed', async () => {
     const r = await ingestOnce({ [ID]: entry('regressed') });
-    assert.equal(r.stderr, `findings: warning: ${ID} is regressed with no match; write the match of Step 1.6\n`);
+    assert.equal(r.stderr, `findings: warning: ${ID} is regressed with no match; write the match of Step 1, Triage\n`);
   });
 
   test('a deferred entry with no match is not warned about', async () => {
@@ -854,8 +854,8 @@ describe('a match written without its link', { concurrency }, () => {
     const r = await ingestOnce({ [b]: entry('carried'), [a]: entry('regressed'), 'src/share.mjs|c': entry('carried', {}, 2) });
     assert.equal(
       r.stderr,
-      'findings: warning: src/share.mjs|a is regressed with no match; write the match of Step 1.6\n' +
-        'findings: warning: src/share.mjs|b is carried with no match; write the match of Step 1.6\n',
+      'findings: warning: src/share.mjs|a is regressed with no match; write the match of Step 1, Triage\n' +
+        'findings: warning: src/share.mjs|b is carried with no match; write the match of Step 1, Triage\n',
     );
   });
 

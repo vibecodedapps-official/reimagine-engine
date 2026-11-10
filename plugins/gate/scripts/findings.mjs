@@ -158,7 +158,7 @@ function unmatched(ledger, n) {
   return Object.entries(ledger.findings)
     .filter(([, e]) => e.first_pass === n && (e.state === 'carried' || e.state === 'regressed') && !isObject(e.match))
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([id, e]) => `findings: warning: ${id} is ${e.state} with no match; write the match of Step 1.6`);
+    .map(([id, e]) => `findings: warning: ${id} is ${e.state} with no match; write the match of Step 1, Triage`);
 }
 
 const read = (path, optional) => {

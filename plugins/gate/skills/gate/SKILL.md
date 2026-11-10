@@ -34,38 +34,36 @@ allowed-tools:
 
 # gate
 
-The gate runs after the loop and before the audit: the loop ships a reviewed pull request, the gate converges the reviewer on it, the audit challenges the result.
+The gate runs after the loop and before the audit: the loop ships a reviewed pull request, the gate reviews the whole change in depth, fixes what holds and verifies the fixes, and the audit challenges the result.
 
-You orchestrate one run over one pull request, several, or a loop manifest. You run `code-review` passes over the whole change from the merge-base, sort what each pass finds, have implementers fix what is worth fixing, decide from the record of the pass whether to run another and at what level, and stop at a verdict. The allowed-tools list pre-approves only date, sleep for a budget timer, and read-only git and gh; every write and push stays under the session's permission mode. In every command the skill and its step files show, a placeholder for a path, such as `<path>`, `<repo>`, `<repo root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.
+You orchestrate one run over one pull request, several, or a loop manifest. A pass is one `code-review` of the whole change from the merge-base, a triage of what it found, a fix round by implementers and a decision on what comes next. Three scripts decide what must be exact: `split.mjs` the reviews of a pass, `findings.mjs` the identity of a finding across passes, `next.mjs` the next level or the stop. The allowed-tools list pre-approves only date, sleep and read-only git and gh in their plain forms; every write, push, script and child session stays under the session's permission mode. In a command the skill shows, a placeholder for a path, such as `<root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.
 
-## Reading the request
+## The request
 
-The request is the words that came with the invocation: "reimagine gate PR 73", "gate this branch, no fixes", "gate the manifest <path>", or the same words after `/gate`. There are no flags: a token starting with `--` is prose, and the reading block shows how you read it.
-
-Recognized phrases, and nothing else is read from the request:
+The request is the words that came with the invocation: "reimagine gate PR 73", "gate this branch, no fixes", or the same after `/gate`. There are no flags, so a token that starts with `--` is prose. Only these phrases are read:
 
 - "PR <n>", "<n> and <m>" and a pull request URL: the targets.
-- "the manifest <path>": run one record per bundle of that manifest.
-- "this branch": gate the current branch against its base. With no target at all, this is what runs.
-- "repo <path>": gate the branch checked out at that path in place of the session's, since a `cd` in one call does not carry to the next.
-- "no fixes": make pass 1 only and edit nothing.
-- "budget <n> minutes": set the run budget.
-- "base <branch>": name the base branch of a branch target.
-- "checks <command>[; <command>]": the checks the fix round runs. It runs to the next comma that another recognized phrase follows, such as ", no fixes", else to the end of the request, since a command may hold a comma; split it at `;` and trim each command.
+- "the manifest <path>": one record per bundle of that manifest.
+- "this branch": the current branch against its base. With no target at all, this is what runs.
+- "repo <path>": the branch checked out at that path, in place of the session's.
+- "no fixes": pass 1 only, and nothing is edited.
+- "budget <n> minutes": the run budget.
+- "base <branch>": the base of a branch target.
+- "checks <command>[; <command>]": the checks of the fix round. The phrase runs to the next comma that another phrase of this list follows, else to the end of the request, since a command may hold a comma; split it at `;`.
 
-A pull request target must be open, in the session's repository and not cross-repository. Its head branch is fetched with the explicit refspec and checked out, which needs a clean tree. Several pull requests run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or one of the same shape; it runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order, with every git and gh command running against that bundle's `repo`. A pull request number on a host other than GitHub cannot resolve, so it is an unresolved target.
+Targets. A pull request must be open, in the session's repository and not from a fork; several run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or a file of its shape, and runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order. The path of "repo <path>" must be a git toplevel or a linked worktree: `git -C <path> rev-parse --is-inside-work-tree --show-prefix` prints `true` and then an empty line. Compare no path strings, and write a leading `~` as `$HOME`, since git does not expand a quoted `~`. A target that cannot be resolved, such as a pull request from a fork, a pull request number on a host other than GitHub, or "repo <path>" beside a pull request or a manifest, gets one line in the reading block and the run goes on with the others; with none left it ends `stopped`.
 
-The path of "repo <path>" must be a git toplevel or a linked worktree: `git -C <path> rev-parse --is-inside-work-tree --show-prefix` exits 0 and prints `true` and then an empty line, else the target is unresolved, since a `.git` folder prints `false` with an empty prefix. The check compares no strings, so a path typed in another case or as `/c/...` resolves, and a leading `~` is written as `$HOME`, since git does not expand a quoted `~`; and `git -C <path> rev-parse --show-toplevel` gives the toplevel the Targets line names. The head branch is the one checked out there, and the preflight runs the target's commands in the forms of a manifest bundle's. Beside a pull request or manifest target, "repo <path>" is one unresolved line and the run continues with those targets, since they name their own repository.
+Roots. Every target has a root, the toplevel of its repository: a bundle's `repo`, the toplevel of "repo <path>", and otherwise the output of `git rev-parse --show-toplevel` in the session's folder. A target runs in place when the session's folder is its root, and from outside otherwise: a bundle, "repo <path>", and any target of a session started in a subfolder, where `git rev-parse --show-prefix` prints a path. From outside, every git command runs as `git -C "<root>" <command>` and every other command as `cd "<root>" && <command>` in one Bash call, since git prints the paths of a status from the root and reads the paths of `git add` and `git checkout` from the current folder. Those forms are not pre-approved. The record, `.reimagine.json`, the instruction files and the exclude file are always those of the root.
 
-Every target has a root, the toplevel of its repository: a bundle's `repo`, the toplevel of "repo <path>", and for a pull request or "this branch" target the output of `git rev-parse --show-toplevel` in the session's folder. A target runs in place when the session's folder is its root, and from outside otherwise: a manifest bundle, "repo <path>", and a pull request or branch target of a session started in a subfolder, where `git rev-parse --show-prefix` prints a path. From outside, every git command runs as `git -C "<root>" <command>` and every other command as `cd "<root>" && <command>` in one Bash call, since git prints the paths of a status from the root and reads the paths of `git add` and `git checkout` from the current folder. The record, `.reimagine.json`, the instruction files and the exclude file are always those of the root.
+Base. A pull request's base is its `baseRefName`, and "base <branch>" naming another ends `blocked`, since the gate never retargets a pull request. A branch target's base is "base <branch>" in the request, else the bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch. A bundle `base` whose first segment names a remote of that repository is read without it, since the loop writes `<remote>/<branch>`.
 
-For a pull request target the base is its `baseRefName`. For a branch target the base is "base <branch>" in the request, else the manifest bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch, so a release or hotfix branch gated through a manifest is diffed against the base its bundle names. A bundle `base` whose first segment names a remote that `git remote` lists in the bundle's repository is read without that segment and its `/`, since the loop's manifest writes `<remote>/<base branch>`. Fetch the base with the explicit refspec `+refs/heads/<b>:refs/remotes/<r>/<b>`; a fetch that fails ends `blocked` naming the branch. Record the merge-base with the base. Every review target and every line count uses the three-dot range from it. "base <branch>" on a pull request target whose base differs ends `blocked`, because the gate never retargets a pull request.
+Checks. The run's checks come from the first source that gives any: the request, else the bundle's `checks` array, else `.reimagine.json` `checks`. The one list feeds the fix round, the child session's allowed tools, the permission statement and the report, which names the source. With no source no check runs, and the report says so.
 
-The run's checks come from the first source that gives any: the request's "checks" phrase, else the manifest bundle's `checks`, else `.reimagine.json` `checks`. A bundle's `checks` is an array of command strings. The one list feeds the fix round's checks, the child session's allowed tools, the permission statement and the report, which names the source. With no source, no check runs and the report says so.
+Scripts. `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs a script writes that absolute path, shown here as `<scripts>`, never the variable.
 
-`${CLAUDE_PLUGIN_ROOT}` is not a shell variable. It is empty in the session's shell, so a command that types it runs `/scripts/...`. Resolve the scripts directory once, with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Print it on the reading block's Scripts line. Every Bash command that runs a script writes that absolute path, never the variable.
+## The reading block
 
-Make only the read-only calls that resolve the targets and the engine: `git remote`, `git rev-parse --show-prefix` and `--show-toplevel`, `gh pr view`, a manifest read, `command -v claude`, and for "repo <path>" the `git -C <path> rev-parse` calls, which may prompt, since the skill pre-approves only the plain forms. Then print the reading block as your next text, before any other tool call:
+Make only the read-only calls that resolve the targets and the engine: `git remote`, `git rev-parse`, `gh pr view`, a manifest read and `command -v claude`. Then print the block as your next text, before any other tool call:
 
 ```
 Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-retry, base main
@@ -75,64 +73,52 @@ Engine: subprocess; reviewer opus, stand-in opus (default)
 Scripts: <the plugin's directory>/scripts
 ```
 
-Targets lists each pull request or branch, how it resolved and its base; a target that runs from outside the session's folder shows its root. Mode is `fix` or `no fixes`. Budget gives the minutes and their source, then `max-passes`, `split` and `parallel`, then the subagent, review and check budgets in force, each with its source (`gate.timeouts`, root `timeouts`) when it is not the default. Engine is `subprocess`, or the stand-in with the reason for it, then the reviewer's model (`models.reviewer`) and the stand-in's (`models.fallback-reviewer`), each with its source when it is not the default, and for a manifest whose bundles' repositories set different models, the models of each such repository after its path, so the run names the model each child review starts on before the first review starts. Scripts is the absolute path of the plugin's scripts directory. A child session that later reports the `code-review` skill missing moves the run to the stand-in, and the report names that. A configuration key that is unknown or has a bad value is reported in the block and ignored; the block reads the configuration of the repository the target runs in, which for "repo <path>" is `<path>`'s `.reimagine.json`.
+Targets gives each target, how it resolved and its base, with its root when it runs from outside the session's folder. Mode is `fix` or `no fixes`. Budget gives the run budget and its source, then `max-passes`, `split` and `parallel`, then the subagent, review and check budgets, each with its source when it is not the default. Engine is `subprocess`, or `stand-in` with the reason, then the model of the reviewer and of the stand-in, each with its source when it is not the default; when the repositories of a manifest set different models, each repository's models follow its path. A configuration key that is unknown or has a bad value is reported in the block and ignored. The configuration read is the one at the target's root.
 
-A target that cannot be resolved gets one line in the block and the run continues with the others. When none is left, the run ends `stopped`.
-
-After the block, read `steps/0-preflight.md` and start Step 0.
+After the block, read `steps/0-preflight.md`.
 
 ## Approval scope
 
-Invoking this skill by name approves, for this run only: fix commits on each target's branch, whether or not the loop opened its pull request; and pushing that branch. Nothing else is approved: no branch, no pull request, no comment, no body edit, no ticket comment and no issue.
+Invoking this skill by name approves, for this run only, fix commits on each target's branch and pushing that branch. Nothing else is approved: no branch, no pull request, no comment, no body edit, no ticket comment and no issue.
 
-1. Instruction files win. Before changing anything, read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, the repository's instruction files, the instruction files of each folder above it and `.reimagine.json`. Record every ask-first rule and prompt for any approved action those rules cover.
-2. Always ask. Force push, `--no-verify`, merge, rebase, amend, reset, anything that deploys (including a push that triggers a deploy, judged before each push from the workflow files of the target's base branch and of the commit being pushed, in the target's repository), editing repository settings and opening an issue always prompt.
-3. A denial is final. A permission denied by the user or by the permission mode is never retried and never routed around. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A commit kept by a refused push is pushed first by the next run on the branch only when its parent is still the remote head, under the conditions of `steps/3-next.md`, Resume, judged and asked as any push, and a "no fixes" run blocks on it. A denied check is recorded as denied and never run another way.
-4. Blocked at preflight and before a push. A dirty tree, meaning `git status --porcelain` prints anything or `git diff --cached --quiet` fails, ends `blocked`; the gate never stashes, resets or cleans. A merged or closed pull request ends `blocked`. On GitHub, a `gh` that is not authenticated ends `blocked`. Before every push, read the remote head with `git ls-remote` and compare it with what preflight fetched, or with the last sha this run pushed; a head that is neither ends `blocked` with the local commit kept and named. A record whose branch differs from the run's branch is a slug collision and ends `blocked`.
+1. Instruction files win. Before changing anything, read the user's instruction files, the repository's, those of each folder above its root, and `.reimagine.json`. Record every ask-first rule, and prompt for any approved action a rule covers.
+2. Always ask before a force push, `--no-verify`, a merge, rebase, amend or reset, anything that deploys, a push that triggers a deploy, a change to repository settings and a new issue.
+3. A denial is final. What the user or the permission mode denies is never retried and never done another way. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A denied check is recorded as denied, and the next one runs.
+4. The gate never stashes, resets, cleans or forces, and never stages anything under `.reimagine/`.
 
 ## What leaves the run
 
-The gate posts nothing to a forge. Its findings, deferred list, checks, commits and verdict live in `passes.json`, `findings.json` and `report.md` in the run directory, and the report is printed as the run's last message. A fix push leaves a pull request's description on the head before it; the gate does not edit it, and the report says so.
+The gate posts nothing to a forge. Its findings, deferred list, checks, commits and verdict live in `passes.json`, `findings.json` and `report.md` in the record, and the report is printed as the run's last message. A fix push leaves a pull request's description on the head before it; the gate does not edit it, and the report says so.
 
 - What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team's words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.
 - Output stays local unless publishing is the task's stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.
 
 ## Roles
 
-| Role | Who | Fallback |
+| Role | Who | When it fails |
 |---|---|---|
-| orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json`, at `models.reviewer` (default `opus`), one per pass, or over `split` one per group of paths that `split.mjs` prints, at most `parallel` at once | an Agent at `opus` (`models.fallback-reviewer`) over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing, and stays for the run; also, once, for each group whose child stopped on a usage limit, for that group alone, on another model than the reviewer's |
-| reader | read-only Agents at `sonnet` (`models.reader`), when a pass has more than 30 findings whose bucket is `null`: one per batch of at most 40, in parallel, returning evidence per finding and never a bucket | a failed call is retried once; then the orchestrator reads that batch itself |
-| implementer | an Agent at `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
+| orchestrator, triage | the session model | the run stops |
+| reviewer | a child session per review, `claude -p "/code-review <level> <range>"`, at `models.reviewer` | the stand-in: an Agent at `models.fallback-reviewer` over a saved patch, for the rest of the run when `claude` is not on the PATH or the child reports the `code-review` skill missing, and once, on another model than the reviewer's, for a group whose child met a usage limit |
+| reader | read-only Agents at `models.reader`, when a pass has more than 30 findings to sort | retried once, then the orchestrator reads that batch |
+| implementer | an Agent at `models.implementer` per group of files | the tree is restored from its snapshot and the run ends `blocked` |
 
-The `models` key of the configuration changes the reviewer, the implementer, the reader and the stand-in reviewer. The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was; the report says so in one line.
+The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was.
 
-## Levels and caps
+## Levels, stops and caps
 
-A pass is one review of the whole change from the merge-base at one typed level, then the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Every level a run types lies between a floor of `medium` and a ceiling of `xhigh`: only `xhigh`, `high` and `medium` are ever typed, and never `low`, `max` or `ultra`.
+The first pass of a sequence runs at `xhigh`. After each pass you do not choose what follows: `next.mjs` reads the record and returns the next level or the stop, with the rule that produced it (`steps/3-next.md`). A run stops when a pass finds nothing to fix, or finds only a few corrections to the fix round before it, which are made and pass the checks. Only `xhigh`, `high` and `medium` are ever typed.
 
-You do not choose the next level. After the fix round, `next.mjs` reads the record and returns the next level or a stop with the rule that produced it. The rules apply in this order:
+- `max-passes` bounds the passes of one run. A later run on the same branch continues from the level the capped run was given.
+- The run budget is "budget <n> minutes" in the request, else `gate.budget`, else a session instruction, else the default. Waits for an answer are outside it.
+- Each review has the review budget, and the reviews of a split pass together have it once for each `parallel` reviews or part of them. Each implementer call has the subagent budget and each check the check budget.
+- A cap on passes, the run budget or a review past its budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends it `blocked`. What the pass saved is kept, and a pushed commit stays.
+- A cap that ends a run is named in the report. A run never passes silently.
 
-1. The latest pass has nothing in its fix bucket: stop with `pass`, or `pass-with-deferred` when a pass of the run deferred something. A rejection, new or carried, does not keep the run going.
-2. The latest pass follows another pass of the run, has at most 3 findings in its fix bucket, each in a file the fix round before it changed, and its own fix round was not wide (rule 4), made a commit and passed every check of the run, of which there is at least one: stop the same way. A review that finds only a few corrections to the last fixes has verified them, and the checks cover the corrections.
-3. The fix round changed only documentation (`docs-only`): `medium`.
-4. The fix round changed an exported signature, a schema or migration, or a file outside the original diff: `xhigh`, at most once per run after pass 1.
-5. Otherwise `high`.
-
-Caps:
-
-- `max-passes` (default 4) bounds the passes of one run. When the passes have reached it, the script still returns the rule's level and marks it `capped`, and you end the run `unconverged`. A later run resumes from that level.
-- The run budget is 120 minutes. "budget <n> minutes" in the request wins, then `.reimagine.json` `gate.budget`, then a session instruction. Question waits are outside it. A level is capped as `budget` when the minutes left in it are fewer than the review budget for each `parallel` groups or part of them of the pass just made, plus the subagent budget, the time one more pass needs.
-- Each review has the review budget, the reviews of a split pass, at most `parallel` at once, having together that budget for each `parallel` reviews or part of them. Each implementer call has the subagent budget and each check the check budget. The defaults are 30, 20 and 15 minutes; `gate.timeouts` and the root `timeouts` set them as Configuration says.
-- Reaching `max-passes` with a level still to run, the run budget or the review budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends `blocked`. The output of the pass is kept and a pushed commit stays.
-- Never pass silently: a cap that ends the run is named in the report.
-
-With "no fixes" the run makes pass 1 only. The review and the triage run, nothing is edited, committed or pushed, and the report names what a fix run would do. The verdict is `pass` or `pass-with-deferred` when the fix bucket is empty, else `unconverged`.
+With "no fixes" the run makes pass 1 only: the review and the triage run, nothing is edited, committed or pushed, and the report names what a fix run would do.
 
 ## Configuration
 
-`.reimagine.json` at the repository root may hold a `gate` key beside the loop's; it is the one at the target's root, not in the session's folder. Every value is optional; the values shown are the defaults.
+`.reimagine.json` at the target's root may hold a `gate` key. Every value is optional; the values shown are the defaults.
 
 ```json
 {
@@ -147,56 +133,38 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 }
 ```
 
-- `split`: the changed lines above which a pass has one review per group of paths, in parallel; `split.mjs` makes the groups (`steps/1-pass.md`, 1.2).
+- `split`: the changed lines above which a pass has one review per group of paths.
 - `parallel`: the reviews of one pass that run at once. Each is a model session of its own, so a machine short of memory lowers it.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
-- `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them. A key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default.
-- `models`: the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer.
+- `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`). A key absent here takes the root `timeouts` value of the same name, then the default.
+- `models`: the model of each role, one of `sonnet`, `opus`, `haiku` and `fable`. The reviewer's is never the root `models` key, which is the loop's.
 
-`split`, `parallel`, `max-passes` and `budget` are whole numbers of 1 or more. `timeouts` holds positive numbers. `models` accepts only `sonnet`, `opus`, `haiku` and `fable`. An unknown key or a bad value is reported in the reading block and ignored. A file that does not parse ends `blocked`. The root `base` key applies as Reading the request says.
+`split`, `parallel`, `max-passes` and `budget` are whole numbers of 1 or more, and `timeouts` holds positive numbers. A file that does not parse ends the run `blocked`.
 
 ## Terminal states
 
-Every run ends in exactly one state.
+Every run ends in exactly one state, and then reads `steps/4-publish.md`.
 
-- `pass`: a stop under rule 1 or 2 of Levels and caps, or a "no fixes" run with an empty fix bucket, with nothing deferred in any pass of the run. Under rule 2 the report names the fixes that no review followed.
+- `pass`: a stop of `next.mjs`, or a "no fixes" run with an empty fix bucket, with nothing deferred in any pass of the run.
 - `pass-with-deferred`: the same stop, with deferred findings in the report.
-- `unconverged`: a cap was reached, a review failed, or a "no fixes" run has a non-empty fix bucket. Every open finding is listed.
-- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.
+- `unconverged`: a cap was reached, a review failed, or a "no fixes" run has something to fix. Every open finding is listed.
+- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a failed push, a "no fixes" run that meets an unpushed commit of an earlier run, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay and are named.
 - `stopped`: no target resolved, or a question the run cannot decide, before any commit.
-
-After `blocked` nothing more is pushed; pushed commits stay and are named.
-
-Every terminal state reads `steps/4-publish.md` for the target that just ended, to write the run's end, the manifest and the report.
 
 ## Record
 
-The record lives at `.reimagine/gate/<branch-slug>/` under the target's root. The slug is the branch name lowercased, with each run of characters outside `[a-z0-9]` replaced by `-`, cut to at most 60 characters, then trailing `-` removed. Add `.reimagine/` to the exclude file that `git rev-parse --git-path info/exclude` names, run in the target's repository and read relative to the repository's folder when it is not absolute, never to `.gitignore`, and never stage anything under it. `passes.json` keeps the exact branch name, and a differing branch is the slug collision of Approval scope.
-
-The files:
-
-- `passes.json`: the completion record.
-- `findings.json`: the identity ledger across passes.
-- `report.md`: rewritten at every terminal state.
-- `review-<n>[-<slug>].json` or `.md`: each review's saved output.
-- `pre-<n>.status`, `pre-<n>.patch` and `pre-<n>.hashes`: snapshots before implementer calls.
-- `diff-<n>[-<slug>].patch`: a stand-in's input.
-- `audit-manifest.json`: written when the run did not come from a manifest.
-
-From run 2 on, a per-run name without a counter takes `-run<n>`.
-
-`passes.json` is the only record of completion. An entry is written `running` when a pass starts and `complete` after the fix round and its commit, through a temporary file and a rename. A second invocation on the same branch appends a run to the record. When the head and the merge-base are those the last complete pass left, it resumes at the first pass not `complete`, else at the level in that pass's `next` with `max-passes` counted afresh, and a `next` that is a stop ends the run with that verdict, unless it is the `no-fixes` stop and this run fixes; a new head, or a changed merge-base, starts a new pass sequence at `xhigh` with the ledger kept, so earlier rejections carry. A `failed` pass that names a `commit` made it before its run ended `blocked`. The next run, outside "no fixes", pushes that commit first only when its parent is still the remote head, under the conditions of `steps/3-next.md`, Resume, then starts a new pass sequence at `xhigh`, leaving that pass as it is; a "no fixes" run blocks on it.
+The record is `.reimagine/gate/<branch-slug>/` under the target's root: the branch name in lowercase, each run of characters outside `[a-z0-9]` written as `-`, cut to 60 characters, trailing `-` removed. `passes.json` in it is the only record of completion, and `record.md` describes every file. A second invocation on the same branch adds a run to the record and resumes from it (`steps/3-next.md`, Resume). With the head and the merge-base unchanged it goes on at the first pass not complete, else at the level the last pass was given, and a record that ended in a stop ends again with that verdict. Otherwise it starts a new sequence at `xhigh`, the ledger kept so that earlier rejections carry.
 
 ## Supporting files
 
 - `steps/0-preflight.md`: after the reading block, for each target in turn.
-- `steps/1-pass.md`: at the start of each pass, for the review and the triage.
-- `steps/2-fix.md`: after a triage that leaves a fix bucket, outside "no fixes".
-- `steps/3-next.md`: after the fix round, or after a triage with nothing to fix or in "no fixes"; its Resume section when Step 0 finds a record that holds passes.
+- `steps/1-pass.md`: at the start of each pass, for the reviews and the triage.
+- `steps/2-fix.md`: after a triage that leaves something to fix, outside "no fixes".
+- `steps/3-next.md`: after the fix round or a triage with nothing to fix, for the decision; its Resume section when preflight finds a record that holds passes.
 - `steps/4-publish.md`: at every terminal state, for the run's end, the manifest, the report and the next target.
-- `record.md`: when a step writes a record file, for the files, the `passes.json` and `findings.json` shapes and the write discipline.
-- `report.md`: from Step 4, for the report's header and sections.
+- `record.md`: when a step writes a record file.
+- `report.md`: when the run ends, for the report.
 - `scripts/split.mjs`: at the start of each pass, to size the change and group its paths into reviews.
-- `scripts/findings.mjs`: after each review, to turn its saved output into the pass's findings and the ledger.
-- `scripts/next.mjs`: after each fix round, to decide the next level or the stop from `passes.json`.
+- `scripts/findings.mjs`: after the reviews of a pass, to turn their saved output into the pass's findings and the ledger.
+- `scripts/next.mjs`: after each fix round, to decide the next level or the stop.

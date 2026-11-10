@@ -169,6 +169,30 @@ test('R301: the rules the skill lists are the rules next.mjs returns', () => {
   assert.deepEqual(itemWords(read(RULES_FILE)).sort(), returned.sort());
 });
 
+test('R310: the passes.json that record.md shows is a record next.mjs reads, with the next the script gives it', () => {
+  const sample = jsonBlock(read('record.md'));
+  assert.notEqual(sample, undefined, 'record.md has no json block');
+  const text = sample.lines.join('\n');
+  const dir = mkdtempSync(join(tmpdir(), 'gate-record-'));
+  try {
+    writeFileSync(join(dir, 'passes.json'), text);
+    const r = spawnSync(process.execPath, [join(SCRIPTS, 'next.mjs'), join(dir, 'passes.json'), '4', '90', '50'], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(JSON.parse(r.stdout), { level: 'high', rule: 'otherwise' });
+    assert.deepEqual(JSON.parse(text).passes[0].next, { level: 'high', rule: 'otherwise' });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('R310: the pass entry a pass starts with has the keys of the pass record.md shows', () => {
+  const keys = ['n', 'run', 'level', 'status', 'started', 'ended', 'reviews', 'findings', 'changes', 'files', 'commit', 'head', 'checks', 'next'];
+  const started = fences(read(COMMAND_FILE)).map((b) => b.lines.join('\n')).find((t) => t.startsWith('{"n": <n>'));
+  assert.notEqual(started, undefined, `${COMMAND_FILE} has no fenced pass entry`);
+  assert.deepEqual([...started.matchAll(/"([a-z_]+)":/g)].map((m) => m[1]), keys);
+  assert.deepEqual(Object.keys(JSON.parse(jsonBlock(read('record.md')).lines.join('\n')).passes[0]), keys);
+});
+
 test('R316: the skill, the report template and the README name the same five terminal states', () => {
   assert.deepEqual(itemWords(section(SKILL, 'Terminal states').join('\n')), STATES);
   const template = fences(read('report.md')).find((b) => b.lines[0] === '# gate report');
@@ -249,7 +273,7 @@ test('the README names the phrases a request may hold and where the record is', 
 
 test('R219: the skill stays within its word budget', () => {
   const total = prose().reduce((n, rel) => n + words(read(rel)), 0);
-  assert.ok(total <= 15700, `the skill holds ${total} words, over 15700`);
+  assert.ok(total <= 10800, `the skill holds ${total} words, over 10800`);
 });
 
 test('R349: SKILL.md carries the two items of core.md word for word under What leaves the run', () => {

@@ -45,6 +45,7 @@ const EXECUTABLES = [
   'plugins/primer/hooks/notice.sh',
   'plugins/gate/scripts/findings.mjs',
   'plugins/gate/scripts/next.mjs',
+  'plugins/gate/scripts/split.mjs',
   'plugins/guard/scripts/guard.mjs',
 ];
 const GUARD_RUNS = ['status', 'list', 'plan', 'denials'].map((verb) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" ${verb} *)`);

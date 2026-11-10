@@ -100,7 +100,7 @@ The gate posts nothing to a forge. Its findings, deferred list, checks, commits 
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json`, at `models.reviewer` (default `opus`), one per pass, or over `split` one per group, by path at the shallowest depth that gives more than one group, a group still over `split` being grouped again one segment deeper, and groups under one fifth of `split` merged, at most 6 at once | an Agent at `opus` (`models.fallback-reviewer`) over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing, and stays for the run; also, once, for each group whose child stopped on a usage limit, for that group alone, on another model than the reviewer's |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json`, at `models.reviewer` (default `opus`), one per pass, or over `split` one per group of paths that `split.mjs` prints, at most 6 at once | an Agent at `opus` (`models.fallback-reviewer`) over `diff-<n>[-<slug>].patch`, with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing, and stays for the run; also, once, for each group whose child stopped on a usage limit, for that group alone, on another model than the reviewer's |
 | reader | read-only Agents at `sonnet` (`models.reader`), when a pass has more than 30 findings whose bucket is `null`: one per batch of at most 40, in parallel, returning evidence per finding and never a bucket | a failed call is retried once; then the orchestrator reads that batch itself |
 | implementer | an Agent at `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
 
@@ -145,7 +145,7 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 }
 ```
 
-- `split`: the changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel, at most 6 at once; a group still over `split` is grouped again one segment deeper, and groups under one fifth of `split` are merged.
+- `split`: the changed lines above which a pass has one review per group of paths, in parallel, at most 6 at once; `split.mjs` makes the groups (`steps/1-pass.md`, 1.2).
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
 - `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them. A key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default.
@@ -194,5 +194,6 @@ From run 2 on, a per-run name without a counter takes `-run<n>`.
 - `steps/4-publish.md`: at every terminal state, for the run's end, the manifest, the report and the next target.
 - `record.md`: when a step writes a record file, for the files, the `passes.json` and `findings.json` shapes and the write discipline.
 - `report.md`: from Step 4, for the report's header and sections.
+- `scripts/split.mjs`: at the start of each pass, to size the change and group its paths into reviews.
 - `scripts/findings.mjs`: after each review, to turn its saved output into the pass's findings and the ledger.
 - `scripts/next.mjs`: after each fix round, to decide the next level or the stop from `passes.json`.

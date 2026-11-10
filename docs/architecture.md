@@ -38,7 +38,7 @@ reimagine-engine/
 | rules | house rules block, output style, a rule-driven refactor review, a handoff prompt skill | `/rules`, `/rules:refactor`, `/rules:handoff-prompt`, prose "handoff prompt" | `scripts/rules.mjs` | SessionStart `startup` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
-| gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs` | none | own |
+| gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/split.mjs` | none | own |
 | primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
 | guard | the auto mode classifier's entries for listed repositories | `/guard` | `scripts/guard.mjs` | PermissionDenied; SessionStart `startup` | own |
 
@@ -360,6 +360,7 @@ plugins/gate/
   skills/gate/report.md
   scripts/findings.mjs             a review's output to ledger entries
   scripts/next.mjs                 the next level or the stop, from passes.json
+  scripts/split.mjs                the reviews of a pass, from the numstat of the change
 ```
 
 The skill is named `gate`, like its plugin, so it answers as `/gate` and `/gate:gate` (verified, decision 120). Its description: "Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict when a pass finds nothing left to fix. Use when the user says "reimagine gate", "gate this branch", "gate PR [n]" or "gate the manifest [path]"." There is no command and no hook. The gate runs after the loop and before the audit, and the audit's manifest carries its result.

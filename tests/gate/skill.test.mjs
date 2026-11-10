@@ -128,6 +128,7 @@ test('R318: every script command the skill shows runs, by the path of the Script
     // What stands in for each argument the skill shows; an argument that is not here fails the case.
     const values = {
       '<n>': '1',
+      '<split>': '1500',
       '--check': '--check',
       '<record>/findings.json': join(dir, 'findings.json'),
       '<output>...': join(dir, 'review.json'),

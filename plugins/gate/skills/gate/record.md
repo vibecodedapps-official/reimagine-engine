@@ -4,7 +4,7 @@ Read this file when Step 0 sets up the record directory; you return to it whenev
 
 ## Location
 
-`.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, run in the target's repository and read relative to the repository's folder when it is not absolute, never into `.gitignore`. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
+`.reimagine/` goes into the file that `git rev-parse --git-path info/exclude` names, run against the target's root and read relative to it when it is not absolute, never into `.gitignore`. Nothing under `.reimagine/` is ever staged, and no commit contains a record file.
 
 ## Files
 

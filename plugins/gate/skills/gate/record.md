@@ -39,7 +39,7 @@ No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`,
   "runs": [{ "n": 1, "started": "2026-10-25T09:00:40Z", "ended": null, "state": "running" }],
   "passes": [
     { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...",
-      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "notes": "The suite could not be run here.", "models": ["<model id>"] }],
+      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "denied": ["Bash: npm --prefix . test", "Bash: node --test tests/"], "notes": "The suite could not be run here.", "models": ["<model id>"] }],
       "findings": { "src/stats.mjs|percentile indexes sorted rank ...": { "bucket": "fix", "reason": "off-by-one inside the change" } },
       "changes": ["inside-diff"], "files": ["src/stats.mjs"], "commit": "<sha>", "head": "<sha>",
       "checks": [{ "command": "npm test", "result": "pass" }],
@@ -49,7 +49,7 @@ No run rewrites a file a prior run wrote, except `passes.json`, `findings.json`,
 }
 ```
 
-A `reviews[]` entry's `notes` holds the text before and after the fence, joined with a blank line, as `findings.mjs` prints `notes.text`. The entry also holds `models`, the sorted model names of the review as `findings.mjs` prints them, for a stand-in's text, which names no models, the one model the stand-in was called at, and `null` for a child session result without `modelUsage`. The entry of a review that stopped on a usage limit holds `"failure": "usage limit"` and `null` numbers and `models`. The second pass in the literal is shortened to show a pass that has only started; Step 1 writes every field of a pass entry when it appends it. The values `...` and `<sha>` stand for a time and a full sha.
+A `reviews[]` entry's `notes` holds the text before and after the fence, joined with a blank line, as `findings.mjs` prints `notes.text`, and its `denied` lists each call the review was refused, by tool and the first line of its command, as the script prints it. The entry also holds `models`, the sorted model names of the review as `findings.mjs` prints them, for a stand-in's text, which names no models, the one model the stand-in was called at, and `null` for a child session result without `modelUsage`. The entry of a review that stopped on a usage limit holds `"failure": "usage limit"` and `null` numbers, `denied` and `models`. The second pass in the literal is shortened to show a pass that has only started; Step 1 writes every field of a pass entry when it appends it. The values `...` and `<sha>` stand for a time and a full sha.
 
 Step 0 writes the top level and the run entry, Step 1 appends the pass entry and fills `reviews` and `findings`, Step 2 writes `changes`, `files`, `checks` and `commit` as soon as the commit exists and `head` after the push, Step 3 writes `next`, `ended` and `status`, and Step 4 closes the run entry, each as its step shows. A run's `state` is `running`, then the terminal state, or `interrupted` when a later Step 0 finds it still `running`. A run entry may also hold `kept`, the sha of the kept commit that run pushed. A pass's `status` is `running`, `complete` or `failed`, and `n` counts across runs, so pass 3 may be run 2's first pass. A failed pass has `ended` and a `next` of `null`.
 

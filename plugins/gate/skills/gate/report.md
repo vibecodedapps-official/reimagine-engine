@@ -61,7 +61,7 @@ Per pass of this run, each finding by bucket (`fix`, `defer`, `reject`) with its
 
 ### Checks
 
-The section names the source of the checks: the request, the manifest bundle or `.reimagine.json`. Run: the command and its result. Not run: the exact command and the reason; with no source, write that no check ran. Write `denied` only for a refused permission. A check still failing after three fixes is named here and under Blocked or stopped.
+The section names the source of the checks: the request, the manifest bundle or `.reimagine.json`. Run: the command and its result. Not run: the exact command and the reason; with no source, write that no check ran. Write `denied` only for a refused permission. A check still failing after three fixes is named here and under Blocked or stopped. Then one line on what the reviews could not run: the calls they were refused in all, the sum of `denials`, and each distinct call of their `denied` lists; `none refused` when there is none. A review reaches for the checks itself, and a refused one is a check that review did not see.
 
 ### Commits and pushes
 

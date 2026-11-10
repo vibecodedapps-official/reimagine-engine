@@ -105,6 +105,19 @@ test('the terminal states are five, and a run ends in no other', () => {
   assert.ok(ends >= 60, `only ${ends} endings found`);
 });
 
+test('every configuration key path a skill file names exists in the configuration block', () => {
+  const block = JSON.parse(TEXT['SKILL.md'].split('\n## Configuration\n')[1].split('```json\n')[1].split('\n```')[0]);
+  let named = 0;
+  for (const file of FILES) {
+    for (const [, path] of TEXT[file].matchAll(/`((?:commit|checks|timeouts|models|base)(?:\.[a-z-]+)+)`/g)) {
+      named++;
+      const value = path.split('.').reduce((node, key) => (node && Object.hasOwn(node, key) ? node[key] : undefined), block);
+      assert.notEqual(value, undefined, `${file} names ${path}, which the configuration block lacks`);
+    }
+  }
+  assert.ok(named >= 5, `only ${named} key paths found`);
+});
+
 test('the effort words are mapped to an effort in one file', () => {
   assert.deepEqual(FILES.filter((file) => TEXT[file].includes('"very thorough"')), ['SKILL.md']);
 });

@@ -2,6 +2,16 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.9 - 2026-11-10
+
+- The drift hook no longer reads a branch such as `origin/main`, a home, absolute or drive path, a URL, or any other backticked token whose first segment is no top-level entry of the repository as a path under it, since each of those in a hub's opening paragraph denied every commit. A token that ends in `.md`, and a missing path under a top-level entry that exists, are findings as before.
+
+## guard 0.1.3 - 2026-11-10
+
+- `apply` takes the id its plan printed and writes no other plan, since one saved plan served every session on a profile and a second session's plan could be written on the first session's yes.
+- A denial line is cut in every part and writes the common credential forms as `[redacted]`, and the record keeps its newest 100 lines once it passes 256 KiB, since it grew without limit and kept a bearer token from a denied command.
+- The settings reads allow entry is written only for a repository added with `reads`, since it told the classifier that reading a file that often holds tokens is not credential exploration. A repository listed earlier loses the entry at the next `/guard`; add it again with `reads` to keep it.
+
 ## loop 0.1.21 - 2026-11-09
 
 - The record attached to a GitHub issue is named for the branch's record slug, since GitHub refuses a `/` in an artifact name and no record could attach on a loop branch.

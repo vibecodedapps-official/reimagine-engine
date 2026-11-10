@@ -133,7 +133,7 @@ With `.reimagine.json` `commit: true`:
 
 ## Redaction
 
-1. After the answer `drop` at Step 0.1a, every record file carries `<redacted: key>` in place of each matched value, where `key` is the matched key name in lowercase. An `AKIA` match reads `<redacted: aws_access_key>`, a PEM header and its body `<redacted: pem_key>`, and a block under a heading `<redacted: block>`.
+1. After the answer `drop` at Step 0.1a, every record file carries in place of each match the marker the echo prints for it (SKILL.md, Reading the request).
 2. Patch files (`diff.patch`, `diff-<slug>.patch`, `pre-<n>.patch`) are scanned the same way before they are written, and so are the bodies and comment texts.
 3. After `keep`, or when the scan matched nothing, nothing is redacted. Do not read the original values back from the record to answer a question; the session holds them.
 

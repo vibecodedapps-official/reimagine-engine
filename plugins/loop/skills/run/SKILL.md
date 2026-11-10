@@ -107,10 +107,9 @@ Invoking by name is the user's opt-in to parallel Agent calls.
 
 ## What leaves the run
 
-Step 7 applies these to the pull request, the comments and the tickets (`pr-body.md`, `tickets.md`).
+Step 7 applies this to the pull request, the comments and the tickets (`pr-body.md`, `tickets.md`).
 
-- What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team's words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.
-- Output stays local unless publishing is the task's stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.
+- Write what leaves the session for its reader. A pull request says what its reviewer needs about the code at its current head. A ticket or comment says what changed for its readers, what happens next and who decides, at the detail they act on. Working output, such as logs, ids, verdicts and terms the session coined, stays local or in an attachment. Publish only when that is the task's purpose or I asked, and only what the reader will act on and would say themselves.
 
 ## Tools
 

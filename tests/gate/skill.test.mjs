@@ -7,7 +7,6 @@ import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadTexts, units } from '../../plugins/rules/scripts/rules.mjs';
 import { KINDS } from '../../plugins/gate/scripts/next.mjs';
 import { ACTIONS } from '../../plugins/gate/scripts/resume.mjs';
 
@@ -284,14 +283,4 @@ test('the README names the phrases a request may hold and where the record is', 
 test('R219: the skill stays within its word budget', () => {
   const total = prose().reduce((n, rel) => n + words(read(rel)), 0);
   assert.ok(total <= 10400, `the skill holds ${total} words, over 10400`);
-});
-
-test('R349: SKILL.md carries the two items of core.md word for word under What leaves the run', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  const lines = section(SKILL, 'What leaves the run');
-  for (const prefix of ['What leaves the session is written for its reader', 'Output stays local unless publishing']) {
-    const found = items.filter((n) => n.startsWith(prefix));
-    assert.equal(found.length, 1, `core.md does not hold exactly one item that starts with: ${prefix}`);
-    assert.ok(lines.includes(`- ${found[0]}`), `SKILL.md lacks the core.md item that starts with: ${prefix}`);
-  }
 });

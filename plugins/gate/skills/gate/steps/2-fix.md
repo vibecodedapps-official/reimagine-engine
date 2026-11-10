@@ -49,7 +49,7 @@ Run the run's checks one command at a time, in order, and record each as `{"comm
 
 - Each check has the check budget as the Bash call's timeout, since the default is 2 minutes. A budget over 10 minutes, the shell's foreground limit, runs with `run_in_background` beside a background `sleep` of the budget in seconds; whichever ends first, the other is stopped with TaskStop. A check past its budget ends the run `blocked`, naming the check and the budget.
 - A check the permission mode refuses is `denied`: it is never retried and never run another way, and the next one runs.
-- A failing check is fixed in the same round by the implementer that owns the failing code. Take a snapshot, send that implementer the failure output (SendMessage, else a fresh implementer with the failure and its group's current diff), read the fix as above, and run the whole list again. There are at most three check fixes in all; a check still failing after the third ends the run `blocked`, naming the check.
+- A failing check is fixed in the same round by the implementer that owns the failing code. Take a snapshot, send that implementer the failure output (SendMessage, else a fresh implementer with the failure and its group's current diff), read the fix as above, and run the whole list again, recording each result; a check's last result is the one that counts. There are at most three check fixes in all; a check still failing after the third ends the run `blocked`, naming the check.
 
 ## The commit
 
@@ -64,7 +64,7 @@ A round that changed nothing commits nothing: go to the last section.
 ## The push
 
 1. Before each push, judge whether it triggers a deploy. Read the workflow files of the base branch and of the commit being pushed: `git ls-tree --full-tree --name-only <ref> .github/workflows/` lists them, `<ref>` being `refs/remotes/<r>/<b>` and then `HEAD`, and `git show "<ref>:<file>"` prints each one that ends in `.yml` or `.yaml`, `<file>` being the repository-relative path as listed, unquoted. A `push` trigger counts, and so does a `pull_request` trigger when the branch has an open pull request, each with its filters as GitHub applies them to this push. `gh pr list --head <branch> --state open --json number,baseRefName` shows whether a branch target has one. A `pull_request_target` workflow is judged from the base branch's file. A workflow that deploys in either set counts, and so does a deploy the files cannot settle, such as an open pull request whose base is not `<b>`. When the push triggers a deploy, ask first, naming the workflow; any answer but a clear yes is a denial of the push. A yes covers that push only, since a fix round can change what the next push deploys.
-2. Read the remote head with `git ls-remote <r> refs/heads/<branch>`. It must be the head preflight fetched or the last sha this run pushed. Any other head ends the run `blocked`, with the local commit kept and its sha, the remote head and the branch named in the report.
+2. Read the remote head with `git ls-remote <r> refs/heads/<branch>`. It must be the head preflight fetched, or none when preflight found no such branch on the remote, or the last sha this run pushed. Any other head ends the run `blocked`, with the local commit kept and its sha, the remote head and the branch named in the report.
 3. Push with `git push <r> <branch>`, never forced. A denied or failed push ends the run `blocked`, the local commit kept and named.
 4. From here the run's last pushed sha is the output of `git rev-parse HEAD`.
 

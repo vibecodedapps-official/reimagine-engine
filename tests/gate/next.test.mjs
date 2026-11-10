@@ -221,6 +221,14 @@ describe('fix-of-fix', { concurrency }, () => {
     await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [{ command: 'npm test', result: 'pass' }, { command: 'npm run lint', result: 'denied' }] })], HIGH);
   });
 
+  test('a check that was run again after a check fix counts by its last result', async () => {
+    const fix = ['src/a.mjs|p'];
+    const failed = { command: 'npm test', result: 'fail' };
+    const passed = { command: 'npm test', result: 'pass' };
+    await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [failed, passed] })], FIXED);
+    await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [passed, failed] })], HIGH);
+  });
+
   test('a fix round that made no commit gives high', async () => {
     await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked, commit: null })], HIGH);
   });

@@ -142,8 +142,7 @@ Say what happened, what it means for the user, and the next step, in that order.
 
 ## What leaves the run
 
-- What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team's words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.
-- Output stays local unless publishing is the task's stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.
+- Write what leaves the session for its reader. A pull request says only what its reviewer needs about the code at its current head. A ticket or comment says what changed for its readers, what happens next and who decides, at the detail they act on, never how it was reached. Working output, such as logs, commit ids, verdicts and terms a plugin or the session coined, stays local or in an attachment. Publish only when that is the task's stated purpose or I asked, and only what the reader will act on and would say themselves.
 
 ## Preamble
 
@@ -315,7 +314,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 ```json
 {
-  "plugin_version": "0.1.17",
+  "plugin_version": "0.1.18",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],

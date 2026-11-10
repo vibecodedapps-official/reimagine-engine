@@ -1,10 +1,9 @@
 // What leaves a loop run is written for its reader: the open items of a run, the tickets they become, and the
-// texts that reach a pull request or a ticket (R54, R56, R96, R117, R118, R137, R349, R351, R352).
+// texts that reach a pull request or a ticket (R54, R56, R96, R117, R118, R137, R351, R352).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { loadTexts, units } from '../../plugins/rules/scripts/rules.mjs';
 
 const DIR = fileURLToPath(new URL('../../plugins/loop/skills/run/', import.meta.url));
 const read = (path) => readFileSync(DIR + path, 'latin1').replace(/\r\n/g, '\n');
@@ -28,37 +27,6 @@ const section = (text, heading) => {
   const end = text.indexOf('\n## ', start + 1);
   return end === -1 ? text.slice(start) : text.slice(start, end);
 };
-
-const ITEM_A =
-  'What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team\'s words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.';
-const ITEM_B =
-  'Output stays local unless publishing is the task\'s stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.';
-
-const leavesTheRun = () => {
-  const lines = SKILL.split('\n');
-  const start = lines.indexOf('## What leaves the run');
-  assert.notEqual(start, -1, 'SKILL.md has no "## What leaves the run" heading');
-  const end = lines.findIndex((line, i) => i > start && line.startsWith('## '));
-  return lines.slice(start + 1, end === -1 ? undefined : end);
-};
-
-for (const [name, prefix, literal] of [
-  ['item A', 'What leaves the session is written for its reader', ITEM_A],
-  ['item B', 'Output stays local unless publishing', ITEM_B],
-]) {
-  test(`R349: the loop SKILL.md carries core.md ${name} word for word under What leaves the run`, () => {
-    const found = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item' && u.norm.startsWith(prefix));
-    assert.equal(found.length, 1, `core.md has ${found.length} items that start "${prefix}"`);
-    assert.equal(found[0].norm, literal);
-    assert.ok(leavesTheRun().includes('- ' + found[0].norm), `SKILL.md lacks the line for ${name}`);
-  });
-}
-
-test('R349: the literals the loop pins equal the lines SKILL.md carries', () => {
-  const lines = leavesTheRun();
-  assert.ok(lines.includes('- ' + ITEM_A));
-  assert.ok(lines.includes('- ' + ITEM_B));
-});
 
 test('R54: invoking the loop approves ticket filing for open items and the record attached to each ticket', () => {
   assert.ok(SKILL.includes('commenting on the source tickets, and, for the open items of `tickets.md`, opening a ticket or commenting on an existing one, and attaching a record to each ticket the run comments on or opens. Five rules bound that grant.'));

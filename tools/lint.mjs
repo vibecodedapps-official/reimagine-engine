@@ -31,6 +31,8 @@ const GATE_SKILL = 'plugins/gate/skills/gate/SKILL.md';
 const GUARD_SKILL = 'plugins/guard/skills/guard/SKILL.md';
 const STYLE = 'plugins/rules/output-styles/concise-plain.md';
 const CHAT = 'plugins/rules/chat/instructions.md';
+const CORE = 'plugins/rules/rules/core.md';
+const CARRIED = '## What leaves the run';
 const RULES_HOOKS = 'plugins/rules/hooks/hooks.json';
 const PRIMER_HOOKS = 'plugins/primer/hooks/hooks.json';
 const GUARD_HOOKS = 'plugins/guard/hooks/hooks.json';
@@ -410,7 +412,7 @@ function skillFailures(ctx) {
   const styleFm = frontmatter(style);
   if (style === null || styleFm.get('name') !== 'Concise Plain') out.push(`${STYLE}: name is not Concise Plain`);
   if (style !== null) {
-    if (!String(styleFm.get('description') ?? '').trim().endsWith('v4.14.')) out.push(`${STYLE}: description does not end in v4.14.`);
+    if (!String(styleFm.get('description') ?? '').trim().endsWith('v4.15.')) out.push(`${STYLE}: description does not end in v4.15.`);
     if (styleFm.get('keep-coding-instructions') !== 'true') out.push(`${STYLE}: keep-coding-instructions is not true`);
   }
   return out;
@@ -514,6 +516,51 @@ function chatFailures(ctx) {
     const kept = /\(Concise Plain v(\d+(?:\.\d+)+)\)/.exec(text.split('\n').find((l) => l.startsWith('Kept in step with')) ?? '');
     if (!kept) out.push(`${CHAT}: names no Concise Plain version`);
     else if (kept[1] !== style[1]) out.push(`${CHAT}: names Concise Plain v${kept[1]}, not v${style[1]} as the style does`);
+  }
+  return out;
+}
+
+const MARKER = /^\s*(?:[-*+]|\d+[.)])\s/;
+
+// The `- ` items among lines, each joined to one line: a line right under an item that starts no item or heading continues it.
+function listItems(lines) {
+  const out = [];
+  let open = false;
+  for (const line of lines) {
+    const item = line.startsWith('- ');
+    open = item || (open && line.trim() !== '' && !line.startsWith('#') && !MARKER.test(line));
+    if (item) out.push(line.slice(2));
+    else if (open) out[out.length - 1] += ` ${line}`;
+  }
+  return out.map((item) => item.trim().replace(/\s+/g, ' '));
+}
+
+// The loop, the gate and the audit each work without the rules plugin, so each carries the house-rules item on what leaves a session:
+// one `- ` line, with nothing under it that a Markdown reader would add to it.
+function carriedFailures(ctx) {
+  const out = [];
+  const unfenced = (file) => outsideFences(ctx.text(file) ?? '').map((l) => l.line);
+  const core = listItems(unfenced(CORE));
+  for (const file of [LOOP_SKILL, GATE_SKILL, AUDIT_SKILL]) {
+    const lines = unfenced(file);
+    const start = lines.indexOf(CARRIED);
+    if (start < 0) {
+      out.push(`${file}: no ${CARRIED} section`);
+      continue;
+    }
+    let end = lines.findIndex((l, i) => i > start && /^##? /.test(l));
+    if (end < 0) end = lines.length;
+    const section = lines.slice(start + 1, end);
+    const items = section.filter((l) => MARKER.test(l));
+    if (items.length !== 1) {
+      out.push(`${file}: ${CARRIED} holds ${items.length} items, not one`);
+      continue;
+    }
+    const under = section.slice(section.indexOf(items[0]) + 1);
+    const alone = (under[0] ?? '').trim() === '' && !under.some((l) => /^\s+\S/.test(l));
+    if (!items[0].startsWith('- ') || !core.includes(items[0].slice(2)) || !alone) {
+      out.push(`${file}: the item under ${CARRIED} is not an item of ${CORE}`);
+    }
   }
   return out;
 }
@@ -745,6 +792,7 @@ async function main() {
     ...hookFailures(ctx),
     ...fileFailures(ctx),
     ...chatFailures(ctx),
+    ...carriedFailures(ctx),
     ...supportingFailures(ctx),
     ...ghApiFailures(ctx),
     ...agentFailures(ctx),

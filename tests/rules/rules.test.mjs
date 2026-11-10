@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = 'b6125df1202be57d';
+const SHIPPED_CORE_DIGEST = '1934cc153a37f21f';
 
 // The shipped version, read from the manifest here so a release moves no literal in this file.
 const SHIPPED_VERSION = JSON.parse(readFileSync(new URL('../../plugins/rules/.claude-plugin/plugin.json', import.meta.url), 'utf8')).version;
@@ -42,8 +42,8 @@ test('R25: the block version is the version in the manifest of the plugin root',
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, 'b6125df1202be57d');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '7e98de2c6f2afd84');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, '1934cc153a37f21f');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '2d0688e3102cc2ce');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -54,125 +54,25 @@ test('R18: the Windows paragraph is in the block only when the windows option is
   assert.equal(plan(null, { texts, platform: 'win32' }).after.includes('On Windows, Bash is Git Bash'), true);
 });
 
-test('R19: core.md holds the item that sends a question to a tool, integration or file first', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('When a tool, integration, or file in the session can answer a question, use it before asking me.'));
+test('R354: core.md is one opening paragraph and five sections in order', () => {
+  const { list } = units(loadTexts()['core.md']);
+  assert.deepEqual(list.slice(0, list.findIndex((u) => u.kind === 'head')).map((u) => u.kind), ['para']);
+  assert.deepEqual(list.filter((u) => u.kind === 'head').map((u) => u.norm), ['## Working', '## Code', '## Tests', '## Done', '## Ask first']);
 });
 
-test('R20: core.md holds the item that asks for one report, without the progress-notes clause', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Report once, when the task is done or when the next step turns on my answer.'));
-  assert.equal(items.some((n) => n.includes('no progress notes')), false);
-});
-
-test('R321: the scratch item records made or first changed by exact name and offers only what was made, with one symptom per issue and a commit about the change', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes("Scratch files go in the repo's ignored scratch directory, else outside the repo. Record each scratch file, script, worktree or branch in one list as you make or first change it, by exact name, noting which existed already. When done, from that list and the disk, say which you made are safe to delete and why, and nothing more; delete only on my yes."));
-  assert.ok(items.includes('Before opening an issue or starting a fix, search for an issue or PR that covers it. One symptom per issue; a side finding gets its own, linked.'));
-  assert.ok(items.includes('Commits: `type(scope): subject`, lowercase. The body says why. Both are about the change, never about the session that made it.'));
-});
-
-test('R324: the Code item on prose written for an agent follows the reusable-files item', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes("Prose written for an agent, such as skills, prompts, and instruction files, states principles in the fewest words that get the job done. A procedure or an output shape the request didn't ask for is added only for a failure that happened."));
-  assert.equal(items.indexOf("Prose written for an agent, such as skills, prompts, and instruction files, states principles in the fewest words that get the job done. A procedure or an output shape the request didn't ask for is added only for a failure that happened."), items.findIndex((n) => n.startsWith('Keep reusable files, such as skills, prompts, and styles, free of anything specific')) + 1);
-});
-
-test('R346: the Code item defining a handoff prompt directly follows the agent-prose item, under the Code heading', () => {
-  const list = units(loadTexts()['core.md']).list;
-  const item = 'A handoff prompt carries work to a later session: enough context and background that the session understands what the work is and why, my settled decisions and open questions as I left them, and nothing more specific than I was. It suggests nothing, asks nothing of anyone else, and leaves the thinking to that session.';
-  const at = list.findIndex((u) => u.kind === 'item' && u.norm === item);
-  assert.ok(at > 0);
-  assert.ok(list[at - 1].kind === 'item' && list[at - 1].norm.startsWith('Prose written for an agent, such as skills, prompts, and instruction files'));
-  assert.equal(list.slice(0, at).reverse().find((u) => u.kind === 'head').norm, '## Code');
-});
-
-test('R346: the chat block carries the handoff prompt item as the last line of Content, and the differences list says so', () => {
-  const [before, fenced] = readFileSync(fileURLToPath(new URL('../../plugins/rules/chat/instructions.md', import.meta.url)), 'utf8').split('```');
-  const lines = fenced.split('\n');
-  const item = '- A handoff prompt carries work to a later session: enough context and background that the session understands what the work is and why, my settled decisions and open questions as I left them, and nothing more specific than I was. It suggests nothing, asks nothing of anyone else, and leaves the thinking to that session.';
-  assert.equal(lines[lines.indexOf('Leave out.') - 2], item);
-  assert.ok(before.includes('- Chat carries the handoff prompt item, since a handoff often starts in chat.'));
-});
-
-test('R348: the two Working items on what leaves the session follow the issue-search item in order, and the chat block holds neither', () => {
-  const list = units(loadTexts()['core.md']).list;
-  const a = 'What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team\'s words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.';
-  const b = 'Output stays local unless publishing is the task\'s stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.';
-  const at = list.findIndex((u) => u.kind === 'item' && u.norm === a);
-  assert.ok(at > 0);
-  assert.ok(list[at - 1].kind === 'item' && list[at - 1].norm.startsWith('Before opening an issue or starting a fix'));
-  assert.ok(list[at + 1].kind === 'item' && list[at + 1].norm === b);
-  assert.ok(list[at + 2].kind === 'item' && list[at + 2].norm.startsWith('When a tool, integration, or file in the session'));
-  assert.equal(list.slice(0, at).reverse().find((u) => u.kind === 'head').norm, '## Working');
-  const chat = readFileSync(fileURLToPath(new URL('../../plugins/rules/chat/instructions.md', import.meta.url)), 'utf8');
-  assert.equal(chat.includes('What leaves the session is written for its reader'), false);
-  assert.equal(chat.includes('Output stays local unless publishing'), false);
-});
-
-test('R232: the first Code item asks for the simplest change as one instruction with three qualities, and follows the code over a stale instruction file', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Make the simplest change that is correct and stays correct as the code grows: in the code\'s own patterns and helpers, at every place the behavior lives, with nothing built for a need only imagined. Where a project\'s instruction file and its code disagree, follow the code and say where they differ. Say why for any extra.'));
-  assert.equal(items.some((n) => n.startsWith('Make the smallest change')), false);
-  assert.equal(items.some((n) => n.includes('Where a next change is known')), false);
-  assert.equal(items.some((n) => n.startsWith('Make the smallest correct change.')), false);
-});
-
-test('R233: the decision item names the shared assumption and what would overturn the recommendation, without the shape words', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Raise a decision in full on first mention: the assumption every option shares, what each does, the recommendation first, and what would overturn it; never a bare label. Open decisions go together so one reply answers them, unless one depends on another.'));
-  assert.equal(items.some((n) => n.includes('the question in one sentence') || n.includes('one numbered message')), false);
-  assert.equal(items.some((n) => n.includes('whether you checked it')), false);
-  assert.equal(items.some((n) => n.startsWith('Raise a decision in full on first mention: the question in one sentence, what each option does')), false);
-});
-
-test('R325: the bug item ends at the regression check, and the unverified-cause item says what to do when a cause cannot be shown', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('For a bug, show the failure before you fix it, then show the regression check failing for that defect without the fix and passing with it.'));
-  assert.equal(items.some((n) => n.includes('confirms or rejects your explanation')), false);
-});
-
-test('R234: core.md holds the item that says a wrong request first, then does the alternative', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('When the request itself is wrong, say so first, with the evidence and what you would do instead, then do that; ask-first rules still hold.'));
-  assert.equal(items.some((n) => n.includes('the first decision to raise')), false);
-});
-
-test('R235 retired: core.md no longer asks to name the steps the permission mode is likely to deny before starting', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.equal(items.includes('Before starting, name the steps the permission mode is likely to deny.'), false);
-});
-
-test('R236: core.md holds the ask-first item that treats a denied call as a question, never routed around, without the retry sentence', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('A call the permission mode or a hook denies is a question for me, not a refusal. Never route around it with another command, a script, or a subagent. Report it in full and wait: the exact call, what it is for, and any later call the task needs that is likely to be denied too. A denial from me is final.'));
-  assert.equal(items.some((n) => n.includes('On retry, reissue the same calls')), false);
-});
-
-test('R269: core.md holds the item that judges findings rather than counting them, inside the request or not', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('Finding issues or proposing changes is judgment, not a count. Recommend what affects correctness or risk, or costs more to leave than to fix, inside the request or not, each with its evidence and the two costs; the rest are notes.'));
-  assert.equal(items.some((n) => n.includes('apart and counted')), false);
-});
-
-test('R280 retired: core.md no longer holds the Done item that describes an edit from the diff', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.equal(items.some((n) => n.startsWith('Describe an edit from the diff')), false);
-  assert.ok(items.some((n) => n.startsWith('Keep whatever describes the work accurate.')));
-});
-
-test('R284: the Done item forbids deleting a test to make checks pass, as well as weakening or skipping one', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes('A check that failed before you started is not yours to fix. Say so, with the run that shows it. Don\'t weaken, skip or delete a test to make checks pass.'));
-  assert.equal(items.some((n) => n.endsWith('Don\'t weaken or skip a test to make checks pass.')), false);
-});
-
-test('R345: core.md holds the Working item that keeps a credential out of every file, directly after the scratch item', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
-  assert.ok(items.includes("A credential never sits in a file, a scratch file included; it reaches a command through the environment or a tool's own store."));
-  const scratch = items.findIndex((n) => n.startsWith('Scratch files go in the repo'));
-  assert.notEqual(scratch, -1);
-  assert.equal(items.indexOf("A credential never sits in a file, a scratch file included; it reaches a command through the environment or a tool's own store."), scratch + 1);
+test('R21: the Ask first section holds its eight items', () => {
+  const { list } = units(loadTexts()['core.md']);
+  const ask = list.slice(list.findIndex((u) => u.norm === '## Ask first') + 1);
+  assert.deepEqual(ask.map((u) => [u.kind, u.norm.split(' ').slice(0, 4).join(' ')]), [
+    ['item', 'Before adding a dependency,'],
+    ['item', 'Before changing a repo'],
+    ['item', 'Before anything that could'],
+    ['item', 'Before dropping a table,'],
+    ['item', 'Before committing or pushing,'],
+    ['item', 'An approval lasts for'],
+    ['item', 'Before anything that reaches'],
+    ['item', 'A call the permission'],
+  ]);
 });
 
 test('R36: render joins the parts with one empty line, windows before core, in the line ending given', () => {
@@ -498,13 +398,8 @@ test('R18, R36: the windows option puts the shipped Windows paragraph before the
 test('R36: adopt on a block that holds the windows option runs off Windows when no --options is given', sandbox((s) => {
   s.run('plan', ['--options', 'core,windows'], { platform: 'win32' });
   s.run('apply', [], { platform: 'win32' });
-  const rule = `- Make the calls within the task, architecture included; someone else's area is no
-  reason by itself to defer. Explain the ones that matter in a line. Ask only for my
-  preference, an authority I lack, a fact you can't find, or input that avoids a costly
-  or hard-to-undo mistake. Ask with one recommendation and its tradeoffs; add a second
-  option only when it wins under a condition I control, and name it. Do the work that
-  doesn't depend on the answer first.
-`;
+  const items = SHIPPED['core.md'].slice(SHIPPED['core.md'].indexOf('\n- ') + 1);
+  const rule = items.slice(0, items.indexOf('\n- ') + 1);
   put(s.claude, `${bytes(s.claude)}${rule}`);
   assert.throws(() => s.run('plan', ['--adopt', '--options', 'core,windows'], { platform: 'linux' }),
     { message: 'the windows option is offered only on Windows' });
@@ -1038,16 +933,16 @@ test('R35, R34: the plan names what each import holds, and the units of a file a
   const core = SHIPPED['core.md'];
   put(join(s.claudeDir, 'toolkit', 'a.md'), core);
   put(join(s.claudeDir, 'b.md'), 'nothing here\n');
-  put(join(s.claudeDir, 'half.md'), `${core.split('\n').slice(0, 10).join('\n')}\n\n@gone.md\n`);
+  put(join(s.claudeDir, 'half.md'), `${core.slice(0, core.indexOf('\n- ', core.indexOf('\n- ') + 1))}\n\n@gone.md\n`);
   put(s.claude, '# Mine\n\n@toolkit/a.md\n@b.md\n@half.md\n@missing.md\n');
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 10), [`target: ${s.claude}`, 'state: absent', 'options: core',
-    'note: line 3: @toolkit/a.md imports a file that holds 40 of 40 rules; it is left as it is',
+    'note: line 3: @toolkit/a.md imports a file that holds 33 of 33 rules; it is left as it is',
     'note: line 4: @b.md imports a file that holds none of the rules; it is left as it is',
-    'note: line 5: @half.md imports a file that holds at least 2 of 40 rules; 1 import could not be read; it is left as it is',
+    'note: line 5: @half.md imports a file that holds at least 2 of 33 rules; 1 import could not be read; it is left as it is',
     'note: line 6: @missing.md imports a file that cannot be read; it is left as it is',
     'change: ready', 'recommend: decline',
-    'note: 40 of 40 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
+    'note: 33 of 33 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
   assert.equal(out.some((l) => l.includes('already present outside the block')), false);
   assert.deepEqual(s.run('status').filter((l) => l.includes('note')), []);
 }));
@@ -1057,13 +952,13 @@ test('R34: the overlap note and the recommendation for a hand copy, and adopt th
   put(s.claude, copy);
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 7), [`target: ${s.claude}`, 'state: absent', 'options: core',
-    'note: 40 of 40 rules already present outside the block; applying duplicates them', 'change: ready', 'recommend: adopt',
+    'note: 33 of 33 rules already present outside the block; applying duplicates them', 'change: ready', 'recommend: adopt',
     'note: /rules --adopt moves those lines into the block']);
   const adopted = s.run('plan', ['--adopt', '--options', 'core']);
   assert.deepEqual(adopted.slice(0, 5), [`target: ${s.claude}`, 'state: absent', 'options: core', 'change: ready', 'recommend: apply']);
   // The copy stays where it was, so the diff shows only the markers added around it.
   assert.equal(adopted[5].includes('\n@@ line 1 @@\n # Mine\n \n+<!-- reimagine:house-rules begin version='), true);
-  assert.equal(adopted[5].includes('-->\n Any instruction file can add an ask-first rule; none removes one.\n'), true);
+  assert.equal(adopted[5].includes(`-->\n ${SHIPPED['core.md'].split('\n')[0]}\n`), true);
   assert.equal(adopted[5].endsWith('\n+<!-- reimagine:house-rules end -->'), true);
   assert.equal(adopted[5].includes('\n-'), false);
   assert.deepEqual(s.run('apply', [], { now: AT }), [`rules: wrote ${s.claude}; the backup is ${s.claude}.reimagine-backup-20261003120000`]);
@@ -1155,8 +1050,8 @@ test('R35: a house-rules marker line is a hard boundary for units, so a managed 
   const [row] = scan(s, '@managed.md\n');
   assert.equal(row.missed, 0);
   const p = plan('mine\n', { texts: SHIPPED, imported: [{ ref: '1: @managed.md', units: new Set(row.units), missed: 0, unreadable: false }] });
-  assert.equal(p.overlap.k, 40);
-  assert.equal(p.overlap.total, 40);
+  assert.equal(p.overlap.k, 33);
+  assert.equal(p.overlap.total, 33);
   assert.deepEqual(kinds(`- user\n${END}\n- next\n`), ['item:user', 'item:next']);
   assert.deepEqual(kinds(`- user\n${begin('core', 'none', 'cb477dddc15de845')}\nafter\n`), ['item:user', 'para:after']);
 }));
@@ -1199,7 +1094,7 @@ test('R33: only a plain shape may match a rule, so indented code, tabs, and deep
     assert.equal(p.after, plan(text, { texts: only }).after, name);
   }
   assert.equal(plan(`- ${rule}\n`, { texts: only, adopt: true }).after, `${begin('core', 'none', '6f5144b9eecde4b6', '9.9.9')}\n- ${rule}\n${END}\n`);
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 40);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 33);
 });
 
 test('R33: adopt keeps text that only looks like a rule because the parser flattened a construct around it', () => {
@@ -1294,7 +1189,7 @@ test('R33: indented text is never a rule, since it may belong to a container', (
   for (const [name, text] of Object.entries(cases)) {
     assert.equal(plan(text, { texts: only, adopt: true }).after, plan(text, { texts: only }).after, name);
   }
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 40);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 33);
   assert.equal(plan(`mine\n\n${SHIPPED['core.md'].replace(/^/gm, '  ')}`, { texts: SHIPPED }).overlap.n, 0);
 });
 
@@ -1316,8 +1211,8 @@ test('R33: a unit followed by anything but a blank line, the end, a heading, or 
   }
   // The shipped texts still match in full, alone and with the Windows paragraph.
   const all = render(['windows', 'core'], SHIPPED);
-  assert.equal(plan(`mine\n\n${all}`, { texts: SHIPPED, platform: 'win32', options: ['core', 'windows'] }).overlap.n, 41);
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 40);
+  assert.equal(plan(`mine\n\n${all}`, { texts: SHIPPED, platform: 'win32', options: ['core', 'windows'] }).overlap.n, 34);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 33);
 });
 
 test('R33: a file that holds Markdown adopt does not handle is left alone, and plan recommends decline for it', () => {
@@ -1429,12 +1324,12 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n${ruleLines(1)}\n\nUse a | b\n`);
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
-    'note: 1 of 40 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 126 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: 1 of 33 rules are also present outside the block, duplicating it',
+    'note: adopt leaves this file alone because line 108 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
-    'note: 1 of 40 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 126 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: 1 of 33 rules are also present outside the block, duplicating it',
+    'note: adopt leaves this file alone because line 108 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1453,7 +1348,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 124: @shared.md imports a file that holds 40 of 40 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 104: @shared.md imports a file that holds 33 of 33 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));
@@ -1472,7 +1367,7 @@ test('R34: decline only when the rules already present cover every rule, else ap
   put(join(s.claudeDir, 'shared.md'), core);
   const all = s.run('plan');
   assert.ok(all.includes('recommend: decline'));
-  assert.ok(all.includes('note: 40 of 40 rules come from imports; applying duplicates them; declining leaves this file unchanged'));
+  assert.ok(all.includes('note: 33 of 33 rules come from imports; applying duplicates them; declining leaves this file unchanged'));
 }));
 
 test('R35: a backslash escapes only an opening backtick; a closing run pairs and spans hide what they hold', () => {
@@ -1557,10 +1452,10 @@ test('R34: with nothing to change, a copy beside the block is called a duplicate
   const installed = readFileSync(s.claude, 'latin1');
   put(s.claude, `${installed}\n${SHIPPED['core.md']}`);
   const keep = (out) => out.filter((l) => /^(state|note|change)/.test(l));
-  assert.deepEqual(keep(s.run('plan')), ['state: current', 'note: 40 of 40 rules are also present outside the block, duplicating it',
+  assert.deepEqual(keep(s.run('plan')), ['state: current', 'note: 33 of 33 rules are also present outside the block, duplicating it',
     'note: /rules --adopt moves those lines into the block', 'change: none']);
   put(s.claude, `${installed}\n${SHIPPED['core.md']}\nUse a | b\n`);
-  assert.deepEqual(keep(s.run('plan')).slice(0, 2), ['state: current', 'note: 40 of 40 rules are also present outside the block, duplicating it']);
+  assert.deepEqual(keep(s.run('plan')).slice(0, 2), ['state: current', 'note: 33 of 33 rules are also present outside the block, duplicating it']);
   assert.equal(keep(s.run('plan')).some((l) => l.includes('--adopt moves')), false);
 }));
 

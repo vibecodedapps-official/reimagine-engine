@@ -1,4 +1,4 @@
-// The rules skill's steps and the refactor and handoff prompt skills' files. The skills are text the model follows, so these read the text; the handoff prompt skill's two house-rule items are also compared with core.md.
+// The rules skill's steps and the refactor and handoff prompt skills' files. The skills are text the model follows, so these read the text; the handoff prompt skill's copy of a house-rule item is also compared with core.md, and the chat block's copy of the skill's definition with the skill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -222,24 +222,24 @@ test('R347: the handoff-prompt skill holds no numbered step list', () => {
   assert.deepEqual(numbered, []);
 });
 
-test('R347: the handoff-prompt skill carries the handoff prompt and agent-prose items of core.md word for word', () => {
-  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item');
-  const handoff = items.find((u) => u.norm.startsWith('A handoff prompt carries work to a later session:'));
-  const prose = items.find((u) => u.norm.startsWith('Prose written for an agent, such as skills, prompts, and instruction files'));
-  assert.notEqual(handoff, undefined);
+test('R347: the definition section holds the handoff prompt item, then the agent-prose item as core.md has it', () => {
+  const prose = units(loadTexts()['core.md']).list.find((u) => u.kind === 'item' && u.norm.startsWith('Prose written for an agent'));
   assert.notEqual(prose, undefined);
   const lines = readHandoff().split(/\r?\n/);
-  const at = lines.indexOf('- ' + handoff.norm);
-  const next = lines.indexOf('- ' + prose.norm);
-  assert.ok(at >= 0, 'the skill carries the handoff prompt item');
-  assert.ok(next >= 0, 'the skill carries the agent-prose item');
-  assert.ok(at < next, 'the handoff prompt item comes first');
   const start = lines.indexOf('## The definition');
   const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
   assert.ok(start >= 0 && end > start, 'the definition section has a start and an end');
-  assert.ok(start < at && next < end, 'both items sit in the definition section');
-  assert.equal(lines[at], '- A handoff prompt carries work to a later session: enough context and background that the session understands what the work is and why, my settled decisions and open questions as I left them, and nothing more specific than I was. It suggests nothing, asks nothing of anyone else, and leaves the thinking to that session.');
-  assert.equal(lines[next], '- Prose written for an agent, such as skills, prompts, and instruction files, states principles in the fewest words that get the job done. A procedure or an output shape the request didn\'t ask for is added only for a failure that happened.');
+  const items = lines.slice(start + 1, end).filter((l) => l.startsWith('- '));
+  assert.equal(items.length, 2);
+  assert.ok(items[0].startsWith('- A handoff prompt carries work to a later session:'));
+  assert.equal(items[1], `- ${prose.norm}`);
+});
+
+test('R346: the chat block carries the handoff prompt item as the skill words it, as the last line of Content', () => {
+  const item = readHandoff().split(/\r?\n/).find((l) => l.startsWith('- A handoff prompt carries work to a later session:'));
+  assert.notEqual(item, undefined);
+  const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1].split(/\r?\n/);
+  assert.equal(fenced[fenced.indexOf('Leave out.') - 2], item);
 });
 
 test('R347: the handoff-prompt skill asks for no read of the plugin\'s files', () => {

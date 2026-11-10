@@ -221,12 +221,19 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'guard');
   });
 
+  // Pads the shipped skill to n words, so the two cases hold when its length changes.
+  const padLoop = (dir, n) => {
+    const skill = 'plugins/loop/skills/run/SKILL.md';
+    const have = read(dir, skill).split(/\s+/).filter(Boolean).length;
+    assert.ok(have <= n, `the loop skill holds ${have} words, over ${n}`);
+    append(dir, skill, '\n' + 'w '.repeat(n - have) + '\n');
+  };
   negative('R219: loop SKILL.md over the 5800-word cap', (dir) => {
-    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(984) + '\n');
+    padLoop(dir, 5801);
     bump(dir, 'loop');
-  }, 1, ['plugins/loop/skills/run/SKILL.md: 5850 words, over the 5800-word cap']);
+  }, 1, ['plugins/loop/skills/run/SKILL.md: 5801 words, over the 5800-word cap']);
   positive('R219: loop SKILL.md at 5800 words passes', (dir) => {
-    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(934) + '\n');
+    padLoop(dir, 5800);
     bump(dir, 'loop');
   });
 
@@ -455,10 +462,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', '\nname: Concise Plain\n', '\nname: Plain\n');
     bump(dir, 'rules');
   }, 1, ['plugins/rules/output-styles/concise-plain.md: name is not Concise Plain']);
-  negative('R43: <file>: description does not end in v4.14.', (dir) => {
-    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.14.', 'procedures.');
+  negative('R43: <file>: description does not end in v4.15.', (dir) => {
+    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.15.', 'procedures.');
     bump(dir, 'rules');
-  }, 1, ['plugins/rules/output-styles/concise-plain.md: description does not end in v4.14.']);
+  }, 1, ['plugins/rules/output-styles/concise-plain.md: description does not end in v4.15.']);
   negative('R43: <file>: keep-coding-instructions is not true', (dir) => {
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'keep-coding-instructions: true', 'keep-coding-instructions: false');
     bump(dir, 'rules');
@@ -596,23 +603,59 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'rules');
   }, 2, [`${chat}: holds 2 fenced blocks, not one`, `${chat}: names no Concise Plain version`]);
   negative('R44: <file>: names Concise Plain v<x>, not v<y> as the style does', (dir) => {
-    edit(dir, chat, '(Concise Plain v4.14)', '(Concise Plain v4.13)');
+    edit(dir, chat, '(Concise Plain v4.15)', '(Concise Plain v4.14)');
     bump(dir, 'rules');
-  }, 1, [`${chat}: names Concise Plain v4.13, not v4.14 as the style does`]);
+  }, 1, [`${chat}: names Concise Plain v4.14, not v4.15 as the style does`]);
   negative('R44: <file>: names Concise Plain v<x>, not v<y> as the style does (style bumped)', (dir) => {
-    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.14.', 'procedures. v4.15.');
+    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.15.', 'procedures. v4.16.');
     bump(dir, 'rules');
   }, 2, [
-    'plugins/rules/output-styles/concise-plain.md: description does not end in v4.14.',
-    `${chat}: names Concise Plain v4.14, not v4.15 as the style does`,
+    'plugins/rules/output-styles/concise-plain.md: description does not end in v4.15.',
+    `${chat}: names Concise Plain v4.15, not v4.16 as the style does`,
   ]);
   negative('R44: <file>: names no Concise Plain version', (dir) => {
-    edit(dir, chat, ' (Concise Plain v4.14).', '.');
+    edit(dir, chat, ' (Concise Plain v4.15).', '.');
     bump(dir, 'rules');
   }, 1, [`${chat}: names no Concise Plain version`]);
+
+  const carried = '- Write what leaves the session for its reader.';
+  negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (a copy drifts)', (dir) => {
+    edit(dir, 'plugins/loop/skills/run/SKILL.md', carried, '- Write what leaves the run for its reader.');
+    bump(dir, 'loop');
+  }, 1, ['plugins/loop/skills/run/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md']);
+  negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (core.md changes alone)', (dir) => {
+    edit(dir, 'plugins/rules/rules/core.md', carried, '- Write what leaves the session for the reader.');
+    bump(dir, 'rules');
+  }, 3, [
+    'plugins/loop/skills/run/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
+    'plugins/gate/skills/gate/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
+    'plugins/audit/skills/audit/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
+  ]);
+  negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (a copy stops a sentence short)', (dir) => {
+    const skill = 'plugins/audit/skills/audit/SKILL.md';
+    const line = read(dir, skill).split(/\r?\n/).find((l) => l.startsWith(carried));
+    edit(dir, skill, line, line.slice(0, line.lastIndexOf('. ') + 1));
+    settle(dir, 'audit');
+  }, 1, ['plugins/audit/skills/audit/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md']);
+  negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (a line under the copy)', (dir) => {
+    edit(dir, 'plugins/loop/skills/run/SKILL.md', 'would say themselves.\n', 'would say themselves.\nExcept in a hurry.\n');
+    bump(dir, 'loop');
+  }, 1, ['plugins/loop/skills/run/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md']);
+  negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (an indented paragraph under the copy)', (dir) => {
+    edit(dir, 'plugins/gate/skills/gate/SKILL.md', 'would say themselves.\n', 'would say themselves.\n\n  Except in a hurry.\n');
+    bump(dir, 'gate');
+  }, 1, ['plugins/gate/skills/gate/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md']);
+  negative('R349: <file>: ## What leaves the run holds <n> items, not one', (dir) => {
+    edit(dir, 'plugins/gate/skills/gate/SKILL.md', carried, `* One more.\n${carried}`);
+    bump(dir, 'gate');
+  }, 1, ['plugins/gate/skills/gate/SKILL.md: ## What leaves the run holds 2 items, not one']);
+  negative('R349: <file>: no ## What leaves the run section', (dir) => {
+    edit(dir, 'plugins/audit/skills/audit/SKILL.md', '## What leaves the run\n', '## What leaves a run\n');
+    settle(dir, 'audit');
+  }, 1, ['plugins/audit/skills/audit/SKILL.md: no ## What leaves the run section']);
   negative('R44: <file>: names no Concise Plain version (Kept line lacks it, another mention holds it)', (dir) => {
-    edit(dir, chat, ' (Concise Plain v4.14).', '.');
-    append(dir, chat, '\nSee (Concise Plain v4.14).\n');
+    edit(dir, chat, ' (Concise Plain v4.15).', '.');
+    append(dir, chat, '\nSee (Concise Plain v4.15).\n');
     bump(dir, 'rules');
   }, 1, [`${chat}: names no Concise Plain version`]);
 

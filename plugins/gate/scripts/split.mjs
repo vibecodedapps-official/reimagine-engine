@@ -12,7 +12,8 @@
 //   - sibling groups under one fifth of <split> are merged in byte order of path, a folder's own files last; a merged group
 //     closes when it reaches that fifth, names its files one by one, and is never made of one group alone
 //   - a slug is the group's path in lowercase with each run outside [a-z0-9] written as one `-`; a folder's own files end in
-//     `root` and a merged group in `small`; a slug already taken gets `-2`, else `-3`, and so on
+//     `root` and a merged group in `small`; a path that gives no slug is `group`; a slug already taken, `all` included,
+//     gets `-2`, else `-3`, and so on
 // Exit 1 for input that is not numstat records, exit 2 for usage, one line on stderr, nothing on stdout.
 // Everything above main() is pure.
 import { readFileSync, realpathSync } from 'node:fs';
@@ -91,10 +92,10 @@ export function split(files, max) {
   const rank = (g) => (g.merged ? 2 : g.key === '.' ? 1 : 0);
   const name = (g) => (g.merged ? g.first : g.key === '.' ? g.prefix : g.key);
   groups.sort((a, b) => rank(a) - rank(b) || bytes(name(a), name(b)));
-  const taken = new Set();
+  const taken = new Set(['all']);
   const out = groups.map((g) => {
     const base = g.merged ? [slugOf(g.parent), 'small'] : g.key === '.' ? [slugOf(g.prefix), 'root'] : [slugOf(g.key)];
-    const wanted = base.filter(Boolean).join('-');
+    const wanted = base.filter(Boolean).join('-') || 'group';
     let slug = wanted;
     for (let n = 2; taken.has(slug); n++) slug = `${wanted}-${n}`;
     taken.add(slug);

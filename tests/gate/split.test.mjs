@@ -99,6 +99,23 @@ test('two folders that give one slug are told apart in byte order of path', () =
   });
 });
 
+test('a folder whose name gives no slug is the group "group", and a folder named all is not the whole range', () => {
+  assert.deepEqual(groups([[800, 0, '日本/x.md'], [800, 0, 'src/a.ts']]), {
+    lines: 1600,
+    groups: [
+      { slug: 'group', paths: ['日本'], files: 1, lines: 800 },
+      { slug: 'src', paths: ['src'], files: 1, lines: 800 },
+    ],
+  });
+  assert.deepEqual(groups([[800, 0, 'all/x.ts'], [800, 0, 'src/a.ts']]), {
+    lines: 1600,
+    groups: [
+      { slug: 'all-2', paths: ['all'], files: 1, lines: 800 },
+      { slug: 'src', paths: ['src'], files: 1, lines: 800 },
+    ],
+  });
+});
+
 test('groups under a fifth of the split are merged until they reach it, and one left alone stays', () => {
   const rows = [[900, 0, 'app/main.ts'], [120, 0, 'docs/a.md'], [150, 0, 'lib/b.ts'], [280, 0, 'tests/c.ts'], [150, 0, 'tools/d.ts']];
   assert.deepEqual(groups(rows), {

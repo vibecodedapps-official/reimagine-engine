@@ -37,6 +37,7 @@ A pull request must be open, in the repository of the session and not from a for
 - Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed in groups of paths, in parallel, at most `parallel` at once.
 - Each finding is sorted into fix, defer or reject, with a reason. Only the fix bucket leads to code changes; deferred and rejected findings go to the report, never to code.
 - Implementers fix the findings in the fix bucket. The run's checks run (from the request, the manifest bundle or `.reimagine.json`, in that order), a failing check is fixed at most three times, and a pass that changed anything ends with one commit and a push on the target's branch.
+- The gate never edits a pull request. After it pushes fixes, the description still describes the head before them, and the report says what to bring up to date.
 - The record decides the next level, or the stop, by fixed rules. A run stops when a pass finds nothing to fix, or finds at most 3 things to fix that all sit in files the last fix round changed, fixes them and sees the checks pass. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
 - At the end it writes the report and prints it as its last message. The gate posts nothing to a pull request, a ticket or an issue.
 

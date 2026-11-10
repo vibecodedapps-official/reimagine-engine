@@ -92,7 +92,7 @@ Invoking this skill by name approves, for this run only: fix commits on each tar
 
 ## What leaves the run
 
-The gate posts nothing to a forge. Its findings, deferred list, checks, commits and verdict live in `passes.json`, `findings.json` and `report.md` in the run directory, and the report is printed as the run's last message.
+The gate posts nothing to a forge. Its findings, deferred list, checks, commits and verdict live in `passes.json`, `findings.json` and `report.md` in the run directory, and the report is printed as the run's last message. A fix push leaves a pull request's description on the head before it; the gate does not edit it, and the report says so.
 
 - What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team's words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.
 - Output stays local unless publishing is the task's stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.

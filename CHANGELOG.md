@@ -4,7 +4,8 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## loop 0.1.21 - 2026-11-09
 
-- The record attached to a GitHub issue is named for the branch's record slug, since GitHub refuses a `/` in an artifact name and no record could attach on a loop branch. Any question an ask-first rule raises for a new issue or a ticket comment now names the record attached with it, a source ticket's included, since a yes to a question that left the record out kept it local.
+- The record attached to a GitHub issue is named for the branch's record slug, since GitHub refuses a `/` in an artifact name and no record could attach on a loop branch.
+- Any question an ask-first rule raises for a new issue or a ticket comment now names the record attached with it, a source ticket's included, since a yes to a question that left the record out kept it local.
 
 ## audit 0.1.17 - 2026-11-09
 

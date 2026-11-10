@@ -4,9 +4,9 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## loop 0.1.23 - 2026-11-10
 
-- A later run on a branch takes a done input up again when its ticket's title or body, or its file's text, changed since its work was built. Before, a criterion added to an issue after its work was committed was never read.
+- A later run on a branch takes a done input up again, like a new one, when its ticket's title or body, or its file's text, changed since the run that last planned from it. Before, a criterion added to an issue after its work was committed was never read.
 - A post is logged when it returns, so a run that was cut off does not comment on a ticket twice, attach a second record, or lose track of the pull request it opened. A run with nothing to push repeats no description edit and no pull request comment for an unchanged head.
-- An open item that belongs on a ticket an earlier run of the branch took up stays on that ticket as its remainder, and the pull request refers to the ticket and does not close it. Before, the handoff could name that ticket twice, and the audit refused the handoff.
+- An open item is never filed to a ticket that an earlier run of the branch took up: it gets a ticket of its own, which links that one. Before, the handoff could name that ticket twice, and the audit refused the handoff.
 - A draft ticket filed by hand is found by its title on the next run and keeps its line in the pull request's Follow-ups.
 - A ticket may name a file or a line where its reader opens it to act, as when it asks someone to run a check by hand. Before, every file name was kept out, which such a ticket cannot do.
 - The audit manifest names each ticket in a form the audit reads: a document or a description the loop read is left out, and an Azure DevOps or Salesforce ticket is written as an export beside the manifest. Before, the audit stopped on a document, and read no text of those tickets without an MCP tool of its own.

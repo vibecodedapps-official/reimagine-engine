@@ -124,7 +124,7 @@ Manifest:
 
 ### Content
 
-`core.md` is the agreed house rules text: one opening paragraph and five sections, Working, Code, Tests, Done and Ask first (requirement 354). A test holds the digest of the rendered body, so the wording has one check and no test holds a single sentence (requirement 18, decision 243). One Working item says what leaves the session is written for its reader and is published only when that is the task's purpose or the owner asked (requirement 348). The loop, the gate and the audit carry it word for word, and lint holds each copy to `core.md` (requirement 349, decisions 221 and 244). `windows.md` is the four-line Git Bash paragraph, applied only when the script runs on Windows. The rendered body is `windows` (on Windows) then `core`, joined by one blank line.
+`core.md` is the agreed house rules text: one opening paragraph and five sections, Working, Code, Tests, Done and Ask first (requirement 354). A test holds the digest of the rendered body, so the wording has one check and no test holds a single sentence (requirement 18, decision 243). One Working item says what leaves the session is written for its reader and is published only when that is the task's stated purpose or the owner asked (requirement 348). The loop, the gate and the audit carry it word for word, and lint holds each copy to `core.md` (requirement 349, decisions 221 and 244). `windows.md` is the four-line Git Bash paragraph, applied only when the script runs on Windows. The rendered body is `windows` (on Windows) then `core`, joined by one blank line.
 
 ### Mechanism
 

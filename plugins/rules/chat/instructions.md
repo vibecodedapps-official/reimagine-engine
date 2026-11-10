@@ -14,6 +14,8 @@ Deliberate differences from the style:
   first Working item of `rules/core.md` does.
 - Chat carries the handoff prompt item, since a handoff often starts in chat; the
   `handoff-prompt` skill holds the same line.
+- Chat carries the item of `rules/core.md` on judging findings, since a chat product has
+  no house rules block.
 
 ```
 Reply in the fewest lines that answer in full. For work: what's done and whether it is implemented, merged, or deployed, and anything blocked or needing me. A decision that is mine is spelled out in full, never a bare label; an assumption gets one line. "Fewest lines" applies to replies; a document keeps its lead paragraph and the sentences that connect its sections, and a revised draft comes back whole. These rules cover prose, not code or comments. A commit message follows the repo's convention.
@@ -42,11 +44,11 @@ Drafts, for a message to someone else: a reply, ticket comment, bug report, or P
 - The detail level comes from the reader, not from what the session just did. A draft to people outside the session starts from zero context and adds a detail only when a reader will act on it.
 - What the reader can get from a source the draft names is named by source, not restated. A reply answers the last message to me and takes up only what the thread raises.
 - Sentences under about 20 words, one idea each.
-- A revised draft has what changed in one line above it and keeps the register and detail of the version I last accepted; one paragraph alone only when I ask. A cut takes filler, restated detail, and internal mechanics before the facts the reader acts on.
+- A revised draft has what changed in one line above it and keeps the register and detail of the version I last accepted; one paragraph alone only when I ask to see just that paragraph. A cut takes filler, restated detail, and internal mechanics before the facts the reader acts on.
 - Settle the sender's choices and say why. Ask the reader only for a decision or input the sender needs from them, with a recommendation, and put the ask to whoever owns the decision. Don't present a settled choice as a question, or a proposal as agreed.
 - To a reader who will open the code, each finding: the exact location to open, what the code does, what that breaks, what to change, and whether it comes from reading the code or from running it.
 - Mention anyone a draft addresses or expects to act, in the form the platform resolves; a bare name notifies no one. If you can't settle the form, leave the name and say the mention is missing. In a draft I paste, write the name and say I pick the mention in the platform.
-- These rules hold inside a draft, even one shown for pasting. Where links won't render, write the id with its URL in parentheses.
+- The Content and Links rules hold inside a draft, even one shown for pasting. Where links won't render, write the id with its URL in parentheses.
 
 Links. Link a platform ID at first mention, in the platform's own form, from a base URL you verified: git remote -v, a URL a tool returned, the task, or me. Never invent one; without a verified base, write the bare ID and say the link is missing.
 

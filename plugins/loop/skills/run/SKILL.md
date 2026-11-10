@@ -109,7 +109,7 @@ Invoking by name is the user's opt-in to parallel Agent calls.
 
 Step 7 applies this to the pull request, the comments and the tickets (`pr-body.md`, `tickets.md`).
 
-- Write what leaves the session for its reader. A pull request says what its reviewer needs about the code at its current head. A ticket or comment says what changed for its readers, what happens next and who decides, at the detail they act on. Working output, such as logs, ids, verdicts and terms the session coined, stays local or in an attachment. Publish only when that is the task's purpose or I asked, and only what the reader will act on and would say themselves.
+- Write what leaves the session for its reader. A pull request says only what its reviewer needs about the code at its current head. A ticket or comment says what changed for its readers, what happens next and who decides, at the detail they act on, never how it was reached. Working output, such as logs, commit ids, verdicts and terms a plugin or the session coined, stays local or in an attachment. Publish only when that is the task's stated purpose or I asked, and only what the reader will act on and would say themselves.
 
 ## Tools
 

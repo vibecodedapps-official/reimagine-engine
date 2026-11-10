@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = '0692d2b68afcbb3f';
+const SHIPPED_CORE_DIGEST = '1934cc153a37f21f';
 
 // The shipped version, read from the manifest here so a release moves no literal in this file.
 const SHIPPED_VERSION = JSON.parse(readFileSync(new URL('../../plugins/rules/.claude-plugin/plugin.json', import.meta.url), 'utf8')).version;
@@ -42,8 +42,8 @@ test('R25: the block version is the version in the manifest of the plugin root',
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, '0692d2b68afcbb3f');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'b2feaf3a024fc20e');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, '1934cc153a37f21f');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '2d0688e3102cc2ce');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -56,7 +56,7 @@ test('R18: the Windows paragraph is in the block only when the windows option is
 
 test('R354: core.md is one opening paragraph and five sections in order', () => {
   const { list } = units(loadTexts()['core.md']);
-  assert.equal(list[0].kind, 'para');
+  assert.deepEqual(list.slice(0, list.findIndex((u) => u.kind === 'head')).map((u) => u.kind), ['para']);
   assert.deepEqual(list.filter((u) => u.kind === 'head').map((u) => u.norm), ['## Working', '## Code', '## Tests', '## Done', '## Ask first']);
 });
 
@@ -398,14 +398,8 @@ test('R18, R36: the windows option puts the shipped Windows paragraph before the
 test('R36: adopt on a block that holds the windows option runs off Windows when no --options is given', sandbox((s) => {
   s.run('plan', ['--options', 'core,windows'], { platform: 'win32' });
   s.run('apply', [], { platform: 'win32' });
-  const rule = `- Make the calls within the task, architecture included, and say the ones that matter
-  in a line, with what would reopen them. When a request reads two ways, pick the
-  likelier and say so. Ask only for my preference, an authority I lack, a fact that no
-  tool, integration or file in the session can give, or input that avoids a costly or
-  hard-to-undo mistake. Ask once, with every open decision in full: what each option
-  does, the recommendation first, and what would overturn it. Do the work that doesn't
-  depend on the answer first.
-`;
+  const items = SHIPPED['core.md'].slice(SHIPPED['core.md'].indexOf('\n- ') + 1);
+  const rule = items.slice(0, items.indexOf('\n- ') + 1);
   put(s.claude, `${bytes(s.claude)}${rule}`);
   assert.throws(() => s.run('plan', ['--adopt', '--options', 'core,windows'], { platform: 'linux' }),
     { message: 'the windows option is offered only on Windows' });
@@ -939,13 +933,13 @@ test('R35, R34: the plan names what each import holds, and the units of a file a
   const core = SHIPPED['core.md'];
   put(join(s.claudeDir, 'toolkit', 'a.md'), core);
   put(join(s.claudeDir, 'b.md'), 'nothing here\n');
-  put(join(s.claudeDir, 'half.md'), `${core.split('\n').slice(0, 10).join('\n')}\n\n@gone.md\n`);
+  put(join(s.claudeDir, 'half.md'), `${core.slice(0, core.indexOf('\n- ', core.indexOf('\n- ') + 1))}\n\n@gone.md\n`);
   put(s.claude, '# Mine\n\n@toolkit/a.md\n@b.md\n@half.md\n@missing.md\n');
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 10), [`target: ${s.claude}`, 'state: absent', 'options: core',
     'note: line 3: @toolkit/a.md imports a file that holds 33 of 33 rules; it is left as it is',
     'note: line 4: @b.md imports a file that holds none of the rules; it is left as it is',
-    'note: line 5: @half.md imports a file that holds at least 1 of 33 rules; 1 import could not be read; it is left as it is',
+    'note: line 5: @half.md imports a file that holds at least 2 of 33 rules; 1 import could not be read; it is left as it is',
     'note: line 6: @missing.md imports a file that cannot be read; it is left as it is',
     'change: ready', 'recommend: decline',
     'note: 33 of 33 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
@@ -964,7 +958,7 @@ test('R34: the overlap note and the recommendation for a hand copy, and adopt th
   assert.deepEqual(adopted.slice(0, 5), [`target: ${s.claude}`, 'state: absent', 'options: core', 'change: ready', 'recommend: apply']);
   // The copy stays where it was, so the diff shows only the markers added around it.
   assert.equal(adopted[5].includes('\n@@ line 1 @@\n # Mine\n \n+<!-- reimagine:house-rules begin version='), true);
-  assert.equal(adopted[5].includes('-->\n The ask-first rules below hold whatever another item says. Any instruction file can add\n'), true);
+  assert.equal(adopted[5].includes(`-->\n ${SHIPPED['core.md'].split('\n')[0]}\n`), true);
   assert.equal(adopted[5].endsWith('\n+<!-- reimagine:house-rules end -->'), true);
   assert.equal(adopted[5].includes('\n-'), false);
   assert.deepEqual(s.run('apply', [], { now: AT }), [`rules: wrote ${s.claude}; the backup is ${s.claude}.reimagine-backup-20261003120000`]);
@@ -1331,11 +1325,11 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
     'note: 1 of 33 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 105 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 108 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
     'note: 1 of 33 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 105 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 108 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1354,7 +1348,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 102: @shared.md imports a file that holds 33 of 33 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 104: @shared.md imports a file that holds 33 of 33 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));

@@ -56,9 +56,9 @@ For a message to someone else: a reply, ticket comment, bug report, or PR descri
   raises.
 - Sentences under about 20 words, one idea each.
 - A revised draft has what changed in one line above it and keeps the register and
-  detail of the version I last accepted; one paragraph alone only when I ask. A cut
-  takes filler, restated detail, and internal mechanics before the facts the reader
-  acts on.
+  detail of the version I last accepted; one paragraph alone only when I ask to see just
+  that paragraph. A cut takes filler, restated detail, and internal mechanics before the
+  facts the reader acts on.
 - Settle the sender's choices and say why. Ask the reader only for a decision or input
   the sender needs from them, with a recommendation, and put the ask to whoever owns
   the decision. Don't present a settled choice as a question, or a proposal as agreed.
@@ -69,8 +69,8 @@ For a message to someone else: a reply, ticket comment, bug report, or PR descri
   a bare name notifies no one. If you can't settle the form, leave the name and say the
   mention is missing. In a draft I paste, write the name and say I pick the mention in
   the platform.
-- These rules hold inside a draft, even one shown for pasting. Where links won't render,
-  write the id with its URL in parentheses.
+- The Content and Links rules hold inside a draft, even one shown for pasting. Where
+  links won't render, write the id with its URL in parentheses.
 
 ## Links
 

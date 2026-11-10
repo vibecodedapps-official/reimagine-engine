@@ -90,7 +90,7 @@ Invoking this skill by name approves, for this run only, fix commits on each tar
 
 The gate posts nothing to a forge. Its findings, deferred list, checks, commits and verdict live in `passes.json`, `findings.json` and `report.md` in the record, and the report is printed as the run's last message. A fix push leaves a pull request's description on the head before it; the gate does not edit it, and the report says so.
 
-- Write what leaves the session for its reader. A pull request says what its reviewer needs about the code at its current head. A ticket or comment says what changed for its readers, what happens next and who decides, at the detail they act on. Working output, such as logs, ids, verdicts and terms the session coined, stays local or in an attachment. Publish only when that is the task's purpose or I asked, and only what the reader will act on and would say themselves.
+- Write what leaves the session for its reader. A pull request says only what its reviewer needs about the code at its current head. A ticket or comment says what changed for its readers, what happens next and who decides, at the detail they act on, never how it was reached. Working output, such as logs, commit ids, verdicts and terms a plugin or the session coined, stays local or in an attachment. Publish only when that is the task's stated purpose or I asked, and only what the reader will act on and would say themselves.
 
 ## Roles
 

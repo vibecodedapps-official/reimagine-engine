@@ -350,63 +350,41 @@ The eleven scripts and their suites embed these strings: `reimagine-handoff: 1`;
 plugins/gate/
   .claude-plugin/plugin.json
   LICENSE  README.md
-  skills/gate/SKILL.md             /gate; core: reading, approval scope, roles, caps, states, record
-  skills/gate/steps/0-preflight.md targets, base, clean tree, record directory, permission statement
-  skills/gate/steps/1-pass.md      size, split, the child session, parsing, triage
+  skills/gate/SKILL.md             /gate; what holds for the whole run: the request, the reading block, approval scope, roles, caps, configuration, terminal states
+  skills/gate/steps/0-preflight.md instruction files, the permission statement, base, head, clean tree, the record
+  skills/gate/steps/1-pass.md      the pass entry, the split, the reviews, the findings, the triage
   skills/gate/steps/2-fix.md       implementers, snapshots, checks, the commit and the push
-  skills/gate/steps/3-next.md      next.mjs, caps, resume, terminal states
-  skills/gate/steps/4-publish.md   the run's end: manifest, report, next target; posts nothing
-  skills/gate/record.md            record files, passes.json, findings.json
-  skills/gate/report.md
-  scripts/findings.mjs             a review's output to ledger entries
+  skills/gate/steps/3-next.md      the rules of next.mjs, caps, resume
+  skills/gate/steps/4-publish.md   the run's end: run entry, manifest, report, next target; posts nothing
+  skills/gate/record.md            the record's files, the sample of passes.json, the ledger, write discipline
+  skills/gate/report.md            the report's template and sections
+  scripts/findings.mjs             a pass's saved reviews to ledger entries and a summary
   scripts/next.mjs                 the next level or the stop, from passes.json
   scripts/split.mjs                the reviews of a pass, from the numstat of the change
 ```
 
-The skill is named `gate`, like its plugin, so it answers as `/gate` and `/gate:gate` (verified, decision 120). Its description: "Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict when a pass finds nothing left to fix. Use when the user says "reimagine gate", "gate this branch", "gate PR [n]" or "gate the manifest [path]"." There is no command and no hook. The gate runs after the loop and before the audit, and the audit's manifest carries its result.
+The skill is named `gate`, like its plugin, so it answers as `/gate` and `/gate:gate` (verified, decision 120). There is no command and no hook. The gate runs after the loop and before the audit, and the audit's manifest carries its result. Requirements 287 to 323 state its behavior; this section says where each part lives.
 
-### Reading the request
+### Scripts and prose
 
-No flags. The skill makes only the read-only calls that resolve the targets and the engine (`git remote`, `gh pr view`, a manifest read, `command -v claude`), then prints one block before any other tool call:
+Three things must be exact, and a script holds each: `split.mjs` the reviews of a pass and their slugs, `findings.mjs` what a saved review holds and the identity of a finding across passes, `next.mjs` the next level or the stop. The prose holds what needs judgment or a tool: the request, the approval scope, the triage, the fix round, the push and the report. The lists the two share, the change kinds, the rules and the terminal states, are compared by `tests/gate/skill.test.mjs`, which also runs every script command the skill shows and reads the sample of `passes.json` through `next.mjs` (decision 239).
 
-```
-Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-retry, base main
-Mode: fix
-Budget: 120 minutes (default); max-passes 4; split 1500; subagent 20, review 30, check 15 minutes (default)
-Engine: subprocess; reviewer opus, stand-in opus (default)
-Scripts: <the plugin's directory>/scripts
-```
-
-"PR <n>", "<n> and <m>" and a pull request URL name targets; "the manifest <path>" runs one record per bundle with a `pr` or a `branch`, each in its own repository; "this branch", or nothing, gates the current branch against its base. "repo <path>" names the checkout of a branch target in place of the session's, checked by `git -C <path> rev-parse --is-inside-work-tree --show-prefix` printing `true` and an empty line, its checks, configuration and instruction files read there, with every command run in a manifest bundle's forms and, beside a pull request or manifest target, one unresolved line. "no fixes", "budget <n> minutes", "base <branch>" and "checks <command>[; <command>]", which runs to the next comma that another recognized phrase follows, are the other phrases. A pull request's base is its `baseRefName`; a branch's is the request's, else the manifest bundle's `base` without a leading remote name, else `.reimagine.json` `base`, else the remote's default. The checks are the request's, else the bundle's `checks`, else `.reimagine.json` `checks`. The Scripts line is the plugin's scripts directory, resolved from the skill's base directory, since `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell; every script runs by that path. The merge-base is recorded and every review target is the three-dot range from it.
-
-### Approval scope
-
-Invoking by name approves fix commits on each target's branch, whether or not the loop opened its pull request, and pushing that branch (decisions 127 and 222). Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, rebase, amend, reset, a push that triggers a deploy, repository settings and a new issue always ask; the deploy is judged before each push, in the target's repository (decision 216). A denial is final: never retried, never routed around. A dirty tree, a merged or closed pull request and a remote head that is neither the one preflight fetched nor the run's own last push end `blocked`.
+Each rule is stated once. `SKILL.md` holds what applies to the whole run, each step file what its step does, `record.md` the files of the record, and `report.md` the report. A file refers to another by its section name, and each supporting file ends by naming where the run goes next.
 
 ### Roles
 
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json` at `models.reviewer` (default `opus`), one per pass, or one per path group over `split` | Agent `opus` (`models.fallback-reviewer`) over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run. Once, for one group alone, when its child met a usage limit, on another model than the reviewer's |
-| reader | Agent `sonnet` (`models.reader`), one per batch of at most 40 findings, in parallel, when more than 30 findings have no bucket; returns evidence per finding, never a bucket | the orchestrator reads the batch |
-| implementer | Agent `sonnet`, one per disjoint file group, parallel when disjoint | none; a tool error ends `blocked` after the snapshot restore |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json` at `models.reviewer`, one per pass, or one per group of `split.mjs` | an Agent at `models.fallback-reviewer` over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run. Once, for one group alone, when its child met a usage limit, on another model than the reviewer's |
+| reader | Agents at `models.reader`, one per batch of findings, when a pass has more than 30 to sort; returns evidence per finding, never a bucket | the orchestrator reads the batch |
+| implementer | an Agent at `models.implementer`, one per group of files | none; a failed call ends `blocked` after the snapshot restore |
 
-`.reimagine.json` at the repository root, the `gate` key beside the loop's:
-
-```json
-{ "gate": { "split": 1500, "max-passes": 4, "budget": 120, "timeouts": { "subagent": 20, "review": 30, "check": 15 }, "models": { "implementer": "sonnet", "reader": "sonnet", "reviewer": "opus", "fallback-reviewer": "opus" } } }
-```
-
-Every value is optional and the values shown are the defaults. The levels a run types lie between the floor `medium` and the ceiling `xhigh`; `low`, `max` and `ultra` are never typed (decisions 122 and 134).
-
-### Passes and caps
-
-A pass is one review at one typed level, the triage, the fix round and the next-level decision. Pass 1 runs at `xhigh`. Changed lines over `split` (added plus deleted from `git diff --numstat <merge-base>...HEAD`) split the review by path at the shallowest depth that gives more than one group into parallel child sessions, each with the target `<merge-base>...HEAD <path>` and the `.` group naming its files, a group still over `split` whose key is a directory being grouped again by the same rule one segment deeper until no group is over `split` or the one over it is the `.` group or one file (decision 150), each group's slug, made from the final keys, unique within the pass, sibling groups under one fifth of `split` merged into `-small` groups (decision 194), at most six child sessions at once, and the pass's findings are the union. `findings.mjs` reads every output before it fails, and a usage limit sends that group once to the stand-in (decision 184). The orchestrator sorts every finding into fix, defer or reject with a one-line reason before anything is edited; implementers apply the fix bucket, one per disjoint file group after a snapshot; the repository's `checks` run; any changed path outside the groups' files is restored before staging (decision 196); a pass that changed anything ends with one commit and a push after the remote-head check. `next.mjs` then reads `passes.json` and returns, in this order: stop with `pass` or `pass-with-deferred` when the fix bucket is empty and nothing new was rejected; a stop after a `medium` pass, `unconverged` when that pass still found something to fix; `medium` when the fix round changed only documentation (decision 187); `xhigh` once per run when the fix round changed an exported signature, a schema or migration, a file outside the diff, or more than a quarter of the diff's files; `medium` after two `high` passes that each fixed nothing and rejected something new; else `high`. At `max-passes`, or when the minutes left in the run budget are fewer than a pass needs (decision 188), the level is returned marked `capped` and the run ends `unconverged`; a later run resumes from it. A finding is identified by file path and normalized summary; a fixed finding that returns is a regression and goes to the fix bucket, a rejected one that returns is carried and counts as nothing (decision 126), a deferred one keeps its deferral, and a new finding lists the same file's earlier entries as candidates with their line distance (decision 143), then the entries on other files whose summary shares an identifier that looks like code, a camelCase or snake_case word or a backticked span with punctuation, so a plain word in backticks such as `null` and a capitalized product name outside backticks such as GitHub are none (decisions 185 and 206). `max-passes` 4 with a level still to run, a run budget of 120 minutes and the review budget per review end a run `unconverged` with every open finding listed; an implementer call past the subagent budget or a check past the check budget is a failed call and ends `blocked`. The three budgets are 20, 30 and 15 minutes by default (subagent, review, check), each read from `gate.timeouts`, else the root `timeouts`, else the default (decision 151). "no fixes" runs pass 1 only and names what a fix run would do.
+The configuration block and its defaults are in `SKILL.md` and the README, which a test keeps the same.
 
 ### Engine
 
-The child session is the engine (decision 124). It runs at `gate.models.reviewer`, `opus` by default, passed as `--model` on every run, since without the flag it takes the model the settings files set and not the session's, and the reading block's Engine line names that model and the stand-in's before the first review (decision 205). It runs from the repository root with `CLAUDECODE` unset, stdin from `/dev/null`, `--permission-mode default` and an allowlist of Read, Grep, Glob, Skill, Agent, TaskStop, the read-only git forms and the run's checks, in the background under the Bash foreground cap, and its output is saved before `findings.mjs` parses it. Verified on 2.1.310 (decisions 118 to 121): the result is text whose last part is a fenced JSON array of `{file, line, summary, failure_scenario}` with repository-relative paths and no category tags; the typed level and `--max-findings` reach the review; a `high` review of a ten-line diff takes 80 to 150 s and costs about a dollar, an `xhigh` one 120 s and $1.23, a `max` one 17 minutes and $17; the remembered interactive level is untouched; a bare path target reviews against the repository's default branch, so a split group is always `<merge-base>...HEAD <path>` and the root group names its files; calls outside the allowlist were denied and listed in `permission_denials` without stopping the review, under `acceptEdits` in the spikes. The spikes typed the base as a branch name; the sha form is the loop's verified usage and acceptance item 47 records it in a child session.
+The child session is the engine (decision 124). It runs at `gate.models.reviewer`, passed as `--model` on every run, since without the flag it takes the model the settings files set and not the session's (decision 205). It runs from the target's root with `CLAUDECODE` unset, stdin from `/dev/null`, `--permission-mode default` and an allow list of read tools, read-only git forms and the run's checks, in the background, and its output is saved before `findings.mjs` parses it. Verified on 2.1.310 (decisions 118 to 121): the result is text whose last part is a fenced JSON array of `{file, line, summary, failure_scenario}` with repository-relative paths; the typed level reaches the review; a `high` review of a ten-line diff takes 80 to 150 s and costs about a dollar, an `xhigh` one 120 s and $1.23, a `max` one 17 minutes and $17; the remembered interactive level is untouched; a bare path target reviews against the repository's default branch, so a split group is always `<merge-base>...HEAD <path>`; calls outside the allow list are denied and listed in `permission_denials` without stopping the review.
 
 ### Record
 
@@ -416,38 +394,17 @@ The child session is the engine (decision 124). It runs at `gate.models.reviewer
   findings.json    the identity ledger across passes
   report.md        rewritten at every terminal state
   review-<n>[-<slug>].json | .md    each review's saved output
-  pre-<n>.status, pre-<n>.patch, pre-<n>.hashes   snapshots before implementer calls
   diff-<n>[-<slug>].patch           a stand-in's input
+  pre-<k>.status, .patch, .hashes   the tree before an implementer call
+  post-<k>.status, .hashes          the tree as the call left it
   audit-manifest.json               written when the run did not come from one
 ```
 
-`passes.json`:
+`record.md` holds the sample of `passes.json` and the ledger's shape. `passes.json` is the only record of completion: a pass is written `running` when it starts, gets its commit as soon as the commit exists (decision 234), and is `complete` once `next.mjs` has decided. A second run on the branch reads the record and resumes or starts a new sequence, as `steps/3-next.md`, Resume, says.
 
-```json
-{
-  "branch": "feat/68-4567-export",
-  "base": "main",
-  "merge_base": "<sha>",
-  "targets": ["github:owner/app#73"],
-  "engine": "subprocess",
-  "runs": [{ "n": 1, "started": "2026-10-25T09:00:40Z", "ended": null, "state": "running" }],
-  "passes": [
-    { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...",
-      "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "notes": "The suite could not be run here.", "models": ["<model id>"] }],
-      "findings": { "src/stats.mjs|percentile indexes sorted rank ...": { "bucket": "fix", "reason": "off-by-one inside the change" } },
-      "changes": ["inside-diff"], "files": ["src/stats.mjs"], "commit": "<sha>", "head": "<sha>",
-      "checks": [{ "command": "npm test", "result": "pass" }],
-      "next": { "level": "high", "rule": "otherwise" } },
-    { "n": 2, "run": 1, "level": "high", "status": "running", "started": "..." }
-  ]
-}
-```
+### What leaves a run
 
-An entry is written `running` when the pass starts and `complete` after the fix round and its commit, through a temporary file and a rename; it is the only record of completion. A second run resumes at the first pass not `complete` when the head is the one the last complete pass left, or continues from that pass's `next` with the cap counted afresh; a new head starts a new sequence at `xhigh` with the ledger kept; a changed merge-base restarts at pass 1 the same way. A failed pass that names a commit is read as absent, and when the head is that commit and it was never pushed, a run with fixes pushes it first and starts a new sequence at `xhigh`, while a "no fixes" run ends `blocked` on it (decision 219). `.reimagine/` is excluded through the file `git rev-parse --git-path info/exclude` names, run in the target's repository and read relative to its folder.
-
-### Publication texts
-
-The gate posts nothing to a pull request or a ticket (requirement 350, decision 222). The verdict, the findings fixed, deferred and rejected with their reasons, the checks and the commits stay in `passes.json`, `findings.json` and `report.md`, and the report is the run's last message; `SKILL.md` carries the two house-rule items on what leaves a run, pinned to `core.md` by a test (requirement 349). The only text the gate sends out is its fix commits' messages, which name no model, agent, tool, review pass or level. The manifest the run came from gains a top-level `gate` key, an object keyed by each bundle's `repo` with `{"verdict", "passes", "record"}`; a run without one writes a minimal manifest in the record, so the report can suggest `/audit:run "<manifest>"`. Terminal states: `pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`.
+The gate posts nothing to a pull request or a ticket (requirement 350, decision 222). `SKILL.md` carries the two house-rule items on what leaves a run, pinned to `core.md` by a test (requirement 349). The only text the gate sends out is its fix commits' messages. The manifest the run came from gains a top-level `gate` key per bundle, and a run without one writes a minimal manifest in the record, so the report can suggest `/audit:run` on it.
 
 ## The `primer` plugin
 
@@ -571,7 +528,7 @@ Each plugin has its own version, starting at 0.1.0, in its manifest and its cata
 
 `package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `gate`, `guard`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per milestone before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
 
-`tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's three cases, planned under `tests/gate/evals/` with their own command since they need the runner's scaffold and tool grants, were dropped when the runner refused the first of them (decision 133); acceptance items 47, 49 and 54 stand for them, run against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes.
+`tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's three cases, planned under `tests/gate/evals/` with their own command since they need the runner's scaffold and tool grants, were dropped when the runner refused the first of them (decision 133); acceptance items 47, 49 and 54 stand for them, and the gate's one case in this suite grants no shell, so it runs where the others do; those items are run against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes.
 
 ## Security and permissions
 

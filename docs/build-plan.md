@@ -1769,7 +1769,7 @@ Check: the area script of each commit before and after it (`npm run test:rules`,
 
 ## The loop's record name and question: M88
 
-Added 2026-11-09. Issues 159 and 160, decision 228 and requirements 351 and 352 as it amends them: the record attached to a GitHub issue is named by the branch slug, which GitHub accepts, and the open items question names each record, in loop 0.1.21; acceptance item 84 is rewritten. M88 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/loop/`, `tests/loop/` and `tests/lint/`. Loop 0.1.21 is released by it; the tag waits for the owner's merge.
+Added 2026-11-09. Issues 159 and 160, decision 228 and requirements 82, 351 and 352 as it amends them: the record attached to a GitHub issue is named by the branch slug, which GitHub accepts, and any question an ask-first rule raises for a ticket comment, a source ticket's included, names the record attached with it, in loop 0.1.21; acceptance item 84 is rewritten. M88 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/loop/`, `tests/loop/` and `tests/lint/`. Loop 0.1.21 is released by it; the tag waits for the owner's merge.
 
 ### M88: the fixes
 

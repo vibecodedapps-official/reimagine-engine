@@ -16,7 +16,7 @@ A later run on the branch never files a second ticket for an item the record sho
 
 ## Filing
 
-When an ask-first rule of the instruction files covers a new issue or a comment, ask once for all the tickets of the open items, listing each with its title and tracker and the record attached to it, never once per ticket; a question that also asks for a source ticket's comment names its record too. A reply that is not a clear yes files nothing, each ticket is a draft, and the run goes on; it is not a denial (SKILL.md, Approval scope, rule 1).
+When an ask-first rule of the instruction files covers a new issue or a comment, ask once for all the tickets of the open items, listing each with its title and tracker and the record attached to it, never once per ticket. Any question an ask-first rule raises for a ticket comment, a source ticket's included, names the record attached with it (SKILL.md, Approval scope, rule 1). A reply that is not a clear yes files nothing, each ticket is a draft, and the run goes on; it is not a denial (SKILL.md, Approval scope, rule 1).
 
 Which tracker: the tracker of the source tickets the item came from, the first when they differ. An item from a file or text input, or from a Salesforce case, goes to the primary repository's GitHub issues on a `github` remote. With no tracker it is a draft.
 

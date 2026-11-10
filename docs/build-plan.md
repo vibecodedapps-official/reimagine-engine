@@ -1767,6 +1767,25 @@ Work items, in this order:
 
 Check: the area script of each commit before and after it (`npm run test:rules`, `test:lint`, `test:gate`, `test:loop`, `test:audit`, `test:release`); `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
 
+## The loop's record name and question: M88
+
+Added 2026-11-09. Issues 159 and 160, decision 228 and requirements 351 and 352 as it amends them: the record attached to a GitHub issue is named by the branch slug, which GitHub accepts, and the open items question names each record, in loop 0.1.21; acceptance item 84 is rewritten. M88 touches `docs/`, `CHANGELOG.md`, `.claude-plugin/marketplace.json`, `plugins/loop/`, `tests/loop/` and `tests/lint/`. Loop 0.1.21 is released by it; the tag waits for the owner's merge.
+
+### M88: the fixes
+
+Work items, in this order:
+
+1. This section. Commit: `docs(build-plan): add m88 for the loop's record name and question`.
+2. The design documents, with acceptance item 84 rewritten. Commit: `docs(design): specify the record name and the question that names it`.
+3. The loop's tests first, seen failing; then `tickets.md` and `SKILL.md`, with the word-cap padding of `tests/lint/lint.test.mjs` moved to its new count. Commit: `fix(loop): name each record by the branch slug and list it in the question`.
+4. `node tools/release.mjs loop 0.1.21`, with the catalog `metadata.version` raised to 0.1.66. Commit: `release(loop): 0.1.21`.
+5. The `## loop 0.1.21 - 2026-11-09` heading. Commit: `docs(changelog): add the loop 0.1.21 heading`.
+6. Item 84 at the branch head, on a throwaway repository.
+7. The gate on the branch, its fixes committed on the branch.
+8. After the merge, by the owner: the tag `loop--v0.1.21` after a yes, then item 21 on the merge commit.
+
+Check: `npm run test:loop` and `npm run test:lint` before and after item 3; `npm run test:release` after item 4; `npm test`, `npm run lint` with the deny tokens and `node tools/commit-messages.mjs` over the branch before the push.
+
 ## Acceptance record
 
 Every milestone's acceptance items are run in a scratch profile (`CLAUDE_CONFIG_DIR` outside the repository) and recorded in acceptance.md with date, machine and versions. An item that cannot run is recorded as not run with the reason.

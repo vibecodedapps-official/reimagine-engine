@@ -14,6 +14,8 @@ Publication runs only when all of these hold:
 
 When publication does not run, the run ends `prepared`. Before it ends, read `tickets.md`, settle the open items as it says and write each open item's draft as `tickets.md` says, then write the body for the publish commands the report gives. With one open pull request on the branch, read `pr-body.md` and write the continued pull request comment to `<record>/comment-<n>.md`, numbered as `record.md` says, so the report can give the `gh pr comment <pr> --body-file <absolute path>` command; when this loop opened that pull request (7.2), also write the run's body file, so the report can give the `gh pr edit <pr> --body-file <absolute path>` command before it. With no pull request, write the pull request body to the run's body file, so the report can give the `gh pr create` command.
 
+A question an ask-first rule raises lists every action its yes will cover: the commit, the push, the pull request, and each ticket comment with the record attached with it. A yes covers what the question listed and nothing more (SKILL.md, Approval scope, rule 1).
+
 A question about a commit, a push or a pull request, raised because an ask-first rule applies, ends the run `prepared` when the answer before any push is anything but a clear yes: write the drafts and body files first, as the opening says. The same answer after the run's first push ends `blocked` and the pushed work stays as it is.
 
 ## 7.1 Commit
@@ -83,7 +85,7 @@ At most three cycles run. A result still red after the third, or a repair the pa
 
 ## 7.4 Ticket comments
 
-After the pull request is open and 7.3 has ended without a block (green, or not applicable), post one comment for each ticket this run took up. A ticket that was done at Step 0 (`record.md`, An existing record) gets no comment, unless no run's `run.md` section logs a comment on it, as after a run that ended before 7.4. Log each comment in `run.md` with its file. Read the `## Ticket comment` section of `pr-body.md` and write each comment and its record first (`tickets.md`).
+After the pull request is open and 7.3 has ended without a block (green, or not applicable), post one comment for each ticket this run took up. A ticket that was done at Step 0 (`record.md`, An existing record) gets no comment, unless no run's `run.md` section logs a comment on it, as after a run that ended before 7.4. Log each comment in `run.md` with its file. Read the `## Ticket comment` section of `pr-body.md` and write each comment and its record first (`tickets.md`). Under an ask-first rule that covers a comment, a record that no question of this run has named gets its own question before it is attached: it is not attached unasked, and not held back to avoid the question. A reply that is not a clear yes keeps the record local, the report names it (`tickets.md`, Backends), and the run goes on (SKILL.md, Approval scope, rule 1).
 
 - GitHub: write the comment to `<record>/ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on) and its record to `<record>/record-<id-slug>.md`, and then post `gh issue comment <n> -R <owner>/<repo> --body-file <absolute path>` and attach the record (`tickets.md`, Backends).
 - Azure DevOps: use the Azure DevOps MCP tool when one is listed, else `az boards work-item update --org https://dev.azure.com/<org> --id <n> --discussion @<absolute path>`, the file holding the text as HTML paragraphs; attach the record as `tickets.md`, Backends, says.

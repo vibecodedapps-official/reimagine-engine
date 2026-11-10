@@ -221,12 +221,19 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'guard');
   });
 
+  // Pads the shipped skill to n words, so the two cases hold when its length changes.
+  const padLoop = (dir, n) => {
+    const skill = 'plugins/loop/skills/run/SKILL.md';
+    const have = read(dir, skill).split(/\s+/).filter(Boolean).length;
+    assert.ok(have <= n, `the loop skill holds ${have} words, over ${n}`);
+    append(dir, skill, '\n' + 'w '.repeat(n - have) + '\n');
+  };
   negative('R219: loop SKILL.md over the 5800-word cap', (dir) => {
-    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(984) + '\n');
+    padLoop(dir, 5801);
     bump(dir, 'loop');
-  }, 1, ['plugins/loop/skills/run/SKILL.md: 5850 words, over the 5800-word cap']);
+  }, 1, ['plugins/loop/skills/run/SKILL.md: 5801 words, over the 5800-word cap']);
   positive('R219: loop SKILL.md at 5800 words passes', (dir) => {
-    append(dir, 'plugins/loop/skills/run/SKILL.md', '\n' + 'w '.repeat(934) + '\n');
+    padLoop(dir, 5800);
     bump(dir, 'loop');
   });
 

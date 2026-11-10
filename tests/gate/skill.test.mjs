@@ -90,7 +90,7 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   assert.notEqual(readme, undefined, 'README.md has no json block');
   assert.equal(skill.lines.join('\n'), readme.lines.join('\n'));
   assert.deepEqual(JSON.parse(skill.lines.join('\n')), {
-    gate: { split: 1500, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', reviewer: 'opus', 'fallback-reviewer': 'opus' } },
+    gate: { split: 1500, parallel: 3, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', reviewer: 'opus', 'fallback-reviewer': 'opus' } },
   });
 });
 
@@ -98,7 +98,7 @@ test('R291: the reading block is one fenced block of five lines in a fixed order
   const block = fences(SKILL).find((b) => b.lines.some((l) => l.startsWith('Targets: ')));
   assert.notEqual(block, undefined, 'SKILL.md has no reading block');
   assert.deepEqual(block.lines.map((l) => l.slice(0, l.indexOf(':'))), ['Targets', 'Mode', 'Budget', 'Engine', 'Scripts']);
-  assert.equal(block.lines[2], 'Budget: 120 minutes (default); max-passes 4; split 1500; subagent 20, review 30, check 15 minutes (default)');
+  assert.equal(block.lines[2], 'Budget: 120 minutes (default); max-passes 4; split 1500; parallel 3; subagent 20, review 30, check 15 minutes (default)');
   assert.equal(block.lines[3], 'Engine: subprocess; reviewer opus, stand-in opus (default)');
 });
 

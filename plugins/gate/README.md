@@ -34,7 +34,7 @@ A pull request must be open, in the repository of the session and not from a for
 
 ## What a run does
 
-- Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed in groups of paths, in parallel, at most 6 at once.
+- Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed in groups of paths, in parallel, at most `parallel` at once.
 - Each finding is sorted into fix, defer or reject, with a reason. Only the fix bucket leads to code changes; deferred and rejected findings go to the report, never to code.
 - Implementers fix the findings in the fix bucket. The run's checks run (from the request, the manifest bundle or `.reimagine.json`, in that order), a failing check is fixed at most three times, and a pass that changed anything ends with one commit and a push on the target's branch.
 - The record decides the next level, or the stop, by fixed rules. A run stops when a pass finds nothing to fix, or finds at most 3 things to fix that all sit in files the last fix round changed, fixes them and sees the checks pass. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
@@ -56,6 +56,7 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 {
   "gate": {
     "split": 1500,
+    "parallel": 3,
     "max-passes": 4,
     "budget": 120,
     "timeouts": { "subagent": 20, "review": 30, "check": 15 },
@@ -64,7 +65,7 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 }
 ```
 
-`split` is the number of changed lines above which a pass reviews in groups of paths, in parallel, at most 6 at once: folders at the first depth that gives more than one group, a folder still over `split` grouped again one level deeper, and groups under one fifth of `split` merged. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the three are whole numbers of 1 or more. `timeouts` is the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them; a key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default. `models` names the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Each child review runs at `models.reviewer`, `opus` unless the key says otherwise, in place of the model your settings choose, and the reading block names it before the first review starts. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
+`split` is the number of changed lines above which a pass reviews in groups of paths, in parallel: folders at the first depth that gives more than one group, a folder still over `split` grouped again one level deeper, and groups under one fifth of `split` merged. `parallel` is the number of reviews of one pass that run at once; each is a model session of its own, so lower it on a machine short of memory. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the four are whole numbers of 1 or more. `timeouts` is the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them; a key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default. `models` names the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Each child review runs at `models.reviewer`, `opus` unless the key says otherwise, in place of the model your settings choose, and the reading block names it before the first review starts. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
 
 ## How a run ends
 

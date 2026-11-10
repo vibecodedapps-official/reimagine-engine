@@ -229,6 +229,11 @@ describe('fix-of-fix', { concurrency }, () => {
     await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [passed, failed] })], HIGH);
   });
 
+  test('a check that names no command cannot stand for another, so a failed one gives high', async () => {
+    const fix = ['src/a.mjs|p'];
+    await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [{ result: 'fail' }, { result: 'pass' }] })], HIGH);
+  });
+
   test('a fix round that made no commit gives high', async () => {
     await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked, commit: null })], HIGH);
   });

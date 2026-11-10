@@ -89,7 +89,8 @@ function fixOfFix(latest, before) {
   const fixes = ids(latest, 'fix');
   if (fixes.length > FEW || !fixes.every((id) => id.includes('|') && before.files.includes(id.slice(0, id.indexOf('|'))))) return false;
   if (latest.changes.some((k) => WIDE.includes(k)) || typeof latest.commit !== 'string') return false;
-  if (!Array.isArray(latest.checks) || latest.checks.length === 0 || !latest.checks.every(isObject)) return false;
+  if (!Array.isArray(latest.checks) || latest.checks.length === 0) return false;
+  if (!latest.checks.every((c) => isObject(c) && typeof c.command === 'string')) return false;
   // A check run again after a check fix is in the list twice; its last result is the one that counts.
   const last = new Map(latest.checks.map((c) => [c.command, c.result]));
   return [...last.values()].every((result) => result === 'pass');

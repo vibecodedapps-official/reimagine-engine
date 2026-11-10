@@ -38,7 +38,7 @@ reimagine-engine/
 | rules | house rules block, output style, a rule-driven refactor review, a handoff prompt skill | `/rules`, `/rules:refactor`, `/rules:handoff-prompt`, prose "handoff prompt" | `scripts/rules.mjs` | SessionStart `startup` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
-| gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/split.mjs` | none | own |
+| gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/resume.mjs`, `scripts/split.mjs` | none | own |
 | primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
 | guard | the auto mode classifier's entries for listed repositories | `/guard` | `scripts/guard.mjs` | PermissionDenied; SessionStart `startup` | own |
 
@@ -58,7 +58,7 @@ Only five hooks run outside a session request: the rules staleness notice at `st
 
 ## Prompt first
 
-Prose carries the process. Scripts exist only where a model cannot be trusted to do the job byte for byte: editing the user's `CLAUDE.md` (`rules.mjs`), writing the `autoMode` value of the user settings file while keeping every byte outside it (`plugins/guard/scripts/guard.mjs`), snapshotting and checking a repository's state (`readonly.sh`), building ledgers and gates from many files (`ledger.sh`), the other audit scripts, and turning a review's output into ledger entries and the next pass level (`findings.mjs`, `next.mjs`), each with a suite behind it. The two primer hooks are scripts because a hook has no model. No new script ships without a test under `tests/`.
+Prose carries the process. Scripts exist only where a model cannot be trusted to do the job byte for byte: editing the user's `CLAUDE.md` (`rules.mjs`), writing the `autoMode` value of the user settings file while keeping every byte outside it (`plugins/guard/scripts/guard.mjs`), snapshotting and checking a repository's state (`readonly.sh`), building ledgers and gates from many files (`ledger.sh`), the other audit scripts, and turning a review's output into ledger entries, the next pass level and the place a later run starts (`findings.mjs`, `next.mjs`, `resume.mjs`), each with a suite behind it. The two primer hooks are scripts because a hook has no model. No new script ships without a test under `tests/`.
 
 Skills are user-invocable and carry their trigger phrases in `description` (verified: the phrase in the description invoked the skill in 2 of 2 runs, and the bare skill name also carried; decisions.md item 14). Rarely used paths live in their own files, read on demand, and each step file ends by naming the next read.
 
@@ -354,12 +354,13 @@ plugins/gate/
   skills/gate/steps/0-preflight.md instruction files, the permission statement, base, head, clean tree, the record
   skills/gate/steps/1-pass.md      the pass entry, the split, the reviews, the findings, the triage
   skills/gate/steps/2-fix.md       implementers, snapshots, checks, the commit and the push
-  skills/gate/steps/3-next.md      the rules of next.mjs, caps, resume
+  skills/gate/steps/3-next.md      the rules of next.mjs, caps, the actions of resume.mjs
   skills/gate/steps/4-publish.md   the run's end: run entry, manifest, report, next target; posts nothing
   skills/gate/record.md            the record's files, the sample of passes.json, the ledger, write discipline
   skills/gate/report.md            the report's template and sections
   scripts/findings.mjs             a pass's saved reviews to ledger entries and a summary
   scripts/next.mjs                 the next level or the stop, from passes.json
+  scripts/resume.mjs               where a later run starts, from passes.json, the head, the remote head and the merge-base
   scripts/split.mjs                the reviews of a pass, from the numstat of the change
 ```
 
@@ -367,7 +368,7 @@ The skill is named `gate`, like its plugin, so it answers as `/gate` and `/gate:
 
 ### Scripts and prose
 
-Three things must be exact, and a script holds each: `split.mjs` the reviews of a pass and their slugs, `findings.mjs` what a saved review holds and the identity of a finding across passes, `next.mjs` the next level or the stop. The prose holds what needs judgment or a tool: the request, the approval scope, the triage, the fix round, the push and the report. The lists the two share, the change kinds, the rules and the terminal states, are compared by `tests/gate/skill.test.mjs`, which also runs every script command the skill shows and reads the sample of `passes.json` through `next.mjs` (decision 239).
+Four things must be exact, and a script holds each: `split.mjs` the reviews of a pass and their slugs, `findings.mjs` what a saved review holds and the identity of a finding across passes, `next.mjs` the next level or the stop, `resume.mjs` where a later run on the branch starts. The prose holds what needs judgment or a tool: the request, the approval scope, the triage, the fix round, the push and the report. The lists the two share, the change kinds, the rules, the resume actions and the terminal states, are compared by `tests/gate/skill.test.mjs`, which also runs every script command the skill shows and reads the sample of `passes.json` through `next.mjs` (decision 239).
 
 Each rule is stated once. `SKILL.md` holds what applies to the whole run, each step file what its step does, `record.md` the files of the record, and `report.md` the report. A file refers to another by its section name, and each supporting file ends by naming where the run goes next.
 
@@ -400,7 +401,7 @@ The child session is the engine (decision 124). It runs at `gate.models.reviewer
   audit-manifest.json               written when the run did not come from one
 ```
 
-`record.md` holds the sample of `passes.json` and the ledger's shape. `passes.json` is the only record of completion: a pass is written `running` when it starts, gets its commit as soon as the commit exists (decision 234), and is `complete` once `next.mjs` has decided. A second run on the branch reads the record and resumes or starts a new sequence, as `steps/3-next.md`, Resume, says.
+`record.md` holds the sample of `passes.json` and the ledger's shape. `passes.json` is the only record of completion: a pass is written `running` when it starts, gets its commit as soon as the commit exists (decision 234), and is `complete` once `next.mjs` has decided. A second run on the branch reads the record through `resume.mjs` and resumes or starts a new sequence, as `steps/3-next.md`, Resume, says.
 
 ### What leaves a run
 

@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadTexts, units } from '../../plugins/rules/scripts/rules.mjs';
 import { KINDS } from '../../plugins/gate/scripts/next.mjs';
+import { ACTIONS } from '../../plugins/gate/scripts/resume.mjs';
 
 const GATE = new URL('../../plugins/gate/', import.meta.url);
 const SKILL_DIR = new URL('skills/gate/', GATE);
@@ -136,6 +137,11 @@ test('R318: every script command the skill shows runs, by the path of the Script
       '<max-passes>': '4',
       '<minutes left>': '90',
       '<minutes a pass needs>': '50',
+      '<head>': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      '<tip>': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      '<remote head>': 'none',
+      '<merge-base>': '1111111111111111111111111111111111111111',
+      '<mode>': 'fix',
     };
     const ran = new Set();
     for (const rel of prose()) {
@@ -166,7 +172,11 @@ test('R301: the rules the skill lists are the rules next.mjs returns', () => {
   const source = readFileSync(join(SCRIPTS, 'next.mjs'), 'utf8');
   const returned = [...new Set([...source.matchAll(/(?:rule: |stop\()'([a-z-]+)'/g)].map((m) => m[1]))];
   assert.ok(returned.length > 0, 'the scan finds no rule in next.mjs');
-  assert.deepEqual(itemWords(read(RULES_FILE)).sort(), returned.sort());
+  assert.deepEqual(itemWords(section(read(RULES_FILE), 'Decide').join('\n')).sort(), returned.sort());
+});
+
+test('R312: the actions Resume lists are the actions resume.mjs returns', () => {
+  assert.deepEqual(itemWords(section(read(RULES_FILE), 'Resume').join('\n')).sort(), [...ACTIONS].sort());
 });
 
 test('R310: the passes.json that record.md shows is a record next.mjs reads, with the next the script gives it', () => {
@@ -186,7 +196,7 @@ test('R310: the passes.json that record.md shows is a record next.mjs reads, wit
 });
 
 test('R310: the pass entry a pass starts with has the keys of the pass record.md shows', () => {
-  const keys = ['n', 'run', 'level', 'status', 'started', 'ended', 'reviews', 'findings', 'changes', 'files', 'commit', 'head', 'checks', 'next'];
+  const keys = ['n', 'run', 'level', 'status', 'started', 'ended', 'reviewed', 'reviews', 'findings', 'changes', 'files', 'commit', 'head', 'checks', 'next'];
   const started = fences(read(COMMAND_FILE)).map((b) => b.lines.join('\n')).find((t) => t.startsWith('{"n": <n>'));
   assert.notEqual(started, undefined, `${COMMAND_FILE} has no fenced pass entry`);
   assert.deepEqual([...started.matchAll(/"([a-z_]+)":/g)].map((m) => m[1]), keys);
@@ -273,7 +283,7 @@ test('the README names the phrases a request may hold and where the record is', 
 
 test('R219: the skill stays within its word budget', () => {
   const total = prose().reduce((n, rel) => n + words(read(rel)), 0);
-  assert.ok(total <= 10800, `the skill holds ${total} words, over 10800`);
+  assert.ok(total <= 10400, `the skill holds ${total} words, over 10400`);
 });
 
 test('R349: SKILL.md carries the two items of core.md word for word under What leaves the run', () => {

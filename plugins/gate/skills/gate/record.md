@@ -30,7 +30,7 @@ Pass numbers and the `pre-<k>` counter run across runs, so no run rewrites a fil
   "engine": "subprocess",
   "runs": [{ "n": 1, "started": "2026-10-25T09:00:40Z", "ended": null, "state": "running" }],
   "passes": [
-    { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...",
+    { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...", "reviewed": "<sha>",
       "reviews": [{ "slug": "all", "target": "<sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "denied": ["Bash: npm --prefix . test", "Bash: node --test tests/"], "models": ["<model id>"], "notes": "The suite could not be run here." }],
       "findings": { "src/stats.mjs|percentile indexes sorted rank ...": { "bucket": "fix", "reason": "off-by-one inside the change" } },
       "changes": ["inside-diff"], "files": ["src/stats.mjs"], "commit": "<sha>", "head": "<sha>",
@@ -40,8 +40,8 @@ Pass numbers and the `pre-<k>` counter run across runs, so no run rewrites a fil
 }
 ```
 
-- Step 0 writes the top level and the run entry. Step 1 appends the pass entry and fills `reviews` and `findings`. Step 2 writes `changes`, `files`, `checks` and `commit` as soon as the commit exists, and `head` after the push. Step 3 writes `next`, `ended` and `status`. Step 4 closes the run entry.
-- A run's `state` is `running`, then the terminal state, or `interrupted` when a later preflight finds it still `running`. A run entry may hold `kept`, the sha of the kept commit that run pushed.
+- Step 0 writes the top level and the run entry. Step 1 appends the pass entry, with the head it reviews as `reviewed`, and fills `reviews` and `findings`. Step 2 writes `changes`, `files`, `checks` and `commit` as soon as the commit exists, and `head` after the push. Step 3 writes `next`, `ended` and `status`. Step 4 closes the run entry.
+- A run's `state` is `running`, then the terminal state, or `interrupted` when a later preflight finds it still `running`. A run entry may hold `kept`, the sha of a commit an earlier run made and that run pushed.
 - A pass's `status` is `running`, `complete` or `failed`. It is `complete` only once Step 3 has decided, and `failed` when a failed review or a `blocked` ending of its fix round ended the run; a failed pass has `ended` and a `next` of `null`. `n` counts across runs, so pass 3 may be the first pass of run 2.
 - A `reviews[]` entry holds what `findings.mjs` printed for that output. `models` is `null` for a child session result that names none, and the one model called for a stand-in. A review that stopped on a usage limit holds `"failure": "usage limit"`.
 

@@ -7,10 +7,10 @@ Read this file at the start of every pass, for its entry, its reviews, its findi
 The pass number is one more than the highest `n` in `passes[]`, counted across runs. The level is `xhigh` for pass 1, else the one Step 3 or Resume gave. Before the first review starts, append the entry to `passes[]`:
 
 ```
-{"n": <n>, "run": <run>, "level": "<level>", "status": "running", "started": "<utc>", "ended": null, "reviews": [], "findings": {}, "changes": [], "files": [], "commit": null, "head": null, "checks": [], "next": null}
+{"n": <n>, "run": <run>, "level": "<level>", "status": "running", "started": "<utc>", "ended": null, "reviewed": "<sha>", "reviews": [], "findings": {}, "changes": [], "files": [], "commit": null, "head": null, "checks": [], "next": null}
 ```
 
-A pass that Resume repeats keeps its `n` and the entry Resume rewrote.
+`reviewed` is the output of `git rev-parse HEAD`, which a later run compares before it resumes the pass. For the first pass of a sequence, pass 1 or the pass after a `new-sequence`, the same write sets the record's `merge_base` to the one preflight found. A pass that Resume repeats keeps its `n` and the entry Resume rewrote.
 
 ## Size and split
 

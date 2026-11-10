@@ -21,19 +21,17 @@ Read this file after a fix round, after a triage with nothing to fix or in "no f
 
 ## Resume
 
-Preflight sends the run here when the record holds passes. This run's entry is already in `runs`. Nothing of an earlier run is changed except `passes.json`, `findings.json` and the files a repeated pass rewrites. A new sequence, below, is a pass at `xhigh` numbered after the record's last pass, with the ledger kept, so earlier rejections carry. It first writes the merge-base preflight found as the record's `merge_base` when the two differ.
+Preflight sends the run here when the record holds passes. This run's entry is already in `runs`. Nothing of an earlier run is changed except `passes.json`, `findings.json` and the files a repeated pass rewrites.
 
-A kept commit comes first. A `failed` pass that names a `commit` made it before its run ended `blocked`. Such a pass is found by its sha, stays as it is and is left out of everything after this paragraph: it is never resumed, and its commit is never an expected head. When `git rev-parse HEAD` is its `commit`, the remote head preflight kept is that commit's parent, and neither a `kept` in `runs` nor the `head` of a `complete` pass names the sha, the commit was never pushed:
+Run `node "<scripts>/resume.mjs" <absolute passes.json> <head> <remote head> <merge-base> <mode>`: the output of `git rev-parse HEAD`, the remote head preflight kept or `none`, the merge-base preflight found, each sha in full, and the mode as `fix` or `no-fixes`. It prints one line that names an `action`. A non-zero exit ends the run `blocked` with the script's stderr line.
 
-- Outside "no fixes", push it as `steps/2-fix.md`, The push, says, with its deploy judgment and its prompts. A `blocked` ending there changes no pass entry. Then write `"kept": "<sha>"` in this run's entry of `runs` and start a new sequence, since no pass reviewed the branch with that commit on it.
-- In "no fixes" mode, which pushes nothing, end the run `blocked`, naming the commit and that a run with fixes pushes it.
+A line that holds `push` names the head as a commit an earlier run made and did not push. Push it first, as `steps/2-fix.md`, The push, says, with its deploy judgment and its prompts; a `blocked` ending there changes no pass entry. Then write `"kept": "<sha>"` in this run's entry of `runs`, and take the action:
 
-A record whose passes are all of that kind starts a new sequence too. Otherwise compare the head and the merge-base with the record. The expected head is the `head` of the last `complete` pass, or the `commit` of the first pass after it that is not `complete`, when that pass has one. With no `complete` pass, only the merge-base is compared.
+- `new-sequence`: no pass can be resumed. The next pass runs at `xhigh` as the first of a sequence, with the ledger kept, so earlier rejections carry.
+- `continue`: the next pass runs at the line's `level`, with `max-passes` and the run budget counted afresh for this run.
+- `repeat`: the earlier run stopped inside the pass the line names, which is reviewed again. Rewrite its entry as Step 1 appends it, with this run's number, `status` `running` and a new `started`. A group whose saved output the earlier run finished is not reviewed again, since it was made on this head and merge-base: after the split, run `findings.mjs` as Step 1 does over the review files of the pass that exist, and review only the groups whose file is missing or named on its stderr. With no review file saved, every group is reviewed. A group that has a stand-in's reply is read from the reply, not from the child's output beside it.
+- `decide`: the earlier run stopped after the commit of the pass the line names. Set that pass's fix-bucket entries to `fixed` in `findings.json`, write its `head`, and continue at Decide with the entry as it is.
+- `end`: the last pass stopped. End the run with the line's `stop` as its verdict: the report is rewritten and nothing is committed.
+- `blocked`: end the run `blocked` with the line's `reason`, naming its `commit`.
 
-- A changed merge-base, or a new head on the same one, starts a new sequence.
-- The same head and merge-base with every pass `complete` continues at the level in the last pass's `next`, with `max-passes` and the run budget counted afresh for this run. A `next` that is a stop ends the run with that verdict: the report is rewritten and nothing is committed. A `no-fixes` stop met by a run with fixes starts a new sequence instead, since that pass fixed nothing.
-- The same head and merge-base with a pass that is not `complete` resumes at the first such pass after the last complete one.
-  - When its `commit` is the head, the earlier run stopped after the commit. When the remote head preflight kept is that commit's parent, push it first, as `steps/2-fix.md`, The push, says, or in "no fixes" mode end the run `blocked`, naming the commit. Then set the pass's fix-bucket entries to `fixed` in `findings.json`, write its `head`, and continue at Decide with the entry as it is.
-  - Otherwise repeat its review. Rewrite its entry as Step 1 appends it, with this run's number, `status` `running` and a new `started`. A group whose saved output the earlier run finished is not reviewed again, since the head and the merge-base are those it was made on: after the split, run `findings.mjs` as Step 1 does over the review files of the pass that exist, and review only the groups whose file is missing or named on its stderr. With no review file saved, every group is reviewed. A group that has a stand-in's reply is read from the reply, not from the limited output beside it.
-
-A new sequence, a repeated pass and a continued level go to `steps/1-pass.md`; every ending goes to SKILL.md, Terminal states.
+A new sequence, a continued level and a repeated pass go to `steps/1-pass.md`; every ending goes to SKILL.md, Terminal states.

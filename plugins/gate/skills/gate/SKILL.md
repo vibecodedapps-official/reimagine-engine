@@ -154,7 +154,7 @@ Every run ends in exactly one state, and then reads `steps/4-publish.md`.
 
 ## Record
 
-The record is `.reimagine/gate/<branch-slug>/` under the target's root: the branch name in lowercase, each run of characters outside `[a-z0-9]` written as `-`, cut to 60 characters, trailing `-` removed. `passes.json` in it is the only record of completion, and `record.md` describes every file. A second invocation on the same branch adds a run to the record and resumes from it (`steps/3-next.md`, Resume). With the head and the merge-base unchanged it goes on at the first pass not complete, else at the level the last pass was given, and a record that ended in a stop ends again with that verdict. Otherwise it starts a new sequence at `xhigh`, the ledger kept so that earlier rejections carry.
+The record is `.reimagine/gate/<branch-slug>/` under the target's root: the branch name in lowercase, each run of characters outside `[a-z0-9]` written as `-`, cut to 60 characters, trailing `-` removed. `passes.json` in it is the only record of completion, and `record.md` describes every file. A second invocation on the same branch adds a run to the record, and `resume.mjs` reads it and returns where the run starts (`steps/3-next.md`, Resume).
 
 ## Supporting files
 
@@ -168,3 +168,4 @@ The record is `.reimagine/gate/<branch-slug>/` under the target's root: the bran
 - `scripts/split.mjs`: at the start of each pass, to size the change and group its paths into reviews.
 - `scripts/findings.mjs`: after the reviews of a pass, to turn their saved output into the pass's findings and the ledger.
 - `scripts/next.mjs`: after each fix round, to decide the next level or the stop.
+- `scripts/resume.mjs`: when preflight finds a record that holds passes, to decide where the run starts.

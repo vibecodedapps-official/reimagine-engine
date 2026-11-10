@@ -149,6 +149,12 @@ test('the effort words are mapped to an effort in one file', () => {
   assert.deepEqual(FILES.filter((file) => TEXT[file].includes('"very thorough"')), ['SKILL.md']);
 });
 
+test('the redaction markers are named in one file', () => {
+  for (const marker of ['<redacted: aws_access_key>', '<redacted: pem_key>', '<redacted: block>']) {
+    assert.deepEqual(FILES.filter((file) => TEXT[file].includes(marker)), ['SKILL.md'], marker);
+  }
+});
+
 test('the report template and report.md, Sections, name the same sections in the same order', () => {
   const report = TEXT['report.md'];
   const template = report.split('\n## Template\n')[1].split('\n```\n')[1];

@@ -30,7 +30,7 @@ const LEVELS = ['medium', 'high', 'xhigh'];
 const STATUSES = ['running', 'complete', 'failed'];
 const BUCKETS = ['fix', 'defer', 'reject'];
 const WIDE = ['exported-signature', 'schema-or-migration', 'outside-diff', 'over-quarter'];
-const KINDS = ['inside-diff', ...WIDE, 'docs-only'];
+export const KINDS = ['inside-diff', ...WIDE, 'docs-only'];
 
 class Fail extends Error {
   constructor(code, message) {

@@ -5,7 +5,7 @@ Read this file at the start of every pass. It holds the pass entry, the size and
 ## 1.1 The pass entry
 
 1. Take `date -u +%Y-%m-%dT%H:%M:%SZ`. The pass number `n` is one more than the highest `n` in `passes[]`; it counts across runs. The level is the one the run arrived with: `xhigh` for pass 1, else the level Step 3 or Resume gave. Type only `xhigh`, `high` or `medium`, never `low`, `max` or `ultra`.
-2. Before the first review starts, append `{"n": <n>, "run": <run>, "level": "<level>", "status": "running", "started": "<utc>", "ended": null, "reviews": [], "findings": {}, "changes": [], "commit": null, "head": null, "checks": [], "next": null}` to `passes[]`. A pass that Resume repeats keeps its `n` and the entry Resume rewrote, and nothing is appended.
+2. Before the first review starts, append `{"n": <n>, "run": <run>, "level": "<level>", "status": "running", "started": "<utc>", "ended": null, "reviews": [], "findings": {}, "changes": [], "files": [], "commit": null, "head": null, "checks": [], "next": null}` to `passes[]`. A pass that Resume repeats keeps its `n` and the entry Resume rewrote, and nothing is appended.
 3. Nothing is edited while a review runs.
 
 ## 1.2 Size and split

@@ -12,7 +12,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'plugins', 'gate', 'scripts', 'next.mjs');
 const concurrency = Math.max(1, availableParallelism() - 1);
 const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-left> <minutes-a-pass-needs>]';
-const KINDS = 'inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter or docs-only';
+const KINDS = 'inside-diff, exported-signature, schema-or-migration, outside-diff or docs-only';
 
 let base;
 before(() => {
@@ -33,8 +33,9 @@ const run = (dir, ...args) =>
     child.on('close', (status) => resolve({ status, stdout, stderr }));
   });
 
-// A pass entry. `fix`, `defer` and `reject` list finding ids; `changes` is the fix round's change kinds.
-const pass = (n, runNumber, level, { fix = [], defer = [], reject = [], changes = ['inside-diff'], status = 'complete' } = {}) => ({
+// A pass entry. `fix`, `defer` and `reject` list finding ids; `changes` is the fix round's change kinds; `more` holds any
+// other key of the entry, such as `files`, `commit` or `checks`.
+const pass = (n, runNumber, level, { fix = [], defer = [], reject = [], changes = ['inside-diff'], status = 'complete', ...more } = {}) => ({
   n,
   run: runNumber,
   level,
@@ -47,6 +48,7 @@ const pass = (n, runNumber, level, { fix = [], defer = [], reject = [], changes 
     ...reject.map((id) => [id, { bucket: 'reject', reason: 'false positive' }]),
   ]),
   changes,
+  ...more,
 });
 
 const record = (passes) => JSON.stringify({ branch: 'feat/68-4567-export', base: 'main', merge_base: 'abc', runs: [], passes }, null, 2) + '\n';
@@ -149,87 +151,7 @@ describe('the shape of the record', { concurrency }, () => {
   });
 });
 
-describe('rule 5, otherwise', { concurrency }, () => {
-  test('pass 1 at xhigh with a fix bucket gives high', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['inside-diff'] })], HIGH);
-  });
-
-  test('a fix round that changed nothing gives high', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: [] })], HIGH);
-  });
-
-  test('a new reject beside an empty fix bucket at xhigh gives high', async () => {
-    await ok([pass(1, 1, 'xhigh', { reject: ['a|x'], changes: [] })], HIGH);
-  });
-
-  test('a rejection that was only fixed or deferred earlier is still new', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|x'], changes: [] })], HIGH);
-    await ok([pass(1, 1, 'xhigh', { defer: ['a|x'], fix: ['a|y'] }), pass(2, 1, 'high', { reject: ['a|x'], changes: [] })], HIGH);
-  });
-});
-
-describe('rule 3, wide-fix', { concurrency }, () => {
-  for (const kind of ['exported-signature', 'schema-or-migration', 'outside-diff', 'over-quarter']) {
-    test(`${kind} gives xhigh`, async () => {
-      await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: [kind] })], XHIGH);
-    });
-  }
-
-  test('one wide kind among others gives xhigh', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['inside-diff', 'outside-diff'] })], XHIGH);
-  });
-
-  test('a wide change after a high pass gives xhigh', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['over-quarter'] })], XHIGH);
-  });
-
-  test('a wide change with nothing to fix stops by rule 1', async () => {
-    await ok([pass(1, 1, 'xhigh', { changes: ['outside-diff'] })], PASS);
-  });
-
-  test('the second time gives high: an earlier pass after the first ran at xhigh', async () => {
-    await ok(
-      [
-        pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] }),
-        pass(2, 1, 'xhigh', { fix: ['a|y'], changes: ['inside-diff'] }),
-        pass(3, 1, 'high', { fix: ['a|z'], changes: ['outside-diff'] }),
-      ],
-      HIGH,
-    );
-  });
-
-  test('the second time gives high: the latest pass is the xhigh re-review', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] }), pass(2, 1, 'xhigh', { fix: ['a|y'], changes: ['over-quarter'] })], HIGH);
-  });
-
-  test('the first pass of the run at xhigh does not count as the once', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['over-quarter'] })], XHIGH);
-  });
-
-  test('passes of an earlier run do not count', async () => {
-    await ok(
-      [
-        pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] }),
-        pass(2, 1, 'xhigh', { fix: ['a|y'] }),
-        pass(3, 2, 'high', { fix: ['a|z'], changes: ['outside-diff'] }),
-      ],
-      XHIGH,
-    );
-  });
-
-  test('a wide change beats two high passes that rejected something new', async () => {
-    await ok(
-      [
-        pass(1, 1, 'xhigh', { fix: ['a|x'] }),
-        pass(2, 1, 'high', { reject: ['a|r'], changes: [] }),
-        pass(3, 1, 'high', { reject: ['a|s'], changes: ['schema-or-migration'] }),
-      ],
-      XHIGH,
-    );
-  });
-});
-
-describe('rule 1, nothing-to-fix', { concurrency }, () => {
+describe('nothing-to-fix', { concurrency }, () => {
   test('an empty fix bucket and nothing rejected is pass', async () => {
     await ok([pass(1, 1, 'xhigh', { changes: [] })], PASS);
   });
@@ -238,148 +160,158 @@ describe('rule 1, nothing-to-fix', { concurrency }, () => {
     await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { changes: [] })], PASS);
   });
 
-  test('a defer in the latest pass is pass-with-deferred', async () => {
-    await ok([pass(1, 1, 'xhigh', { defer: ['a|x'], changes: [] })], '{"stop":"pass-with-deferred","rule":"nothing-to-fix"}');
+  test('a rejection, new or carried, beside an empty fix bucket is pass', async () => {
+    await ok([pass(1, 1, 'xhigh', { reject: ['a|x'], changes: [] })], PASS);
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|y'], reject: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|x', 'a|z'], changes: [] })], PASS);
   });
 
-  test('a defer in an earlier pass of the run is pass-with-deferred', async () => {
+  test('a wide change or a medium pass with nothing to fix is pass', async () => {
+    await ok([pass(1, 1, 'xhigh', { changes: ['outside-diff'] })], PASS);
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] }), pass(2, 1, 'medium', { changes: [] })], PASS);
+  });
+
+  test('a defer in the latest pass or an earlier pass of the run is pass-with-deferred', async () => {
+    await ok([pass(1, 1, 'xhigh', { defer: ['a|d'], changes: [] })], '{"stop":"pass-with-deferred","rule":"nothing-to-fix"}');
     await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], defer: ['a|d'] }), pass(2, 1, 'high', { changes: [] })], '{"stop":"pass-with-deferred","rule":"nothing-to-fix"}');
   });
 
   test('a defer only in a pass of an earlier run is pass', async () => {
     await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], defer: ['a|d'] }), pass(2, 2, 'xhigh', { changes: [] })], PASS);
   });
-
-  test('a carried rejection counts as nothing', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|y'], reject: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|x'], changes: [] })], PASS);
-  });
-
-  test('a rejection carried from an earlier run counts as nothing', async () => {
-    await ok([pass(1, 1, 'xhigh', { reject: ['a|x'], changes: [] }), pass(2, 2, 'xhigh', { reject: ['a|x'], changes: [] })], PASS);
-  });
-
-  test('a carried rejection with a defer in the run is pass-with-deferred', async () => {
-    await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|y'], reject: ['a|x'], defer: ['a|d'] }), pass(2, 1, 'high', { reject: ['a|x'], changes: [] })],
-      '{"stop":"pass-with-deferred","rule":"nothing-to-fix"}',
-    );
-  });
 });
 
-describe('rule 4, rejects-at-high', { concurrency }, () => {
-  test('two high passes each with an empty fix bucket and a new reject give medium', async () => {
-    await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|r'], changes: [] }), pass(3, 1, 'high', { reject: ['a|s'], changes: [] })],
-      '{"level":"medium","rule":"rejects-at-high"}',
-    );
+describe('fix-of-fix', { concurrency }, () => {
+  const FIXED = '{"stop":"pass","rule":"fix-of-fix"}';
+  const first = pass(1, 1, 'xhigh', { fix: ['src/a.mjs|x', 'src/b.mjs|y'], files: ['src/a.mjs', 'src/b.mjs'], commit: 'c1' });
+  const checked = { commit: 'c2', files: ['src/a.mjs'], checks: [{ command: 'npm test', result: 'pass' }] };
+
+  test('a later pass with three fix findings, all in files the round before changed, stops once its own round passed the checks', async () => {
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p', 'src/a.mjs|q', 'src/b.mjs|r'], ...checked })], FIXED);
   });
 
-  test('only one such high pass gives high', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|r'], changes: [] })], HIGH);
+  test('a defer in the run makes it pass-with-deferred', async () => {
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p'], defer: ['src/c.mjs|d'], ...checked })], '{"stop":"pass-with-deferred","rule":"fix-of-fix"}');
   });
 
-  test('a high pass that still has a fix gives high', async () => {
+  test('four fix findings give high', async () => {
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p', 'src/a.mjs|q', 'src/b.mjs|r', 'src/b.mjs|s'], ...checked })], HIGH);
+  });
+
+  test('a fix finding in a file the round before did not change gives high', async () => {
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p', 'src/c.mjs|q'], ...checked })], HIGH);
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs.bak|p'], ...checked })], HIGH);
+    await ok([first, pass(2, 1, 'high', { fix: ['an id with no file part'], ...checked })], HIGH);
+  });
+
+  test('the first pass of a run never stops this way', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['src/a.mjs|p'], ...checked })], HIGH);
+    await ok([first, pass(2, 2, 'xhigh', { fix: ['src/a.mjs|p'], ...checked })], HIGH);
+  });
+
+  test('a round before that recorded no files, as an older record did not, gives high', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['src/a.mjs|x'], commit: 'c1' }), pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked })], HIGH);
+    await ok([pass(1, 1, 'xhigh', { fix: ['src/a.mjs|x'], commit: 'c1', files: [] }), pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked })], HIGH);
+  });
+
+  test('no check, a failed check or a denied check gives high, since nothing then covers the last fixes', async () => {
+    const fix = ['src/a.mjs|p'];
+    await ok([first, pass(2, 1, 'high', { fix, commit: 'c2' })], HIGH);
+    await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [] })], HIGH);
+    await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [{ command: 'npm test', result: 'fail' }] })], HIGH);
+    await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [{ command: 'npm test', result: 'pass' }, { command: 'npm run lint', result: 'denied' }] })], HIGH);
+  });
+
+  test('a fix round that made no commit gives high', async () => {
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked, commit: null })], HIGH);
+  });
+
+  test('a wide fix round does not stop: it is reviewed', async () => {
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked, changes: ['inside-diff', 'exported-signature'] })], XHIGH);
     await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|r'], changes: [] }), pass(3, 1, 'high', { fix: ['a|y'], reject: ['a|s'] })],
+      [first, pass(2, 1, 'xhigh', { fix: ['src/a.mjs|p'], files: ['src/a.mjs'], commit: 'c2' }), pass(3, 1, 'high', { fix: ['src/a.mjs|q'], ...checked, changes: ['outside-diff'] })],
       HIGH,
     );
-    await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], reject: ['a|r'] }), pass(3, 1, 'high', { reject: ['a|s'], changes: [] })],
-      HIGH,
-    );
   });
 
-  test('the earlier of the two at xhigh gives high', async () => {
-    await ok([pass(1, 1, 'xhigh', { reject: ['a|r'], changes: [] }), pass(2, 1, 'high', { reject: ['a|s'], changes: [] })], HIGH);
+  test('a docs-only round of few fixes in those files stops, with no medium pass after it', async () => {
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked, changes: ['docs-only'] })], FIXED);
   });
 
-  test('the earlier of the two with a carried rejection gives high', async () => {
-    await ok(
-      [
-        pass(1, 1, 'xhigh', { fix: ['a|x'], reject: ['a|r'] }),
-        pass(2, 1, 'high', { reject: ['a|r'], changes: [] }),
-        pass(3, 1, 'high', { reject: ['a|s'], changes: [] }),
-      ],
-      HIGH,
-    );
-  });
-
-  test('the two latest passes of the record count, across runs', async () => {
-    await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|r'], changes: [] }), pass(3, 2, 'high', { reject: ['a|s'], changes: [] })],
-      '{"level":"medium","rule":"rejects-at-high"}',
-    );
-  });
-});
-
-describe('rule 2, after-medium', { concurrency }, () => {
-  const toMedium = [
-    pass(1, 1, 'xhigh', { fix: ['a|x'] }),
-    pass(2, 1, 'high', { reject: ['a|r'], changes: [] }),
-    pass(3, 1, 'high', { reject: ['a|s'], changes: [] }),
-  ];
-
-  test('no fix and nothing new rejected is pass by rule 1', async () => {
-    await ok([...toMedium, pass(4, 1, 'medium', { changes: [] })], PASS);
-  });
-
-  test('no fix and a carried rejection is pass by rule 1', async () => {
-    await ok([...toMedium, pass(4, 1, 'medium', { reject: ['a|s'], changes: [] })], PASS);
-  });
-
-  test('no fix and a new reject is pass by after-medium', async () => {
-    await ok([...toMedium, pass(4, 1, 'medium', { reject: ['a|t'], changes: [] })], '{"stop":"pass","rule":"after-medium"}');
-  });
-
-  test('no fix, a new reject and a defer in the run is pass-with-deferred', async () => {
-    await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|x'], defer: ['a|d'] }), ...toMedium.slice(1), pass(4, 1, 'medium', { reject: ['a|t'], changes: [] })],
-      '{"stop":"pass-with-deferred","rule":"after-medium"}',
-    );
-  });
-
-  test('a fix finding is unconverged', async () => {
-    await ok([...toMedium, pass(4, 1, 'medium', { fix: ['a|y'] })], '{"stop":"unconverged","rule":"after-medium"}');
-  });
-
-  test('a fix finding with a wide change is unconverged, not xhigh', async () => {
-    await ok([...toMedium, pass(4, 1, 'medium', { fix: ['a|y'], changes: ['outside-diff'] })], '{"stop":"unconverged","rule":"after-medium"}');
+  test('the stop holds at the cap and with little time left', async () => {
+    await ok([first, pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked })], FIXED, '2', ['1', '50']);
   });
 });
 
 describe('docs-only', { concurrency }, () => {
   const MEDIUM = '{"level":"medium","rule":"docs-only"}';
 
-  test('a high pass with a fix that changed only documentation gives medium', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['docs-only'] })], MEDIUM);
-  });
-
-  test('the first pass at xhigh with a docs-only fix gives medium', async () => {
+  test('a pass with a fix that changed only documentation gives medium', async () => {
     await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] })], MEDIUM);
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['inside-diff', 'docs-only'] })], MEDIUM);
   });
 
-  test('docs-only beside a wide kind gives medium, not xhigh', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only', 'outside-diff'] })], MEDIUM);
+  test('docs-only beside outside-diff gives medium, not xhigh', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff', 'docs-only'] })], MEDIUM);
   });
 
-  test('a docs-only pass with nothing to fix stops by nothing-to-fix', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { changes: ['docs-only'] })], PASS);
-  });
-
-  test('a docs-only medium pass with a fix is unconverged by after-medium', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] }), pass(2, 1, 'medium', { fix: ['a|y'], changes: ['docs-only'] })], '{"stop":"unconverged","rule":"after-medium"}');
+  test('a medium pass that still has a fix in code gives high', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] }), pass(2, 1, 'medium', { fix: ['a|y'] })], HIGH);
   });
 
   test('a docs-only fix at the cap is capped', async () => {
-    await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'] }), pass(3, 1, 'high', { fix: ['a|z'], changes: ['docs-only'] })],
-      '{"level":"medium","rule":"docs-only","capped":"max-passes"}',
-      '3',
-    );
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only'] })], '{"level":"medium","rule":"docs-only","capped":"max-passes"}', '1');
+  });
+});
+
+describe('wide-fix', { concurrency }, () => {
+  for (const kind of ['exported-signature', 'schema-or-migration', 'outside-diff']) {
+    test(`${kind} gives xhigh`, async () => {
+      await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: [kind] })], XHIGH);
+    });
+  }
+
+  test('one wide kind among others gives xhigh, after a high pass too', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['inside-diff', 'outside-diff'] })], XHIGH);
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['outside-diff'] })], XHIGH);
   });
 
-  test('a code fix beside no docs-only kind still gives high', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['inside-diff'] })], HIGH);
+  test('the over-quarter kind of an older record is read and is not wide', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['inside-diff', 'over-quarter'] })], HIGH);
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only', 'over-quarter'] })], '{"level":"medium","rule":"docs-only"}');
+  });
+
+  test('the second time gives high', async () => {
+    await ok(
+      [
+        pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] }),
+        pass(2, 1, 'xhigh', { fix: ['a|y'], changes: ['inside-diff'] }),
+        pass(3, 1, 'high', { fix: ['a|z'], changes: ['outside-diff'] }),
+      ],
+      HIGH,
+    );
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] }), pass(2, 1, 'xhigh', { fix: ['a|y'], changes: ['schema-or-migration'] })], HIGH);
+  });
+
+  test('the first pass of the run and the passes of an earlier run do not count as the once', async () => {
+    await ok(
+      [
+        pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] }),
+        pass(2, 1, 'xhigh', { fix: ['a|y'] }),
+        pass(3, 2, 'xhigh', { fix: ['a|z'], changes: ['outside-diff'] }),
+      ],
+      XHIGH,
+    );
+  });
+});
+
+describe('otherwise', { concurrency }, () => {
+  test('a pass with a fix bucket gives high', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['inside-diff'] })], HIGH);
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'] })], HIGH);
+  });
+
+  test('a fix round that changed nothing gives high', async () => {
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: [] })], HIGH);
   });
 });
 
@@ -404,25 +336,16 @@ describe('max-passes', { concurrency }, () => {
   });
 
   test('a cap of 1 caps the first pass', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['over-quarter'] })], '{"level":"xhigh","rule":"wide-fix","capped":"max-passes"}', '1');
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['outside-diff'] })], '{"level":"xhigh","rule":"wide-fix","capped":"max-passes"}', '1');
   });
 
   test('a medium level is capped', async () => {
-    await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|r'], changes: [] }), pass(3, 1, 'high', { reject: ['a|s'], changes: [] })],
-      '{"level":"medium","rule":"rejects-at-high","capped":"max-passes"}',
-      '3',
-    );
+    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { fix: ['a|y'], changes: ['docs-only'] })], '{"level":"medium","rule":"docs-only","capped":"max-passes"}', '2');
   });
 
   test('a stop at the cap is not capped', async () => {
     await ok([...four.slice(0, 3), pass(4, 1, 'high', { changes: [] })], PASS, '4');
     await ok([...four.slice(0, 3), pass(4, 1, 'high', { defer: ['a|d'], changes: [] })], '{"stop":"pass-with-deferred","rule":"nothing-to-fix"}', '4');
-    await ok(
-      [pass(1, 1, 'xhigh', { fix: ['a|x'] }), pass(2, 1, 'high', { reject: ['a|r'], changes: [] }), pass(3, 1, 'high', { reject: ['a|s'], changes: [] }), pass(4, 1, 'medium', { fix: ['a|y'] })],
-      '{"stop":"unconverged","rule":"after-medium"}',
-      '4',
-    );
   });
 
   test('a second run counts only its own passes', async () => {
@@ -604,7 +527,7 @@ describe('validation errors', { concurrency }, () => {
     await bad(record([good, { ...second, changes: 'inside-diff' }]), 1, 'next: passes.json: passes[1].changes is missing or not an array');
   });
 
-  test('a latest pass with a change kind outside the six', async () => {
+  test('a latest pass with a change kind the script does not know', async () => {
     await bad(record([good, { ...second, changes: ['inside-diff', 'rename'] }]), 1, `next: passes.json: passes[1].changes holds "rename", not ${KINDS}`);
     await bad(record([good, { ...second, changes: [7, 'rename'] }]), 1, `next: passes.json: passes[1].changes holds 7, not ${KINDS}`);
   });
@@ -614,8 +537,9 @@ describe('validation errors', { concurrency }, () => {
     await bad(record([good, { ...second, changes: ['exported-signature', 'inside-diff', 'docs-only'] }]), 1, 'next: passes.json: passes[1].changes holds "docs-only" beside "exported-signature", which documentation cannot be');
   });
 
-  test('docs-only beside outside-diff or over-quarter stays valid', async () => {
-    await ok([pass(1, 1, 'xhigh', { fix: ['a|x'], changes: ['docs-only', 'over-quarter'] })], '{"level":"medium","rule":"docs-only"}');
+  test('a latest pass whose files is not a list of paths', async () => {
+    await bad(record([good, { ...second, files: 'src/a.mjs' }]), 1, 'next: passes.json: passes[1].files is not a list of paths');
+    await bad(record([{ ...good, files: ['src/a.mjs', 7] }, second]), 1, 'next: passes.json: passes[0].files is not a list of paths');
   });
 
   test('changes of a pass before the latest are not read', async () => {

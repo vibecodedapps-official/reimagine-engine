@@ -112,12 +112,11 @@ A pass is one review of the whole change from the merge-base at one typed level,
 
 You do not choose the next level. After the fix round, `next.mjs` reads the record and returns the next level or a stop with the rule that produced it. The rules apply in this order:
 
-1. The latest pass's fix bucket is empty and its reject bucket holds nothing new: stop with `pass`, or `pass-with-deferred` when any pass of the run deferred something.
-2. The latest pass ran at `medium`: stop, with `pass` or `pass-with-deferred` when its fix bucket was empty and `unconverged` otherwise.
-3. The latest pass's fix bucket is not empty and the fix round changed only documentation (`docs-only`): `medium`.
-4. The fix round changed an exported signature, a schema or migration, a file outside the original diff, or more than a quarter of the diff's files: `xhigh`, at most once per run after pass 1.
-5. The two latest passes both ran at `high`, each with an empty fix bucket and a reject bucket holding something new: `medium`.
-6. Otherwise `high`.
+1. The latest pass has nothing in its fix bucket: stop with `pass`, or `pass-with-deferred` when a pass of the run deferred something. A rejection, new or carried, does not keep the run going.
+2. The latest pass follows another pass of the run, has at most 3 findings in its fix bucket, each in a file the fix round before it changed, and its own fix round was not wide (rule 4), made a commit and passed every check of the run, of which there is at least one: stop the same way. A review that finds only a few corrections to the last fixes has verified them, and the checks cover the corrections.
+3. The fix round changed only documentation (`docs-only`): `medium`.
+4. The fix round changed an exported signature, a schema or migration, or a file outside the original diff: `xhigh`, at most once per run after pass 1.
+5. Otherwise `high`.
 
 Caps:
 
@@ -157,9 +156,9 @@ With "no fixes" the run makes pass 1 only. The review and the triage run, nothin
 
 Every run ends in exactly one state.
 
-- `pass`: a stop with the fix bucket empty and nothing deferred in any pass of the run, under rule 1 or 2 or under "no fixes".
+- `pass`: a stop under rule 1 or 2 of Levels and caps, or a "no fixes" run with an empty fix bucket, with nothing deferred in any pass of the run. Under rule 2 the report names the fixes that no review followed.
 - `pass-with-deferred`: the same stop, with deferred findings in the report.
-- `unconverged`: a cap was reached, a review failed, a `medium` pass still found something to fix, or a "no fixes" run has a non-empty fix bucket. Every open finding is listed.
+- `unconverged`: a cap was reached, a review failed, or a "no fixes" run has a non-empty fix bucket. Every open finding is listed.
 - `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.
 - `stopped`: no target resolved, or a question the run cannot decide, before any commit.
 

@@ -36,7 +36,7 @@ A pull request must be open, in the repository of the session and not from a for
 - Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed in groups of paths, in parallel, at most 6 at once.
 - Each finding is sorted into fix, defer or reject, with a reason. Only the fix bucket leads to code changes; deferred and rejected findings go to the report, never to code.
 - Implementers fix the findings in the fix bucket. The run's checks run (from the request, the manifest bundle or `.reimagine.json`, in that order), a failing check is fixed at most three times, and a pass that changed anything ends with one commit and a push on the target's branch.
-- The record decides the next level, or the stop, by fixed rules. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
+- The record decides the next level, or the stop, by fixed rules. A run stops when a pass finds nothing to fix, or finds at most 3 things to fix that all sit in files the last fix round changed, fixes them and sees the checks pass. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
 - At the end it writes the report and prints it as its last message. The gate posts nothing to a pull request, a ticket or an issue.
 
 The gate never types a review level of `low`, `max` or `ultra`, and a run leaves the level you last chose in your own sessions as it was.
@@ -67,9 +67,9 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 
 ## How a run ends
 
-- `pass`: a pass found nothing left to fix, and nothing was deferred.
+- `pass`: a pass found nothing left to fix, or only a few corrections to the last fixes, which were made and passed the checks; nothing was deferred.
 - `pass-with-deferred`: the same, with deferred findings listed in the report.
-- `unconverged`: the pass cap or the budget was reached, a review failed, a `medium` pass still found something to fix, or a `no fixes` run found something to fix. Every open finding is listed.
+- `unconverged`: the pass cap or the budget was reached, a review failed, or a `no fixes` run found something to fix. Every open finding is listed.
 - `blocked`: a failed preflight, a denied permission, a remote branch that moved, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay.
 - `stopped`: no target resolved, or a question the run could not settle, before any commit.
 

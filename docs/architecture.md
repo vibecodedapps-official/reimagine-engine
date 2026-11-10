@@ -435,7 +435,7 @@ The child session is the engine (decision 124). It runs at `gate.models.reviewer
     { "n": 1, "run": 1, "level": "xhigh", "status": "complete", "started": "...", "ended": "...",
       "reviews": [{ "slug": "all", "target": "<merge-base sha>...HEAD", "output": "review-1.json", "duration_ms": 119636, "total_cost_usd": 1.23, "denials": 2, "notes": "The suite could not be run here.", "models": ["<model id>"] }],
       "findings": { "src/stats.mjs|percentile indexes sorted rank ...": { "bucket": "fix", "reason": "off-by-one inside the change" } },
-      "changes": ["inside-diff"], "commit": "<sha>", "head": "<sha>",
+      "changes": ["inside-diff"], "files": ["src/stats.mjs"], "commit": "<sha>", "head": "<sha>",
       "checks": [{ "command": "npm test", "result": "pass" }],
       "next": { "level": "high", "rule": "otherwise" } },
     { "n": 2, "run": 1, "level": "high", "status": "running", "started": "..." }

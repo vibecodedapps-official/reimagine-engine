@@ -164,7 +164,7 @@ test('R301: the change kinds a fix round records are the kinds next.mjs accepts'
 
 test('R301: the rules the skill lists are the rules next.mjs returns', () => {
   const source = readFileSync(join(SCRIPTS, 'next.mjs'), 'utf8');
-  const returned = [...new Set([...source.matchAll(/rule: '([a-z-]+)'/g)].map((m) => m[1]))];
+  const returned = [...new Set([...source.matchAll(/(?:rule: |stop\()'([a-z-]+)'/g)].map((m) => m[1]))];
   assert.ok(returned.length > 0, 'the scan finds no rule in next.mjs');
   assert.deepEqual(itemWords(read(RULES_FILE)).sort(), returned.sort());
 });

@@ -46,10 +46,9 @@ Judge the fix round's change kinds and write them into `changes`. The diff the p
 - `outside-diff`: at least one changed file is not.
 - `exported-signature`: an exported function, class, type or public API signature changed.
 - `schema-or-migration`: a schema or migration file changed.
-- `over-quarter`: the fix round changed more than a quarter of that diff's files. Count both lists: it applies when four times the number of changed files is more than the number of that diff's files, so 2 changed of 4 is over a quarter and 2 of 8 is not.
 - `docs-only`: every changed file is documentation, meaning prose for people that no build, test or runtime reads, such as a README, a changelog or a design document. A file the host loads as instructions (a `CLAUDE.md` or `AGENTS.md`, a rule, a skill or step file, an agent or prompt file) is not documentation, nor is any code or configuration, while a document that an instruction file only tells an agent to read is.
 
-A fix round that changed nothing is `[]`.
+A fix round that changed nothing is `[]`. List the changed paths, repository-relative with forward slashes, as the pass's `files`, which `next.mjs` reads to tell a correction to this round from a new defect.
 
 ## Checks
 
@@ -79,6 +78,6 @@ A fix round that changed nothing commits nothing: write `commit` as null and `he
 
 ## Writing the record
 
-Write the pass entry's `changes`, `checks`, `commit` (the sha, or null) and `head` (the output of `git rev-parse HEAD`) in one write, the pass still `running`. Step 3 completes it.
+Write the pass entry's `changes`, `files`, `checks`, `commit` (the sha, or null) and `head` (the output of `git rev-parse HEAD`) in one write, the pass still `running`. Step 3 completes it.
 
 With the record written, read `steps/3-next.md`.

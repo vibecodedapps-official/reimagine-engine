@@ -64,7 +64,7 @@ A fix round that changed nothing commits nothing: write `commit` as null and `he
 1. Read the commit convention from the user's and the repository's instruction files and from `git log -n 10 --format=%s`. The commit message follows it and names no model, agent, tool, review pass or its level, or a term the suite or a run coined. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
 2. Ask-first rules recorded at preflight still prompt before the commit (SKILL.md, Approval scope).
 3. Before staging, run `git status --porcelain --untracked-files=all` again and compare its paths with the groups' files; a path outside every group's files, such as a file a check regenerated, is restored as Snapshots, item 4, restores a path and named in the report, and only then are the fix round's paths staged. Stage each path by name with `git add -- <path>`, one call per path, only the paths the fix round changed, never anything under `.reimagine/`. Then run `git diff --cached --name-only` and confirm it lists exactly those paths.
-4. Make one commit for the pass with `git commit -m <subject>`, with a second `-m <body>` when the convention has a body. Read the sha with `git rev-parse HEAD`.
+4. Make one commit for the pass with `git commit -m <subject>`, with a second `-m <body>` when the convention has a body. Read the sha with `git rev-parse HEAD`, and write the pass entry's `changes`, `files`, `checks` and `commit` now, in one write, the pass still `running`, before anything else: a run that stops between the commit and the push then leaves a record that names the commit, and the next run pushes it (`steps/3-next.md`, Resume).
 5. A commit that is denied, or that fails, ends the run `blocked` with the pass recorded `failed` and the tree left as it is.
 6. Once the commit exists, set each fix-bucket entry of this pass in `findings.json` to state `fixed`.
 
@@ -78,6 +78,6 @@ A fix round that changed nothing commits nothing: write `commit` as null and `he
 
 ## Writing the record
 
-Write the pass entry's `changes`, `files`, `checks`, `commit` (the sha, or null) and `head` (the output of `git rev-parse HEAD`) in one write, the pass still `running`. Step 3 completes it.
+Write the pass entry's `head`, the output of `git rev-parse HEAD`, and for a fix round that changed nothing its `changes`, `files`, `checks` and a null `commit`, in one write, the pass still `running`. Step 3 completes it.
 
 With the record written, read `steps/3-next.md`.

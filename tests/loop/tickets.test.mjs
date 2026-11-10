@@ -71,7 +71,11 @@ test('R56: only an issue other than an open item\'s ticket always prompts', () =
 
 test('R55: one question covers the tickets of all the open items, and a non-yes is not a denial', () => {
   const rule = section(SKILL, 'Approval scope').split('\n').find((line) => line.startsWith('1. '));
-  assert.ok(rule.includes('An ask-first rule that covers a new issue or a comment is asked once for all the tickets of the run\'s open items, listing each with its title and tracker, never once per ticket; a non-yes leaves them unfiled, each a draft as on a `prepared` run; that, and a refused filing or comment of an open item, is not a denial under rule 3.'));
+  assert.ok(rule.includes('An ask-first rule that covers a new issue or a comment is asked once for all the tickets of the run\'s open items, listing each with its title and tracker and the record attached to it, never once per ticket; a non-yes leaves them unfiled, each a draft as on a `prepared` run; that, and a refused filing or comment of an open item, is not a denial under rule 3.'));
+});
+
+test('R351: the open items question names the record attached to each ticket, a source ticket\'s included', () => {
+  assert.ok(TICKETS.includes('ask once for all the tickets of the open items, listing each with its title and tracker and the record attached to it, never once per ticket; a question that also asks for a source ticket\'s comment names its record too.'));
 });
 
 test('R54, R56: the printed permission statement names ticket filing and any other new issue', () => {
@@ -139,7 +143,8 @@ test('R351: an item is settled by the run only with no edit in Step 7', () => {
 
 test('R352: the attach forms name the record, capture both numbers and share one no-retry rule', () => {
   assert.ok(TICKETS.includes('`gh issue create -R <owner>/<repo> --title "<title>" --body-file <absolute path>`, whose printed URL ends in the issue number `<n>`'));
-  assert.ok(TICKETS.includes('with `<name>` the text `Record for <branch>`, and add `--jq .number` to that command to print the artifact number, which the record keeps.'));
+  assert.ok(TICKETS.includes('with `<name>` the text `Record for <branch-slug>`, the record\'s slug (SKILL.md, Record), since GitHub refuses a `/` in an artifact name, and add `--jq .number` to that command to print the artifact number, which the record keeps.'));
+  assert.ok(!TICKETS.includes('`Record for <branch>`'));
   assert.ok(TICKETS.includes('A failed, refused or impossible attach, on any tracker, is not retried and not done another way; the report names the local record and says it was not attached and why. For a `prepared` draft the report gives the file command, then the attach command with the issue number to fill in.'));
   assert.ok(!section(TICKETS, 'Backends').split('\n').find((l) => l.startsWith('- GitHub issues')).includes('not retried'));
 });

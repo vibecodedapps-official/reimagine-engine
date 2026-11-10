@@ -24,6 +24,7 @@ With no target, the current branch is gated against its base. There are no flags
 Phrases the gate recognizes:
 
 - `repo <path>`: gate the branch checked out at that path in place of the session's, since a `cd` in one call does not carry to the next. The path must be a git toplevel or a linked worktree, else the target is unresolved. The check may ask for permission once before the run starts, unless an allow rule covers `git -C`.
+- A session started in a subfolder of the repository gates the whole repository: the run works from the repository's root, where its record and `.reimagine.json` are. Its git commands then take the `git -C` form, which asks for permission unless an allow rule covers it.
 - `no fixes`: make the first pass only. Nothing is edited, committed or pushed; the report says what a fix run would do.
 - `budget <n> minutes`: set the run budget.
 - `base <branch>`: name the base branch of a branch target. A pull request keeps its own base, so a different one stops the run.
@@ -33,10 +34,11 @@ A pull request must be open, in the repository of the session and not from a for
 
 ## What a run does
 
-- Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed by path at the shallowest depth that gives more than one group, in parallel, at most 6 at once; a group still over `split` is grouped again one segment deeper, and groups under one fifth of `split` are merged.
+- Each pass reviews the whole change from the merge-base at one level. The first pass runs at `xhigh`; later passes run at `xhigh`, `high` or `medium` and never lower or higher. A change over `split` changed lines is reviewed in groups of paths, in parallel, at most `parallel` at once.
 - Each finding is sorted into fix, defer or reject, with a reason. Only the fix bucket leads to code changes; deferred and rejected findings go to the report, never to code.
 - Implementers fix the findings in the fix bucket. The run's checks run (from the request, the manifest bundle or `.reimagine.json`, in that order), a failing check is fixed at most three times, and a pass that changed anything ends with one commit and a push on the target's branch.
-- The record decides the next level, or the stop, by fixed rules. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
+- The gate never edits a pull request. After it pushes fixes, the description still describes the head before them, and the report says what to bring up to date.
+- The record decides the next level, or the stop, by fixed rules. A run stops when a pass finds nothing to fix, or finds at most 3 things to fix that all sit in files the last fix round changed, fixes them and sees the checks pass. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
 - At the end it writes the report and prints it as its last message. The gate posts nothing to a pull request, a ticket or an issue.
 
 The gate never types a review level of `low`, `max` or `ultra`, and a run leaves the level you last chose in your own sessions as it was.
@@ -45,7 +47,7 @@ The gate never types a review level of `low`, `max` or `ultra`, and a run leaves
 
 Invoking the gate by name approves, for that run only: fix commits on each target's branch and pushing that branch. Nothing else: no new branch, no pull request, no comment, no edit of a pull request body, no ticket comment and no issue. Your instruction files win: an ask-first rule there still prompts.
 
-These always ask: a force push, `--no-verify`, a merge, a rebase, an amend, a reset, anything that deploys, such as a push that triggers a deploy, a change to repository settings and a new issue. A permission you deny is final; the gate does not retry it or work around it, and a denied commit or push ends the run `blocked`. The commit of a refused push stays local, and the next run on the branch pushes it first when the remote still ends at its parent, asking again where a push must ask, then reviews the branch afresh; when the remote has moved on, the run ends `blocked`, naming the branch, and on a branch the remote does not have, the run reviews the branch as new; a "no fixes" run ends `blocked` on the commit instead. A dirty working tree ends the run `blocked` before it starts; the gate never stashes, resets or cleans.
+These always ask: a force push, `--no-verify`, a merge, a rebase, an amend, a reset, anything that deploys, such as a push that triggers a deploy, a change to repository settings and a new issue. A permission you deny is final; the gate does not retry it or work around it, and a denied commit or push ends the run `blocked`. The commit of a refused push stays local, and the next run on the branch pushes it first, also to a branch the remote does not have yet, asking again where a push must ask, then reviews the branch afresh; when the remote has moved on, the run ends `blocked`, naming the branch; a "no fixes" run ends `blocked` on the commit instead. A dirty working tree ends the run `blocked` before it starts; the gate never stashes, resets or cleans.
 
 ## Configuration
 
@@ -55,6 +57,7 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 {
   "gate": {
     "split": 1500,
+    "parallel": 3,
     "max-passes": 4,
     "budget": 120,
     "timeouts": { "subagent": 20, "review": 30, "check": 15 },
@@ -63,13 +66,13 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 }
 ```
 
-`split` is the number of changed lines above which a pass reviews by path at the shallowest depth that gives more than one group, in parallel, at most 6 at once; a group still over `split` is grouped again one segment deeper, and groups under one fifth of `split` are merged. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the three are whole numbers of 1 or more. `timeouts` is the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them; a key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default. `models` names the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Each child review runs at `models.reviewer`, `opus` unless the key says otherwise, in place of the model your settings choose, and the reading block names it before the first review starts. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
+`split` is the number of changed lines above which a pass reviews in groups of paths, in parallel: folders at the first depth that gives more than one group, a folder still over `split` grouped again one level deeper, and groups under one fifth of `split` merged. `parallel` is the number of reviews of one pass that run at once; each is a model session of its own, so lower it on a machine short of memory. `max-passes` is the most passes one run makes, and `budget` is the run budget in minutes; the four are whole numbers of 1 or more. `timeouts` is the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`), positive numbers as the loop's `timeouts` takes them; a key absent from `gate.timeouts` takes the root `.reimagine.json` `timeouts` value of the same name, then the default. `models` names the model of the reviewer, of the implementer, of the reader and of the stand-in reviewer, each one of `sonnet`, `opus`, `haiku` or `fable`. Each child review runs at `models.reviewer`, `opus` unless the key says otherwise, in place of the model your settings choose, and the reading block names it before the first review starts. Unknown keys and bad values are reported and ignored. A file that does not parse stops the run.
 
 ## How a run ends
 
-- `pass`: a pass found nothing left to fix, and nothing was deferred.
+- `pass`: a pass found nothing left to fix, or only a few corrections to the last fixes, which were made and passed the checks; nothing was deferred.
 - `pass-with-deferred`: the same, with deferred findings listed in the report.
-- `unconverged`: the pass cap or the budget was reached, a review failed, a `medium` pass still found something to fix, or a `no fixes` run found something to fix. Every open finding is listed.
+- `unconverged`: the pass cap or the budget was reached, a review failed, or a `no fixes` run found something to fix. Every open finding is listed.
 - `blocked`: a failed preflight, a denied permission, a remote branch that moved, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay.
 - `stopped`: no target resolved, or a question the run could not settle, before any commit.
 

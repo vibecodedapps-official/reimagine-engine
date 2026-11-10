@@ -2,6 +2,22 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.14 - 2026-11-10
+
+- A run stops when a pass finds nothing to fix, whatever it rejected, or finds at most 3 things to fix that all sit in files the fix round before it changed, fixes them and sees every check pass. Under the earlier rules no recorded run stopped clean: each ended at a cap. The report marks fixes that no review saw after them. The return to `xhigh` after a fix round that touched over a quarter of the files, and the last `medium` pass, are gone.
+- `gate.parallel`, 3 by default, sets how many reviews of a pass run at once, since six model sessions at once ran a machine out of memory, and a resumed pass keeps the reviews that an earlier run finished.
+- A session started in a subfolder gates the repository from its root, since the first fix commit failed there with "pathspec did not match any files".
+- A fix commit is recorded before its push, and the next run pushes a commit that a stopped run left, since a run stopped between the two blocked every later run on the branch.
+- Once the first pass is sized, the run says how many passes its budget holds, and when it holds one or none, that the fixes will be pushed with no review after them.
+- The record and the report name the calls each review was refused, since only their count was kept.
+- The report says when pushed fixes are newer than a pull request's description, which the gate does not edit.
+- A reader of a large pass names the earlier finding that a new one restates, since restated rejections and deferrals were matched by hand on every pass.
+- A review is read when a finding has no line or the fence is indented or capitalized, since each failed a finished review, and a path written with backslashes or a leading `./` is the same finding as before.
+- `split.mjs` groups the reviews of a pass, which the session worked out by hand, and the skill states each rule once, in about two thirds of its earlier length.
+- `resume.mjs` decides where a later run on a branch starts, which the session worked out from the record by hand. A commit that an earlier run left unpushed is pushed first whenever it is the head, since a changed merge-base or a branch that was not on the remote left it local, and only the record's last pass is resumed, since rewriting an earlier one gave a record the next-level script refuses. A pass records the head it reviews: the first pass after a new commit could not be resumed, and with no finished pass a run on a new head reused the reviews of the old one.
+- A group whose review met a usage limit is no longer reviewed once by the stand-in on another model. The review is recorded as failed with `usage limit` as its reason, and the next run on the same head repeats the pass and reviews only the groups with no finished review.
+- A branch the remote does not have yet can be pushed, a check that failed and was fixed no longer blocks the stop, and a resumed pass with no saved review reviews every group.
+
 ## primer 0.1.9 - 2026-11-10
 
 - The drift hook no longer reads a branch such as `origin/main`, a home, absolute or drive path, a URL, or any other backticked token whose first segment is no top-level entry of the repository as a path under it, since each of those in a hub's opening paragraph denied every commit. A token that ends in `.md`, and a missing path under a top-level entry that exists, are findings as before.

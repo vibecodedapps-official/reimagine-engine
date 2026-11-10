@@ -1,69 +1,56 @@
 # Step 0: Preflight
 
-Read this file after the reading block, which SKILL.md printed before any other tool call, this file's read included. Take the targets in the order of the block's Targets line, and use its Mode, Budget, Engine and Scripts lines, where `<scripts>` in the step files is the path on the Scripts line; this step does not print the block again. SKILL.md stays in force: its Approval scope, Record and Terminal states apply to every item here.
+Read this file after the reading block, and take the targets in the order of its Targets line. Each target goes through Steps 0 to 3 and its terminal state before the next one starts. `<scripts>` in the step files is the path on the block's Scripts line, and `<r>` is the target's remote: the one whose fetch URL matches the `url` of `gh repo view --json nameWithOwner,url`, else `origin`.
 
-## 0.1 Rules that hold in all of Step 0
+- Take `date -u +%Y-%m-%dT%H:%M:%SZ` now and keep the output as the run's start; take it again at the start of each later target.
+- Run read-only commands one at a time, and retry a dropped read once.
+- Nothing is written before the record below. Fetched refs are not writes.
+- A stop in this step ends the run `blocked` or `stopped`, as its item says.
 
-- Take `date -u +%Y-%m-%dT%H:%M:%SZ` now and keep the output as the run's start. Take it again at the start of each target after the first, for that target's run entry.
-- Run read-only commands one at a time. A dropped read is retried once.
-- Nothing is written before 0.8. Fetched refs are not writes.
-- A stop in this step ends the run `blocked` or `stopped`, as the item says, and goes to SKILL.md, Terminal states.
-
-## 0.2 Targets
-
-1. Several pull requests run one after another, in the order of the Targets line. Each goes through Steps 0 to 3 and its terminal state before the next starts, and each has its own record.
-2. A manifest runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order. Every git and gh command of a bundle runs against its `repo`: `git -C <repo>` and, for gh, `cd <repo> && <command>` in one Bash call, with absolute paths, as the loop's `multi-repo.md` says. The record is in that `repo`. A branch target named by "repo <path>" runs the same way: `git -C <path>`, and `cd <path> && <command>` in one Bash call for gh, the child session and the run's checks, with absolute paths. `<path>` is the toplevel the block shows, and the record is in it. Each path in these forms is written in double quotes, since a folder name may hold a space.
-3. A target the block lists as unresolved already has its line there. Skip it.
-4. `<r>` is the remote of the target's repository: the one whose fetch URL matches the `url` of `gh repo view --json nameWithOwner,url`, else `origin`.
-
-## 0.3 Instruction files, configuration, permission statement
+## Instruction files and the permission statement
 
 Do this once, before the first fetch. With a manifest, read every bundle's repository and union the rules.
 
-1. Read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, since the session loads only that directory's user instruction files. Read the repository's instruction files: root `CLAUDE.md`, `AGENTS.md`, `.claude/CLAUDE.md`, and every file they import, and `CLAUDE.md` and `.claude/CLAUDE.md` in each folder above the repository's root, since the session loads those as project instructions, `~/.claude/CLAUDE.md` among them for a repository under the home folder. For a manifest bundle or "repo <path>", read the repository's instruction files in its `repo` or in `<path>`, not in the session's folder. Record every ask-first rule with the file it came from.
-2. Read `.reimagine.json` at the repository root; for a manifest bundle or "repo <path>", read it in its `repo` or in `<path>`, not in the session's folder. A file that does not parse ends the run `blocked`. The `gate` key and the `base` key are as SKILL.md, Configuration, says; the block already reports an unknown key or a bad value.
-3. Print the permission statement before any fetch. It gives the approved actions (SKILL.md, Approval scope), the always-ask actions, the instruction directory read, by name, the ask-first rules found with their files, and, for each action the run takes, whether a prompt will occur: fetch, checkout, writing the exclude and the record, the child sessions, the subagents, the checks, the `node` scripts each pass runs (`findings.mjs`, and `next.mjs` outside "no fixes" mode), the commit and the push. The statement also names the run's checks, each command with its source (the request, the manifest bundle or `.reimagine.json`), or says that no check will run. Judge each from the permission mode the session states and the allow rules in the user, project and local settings files (`$CLAUDE_CONFIG_DIR/settings.json` else `~/.claude/settings.json`, `<repo>/.claude/settings.json`, `<repo>/.claude/settings.local.json`). An action runs unprompted only when the mode approves it, or an allow rule matches its command and no ask or deny rule does. The allowed-tools list matches only the plain forms, so a command in the forms of 0.2.2 is not pre-approved. Those forms, and a manifest bundle's, count as prompts unless an allow rule or the mode approves them. An outcome you cannot determine counts as a prompt. Outside "no fixes" mode, a push that triggers a deploy prompts whatever the mode or an allow rule says and is judged only before each push (Step 2), so the Prompts line ends with `deploy: judged before each push`, and the last line adds "and before a push that triggers a deploy" to its list, or "unless a push triggers a deploy" after "this run is unattended". End with one line: "this run will prompt at: <list>" or "this run is unattended".
+1. Read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, since the session loads only that directory. From the target's root, read `CLAUDE.md`, `AGENTS.md`, `.claude/CLAUDE.md` and every file they import, and `CLAUDE.md` and `.claude/CLAUDE.md` in each folder above the root, and in each folder from the root down to the session's folder when the session started below it, which the session loads as project instructions. Record every ask-first rule with the file it came from.
+2. Read `.reimagine.json` at the root. A file that does not parse ends the run `blocked`.
+3. Print the permission statement. It gives the approved and the always-ask actions (SKILL.md, Approval scope), the instruction directory read, the ask-first rules found with their files, the run's checks with their source, or that no check will run, and for each action of the run whether it will prompt: fetch, checkout, the exclude file and the record, the child sessions, the subagents, the checks, the `node` scripts, the commit and the push. Judge each from the permission mode the session states and the allow, ask and deny rules of the user, project and local settings files. An action runs unprompted only when the mode approves it, or an allow rule matches its command and no ask or deny rule does. A command in the `git -C` or `cd` form of a target that runs from outside the session's folder is not pre-approved, and an outcome you cannot determine counts as a prompt. A push that triggers a deploy always prompts and is judged before each push, so outside "no fixes" the Prompts line ends with `deploy: judged before each push`. End with "this run will prompt at: <list>" or "this run is unattended".
 
 ```
 Approved for this run: fix commits on each target's branch, push it.
-Always asked: force push, --no-verify, merge, rebase, amend, reset, deploy, repository settings, a new issue. Instruction directory read: ~/.claude. Ask-first rules found: 2 (<repo>/CLAUDE.md).
+Always asked: force push, --no-verify, merge, rebase, amend, reset, deploy, repository settings, a new issue. Instruction directory read: ~/.claude. Ask-first rules found: 2 (<root>/CLAUDE.md).
 Prompts: fetch: no; checkout: no; exclude and record: yes (no allow rule); child sessions: yes; subagents: no; checks: yes; node scripts: yes; commit: yes; push: yes; deploy: judged before each push
 this run will prompt at: the record, the child sessions, the checks, the node scripts, the commit, the push, and before a push that triggers a deploy
 ```
 
-## 0.4 GitHub checks
+## The target
 
-For each target on GitHub:
+1. On GitHub, a `gh` that is not authenticated, tested with the `gh repo view` above, ends the run `blocked`. A branch or a bundle on another host needs no `gh`.
+2. Read a pull request with `gh pr view <n> --json number,url,state,headRefName,baseRefName,isCrossRepository`. One that is merged or closed ends the run `blocked`. One from a fork is an unresolved target: skip it.
+3. A branch target's head is the branch `git rev-parse --abbrev-ref HEAD` prints. `HEAD`, a detached head, ends the run `blocked`.
 
-1. A `gh` that is not authenticated ends the run `blocked` for that host. Test it with the `gh repo view` of 0.2.4.
-2. Read the pull request with `gh pr view <n> --json number,url,state,headRefName,baseRefName,isCrossRepository`. A merged or closed pull request ends `blocked`. A cross-repository pull request is an unresolved target: skip it, and when no target is left the run ends `stopped`.
-3. A branch target's head is the branch `git rev-parse --abbrev-ref HEAD` prints; for "repo <path>", read it with `git -C <path> rev-parse --abbrev-ref HEAD`. `HEAD` there, a detached head, ends `blocked`.
+## Clean tree
 
-## 0.5 Clean tree
+Before any checkout, `git status --porcelain` must print nothing, untracked files that are not ignored included, and `git diff --cached --quiet` must succeed. Otherwise the run ends `blocked`, naming what is dirty.
 
-Before any checkout, `git status --porcelain` must print nothing, untracked files that are not ignored included, and `git diff --cached --quiet` must succeed. Otherwise the run ends `blocked`, naming what is dirty. Never stash, reset or clean.
+## Base and merge-base
 
-## 0.6 Base and merge-base
-
-1. The base `<b>` of a pull request is its `baseRefName`; "base <branch>" in the request on a pull request whose base differs ends `blocked`, naming both, since the gate never retargets a pull request. The base of a branch target is "base <branch>" in the request, else the manifest bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch, from `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, or on another host `git ls-remote --symref <r> HEAD`. A bundle `base` whose first segment names a remote that `git remote` lists in the bundle's repository is read without that segment and its `/`, since the loop's manifest writes `<remote>/<base branch>`: with a remote `origin`, `origin/main` is read as `main`.
+1. The base `<b>` is as SKILL.md, The request, says. The remote's default branch is `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`, or on another host the branch `git ls-remote --symref <r> HEAD` names.
 2. Fetch it with `git fetch <r> +refs/heads/<b>:refs/remotes/<r>/<b>`. A fetch that fails ends the run `blocked`, naming the branch.
-3. The merge-base is `git merge-base refs/remotes/<r>/<b> <head>`, printed as a full sha, with `<head>` the local branch after 0.7. Hold it. Every review target and every line count of Step 1 is the three-dot range from it.
+3. The merge-base is `git merge-base refs/remotes/<r>/<b> <head>`, as a full sha, with `<head>` the local branch after the next section. Every review target and every line count is the three-dot range from it.
 
-## 0.7 The head
+## The head
 
-1. A pull request's head branch `<head>` is fetched with the explicit refspec `git fetch <r> +refs/heads/<head>:refs/remotes/<r>/<head>`. A fetch that fails ends the run `blocked`, naming the branch. A branch target's head is the branch of 0.4.3, fetched the same way when it exists on the remote; one that exists nowhere on the remote has no remote head to keep.
-2. Keep `git rev-parse refs/remotes/<r>/<head>` as the fetched remote head only when item 1's fetch found the branch on the remote; otherwise the run keeps no remote head. Step 2 compares it before every push, and then the last sha this run pushed.
-3. This item applies only when item 1's fetch found the branch on the remote, since a tracking ref left from an earlier fetch can outlive a branch deleted on the remote. When a local branch `<head>` exists, its tip must be at or behind the remote head (`git merge-base --is-ancestor refs/heads/<head> refs/remotes/<r>/<head>`). Behind: fast-forward it with `git merge --ff-only refs/remotes/<r>/<head>` after the checkout. Ahead or diverged ends the run `blocked`, naming the branch, except a tip one commit ahead whose parent (`git rev-parse refs/heads/<head>^`) is the remote head and whose sha is the `commit` of a `failed` pass in the record's `passes.json` (0.8, item 1), that file's `branch` being this run's branch, when no entry of `runs` names that sha as `kept` and no `complete` pass names it as its `head`, since either shows the commit was pushed once: a run that ended `blocked` after its commit kept that commit, and this tip passes in every mode, since Resume pushes it, or ends a "no fixes" run `blocked` on it (`steps/3-next.md`, Resume). A `passes.json` that is missing or does not parse gives no exception, so the ahead tip ends the run `blocked` as any other. Never reset.
-4. Check out the head once 0.5 has passed: `git checkout <head>`, or `git checkout -b <head> refs/remotes/<r>/<head>` when no local branch exists. A branch target is already on its branch.
+1. Fetch a pull request's head branch with `git fetch <r> +refs/heads/<head>:refs/remotes/<r>/<head>`; a fetch that fails ends the run `blocked`, naming the branch. Fetch a branch target's head the same way when it exists on the remote.
+2. Keep `git rev-parse refs/remotes/<r>/<head>` as the fetched remote head, but only when that fetch found the branch, since a tracking ref can outlive a branch deleted on the remote. Step 2 compares it before every push.
+3. With a fetched remote head and a local branch `<head>`, the local tip must be at or behind it: `git merge-base --is-ancestor refs/heads/<head> refs/remotes/<r>/<head>`. Behind, fast-forward it with `git merge --ff-only refs/remotes/<r>/<head>` after the checkout; that moves the branch to its own remote head and is part of the checkout, not a merge of the always-ask list. Ahead or diverged ends the run `blocked`, naming the branch, with one exception: a tip one commit ahead whose parent is the remote head, when `node "<scripts>/resume.mjs" <absolute passes.json> <tip>`, run on the `passes.json` of this branch's record (The record, item 1) with the tip's full sha, prints `{"unpushed": true}`. That is a commit an earlier run made and did not push, and Resume pushes it. A non-zero exit, as when the branch has no record, gives no exception.
+4. Once the tree is clean, check out the head: `git checkout <head>`, or `git checkout -b <head> refs/remotes/<r>/<head>` when no local branch exists. A branch target is already on its branch.
 
-## 0.8 The record
+## The record
 
-1. The record is `.reimagine/gate/<slug>/` in the target's repository, the slug as SKILL.md, Record, says.
-2. Run `git check-ignore -q .reimagine/`, with the trailing slash, since without it git reads a directory that does not exist yet as not ignored. Run it, and the exclude-file lookup below, in the target's repository: as `git -C <path>` for a manifest bundle or "repo <path>", in the plain form for the session's checkout. When the check fails, append `.reimagine/` to the file that `git rev-parse --git-path info/exclude` names, read relative to the repository's folder when it is not absolute, never `.gitignore`; `git -C <path>` prints a path relative to `<path>`, which a write from the session's folder would miss. Never stage anything under it.
-3. Create the record directory unless it exists.
-4. An existing `passes.json` whose `branch` differs from this run's branch is a slug collision and ends the run `blocked`, naming both branches.
-5. Create `passes.json` when absent, with `branch` (the exact name), `base` (`<b>`), `merge_base` (0.6), `targets` (`github:<owner>/<repo>#<n>` for a pull request, else the branch name), `engine` (the word after `Engine:` on the block's Engine line, `subprocess` or `stand-in`, without the `;` that follows it), `"runs": []` and `"passes": []`.
-6. Append the run entry `{"n": <run>, "started": <utc>, "ended": null, "state": "running"}`, `<run>` being 1 on a new file and one more than the highest `n` in `runs` otherwise. In the same write, an earlier entry still `running`, left by a run that never reached a terminal state, gets `"state": "interrupted"`, its `ended` left `null`. On an existing file change nothing else here; the merge-base and the head wait in memory for Resume.
-7. Write every record file whole to `<record>/<name>.tmp`, then move it over the file with `mv <tmp> <file>`, no flags, both paths absolute, keeping every entry you did not change.
+1. The record is `.reimagine/gate/<slug>/` under the root, the slug as SKILL.md, Record, says.
+2. Run `git check-ignore -q .reimagine/`, with the trailing slash, since git reads a directory that does not exist yet as not ignored without it. When it fails, append `.reimagine/` to the file that `git rev-parse --git-path info/exclude` names, read relative to the root when it is not absolute, never to `.gitignore`.
+3. Create the record directory unless it exists. An existing `passes.json` whose `branch` differs from this run's branch is a slug collision and ends the run `blocked`, naming both branches.
+4. Create `passes.json` when it is absent, with `branch` (the exact name), `base`, `merge_base`, `targets` (`github:<owner>/<repo>#<n>` for a pull request, else the branch name), `engine` (`subprocess` or `stand-in`, as the block's Engine line says), `"runs": []` and `"passes": []`.
+5. Append the run entry `{"n": <run>, "started": <utc>, "ended": null, "state": "running"}`, `<run>` being one more than the highest `n` in `runs`. In the same write, an earlier entry still `running`, left by a run that never reached a terminal state, becomes `"state": "interrupted"`. Change nothing else of an existing file here. Every write of a record file follows `record.md`, Write discipline.
 
-With no pass in `passes.json`, read `steps/1-pass.md` and run pass 1 at `xhigh`; otherwise read `steps/3-next.md`, section Resume, which decides where the run starts.
+With no pass in `passes.json`, read `steps/1-pass.md` and run pass 1 at `xhigh`. Otherwise the run goes to `steps/3-next.md`, section Resume, which decides where it starts.

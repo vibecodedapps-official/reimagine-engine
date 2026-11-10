@@ -5,17 +5,20 @@
 //   <max-passes>     a whole number of 1 or more
 //   <minutes left>, <minutes a pass needs>   both or neither; the run budget still unspent, any finite number, negative when the run is over
 //                    budget, and the time one more pass needs, a number above 0
-// The latest pass is the last entry of `passes`; its `changes` lists the fix round's kinds:
-//   inside-diff, exported-signature, schema-or-migration, outside-diff, over-quarter (these four are wide) and docs-only
-//   (every changed file is documentation; not wide; a record that lists it beside exported-signature or schema-or-migration is bad).
-// A reject is new unless the same finding id has bucket `reject` in any earlier pass of the record, in any run.
+// The latest pass is the last entry of `passes`. Its `changes` lists the kinds of its fix round: inside-diff, outside-diff,
+//   exported-signature and schema-or-migration (the last three are wide), and docs-only (every changed file is documentation;
+//   a record that lists it beside exported-signature or schema-or-migration is bad). The over-quarter kind of an older record
+//   is read and changes nothing. A pass's `files` lists the paths its fix round changed; an older record has none.
 // Rules, first match wins:
-//   nothing-to-fix     no fix finding and no new reject: stop `pass`, or `pass-with-deferred` when a pass of the run deferred
-//   after-medium       the latest pass ran at `medium`: stop as nothing-to-fix when it has no fix finding, else `unconverged`
-//   docs-only          the latest pass has a fix finding and its `changes` holds docs-only: level `medium`
+//   nothing-to-fix     no fix finding: stop `pass`, or `pass-with-deferred` when a pass of the run deferred
+//   fix-of-fix         a pass after another of its run, with at most 3 fix findings, each in a file the fix round before it
+//                      changed, whose own fix round was not wide, made a commit and passed every check, of which there is
+//                      at least one: stop as nothing-to-fix does, since a review found only small corrections to the last
+//                      fixes and the checks cover them
+//   docs-only          the fix round changed only documentation: level `medium`
 //   wide-fix           a wide change kind, and no pass of the run after its first ran at `xhigh`: level `xhigh`
-//   rejects-at-high    the two latest passes both ran at `high`, each with no fix finding and a new reject: level `medium`
 //   otherwise          level `high`
+// A finding's file is the part of its id before the first `|`.
 // A level is marked "capped": "max-passes" when the run's passes number <max-passes> or more, else "capped": "budget" when <minutes left>
 // is less than <minutes a pass needs>; a stop never is.
 // On success prints one JSON line on stdout, {"stop":...,"rule":...} or {"level":...,"rule":...[,"capped":"max-passes"|"budget"]}, and exits 0.
@@ -29,8 +32,11 @@ export const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-
 const LEVELS = ['medium', 'high', 'xhigh'];
 const STATUSES = ['running', 'complete', 'failed'];
 const BUCKETS = ['fix', 'defer', 'reject'];
-const WIDE = ['exported-signature', 'schema-or-migration', 'outside-diff', 'over-quarter'];
-const KINDS = ['inside-diff', ...WIDE, 'docs-only'];
+const WIDE = ['exported-signature', 'schema-or-migration', 'outside-diff'];
+// The kinds a fix round records now, and the one only an older record holds.
+export const KINDS = ['inside-diff', ...WIDE, 'docs-only'];
+const RETIRED = ['over-quarter'];
+const FEW = 3;
 
 class Fail extends Error {
   constructor(code, message) {
@@ -63,38 +69,45 @@ function validate(record, file) {
       const bucket = isObject(f) ? f.bucket : undefined;
       if (!BUCKETS.includes(bucket)) fail(`${at}.findings[${JSON.stringify(id)}].bucket is ${show(bucket)}, not ${list(BUCKETS)}`);
     }
+    if (p.files !== undefined && !(Array.isArray(p.files) && p.files.every((path) => typeof path === 'string'))) fail(`${at}.files is not a list of paths`);
   });
   const at = `passes[${passes.length - 1}]`;
   const latest = passes.at(-1);
   if (latest.status === 'failed') fail(`${at} is failed; a failed pass has no next level`);
   if (!Array.isArray(latest.changes)) fail(`${at}.changes is missing or not an array`);
-  const bad = latest.changes.find((k) => !KINDS.includes(k));
+  const bad = latest.changes.find((k) => !KINDS.includes(k) && !RETIRED.includes(k));
   if (bad !== undefined) fail(`${at}.changes holds ${show(bad)}, not ${list(KINDS)}`);
   const code = latest.changes.includes('docs-only') ? latest.changes.find((k) => k === 'exported-signature' || k === 'schema-or-migration') : undefined;
   if (code !== undefined) fail(`${at}.changes holds "docs-only" beside ${show(code)}, which documentation cannot be`);
 }
 
-const has = (p, bucket) => Object.values(p.findings).some((f) => f.bucket === bucket);
+const ids = (p, bucket) => Object.keys(p.findings).filter((id) => p.findings[id].bucket === bucket);
 
-// Whether the pass at index k rejected an id that no earlier pass of the record rejected.
-const newReject = (passes, k) =>
-  Object.entries(passes[k].findings).some(([id, f]) => f.bucket === 'reject' && !passes.slice(0, k).some((q) => Object.hasOwn(q.findings, id) && q.findings[id].bucket === 'reject'));
+// Whether the latest pass found only a few corrections to the fix round before it, and its own round is covered by the checks.
+function fixOfFix(latest, before) {
+  if (!before || before.run !== latest.run || !Array.isArray(before.files)) return false;
+  const fixes = ids(latest, 'fix');
+  if (fixes.length > FEW || !fixes.every((id) => id.includes('|') && before.files.includes(id.slice(0, id.indexOf('|'))))) return false;
+  if (latest.changes.some((k) => WIDE.includes(k)) || typeof latest.commit !== 'string') return false;
+  if (!Array.isArray(latest.checks) || latest.checks.length === 0) return false;
+  if (!latest.checks.every((c) => isObject(c) && typeof c.command === 'string')) return false;
+  // A check run again after a check fix is in the list twice; its last result is the one that counts.
+  const last = new Map(latest.checks.map((c) => [c.command, c.result]));
+  return [...last.values()].every((result) => result === 'pass');
+}
 
 // The result for a validated record: { stop, rule } or { level, rule[, capped] }; `time` is { left, need } or null.
 export function next(passes, max, time = null) {
-  const last = passes.length - 1;
-  const latest = passes[last];
+  const latest = passes.at(-1);
   const inRun = passes.filter((p) => p.run === latest.run);
-  const stop = () => ({ stop: inRun.some((p) => has(p, 'defer')) ? 'pass-with-deferred' : 'pass' });
-  const fixing = has(latest, 'fix');
+  const stop = (rule) => ({ stop: inRun.some((p) => ids(p, 'defer').length > 0) ? 'pass-with-deferred' : 'pass', rule });
 
-  if (!fixing && !newReject(passes, last)) return { ...stop(), rule: 'nothing-to-fix' };
-  if (latest.level === 'medium') return fixing ? { stop: 'unconverged', rule: 'after-medium' } : { ...stop(), rule: 'after-medium' };
+  if (ids(latest, 'fix').length === 0) return stop('nothing-to-fix');
+  if (fixOfFix(latest, passes.at(-2))) return stop('fix-of-fix');
 
   let result = { level: 'high', rule: 'otherwise' };
-  if (fixing && latest.changes.includes('docs-only')) result = { level: 'medium', rule: 'docs-only' };
+  if (latest.changes.includes('docs-only')) result = { level: 'medium', rule: 'docs-only' };
   else if (latest.changes.some((k) => WIDE.includes(k)) && inRun.slice(1).every((p) => p.level !== 'xhigh')) result = { level: 'xhigh', rule: 'wide-fix' };
-  else if (last > 0 && [last - 1, last].every((k) => passes[k].level === 'high' && !has(passes[k], 'fix') && newReject(passes, k))) result = { level: 'medium', rule: 'rejects-at-high' };
   if (inRun.length >= max) return { ...result, capped: 'max-passes' };
   return time && time.left < time.need ? { ...result, capped: 'budget' } : result;
 }

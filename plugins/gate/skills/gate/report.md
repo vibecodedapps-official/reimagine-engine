@@ -1,15 +1,10 @@
 # The report
 
-Read this file from `steps/4-publish.md`, 4.4, at every terminal state (`pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`).
+Read this file at every terminal state. Fill every section from the record, `passes.json`, `findings.json` and the saved reviews, never from memory. A run's passes are those whose `run` is its number. Every section is present, and an empty one says `none`.
 
-Fill every section from the record (`passes.json`, `findings.json` and the saved reviews), never from memory. The passes of a run are those whose `run` is its number, and its findings are those of its passes. Every section is present; an empty one says `none`.
+With a record, write the report to `report.md` in it, as `record.md`, Write discipline, says, and print the same text. A run that ended before the record existed prints the report only, naming the preflight item that failed and its fix. A headless caller sees only the last message, so the header alone must let a reader find the record.
 
-Where the report goes:
-
-- Before Step 0.8 the record does not exist, so the report is printed only. It names the preflight item that failed and the fix.
-- From Step 0.8 on, write the report to `report.md` in the record, rewriting the file at every terminal state through a temporary file and `mv`, as `record.md`, Write discipline, says, and print the same text as the run's last text.
-
-A headless session does not show text written before a Skill call, so the header alone must let a reader find the record: the record path, the terminal state, the targets and the Audit line are in the header, not only in the sections.
+The report may name models, agents and tools, because it stays in the record. It is the only place the run's findings, checks, commits and verdict are written for a reader.
 
 ## Template
 
@@ -44,46 +39,31 @@ A headless session does not show text written before a Skill call, so the header
 
 ## Header
 
-- Run number, Branch, Base and Merge-base: from `passes.json`. The base is written `<remote>/<branch>`, and the merge-base is `none` before Step 0.6 ran.
-- Record: the absolute path of the record directory, or `none written` when the run ended before Step 0.8.
-- Targets: each target as `github:<owner>/<repo>#<n>` with its link, or `the branch <name>`.
-- Run budget: the minutes in force and their source, as the reading block gave them. Elapsed is the time from this run's `started` to its `ended`, with the waits for questions left out, as `steps/3-next.md`, Decide, item 4, counts it.
-- Passes: each pass of this run as `<n> at <level> (<rule>)`, in order. The rule is the `rule` of the pass's own `next`, the decision that followed the pass, with `, capped <cap>` after it when the `next` has `capped`. A pass with no `next` shows its `status`, `failed` or `running`. `none` when the run made no pass.
-- Engine: `engine` from `passes.json`. For the stand-in, the reason, from the record: a saved `review-<n>[-<slug>].json` of this run whose result says the `code-review` skill is not available, or, with none, that `claude` is not on the PATH.
-- Review level: copy the line as it is. The run never typed a level in the user's own session (SKILL.md, Roles).
-- Audit: when `steps/4-publish.md`, 4.3, wrote or updated a manifest, the `/audit:run` line with that manifest's absolute path and the note that the command needs the audit plugin. With no record there is no manifest: `not suggested (no record written)`.
+- Merge-base is `none` when the run ended before preflight found it.
+- Run budget gives the minutes and their source as the reading block did. Elapsed is from the run's `started` to its `ended`, with the waits for an answer left out.
+- Passes gives each pass of the run in order. The rule is the `rule` of the pass's own `next`, with `, capped <cap>` after it when the `next` is capped. A pass with no `next` shows its `status` instead.
+- Engine gives the stand-in's reason from the record: a saved review result of this run that says the `code-review` skill is not available, else that `claude` is not on the PATH.
+- Review level is copied as it is.
+- Audit names the manifest Step 4 wrote or updated. With no record it reads `not suggested (no record written)`.
 
 ## Sections
 
-### Findings
+Findings. Per pass of the run, each finding by bucket with its file, summary and triage reason.
 
-Per pass of this run, each finding by bucket (`fix`, `defer`, `reject`) with its file, summary and the triage reason; the fixed ones are marked `fixed`. Also, under a heading of its own naming the pass whose `commit` is the `kept` of this run's entry in `runs` and the kept commit, that pass's findings in ledger state `fixed`, marked as fixed by the kept commit. A finding that a pass of this run also has in its fix bucket is listed once, under this run's pass, not again as fixed by the kept commit. A failed review is named with its saved result file. A review that stopped on a usage limit is named as `usage limit`, with the line that a later run resumes the pass. In "no fixes", the fix bucket is headed as what a fix run would do. A finding carried, regressed or matched to an earlier one says so, with the match's reason from the ledger.
+- A fixed finding is marked `fixed`. When the last pass's `next` has the rule `fix-of-fix`, its fixed findings are marked `fixed, no review after`, and one line names the checks that passed on them.
+- A finding carried, regressed or matched to an earlier one says so, with the match's reason.
+- In "no fixes", the fix bucket is headed as what a fix run would do.
+- A failed review is named with its saved result file. One that stopped on a usage limit is named `usage limit`, with the line that a later run resumes the pass.
+- When the run pushed a kept commit, the `kept` of its entry in `runs`, the findings of the pass that made it are listed under a heading that names that pass and the commit, as fixed by it. A finding that a pass of this run also fixed is listed once, under this run's pass.
 
-### Checks
+Checks. The source of the checks: the request, the manifest bundle or `.reimagine.json`. Each check run, with its command and result. Each check not run, with its exact command and the reason; `denied` only for a refused permission. With no source, that no check ran. Then one line on what the reviews could not run: the sum of their `denials` and each distinct call of their `denied` lists, or `none refused`. A review reaches for the checks itself, and a refused one is a check that review did not see.
 
-The section names the source of the checks: the request, the manifest bundle or `.reimagine.json`. Run: the command and its result. Not run: the exact command and the reason; with no source, write that no check ran. Write `denied` only for a refused permission. A check still failing after three fixes is named here and under Blocked or stopped.
+Commits and pushes. Each commit of the run with its full sha and subject, and whether it was pushed or is kept local only, from `git ls-remote <r> refs/heads/<branch>` and the record, never from memory; a kept commit this run pushed, with the pass that made it. After `blocked`, every pushed commit and every commit kept local, an earlier run's included. When the run pushed to a branch that has an open pull request, one line says that the description was written before these commits and what to bring up to date in it: what changed and the checks run. The gate edits no description.
 
-### Commits and pushes
+Open findings. For `unconverged`, each open finding by file and summary (`steps/3-next.md`, Decide), and the cap or failure that ended the run, by name. A `budget` cap is named as the next pass not started because the run budget could not hold it.
 
-Each commit of this run with its full sha and subject, and whether it was pushed or kept local only, from `git ls-remote <remote> refs/heads/<branch>`, and the kept commit this run pushed, the `kept` of this run's entry in `runs`, with its sha, subject and the pass that made it. A run that ends `blocked` while HEAD is still a failed pass's `commit` that the remote does not hold names that commit as kept local, from git and the record, not from memory. After `blocked`, name every pushed commit and every local commit kept.
+Blocked or stopped. What is blocked, or the question with both positions; where the work is: the branch, the pull request link, the head and the paths left as they are; what would unblock it; and the exact commands in order, ending with the request that runs the gate again, such as `/gate PR <n>`. A budget that ran out is given with its value. A check still failing after three fixes is named here and under Checks.
 
-### Open findings
-
-For `unconverged`: each open finding as `steps/3-next.md`, Decide, item 6, lists them, by file and summary, and the cap or the rule that ended the run, named. For any other state, `none`.
-
-### Blocked or stopped
-
-For `blocked` and `stopped`: what is blocked, or the question with both positions; where the work is (the branch, the pull request link, the head, the paths left as they are); what would unblock it; and the exact commands in order, ending with the request that runs the gate again (`/gate PR <n>`, `/gate this branch`). A budget that ran out is given with its value. Otherwise `none`.
-
-### Log
-
-Each review with its slug, models, duration, cost, denial count and notes, from `reviews[]`, a review that stopped on a usage limit named as `usage limit`, the notes printed as the reviewer wrote them, or `none` when empty; each reader call with its batch's size and whether it was retried; each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch; and the elapsed time against the run budget.
-
-## Rules
-
-- The report has exactly one terminal state, one of the five.
-- Name every cap that ended the run, and the engine when it is the stand-in. A `budget` cap is named as the next pass not started because the run budget could not hold it.
-- For `blocked` and `stopped`, nothing is pushed after the state.
-- The report may name models, agents and tools, because it stays in the record. The gate posts nothing to a forge, so the report is the only place the run's findings, checks, commits and verdict are written for a reader.
+Log. Each review with its slug, models, duration, cost, denial count and notes, the notes as the reviewer wrote them; each repair of a `match`; each reader call with its batch's size and whether it was retried; each implementer call with its group's files, its `duration_ms` and the `date` outputs kept around it; each late notice; and the elapsed time against the run budget.
 
 Return to `steps/4-publish.md`.

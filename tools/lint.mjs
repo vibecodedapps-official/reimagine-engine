@@ -520,35 +520,47 @@ function chatFailures(ctx) {
   return out;
 }
 
-// The list items among lines, each joined to one line.
+const MARKER = /^\s*(?:[-*+]|\d+[.)])\s/;
+
+// The `- ` items among lines, each joined to one line: a line right under an item that starts no item or heading continues it.
 function listItems(lines) {
   const out = [];
   let open = false;
   for (const line of lines) {
     const item = line.startsWith('- ');
-    open = item || (open && /^ +\S/.test(line));
+    open = item || (open && line.trim() !== '' && !line.startsWith('#') && !MARKER.test(line));
     if (item) out.push(line.slice(2));
     else if (open) out[out.length - 1] += ` ${line}`;
   }
   return out.map((item) => item.trim().replace(/\s+/g, ' '));
 }
 
-// The loop, the gate and the audit each work without the rules plugin, so each carries the house-rules item on what leaves a session.
+// The loop, the gate and the audit each work without the rules plugin, so each carries the house-rules item on what leaves a session:
+// one `- ` line, with nothing under it that a Markdown reader would add to it.
 function carriedFailures(ctx) {
   const out = [];
-  const core = listItems((ctx.text(CORE) ?? '').split('\n'));
+  const unfenced = (file) => outsideFences(ctx.text(file) ?? '').map((l) => l.line);
+  const core = listItems(unfenced(CORE));
   for (const file of [LOOP_SKILL, GATE_SKILL, AUDIT_SKILL]) {
-    const lines = (ctx.text(file) ?? '').split('\n');
+    const lines = unfenced(file);
     const start = lines.indexOf(CARRIED);
     if (start < 0) {
       out.push(`${file}: no ${CARRIED} section`);
       continue;
     }
-    let end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
+    let end = lines.findIndex((l, i) => i > start && /^##? /.test(l));
     if (end < 0) end = lines.length;
-    const items = listItems(lines.slice(start + 1, end));
-    if (items.length !== 1) out.push(`${file}: ${CARRIED} holds ${items.length} items, not one`);
-    else if (!core.includes(items[0])) out.push(`${file}: the item under ${CARRIED} is not an item of ${CORE}`);
+    const section = lines.slice(start + 1, end);
+    const items = section.filter((l) => MARKER.test(l));
+    if (items.length !== 1) {
+      out.push(`${file}: ${CARRIED} holds ${items.length} items, not one`);
+      continue;
+    }
+    const under = section.slice(section.indexOf(items[0]) + 1);
+    const alone = (under[0] ?? '').trim() === '' && !under.some((l) => /^\s+\S/.test(l));
+    if (!items[0].startsWith('- ') || !core.includes(items[0].slice(2)) || !alone) {
+      out.push(`${file}: the item under ${CARRIED} is not an item of ${CORE}`);
+    }
   }
   return out;
 }

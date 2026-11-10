@@ -631,8 +631,22 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     'plugins/gate/skills/gate/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
     'plugins/audit/skills/audit/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
   ]);
+  negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (a copy stops a sentence short)', (dir) => {
+    const skill = 'plugins/audit/skills/audit/SKILL.md';
+    const line = read(dir, skill).split(/\r?\n/).find((l) => l.startsWith(carried));
+    edit(dir, skill, line, line.slice(0, line.lastIndexOf('. ') + 1));
+    settle(dir, 'audit');
+  }, 1, ['plugins/audit/skills/audit/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md']);
+  negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (a line under the copy)', (dir) => {
+    edit(dir, 'plugins/loop/skills/run/SKILL.md', 'would say themselves.\n', 'would say themselves.\nExcept in a hurry.\n');
+    bump(dir, 'loop');
+  }, 1, ['plugins/loop/skills/run/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md']);
+  negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (an indented paragraph under the copy)', (dir) => {
+    edit(dir, 'plugins/gate/skills/gate/SKILL.md', 'would say themselves.\n', 'would say themselves.\n\n  Except in a hurry.\n');
+    bump(dir, 'gate');
+  }, 1, ['plugins/gate/skills/gate/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md']);
   negative('R349: <file>: ## What leaves the run holds <n> items, not one', (dir) => {
-    edit(dir, 'plugins/gate/skills/gate/SKILL.md', carried, `- One more.\n${carried}`);
+    edit(dir, 'plugins/gate/skills/gate/SKILL.md', carried, `* One more.\n${carried}`);
     bump(dir, 'gate');
   }, 1, ['plugins/gate/skills/gate/SKILL.md: ## What leaves the run holds 2 items, not one']);
   negative('R349: <file>: no ## What leaves the run section', (dir) => {

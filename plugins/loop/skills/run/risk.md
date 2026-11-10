@@ -42,19 +42,7 @@ The `code-review` level is never above `xhigh`: the word "max" gives `xhigh` to 
 
 ## Effort hint
 
-Effort words in the request set the effort:
-
-| Words | Effort |
-|---|---|
-| "quick", "low" | `low` |
-| "medium" | `medium` |
-| "thorough", "high" | `high` |
-| "very thorough", "xhigh" | `xhigh` |
-| "max" | `max` |
-
-The effort maps to the `effort` argument of every Agent call you make for a reviewer, and to the level of the `code-review` skill through the table in Step 5 level, which caps that level at `xhigh`. With no effort word, pass no `effort` argument and use level `high` for `code-review`.
-
-The hint never lowers a floored run below `high`: a floored run with "quick" passes `high`. A hint above `high` stands.
+Effort words in the request set the effort (SKILL.md, Reading the request). The hint never lowers a floored run below `high`: a floored run with "quick" passes `high`. A hint above `high` stands.
 
 Record the hint, the floor and the effort in force in `inputs.md`, and name all three and the Step 5 level in the report.
 

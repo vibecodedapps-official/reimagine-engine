@@ -133,15 +133,9 @@ Step 7 applies this to the pull request, the comments and the tickets (`pr-body.
 
 Agent calls never use a fork. Every Agent call passes `model` explicitly, and passes `effort` by the effort rule above.
 
-1. Orchestrator: you orchestrate, judge, review each slice diff and decide. You never implement a slice. Without you the run stops.
-2. Implementer: each slice goes to one Agent at `sonnet`. Slices with disjoint files run in parallel; others run serially. Parallel implementers run no checks and say so. You run each slice's checks afterward, one command at a time, and a command several slices name runs once. A tool error ends `blocked` after the snapshot check: restore only paths that were clean before the call; anything else ends `blocked`.
-3. Plan reviewer: a fresh-context Agent at `opus`, given the request text, the file paths and the required reply shape, and told to read and report only. It reviews the plan in Step 3. On a model or tool error (an API error such as model not found, or a tool error) retry the call once at the `fallback-reviewer` model (`sonnet` unless `.reimagine.json` says otherwise); when that model is the reviewer's own, retry at `sonnet` instead, or at `opus` for a reviewer on `sonnet`, since a retry on the same model meets the same limit, record the swap in `run.md`, and name it in the report. The reviewer stays swapped for the rest of the run. A denial or a timeout is not an error. Step 5 has no fresh reviewer; its one pass is item 4.
-4. Final reviewer: every run's Step 5 uses `code-review`. When Step 5 starts, confirm `code-review` is listed among the session's skills. Call it with the level of `risk.md` first and the range `<merge-base>...HEAD` with the full merge-base sha as target. `code-review` covers the primary whenever it is the session's checkout, a linked worktree included. Never pass `--comment` or `--fix`. Mark new files with `git add -N` first. One pass per run; a CI repair cycle adds one (`steps/7-publish.md`). A pass that errors is retried once, the stand-in at `sonnet`; a second error ends `blocked`.
-5. The `opus` stand-in, used when `code-review` is not listed, the primary is not the session's checkout, or the diff is in an additional repository: an Agent at `opus`, given the absolute path of the patch file, the plan, the inputs, the acceptance criteria and the reply shape, with the `code-review` level of `risk.md` passed as its `effort` (`xhigh` where the word was "max"), and told to read and report only. It runs once per pass, retried once at `sonnet` on an error, and is never continued with SendMessage. It is not a swap; the report names it and the retry.
-6. Reader: read-only work worth splitting out runs on `haiku`; you may read instead.
-7. `.reimagine.json` `models` accepts `implementer`, `reviewer`, `fallback-reviewer` and `reader`, each one of `sonnet`, `opus`, `haiku`, `fable`. It never changes the risk floor or the Step 5 role.
+You orchestrate, judge, review each slice diff and decide. You never implement a slice. `.reimagine.json` `models` accepts `implementer`, `reviewer`, `fallback-reviewer` and `reader`, each one of `sonnet`, `opus`, `haiku`, `fable`. It never changes the risk floor or the Step 5 role.
 
-The briefs and reply shapes each Agent call carries are in the step files.
+The rules of each role, and the briefs and reply shapes each Agent call carries, are in the step files.
 
 ## Budgets and rounds
 

@@ -92,6 +92,13 @@ test('R351: tickets.md is read once per run, before any body or comment, at the 
   assert.ok(TICKETS.split('\n')[2].startsWith('Read this file ' + READ_POINTS));
 });
 
+test('R351: an open item a CI repair pass adds is settled in 7.3, and a ticket\'s record names the pull request once one exists', () => {
+  assert.ok(TICKETS.split('\n')[2].includes('the end of Step 6 on `other`). An open item a CI repair pass adds in Step 7.3 is settled the same way when the pass finds it. A run that ends'));
+  assert.ok(TICKETS.includes('Before the run\'s first pull request body or comment is written (for an item a CI repair pass adds, before 7.3\'s body update), record each open item in `run.md` as one of three, with its evidence:'));
+  assert.ok(TICKETS.includes('A new ticket\'s record names the branch, and the pull request once one exists.'));
+  assert.ok(!TICKETS.includes('A ticket is filed before the pull request exists'));
+});
+
 test('R351: a prepared ending before the first push writes the drafts and the body files before it ends', () => {
   assert.ok(section(PUBLISH, 'Opening').includes('A question about a commit, a push or a pull request, raised because an ask-first rule applies, ends the run `prepared` when the answer before any push is anything but a clear yes: write the drafts and body files first, as the opening says.'));
   assert.ok(section(PUBLISH, '7.2 Push and pull request').includes('treat any answer but a clear yes as a denial. A denial before the first push ends the run `prepared`: write the drafts and body files first, as the opening says.'));

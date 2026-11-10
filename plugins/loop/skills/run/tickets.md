@@ -1,12 +1,12 @@
 # Open items and tickets
 
-Read this file once per run, before any body or comment is written: in Step 7.2 after the first push has returned; or, on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`). A run that ends `blocked` or `stopped` before it is read lists each open item in the report's Open items as open, with its description and why it is owed, for a later run on the branch to settle. It holds what becomes of each open item and how a ticket is written, recorded and filed. What leaves the run is written for its reader (SKILL.md, What leaves the run).
+Read this file once per run, before any body or comment is written: in Step 7.2 after the first push has returned; or, on a run that ends `prepared`, before its body file is written (Step 7's opening, a denial before the first push, the end of Step 6 on `other`). An open item a CI repair pass adds in Step 7.3 is settled the same way when the pass finds it. A run that ends `blocked` or `stopped` before it is read lists each open item in the report's Open items as open, with its description and why it is owed, for a later run on the branch to settle. It holds what becomes of each open item and how a ticket is written, recorded and filed. What leaves the run is written for its reader (SKILL.md, What leaves the run).
 
 ## Open items
 
 Open items are deferred findings that affect correctness or risk or cost more to leave than to fix, remainders of partial inputs, checks not run that someone must still run, open plan objections, and questions the run raised. Any other deferred finding is a note: report only, never published, never filed. A check deferred to CI is settled by the CI watch, not an open item.
 
-Before any pull request body or comment is written, record each open item in `run.md` as one of three, with its evidence:
+Before the run's first pull request body or comment is written (for an item a CI repair pass adds, before 7.3's body update), record each open item in `run.md` as one of three, with its evidence:
 
 - Settled by the run: the same stretch of work can settle it, inside the plan's files and acceptance criteria, needing no input the run lacks, within the budget, and with no edit in Step 7. Record the evidence: a check, a test, a read or a commit. An item already resolved elsewhere (an open or merged pull request that resolves it, or a ticket that already holds everything the item would add) is settled by naming where, and is not listed in the body.
 - A decision for the user: an item whose answer is the user's call. Put it in full in the report's `### Decisions for you` section: the assumption every option shares, each option, the recommendation first, and what would overturn it. It does not block publishing: the pull request publishes with its pointers, and the answer comes in a later run's request on the branch.
@@ -24,7 +24,7 @@ A run that ends `prepared` (a host other than `github`, "do not publish", or a d
 
 Every draft, on any run, including each ticket of a non-yes reply, is logged in `run.md` as `- draft <file>: <one line>`, is listed in the report's Open items with its files and the command that files it, and, when the run writes a handoff, keeps a local id there (`handoff.md`, Raised tickets).
 
-The pull request body and the continued comment carry at most one line per ticket: what it holds, in one line, and its ticket reference (`pr-body.md`, Follow-ups). An item settled or put to the user is not listed. A ticket is filed before the pull request exists, so a new ticket's record names the branch and not the pull request.
+The pull request body and the continued comment carry at most one line per ticket: what it holds, in one line, and its ticket reference (`pr-body.md`, Follow-ups). An item settled or put to the user is not listed. A new ticket's record names the branch, and the pull request once one exists.
 
 ## Ticket text and records
 

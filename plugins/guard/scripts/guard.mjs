@@ -3,8 +3,8 @@
 // file. Usage: node guard.mjs <verb> <dataDir> [args]
 //   status   print the state of the entries and the size of the list; writes nothing
 //   list     print the repositories in the list
-//   plan     show the change and save it; takes --add <path> [--merge], --drop <path or remote> or --clear
-//   apply    write the saved change (a backup first), then check the host's effective configuration
+//   plan     show the change and save it under an id; takes --add <path> [--merge] [--reads], --drop <path or remote> or --clear
+//   apply    takes that id: write the saved change (a backup first), then check the host's effective configuration
 //   denials  print the classifier denials the PermissionDenied hook recorded
 //   session-start  the startup hook: one notice line when the entries are stale; writes nothing
 //   denied   the hook itself: reads a hook input on stdin and appends one line to the denials file
@@ -21,8 +21,10 @@ const STATE_FILE = 'guard-state.json';
 const LIST_FILE = 'reimagine-guard.json';
 const VERBS = ['status', 'list', 'plan', 'apply', 'denials'];
 const DENIALS_FILE = 'denials.jsonl';
+const DENIALS_MAX = 256 * 1024, DENIALS_KEEP = 100;
+const NO_ID = 'apply takes the id on the plan: line of the plan it writes';
 const LISTS = ['environment', 'allow', 'soft_deny', 'hard_deny'];
-const FORMS = 'plan takes one of --add <path> [--merge], --drop <path or remote> or --clear; nothing else is accepted';
+const FORMS = 'plan takes one of --add <path> [--merge] [--reads], --drop <path or remote> or --clear; nothing else is accepted';
 const GUARD_LABELS = [['trusted repo', 'Trusted repo'], ['source control', 'Source control']];
 const ALLOW_OWN = `User's own repositories: pushing a branch to a repository listed under Source control, opening a pull request there, and editing the title or description of, or commenting on, a pull request there that the user's own message asked to work on, one this session did not open included. A body given on stdin, or in a file that the agent or its subagents wrote in this session, counts as derived from this transcript.${MARK}`;
 const ALLOW_READS = `Settings reads: reading Claude Code settings files, the settings.json in the configuration directory and a listed repository's .claude/settings.json or .claude/settings.local.json, to inspect or verify configuration is not credential exploration, as long as no value read leaves the machine.${MARK}`;
@@ -139,10 +141,13 @@ function parseList(path, file, platform) {
   try { if (file.text !== null && !file.bad) v = JSON.parse(file.text); } catch {}
   if (file.text === null) return [];
   const ok = v && v.version === 1 && Array.isArray(v.repos) && v.repos.every((r) => r && typeof r.path === 'string' && typeof r.merge === 'boolean'
-    && Array.isArray(r.remotes) && r.remotes.every((x) => typeof x === 'string'));
+    && (r.reads === undefined || typeof r.reads === 'boolean') && Array.isArray(r.remotes) && r.remotes.every((x) => typeof x === 'string'));
   if (!ok) stop('malformed', `${path} is not a guard list`);
-  return v.repos.map((r) => ({ path: r.path, remotes: r.remotes, merge: r.merge })).sort(byPath(platform));
+  return v.repos.map((r) => entry(r.path, r.remotes, r.merge, r.reads)).sort(byPath(platform));
 }
+// One repository of the list; reads is written only when set, so a list from before the flag keeps its bytes.
+const entry = (path, remotes, merge, reads) => ({ path, remotes, merge, ...(reads ? { reads: true } : {}) });
+const flags = (x) => `${x.merge ? ' merge' : ''}${x.reads ? ' reads' : ''}`;
 const serialize = (repos) => `${JSON.stringify({ version: 1, repos }, null, 2)}\n`;
 
 // The settings file as the scanner sees it: where each top-level member starts and ends.
@@ -250,7 +255,7 @@ function entries(repos, defs) {
   return {
     trusted: `${host} The user's own repositories listed under Source control are trusted the same way, at these local checkouts: ${sites}.${MARK}`,
     source: `**Source control**: The trusted repo and its remote(s), and these remotes of the user's own repositories: ${sorted(repos.flatMap((r) => r.remotes)).join(', ')}; as scoped by the Trusted repo and Repository visibility entries above.${MARK}`,
-    allow: [ALLOW_OWN, ALLOW_READS, ...(merge.length
+    allow: [ALLOW_OWN, ...(repos.some((r) => r.reads) ? [ALLOW_READS] : []), ...(merge.length
       ? [`Owner-reviewed merges: merging a pull request in ${merge.join(', ')}, when the user's own message names that pull request and asks for the merge; the user reviews their own pull requests in these repositories.${MARK}`] : [])],
   };
 }
@@ -335,11 +340,12 @@ function locate(env, home) {
 }
 
 function parseRequest(verb, rest) {
+  if (verb === 'apply') return /^[0-9a-f]{12}$/.test(rest[0] ?? '') && rest.length === 1 ? { id: rest[0] } : refuse(NO_ID);
   if (verb !== 'plan') {
     if (rest.length) refuse(`${verb} takes no arguments`);
     return null;
   }
-  let req = null, merge = false;
+  let req = null, merge = false, reads = false;
   const set = (r) => { if (req) refuse(FORMS); req = r; };
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
@@ -349,10 +355,11 @@ function parseRequest(verb, rest) {
       set({ kind: a.slice(2), value });
     } else if (a === '--clear') set({ kind: 'clear' });
     else if (a === '--merge') merge = true;
+    else if (a === '--reads') reads = true;
     else refuse(FORMS);
   }
-  if (merge && req?.kind !== 'add') refuse(FORMS);
-  return req && { ...req, merge };
+  if ((merge || reads) && req?.kind !== 'add') refuse(FORMS);
+  return req && { ...req, merge, reads };
 }
 
 // The list after an add, drop or clear; refuses before any claude call.
@@ -364,7 +371,7 @@ function change(old, req, c) {
     let remotes = [];
     try { remotes = remotesOf(c.env, top); } catch {}
     if (!remotes.length) refuse(`${top} has no remote; guard trusts a repository by its remotes`);
-    return [...old.filter((x) => key(x.path, c.platform) !== key(top, c.platform)), { path: top, remotes, merge: req.merge }].sort(byPath(c.platform));
+    return [...old.filter((x) => key(x.path, c.platform) !== key(top, c.platform)), entry(top, remotes, req.merge, req.reads)].sort(byPath(c.platform));
   }
   const given = resolve(c.cwd, req.value), paths = [slash(given)], remotes = [req.value, normalizeRemote(req.value)];
   try { paths.push(slash(git(c.env, given, ['rev-parse', '--show-toplevel']).trim())); } catch {}
@@ -441,7 +448,7 @@ function body(c, t, request, deep, r) {
   r.lines = [
     ...repos.flatMap((x) => {
       const o = was.get(key(x.path, c.platform));
-      return !o ? [`repository: + ${shown(x)}${x.merge ? ' merge' : ''}`] : same(o, x) ? [] : [`repository: ~ ${shown(x)}${x.merge ? ' merge' : ''}`];
+      return !o ? [`repository: + ${shown(x)}${flags(x)}`] : same(o, x) ? [] : [`repository: ~ ${shown(x)}${flags(x)}`];
     }),
     ...old.filter((o) => !now.has(key(o.path, c.platform))).map((o) => `repository: - ${shown(o)}`),
     ...entryLines('environment', effective(auto?.environment, defs.environment), effective(res.auto?.environment, defs.environment)),
@@ -451,12 +458,23 @@ function body(c, t, request, deep, r) {
   r.plan = { path: t.path, before: sha(file.text), after, listPath: t.list, listBefore: sha(list.text), listAfter, written: res.written, copied: res.copied, created, candidate: res.auto ?? null };
 }
 
-// The line a denial hook input becomes: what was denied and why; never the tool input whole.
+// A credential as a command carries it: the user part of a URL, a value after bearer, basic or token that looks like
+// one (eight characters or more with a digit or =, and no flag), and the value of a token, secret, password or key
+// pair. Prose keeps its words: a reason loses a pair only when it is written with =. The fields are cut before these
+// run and no repeat is nested, so the hook returns on any input.
+const redact = (s, prose) => s
+  .replace(/(:\/\/)[^\s/]+@/g, '$1[redacted]@')
+  .replace(/\b((?:bearer|basic|token)\s{1,8})(?!-)(?=[^\s'"]*[\d=])[^\s'"]{8,}/gi, '$1[redacted]')
+  .replace(prose ? /((?:token|secret|password|passwd|pwd|key)[\w-]{0,32}["']?\s{0,8}=\s{0,8}["']?)[^\s'"&]+/gi
+    : /((?:token|secret|password|passwd|pwd|key)[\w-]{0,32}["']?\s{0,8}[=:]\s{0,8}["']?)[^\s'"&]+/gi, '$1[redacted]');
+
+// The line a denial hook input becomes: what was denied and why, each part cut and with no credential; never the tool input whole.
 function denial(input, now) {
   const text = (v) => (typeof v === 'string' ? v : '');
+  const clean = (v, n, prose) => redact(text(v).slice(0, 4 * n), prose).slice(0, n);
   const tool = text(input.tool_name), args = input.tool_input ?? {};
-  const target = tool === 'Bash' || tool === 'PowerShell' ? { command: text(args.command).slice(0, 300) } : typeof args.file_path === 'string' ? { path: args.file_path } : {};
-  return { time: now.toISOString(), reason: text(input.reason), tool, ...target, cwd: text(input.cwd) };
+  const target = tool === 'Bash' || tool === 'PowerShell' ? { command: clean(args.command, 300) } : typeof args.file_path === 'string' ? { path: args.file_path.slice(0, 300) } : {};
+  return { time: now.toISOString(), reason: clean(input.reason, 500, true), tool, ...target, cwd: text(input.cwd).slice(0, 300) };
 }
 
 function listDenials(dataDir) {
@@ -508,9 +526,13 @@ function writeAtomic(path, text, backup, mode) {
   }
 }
 
-function applyPlan(c) {
-  const p = readJson(join(c.dataDir, PLAN_FILE)) ?? {};
+// The id is the plan's own hash, so apply writes what this session showed: no plan saved over it, and no plan file changed by hand.
+const planId = (plan) => sha(JSON.stringify(plan)).slice(0, 12);
+
+function applyPlan(c, id) {
+  const { id: saved, ...p } = readJson(join(c.dataDir, PLAN_FILE)) ?? {};
   if (!p.path) refuse('there is no planned change; run /guard again');
+  if (saved !== id || planId(p) !== id) refuse('the saved plan is not the one this session was shown, so nothing was written; run /guard again');
   if (lstatSync(p.path, { throwIfNoEntry: false })?.isSymbolicLink()) refuse(`${p.path} is a symbolic link that points to a missing file, so nothing was written`);
   const cur = readFile(p.path), list = readFile(p.listPath);
   if (sha(cur.text) !== p.before) refuse(`${p.path} changed after the plan was shown, so nothing was written; run /guard again`);
@@ -552,12 +574,12 @@ function applyPlan(c) {
 }
 
 function run(verb, request, c) {
-  if (verb === 'apply') return applyPlan(c);
+  if (verb === 'apply') return applyPlan(c, request.id);
   if (verb === 'denials') return listDenials(c.dataDir);
   if (verb === 'list') {
     let repos;
     try { const { list } = locate(c.env, c.home); repos = parseList(list, readFile(list), c.platform); } catch (e) { if (e instanceof Stop) refuse(e.note); throw e; }
-    return repos.length ? repos.map((x) => `${x.path} ${x.remotes.join(',')}${x.merge ? ' merge' : ''}`) : ['list: no repositories'];
+    return repos.length ? repos.map((x) => `${x.path} ${x.remotes.join(',')}${flags(x)}`) : ['list: no repositories'];
   }
   if (verb === 'plan') save(c.dataDir, PLAN_FILE, {});
   const r = inspect(c, request, verb === 'plan');
@@ -565,8 +587,9 @@ function run(verb, request, c) {
   if (verb === 'status') return [`state: ${r.state} ${r.t.path}${note}`, `list: ${r.t.list} (${r.count} repositories)`];
   const head = [`target: ${r.t.path}`, `list: ${r.t.list}`, `state: ${r.state}${note}`, ...r.notes];
   if (!r.plan) return [...head, 'change: none'];
-  save(c.dataDir, PLAN_FILE, r.plan);
-  return [...head, ...r.lines, "check: the dry run's effective configuration holds every guard entry once", 'change: ready'];
+  const id = planId(r.plan);
+  save(c.dataDir, PLAN_FILE, { ...r.plan, id });
+  return [...head, ...r.lines, "check: the dry run's effective configuration holds every guard entry once", `plan: ${id}`, 'change: ready'];
 }
 
 // The startup notice: one systemMessage line when listed repositories leave the entries stale. It uses the remotes the list
@@ -588,7 +611,9 @@ export function main(argv, { env = process.env, platform = process.platform, now
       const input = JSON.parse(stdin());
       if (input && typeof input === 'object' && !Array.isArray(input)) {
         mkdirSync(dataDir, { recursive: true });
-        appendFileSync(join(dataDir, DENIALS_FILE), `${JSON.stringify(denial(input, now))}\n`, { mode: 0o600 });
+        const path = join(dataDir, DENIALS_FILE);
+        appendFileSync(path, `${JSON.stringify(denial(input, now))}\n`, { mode: 0o600 });
+        if (statSync(path).size > DENIALS_MAX) writeAtomic(path, `${readFileSync(path, 'utf8').split('\n').filter(Boolean).slice(-DENIALS_KEEP).join('\n')}\n`, undefined, 0o600);
       }
     } catch {}
     return [];

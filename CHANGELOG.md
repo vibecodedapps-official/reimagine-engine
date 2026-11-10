@@ -2,6 +2,27 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.28 - 2026-11-10
+
+- The house rules say each rule once, in 33 rules and about a fifth fewer words: the decision rules are one item, what leaves the session is one item, and the ask-first rules hold whatever another item says. Every past failure had added a sentence and none had been merged or cut. An installed block reads as older than the plugin's until `/rules` is run again.
+- A ticket or comment is written at the detail its readers act on. The earlier text sent every technical detail to an attached record, which kept out of a ticket what its reader needed in order to act.
+- Commits follow the repository's own convention first, and name no session, model or tool, since the fixed form overrode a repository that had its own.
+- A subagent reads "me" in the rules as the session that launched it, since a rule that says to ask the user has no reader in a subagent.
+- The definition of a handoff prompt lives in the `handoff-prompt` skill and the chat block. The house rules no longer carry it, since it applies only when a handoff prompt is asked for.
+- Concise Plain 4.15 is about a fifth shorter. Its Links section is one rule and gives no vendor's link forms, and the chat block follows.
+
+## loop 0.1.22 - 2026-11-10
+
+- The skill carries the one house-rules item on what leaves a session in place of the earlier two, word for word as the rules plugin ships it, so a ticket or comment is written at the detail its readers act on.
+
+## audit 0.1.18 - 2026-11-10
+
+- The skill carries the one house-rules item on what leaves a session in place of the earlier two, word for word as the rules plugin ships it, so a ticket or comment is written at the detail its readers act on.
+
+## gate 0.1.15 - 2026-11-10
+
+- The skill carries the one house-rules item on what leaves a session in place of the earlier two, word for word as the rules plugin ships it, so a ticket or comment is written at the detail its readers act on.
+
 ## gate 0.1.14 - 2026-11-10
 
 - A run stops when a pass finds nothing to fix, whatever it rejected, or finds at most 3 things to fix that all sit in files the fix round before it changed, fixes them and sees every check pass. Under the earlier rules no recorded run stopped clean: each ended at a cap. The report marks fixes that no review saw after them. The return to `xhigh` after a fix round that touched over a quarter of the files, and the last `medium` pass, are gone.

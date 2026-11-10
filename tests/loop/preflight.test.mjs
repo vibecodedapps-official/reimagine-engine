@@ -243,8 +243,8 @@ test('R76: Step 0.2 defines the start commit and 0.4 compares the snapshot with 
   assert.ok(PREFLIGHT.includes('Record HEAD (`git rev-parse HEAD` in the checkout in use) as the planning snapshot. When it is not the start commit (0.2 item 10), note that in `run.md`. Steps 1 and 2 read the snapshot; Step 3.7 reverifies against the start commit.'));
 });
 
-test('R52 and R53: the echo carries the key shape of the Step 0.1 credential scan whole', () => {
+test('R52 and R53: the echo carries the key shape of the credential scan whole, and Step 0.1 scans by it', () => {
   const shape = 'A key named `password`, `passwd`, `secret`, `token`, `api_key`, `apikey`, `client_secret`, `private_key` or `connection_string` (case-insensitive) anywhere in a line, in the form `key: value`, `"key": "value"` or `key=value`, with a non-empty value. The value runs from the first character after `:` or `=`, with spaces and an opening quote skipped, to the next space, comma or quote.';
-  assert.ok(PREFLIGHT.includes(shape), 'Step 0.1 lacks the key shape');
-  assert.ok(SKILL.includes(shape), 'the echo in SKILL.md lacks the key shape of Step 0.1');
+  assert.ok(SKILL.includes(shape), 'the echo in SKILL.md lacks the key shape');
+  assert.ok(PREFLIGHT.includes('A match is any shape the echo is redacted by (SKILL.md, Reading the request).'), 'Step 0.1 names no shapes');
 });

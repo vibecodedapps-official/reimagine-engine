@@ -52,7 +52,7 @@ One item per repository with a diff of its own, primary first, then the "also ed
 
 ### Tickets
 
-One `### <ticket id>` per distinct input. Ids are normalized:
+One `### <ticket id>` per distinct input of the record's runs. Ids are normalized:
 
 - `github:<owner>/<repo>#<n>`
 - `ado:<org>/<project>#<n>`
@@ -113,7 +113,8 @@ Write `audit-manifest.json` beside the handoff:
 {"bundles":[{"repo":"<absolute path>","pr":"github:<owner>/<repo>#<n>","tickets":["<ticket id>"]},{"repo":"<absolute path>","branch":"<branch>","base":"<remote>/<base branch>","tickets":["<ticket id>"]}],"claims":["<absolute path of handoff.md>"],"reviews":{"level":"<level>","fixed":[{"file":"<repository-relative path>","summary":"<one line>"}],"deferred":[{"file":"<repository-relative path>","summary":"<one line>"}],"rejected":[{"file":"<repository-relative path>","summary":"<one line>"}]}}
 ```
 
-- One bundle per Bundles item, in the same order. `tickets` lists the ids of the tickets whose `bundles` value names that bundle.
+- One bundle per Bundles item, in the same order. `tickets` lists the tickets whose `bundles` value names that bundle, in a form the audit can read: a GitHub issue by its id; an Azure DevOps or Salesforce ticket as `file:<absolute path of its export>`; a file or text input not at all, since the handoff carries it as claims.
+- An export is `<record>/export-<id-slug>.md`, rewritten with the manifest: frontmatter with `id` (the ticket's id in Tickets), `url`, `title`, `state`, `source` (`azure-devops` or `salesforce`), `exported_by` (`loop`) and `exported_at` (the handoff's `generated`), then the description as the text below it. Each comes from the latest copy of the ticket in `inputs.md`, and one it lacks is `none`.
 - A bundle names its pull request only when the live remote head equals the local HEAD of that branch: compare the first field of `git -C <repo> ls-remote --heads <remote> refs/heads/<branch>` with `git -C <repo> rev-parse HEAD`. Otherwise the bundle carries `branch` and `base` and no `pr`.
 - In `repo`, the primary's repo is the `<checkout>` of Step 0, Primary checkout, never the folder below it that the session started in, and in a worktree run the worktree path.
 - `reviews` holds the level of the Step 5 pass (`steps/4-build.md`, 5.2) and every finding of this run's Step 5 pass and CI repair passes in the bucket the triage gave it: `fixed` for the `fix` bucket, `deferred` for `defer` (a fix restored and deferred counts here), `rejected` for `reject`. Each finding is its repository-relative `file` and a one-line `summary`. A list the pass left empty is written `[]`. The audit ignores the key.

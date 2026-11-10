@@ -129,6 +129,7 @@ test('R351: tickets.md settles each open item as one of three outcomes', () => {
     'the assumption every option shares, each option, the recommendation first, and what would overturn it',
     'Search the tracker first, closed tickets included.',
     'The remainder of a source ticket the run took up stays on that ticket',
+    'That holds for every ticket a run of the record took up (`steps.json`, `tickets`)',
     'it is not a new ticket',
     'Any other deferred finding is a note: report only, never published, never filed.',
     'A check deferred to CI is settled by the CI watch, not an open item.',
@@ -195,7 +196,7 @@ test('R352: every body and record file is written first and its post runs alone,
 test('R352: a ticket is written for its readers, and the technical detail goes in a record', () => {
   for (const needle of [
     'what changed for them, what happens next and who it waits on, what is not done and the ticket tracking each',
-    'never a branch, file, line, check output, commit id, criterion evidence, run, step, pass, level, verdict or another term the loop coined',
+    'a file or a line only where the reader opens it to act, as when the ticket asks them to run a check; never a branch, check output, commit id, criterion evidence, run, step, pass, level, verdict or another term the loop coined',
     'A pull request link is allowed, as where to follow the change',
     'the local copy is the source of truth and an upload a copy',
     'A new ticket\'s record is the handoff context a later session needs: what the item is, why it matters, where the evidence is (files, lines, commits, checks, the record path), and what done looks like.',
@@ -362,10 +363,10 @@ test('R352: the Azure DevOps forms pass the file, not inline text, and 7.4 names
   assert.ok(text.includes('`gh issue comment <n> -R <owner>/<repo> --body-file <absolute path>`'));
 });
 
-test('R352: one log line per ticket per run, after its last post, and a later run reads the latest', () => {
-  assert.ok(TICKETS.includes('After a ticket\'s last post in the run (its filing or comment, then its attach), log one line for it in `run.md`: `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`. A later run reads the latest line for a ticket.'));
+test('R352: a ticket is logged when its post returns and again when its attach does, and a later run reads the latest', () => {
+  assert.ok(TICKETS.includes('Log a ticket in `run.md` as soon as its filing or comment returns, `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`, with `none` until the attach returns, then again with the artifact number. A later run reads the latest line for a ticket.'));
   assert.ok(!TICKETS.includes('After each post, log a line'));
-  assert.ok(RECORD.includes('as one line, written after that ticket\'s last post of the run, `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`; a later run reuses the ticket and the artifact number by the latest line for a ticket.'));
+  assert.ok(RECORD.includes('as one line, written when its filing or comment returns and again when its attach does, `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`; a later run reuses the ticket and the artifact number by the latest line for a ticket.'));
 });
 
 test('R352: several open items on one ticket share one comment and one record under the lowest item number', () => {

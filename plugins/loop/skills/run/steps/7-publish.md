@@ -53,17 +53,17 @@ Every body file is written with the Write tool first, in its own call. The publi
 
 `gh pr create --title "<title>" --body-file <absolute path to the body file> --base <base>`
 
-Add `--head <branch>` on a continued branch. The title is the single ticket's title, or the plan's one-line summary when there are several inputs, at most 70 characters. Record the pull request in steps.json as `runs[].pr`, in the form `github:<owner>/<repo>#<n>`, from the url `gh pr create` prints.
+Add `--head <branch>` on a continued branch. The title is the single ticket's title, or the plan's one-line summary when there are several inputs, at most 70 characters. Record the pull request in steps.json as `runs[].pr`, in the form `github:<owner>/<repo>#<n>`, from the url `gh pr create` prints, before any other call.
 
-A pull request opened on a continued branch lists, under "Decisions for the reviewer", the commits that were on the branch before the run (the Branch state list in this run's section of `inputs.md`, own and foreign) and says the branch carries them from before this change and they were reviewed with it.
+A pull request opened on a continued branch lists, under "Decisions for the reviewer", the commits that were on the branch before the run (the Branch state list in this run's section of `inputs.md`, own and foreign) and says the branch carries them from before this change and they were reviewed with it. One made after the record's last Step 5 pass is named as not reviewed, as item 1 below says.
 
 **One open pull request on the branch.** It is this loop's own when a `runs` entry in `steps.json` names it in `pr` (`record.md`, steps.json, item 2). Read `pr-body.md`. After the push, with `<pr>` the pull request number:
 
-1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. This is the run's only edit of that body, except the one in 7.3, item 3, after a repair; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
+1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. A commit on the branch that no run made and no slice's `commit` names is listed under "Decisions for the reviewer" as not the loop's, and as not reviewed when it was made after the record's last Step 5 pass, so that the `head` of Step 5's entry in `steps.json` does not hold it. This is the run's only edit of that body, except the one in 7.3, item 3, after a repair; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
 2. Write the continued pull request comment from the `## Continued pull request comment` template to `<record>/comment-<n>.md`, numbered as `record.md` says, then post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`. This is the run's one comment on the pull request.
 3. When it is not this loop's own, the comment is all: never edit its body.
 
-Write no `runs[].pr` for a pull request this run did not open. Log in `run.md` the pull request, the body edit and the comment, with their files.
+Write no `runs[].pr` for a pull request this run did not open. Log in `run.md` the pull request, the body edit and the comment as each returns, with its file and the head it describes. A run with nothing to push and no ticket newly filed or found repeats no body edit and no comment that `run.md` logs for that head.
 
 Every `--body-file` is an absolute path.
 

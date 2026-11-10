@@ -18,6 +18,7 @@ Write the body to the run's body file in the record: `pr-body.md`, or `pr-body-<
 ## Decisions for the reviewer
 <design choices; options rejected and why; behavior a reader could take for a bug>
 <on a continued branch: this branch carries <n> commits from before this change; they were reviewed with it, and they are listed here>
+<commits on the branch that are not the loop's, as `steps/7-publish.md`, 7.2, says>
 
 ## Checks not run
 <each check not run, with the reason and, for one someone must still run, the ticket that tracks it; each check deferred to CI, by job name; each check failing at baseline, with the evidence>

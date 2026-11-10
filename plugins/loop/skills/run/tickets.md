@@ -10,9 +10,9 @@ Before the run's first pull request body or comment is written (for an item a CI
 
 - Settled by the run: the same stretch of work can settle it, inside the plan's files and acceptance criteria, needing no input the run lacks, within the budget, and with no edit in Step 7. Record the evidence: a check, a test, a read or a commit. An item already resolved elsewhere (an open or merged pull request that resolves it, or a ticket that already holds everything the item would add) is settled by naming where, and is not listed in the body.
 - A decision for the user: an item whose answer is the user's call. Put it in full in the report's `### Decisions for you` section: the assumption every option shares, each option, the recommendation first, and what would overturn it. It does not block publishing: the pull request publishes with its pointers, and the answer comes in a later run's request on the branch.
-- Filed to a ticket: everything else someone still owes: work outside the plan, an input the run cannot get (a date, an environment, a fixture, an owner), a question someone other than the user owns, a bug found outside the change, a check someone must still run. Search the tracker first, closed tickets included. An open ticket that covers the same symptom but lacks what the item adds gets a comment and a record; a closed one is not commented on, and the new ticket's body links it; else a new ticket, one symptom each. The remainder of a source ticket the run took up stays on that ticket: its pull request line is `Refs`, and Step 7.4's comment says what is not done; it is not a new ticket. A source ticket is never the ticket of an open item.
+- Filed to a ticket: everything else someone still owes: work outside the plan, an input the run cannot get (a date, an environment, a fixture, an owner), a question someone other than the user owns, a bug found outside the change, a check someone must still run. Search the tracker first, closed tickets included. An open ticket that covers the same symptom but lacks what the item adds gets a comment and a record; a closed one is not commented on, and the new ticket's body links it; else a new ticket, one symptom each. The remainder of a source ticket the run took up stays on that ticket: its pull request line is `Refs`, and Step 7.4's comment says what is not done; it is not a new ticket. A source ticket is never the ticket of an open item. That holds for every ticket a run of the record took up (`steps.json`, `tickets`): one the search finds gets no comment for the item, and the new ticket's body links it.
 
-A later run on the branch never files a second ticket for an item the record shows filed: it comments on that ticket when the item changed, and updates its record. The `- ticket` lines of `run.md` show it (`record.md`, Files).
+A later run on the branch never files a second ticket for an item the record shows filed: it comments on that ticket when the item changed, and updates its record. The `- ticket` lines of `run.md` show it (`record.md`, Files). For a `- draft` line with no later `- ticket` line, it searches the tracker for a ticket whose title equals the line's text, which for a new ticket's draft is its title, and logs a match as `- ticket <ref> new artifact none: <one line>`, so a draft someone filed by hand keeps its line in Follow-ups.
 
 ## Filing
 
@@ -28,7 +28,7 @@ The pull request body and the continued comment carry at most one line per ticke
 
 ## Ticket text and records
 
-A ticket's body or comment is written for the ticket's readers: what changed for them, what happens next and who it waits on, what is not done and the ticket tracking each; never a branch, file, line, check output, commit id, criterion evidence, run, step, pass, level, verdict or another term the loop coined. A pull request link is allowed, as where to follow the change.
+A ticket's body or comment is written for the ticket's readers: what changed for them, what happens next and who it waits on, what is not done and the ticket tracking each; a file or a line only where the reader opens it to act, as when the ticket asks them to run a check; never a branch, check output, commit id, criterion evidence, run, step, pass, level, verdict or another term the loop coined. A pull request link is allowed, as where to follow the change.
 
 The technical detail goes in a record: a Markdown file written in the run's record first, the local copy is the source of truth and an upload a copy, then attached to the ticket.
 
@@ -39,7 +39,7 @@ Several open items that go to one ticket take one comment and one record holding
 
 Every body and record file is written with the Write tool first, in its own call, and its posting command then runs alone in its own Bash call, naming only that path. Before each post, check that its reader will act on it and that it holds nothing they would not say themselves.
 
-After a ticket's last post in the run (its filing or comment, then its attach), log one line for it in `run.md`: `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`. A later run reads the latest line for a ticket.
+Log a ticket in `run.md` as soon as its filing or comment returns, `- ticket <ref> <new | existing | source> artifact <number | none>: <one line>`, with `none` until the attach returns, then again with the artifact number. A later run reads the latest line for a ticket.
 
 ## Backends
 

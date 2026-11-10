@@ -138,7 +138,27 @@ const STANDIN_NOTES = {
   after: 'Not reviewed: docs/cache.md changed in the same range and holds no code.',
   text: 'Review of the range from the merge-base to HEAD. I read the diff only and ran no check.\n\nNot reviewed: docs/cache.md changed in the same range and holds no code.',
 };
-const STANDIN_REVIEW = { output: 'standin.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null, notes: STANDIN_NOTES };
+// What each fixture's child session was refused, as the summary prints it: the tool and the first line of its command, cut at 120 characters.
+const DENIED = {
+  spike1b: [
+    'Bash: cat src/stats.mjs tests/stats.test.mjs; ls tests CLAUDE.md 2>&1; cd . && node -e "import(\'./src/stats.mjs\').then(m ...',
+    'Bash: node --version; node --test tests/; echo exit=$?',
+  ],
+  spike4b: [
+    'Bash: cd . 2>/dev/null || cd .; git diff develop...HEAD; echo "---WT---"; git diff HEAD; echo "---FILES---"; git ls-file ...',
+    'Bash: node -e "import(\'./src/stats.mjs\').then(m => console.log(JSON.stringify({empty: m.variance([]), one: m.variance([5 ...',
+    'Bash: npm --prefix . test',
+  ],
+  spike4d: [
+    'Bash: cd . 2>/dev/null || cd .; cat tests/stats.test.mjs; echo "---EXTRA---"; cat src/extra.mjs; echo "---PKG---"; cat p ...',
+    'Bash: node --input-type=module -e "import {variance} from \'src/stats.mjs\'; console.log(JSON.stringify({empty: variance([ ...',
+  ],
+  group2: [
+    'Bash: cd . 2>/dev/null || cd .; git diff develop...HEAD -- src/stats.mjs; echo "---STATUS---"; git status --short; echo  ...',
+    'Bash: cat tests/stats.test.mjs; echo "---PKG---"; cat package.json; echo "---BRANCHES---"; git -C . branch -a -v; echo " ...',
+  ],
+};
+const STANDIN_REVIEW = { output: 'standin.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, denied: null, models: null, notes: STANDIN_NOTES };
 const standinFindings = (state, bucket, reason) => [
   {
     id: IDS.cacheKey,
@@ -175,7 +195,7 @@ describe('review outputs', { concurrency }, () => {
     const summary = succeeded(await run(dir, '1', 'findings.json', 'spike1b.json'));
     assert.deepEqual(summary, {
       pass: 1,
-      reviews: [{ output: 'spike1b.json', is_error: false, duration_ms: 80221, total_cost_usd: 0.81797925, denials: 2, models: ['claude-fable-5-1'], notes: { before: '', after: '', text: '' } }],
+      reviews: [{ output: 'spike1b.json', is_error: false, duration_ms: 80221, total_cost_usd: 0.81797925, denials: 2, denied: DENIED.spike1b, models: ['claude-fable-5-1'], notes: { before: '', after: '', text: '' } }],
       findings: [
         { id: IDS.pct, file: 'src/stats.mjs', line: 23, summary: SUMMARIES.pct, failure_scenario: SCENARIOS.pct, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
         { id: IDS.pkg, file: 'package.json', line: 1, summary: SUMMARIES.pkg, failure_scenario: SCENARIOS.pkg, outputs: ['spike1b.json'], state: 'new', bucket: null, reason: null, candidates: [] },
@@ -198,6 +218,7 @@ describe('review outputs', { concurrency }, () => {
         duration_ms: 145901,
         total_cost_usd: 1.073416,
         denials: 2,
+        denied: DENIED.spike4d,
         models: ['claude-fable-5-1'],
         notes: {
           before: 'Review of `develop...HEAD src/stats.mjs` (`src/stats.mjs`). Edge cases confirmed by running the function; the existing suite passes when run by file.',
@@ -229,6 +250,7 @@ describe('review outputs', { concurrency }, () => {
         duration_ms: 98528,
         total_cost_usd: 0.90604225,
         denials: 3,
+        denied: DENIED.spike4b,
         models: ['claude-fable-5-1'],
         notes: {
           before:
@@ -239,7 +261,7 @@ describe('review outputs', { concurrency }, () => {
             'Check not run: `npm --prefix . test` (the repo suite, run before reporting) was denied by the permission system. I did not substitute another invocation. It does not change either finding: the suite does not import `variance`, so its result cannot affect them.\n\nNotes outside the findings: the `n - 1` (sample) denominator is a design choice with no spec or caller to judge it against; the commit subject `feat: add variance` lacks the `type(scope):` scope the sibling commit `feat(develop): add range` uses, but that is not a file line.',
         },
       },
-      { output: 'group-2.json', is_error: false, duration_ms: 101753, total_cost_usd: 0.9521445, denials: 2, models: ['claude-fable-5-1'], notes: { before: '', after: '', text: '' } },
+      { output: 'group-2.json', is_error: false, duration_ms: 101753, total_cost_usd: 0.9521445, denials: 2, denied: DENIED.group2, models: ['claude-fable-5-1'], notes: { before: '', after: '', text: '' } },
     ]);
     assert.deepEqual(summary.findings, [
       { id: IDS.guard4b, file: 'src/stats.mjs', line: 26, summary: SUMMARIES.guard4b, failure_scenario: SCENARIOS.guard4b, outputs: ['spike4b.json', 'group-2.json'], state: 'new', bucket: null, reason: null, candidates: [] },
@@ -291,12 +313,59 @@ describe('review outputs', { concurrency }, () => {
     assert.deepEqual(summary, { pass: 1, reviews: [STANDIN_REVIEW], findings: standinFindings('new', null, null) });
   });
 
+  test('a finding with no line is read with a null line', async () => {
+    const dir = kase([], { 'reply.md': '```json\n[{"file": "a.mjs", "summary": "S one", "failure_scenario": "it breaks"}]\n```\n' });
+    const summary = succeeded(await run(dir, '1', 'findings.json', 'reply.md'));
+    assert.deepEqual(summary.findings.map((x) => [x.id, x.line]), [['a.mjs|s one', null]]);
+    assert.deepEqual(JSON.parse(ledgerText(dir)).findings['a.mjs|s one'].passes, { 1: { line: null, bucket: null, reason: null, prior: null } });
+  });
+
+  for (const [name, reply] of [
+    ['indented under a list item', '1. The findings:\n\n   ```json\n   [' + FINDING_JSON('a.mjs', 'S one') + ']\n   ```\n'],
+    ['opened in capitals', '```JSON\n[' + FINDING_JSON('a.mjs', 'S one') + ']\n```\n'],
+  ]) {
+    test(`a fence ${name} is read`, async () => {
+      const dir = kase([], { 'reply.md': reply });
+      const summary = succeeded(await run(dir, '1', 'findings.json', 'reply.md'));
+      assert.deepEqual(summary.findings.map((x) => [x.id, x.line]), [['a.mjs|s one', 3]]);
+    });
+  }
+
+  test('a path written with backslashes or a leading ./ names the same file', async () => {
+    const reply = '```json\n[' + [FINDING_JSON('src\\\\a.mjs', 'S one'), FINDING_JSON('./src/a.mjs', 'S one'), FINDING_JSON('src/a.mjs', 'S two')].join(', ') + ']\n```\n';
+    const dir = kase([], { 'reply.md': reply });
+    const summary = succeeded(await run(dir, '1', 'findings.json', 'reply.md'));
+    assert.deepEqual(summary.findings.map((x) => [x.id, x.file]), [['src/a.mjs|s one', 'src/a.mjs'], ['src/a.mjs|s two', 'src/a.mjs']]);
+    assert.deepEqual(Object.keys(JSON.parse(ledgerText(dir)).findings), ['src/a.mjs|s one', 'src/a.mjs|s two']);
+  });
+
+  test('the denied list names each refused call once, by tool and first line, and marks a cut', async () => {
+    const denials = [
+      { tool_name: 'Bash', tool_use_id: 'a', tool_input: { command: 'npm run test:gate' } },
+      { tool_name: 'Bash', tool_use_id: 'b', tool_input: { command: 'npm run test:gate' } },
+      { tool_name: 'PowerShell', tool_use_id: 'c', tool_input: { command: 'Set-Location src\nGet-ChildItem' } },
+      { tool_name: 'Write', tool_use_id: 'd', tool_input: { file_path: 'notes.txt', content: 'x' } },
+      { tool_name: 'Bash', tool_use_id: 'e', tool_input: { command: 'echo ' + 'a'.repeat(130) } },
+      { tool_name: 'Agent', tool_use_id: 'f' },
+    ];
+    const dir = kase([], { 'r.json': JSON.stringify({ is_error: false, result: '```json\n[]\n```\n', permission_denials: denials }) });
+    const summary = succeeded(await run(dir, '1', 'findings.json', 'r.json'));
+    assert.equal(summary.reviews[0].denials, 6);
+    assert.deepEqual(summary.reviews[0].denied, [
+      'Bash: npm run test:gate',
+      'PowerShell: Set-Location src ...',
+      'Write: notes.txt',
+      'Bash: echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ...',
+      'Agent',
+    ]);
+  });
+
   test('an empty array is a valid review that found nothing', async () => {
     const dir = kase([], { 'empty.md': 'Nothing found.\n\n```json\n[]\n```\n\nThe range is small.\n' });
     const summary = succeeded(await run(dir, '1', 'findings.json', 'empty.md'));
     assert.deepEqual(summary, {
       pass: 1,
-      reviews: [{ output: 'empty.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null, notes: { before: 'Nothing found.', after: 'The range is small.', text: 'Nothing found.\n\nThe range is small.' } }],
+      reviews: [{ output: 'empty.md', is_error: null, duration_ms: null, total_cost_usd: null, denials: null, denied: null, models: null, notes: { before: 'Nothing found.', after: 'The range is small.', text: 'Nothing found.\n\nThe range is small.' } }],
       findings: [],
     });
     assert.equal(ledgerText(dir), '{\n  "findings": {}\n}\n');
@@ -997,6 +1066,7 @@ describe('validation errors', { concurrency }, () => {
         duration_ms: 61000,
         total_cost_usd: 0.6,
         denials: 0,
+        denied: [],
         models: ['model-a'],
         notes: {
           before: 'The client retries on a rate limit without a backoff, which is outside this change.',

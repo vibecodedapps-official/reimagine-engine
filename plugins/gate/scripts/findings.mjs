@@ -39,19 +39,23 @@ export const normalize = (summary) =>
     .trim()
     .slice(0, 120);
 
-export const identity = (file, summary) => `${file}|${normalize(summary)}`;
+// A path as the ledger keys it: forward slashes and no leading ./, so one file has one name on every system.
+const repoPath = (file) => file.replace(/\\/g, '/').replace(/^(?:\.\/)+/, '');
 
-const isFinding = (f) =>
-  isObject(f) && typeof f.file === 'string' && typeof f.summary === 'string' && f.line !== undefined && f.failure_scenario !== undefined;
+export const identity = (file, summary) => `${repoPath(file)}|${normalize(summary)}`;
 
-// Takes the first fenced json block whose content is an array of findings (an empty one counts).
+// The host's finding shape makes the line optional, so a finding without one is read with a null line.
+const isFinding = (f) => isObject(f) && typeof f.file === 'string' && typeof f.summary === 'string' && f.failure_scenario !== undefined;
+
+// Takes the first fenced json block whose content is an array of findings (an empty one counts); the fence may be
+// indented and its info string in any case.
 // Returns { findings, before, after } with the trimmed text on each side of the fence lines, or null.
 export function parse(result) {
   const lines = result.split('\n');
   for (let i = 0; i < lines.length; i++) {
-    if (!lines[i].startsWith(FENCE + 'json')) continue;
+    if (!/^\s*```json/i.test(lines[i])) continue;
     let j = i + 1;
-    while (j < lines.length && lines[j].trimEnd() !== FENCE) j++;
+    while (j < lines.length && lines[j].trim() !== FENCE) j++;
     if (j === lines.length) return null;
     let value;
     try {
@@ -185,6 +189,22 @@ const LIMIT_TEXT = /\b(usage|rate|session|weekly|5-hour) limit\b|\blimit reached
 // The sorted keys of a result's modelUsage, or null when it has none.
 const modelsOf = (o) => (isObject(o.modelUsage) ? Object.keys(o.modelUsage).sort() : null);
 
+// What the review was refused, each call once: the tool, then the first line of its command or path, cut at 120
+// characters, with ` ...` where something was cut. Null when the result lists no denials.
+function deniedOf(o) {
+  if (!Array.isArray(o.permission_denials)) return null;
+  const out = [];
+  for (const d of o.permission_denials) {
+    const input = isObject(d) && isObject(d.tool_input) ? d.tool_input : {};
+    const detail = [input.command, input.file_path].find((v) => typeof v === 'string') ?? '';
+    const full = `${isObject(d) && typeof d.tool_name === 'string' ? d.tool_name : 'tool'}${detail ? ': ' + detail : ''}`;
+    const first = full.split('\n')[0].slice(0, 120);
+    const line = first === full ? full : first + ' ...';
+    if (!out.includes(line)) out.push(line);
+  }
+  return out;
+}
+
 // Reads one review output into { review, findings }; a bad one throws a Fail with its stderr line.
 function readReview(path) {
   const name = basename(path);
@@ -192,7 +212,7 @@ function readReview(path) {
   let text = raw;
   let isError = false;
   let limited = false;
-  let meta = { is_error: null, duration_ms: null, total_cost_usd: null, denials: null, models: null };
+  let meta = { is_error: null, duration_ms: null, total_cost_usd: null, denials: null, denied: null, models: null };
   if (path.toLowerCase().endsWith('.json')) {
     let o;
     try {
@@ -210,6 +230,7 @@ function readReview(path) {
       duration_ms: count(o.duration_ms),
       total_cost_usd: count(o.total_cost_usd),
       denials: Array.isArray(o.permission_denials) ? o.permission_denials.length : null,
+      denied: deniedOf(o),
       models: modelsOf(o),
     };
   }
@@ -256,7 +277,7 @@ function ingest(argv) {
     for (const f of findings) {
       const id = identity(f.file, f.summary);
       const seen = found.get(id);
-      if (!seen) found.set(id, { id, file: f.file, line: f.line, summary: f.summary, failure_scenario: f.failure_scenario, outputs: [name] });
+      if (!seen) found.set(id, { id, file: repoPath(f.file), line: f.line ?? null, summary: f.summary, failure_scenario: f.failure_scenario, outputs: [name] });
       else if (!seen.outputs.includes(name)) seen.outputs.push(name);
     }
   }

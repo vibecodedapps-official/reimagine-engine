@@ -52,7 +52,7 @@ Effort words in the request set the effort:
 | "very thorough", "xhigh" | `xhigh` |
 | "max" | `max` |
 
-The effort maps to the `effort` argument of every Agent call you make for a reviewer, and to the level of the `code-review` skill through the table in Step 5 level, which caps that level at `xhigh`. With no effort word, pass no `effort` argument and use level `high` for `code-review`.
+The effort maps to the `effort` argument of every Agent call you make, and to the level of the `code-review` skill through the table in Step 5 level, which caps that level at `xhigh`. With no effort word, pass no `effort` argument and use level `high` for `code-review`.
 
 The hint never lowers a floored run below `high`: a floored run with "quick" passes `high`. A hint above `high` stands.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Sets a plugin's version in its manifest and its catalog entry (and, for audit, the plugin_version literals),
-// changes nothing else, then runs tools/lint.mjs. It does not tag and does not edit the changelog.
+// raises the catalog's own metadata.version by one, changes nothing else, then runs tools/lint.mjs. It does not tag and does not edit the changelog.
 // Usage: node tools/release.mjs <plugin> <version>
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -109,18 +109,19 @@ function entrySpan(text, plugin) {
 
 // ---- edits
 
-function splice(text, edits, replacement) {
+// An edit is [start, end, replacement].
+function splice(text, edits) {
   let out = '', pos = 0;
-  for (const [start, end] of edits) {
+  for (const [start, end, replacement] of edits) {
     out += text.slice(pos, start) + replacement;
     pos = end;
   }
   return out + text.slice(pos);
 }
 
-function onlySpansDiffer(original, edited, edits, replacement) {
+function onlySpansDiffer(original, edited, edits) {
   let from = 0, to = 0;
-  for (const [start, end] of edits) {
+  for (const [start, end, replacement] of edits) {
     const keep = start - from;
     if (edited.slice(to, to + keep) !== original.slice(from, start)) return false;
     to += keep;
@@ -156,7 +157,7 @@ function plan(plugin, version) {
       const literals = literalsIn(text);
       const bad = literals.find((l) => l.value !== current);
       if (bad) throw new Refusal(`release: ${file}:${bad.line}: plugin_version literal ${bad.value} differs from ${current}`);
-      if (literals.length) files.push({ path: file, text, edits: literals.map((l) => l.span) });
+      if (literals.length) files.push({ path: file, text, edits: literals.map((l) => [...l.span, version]) });
     }
   }
 
@@ -166,22 +167,30 @@ function plan(plugin, version) {
   if (!manifestSpan) throw new Refusal(`release: cannot find the version of ${plugin} in ${manifestPath}`);
   if (!catalogSpan) throw new Refusal(`release: cannot find the version of ${plugin} in ${CATALOG}`);
 
+  // The catalog's own version goes up by one with every entry change: the last number in it.
+  const meta = members(catalogText, skipSpace(catalogText, 0)).find((m) => m.key === 'metadata' && catalogText[m.start] === '{');
+  const metaVersion = catalog.metadata?.version;
+  const raised = typeof metaVersion === 'string' ? metaVersion.replace(/\d+(?!.*\d)/, (n) => String(Number(n) + 1)) : '';
+  const metaSpan = meta && SEMVER.test(raised) && raised !== metaVersion ? versionSpan(catalogText, meta.start, metaVersion) : null;
+  if (!metaSpan) throw new Refusal(`release: cannot raise metadata.version in ${CATALOG}`);
+
   const expectedManifest = { ...manifest, version };
-  const expectedCatalog = { ...catalog, plugins: catalog.plugins.map((e, i) => (i === entry ? { ...e, version } : e)) };
+  const expectedCatalog = { ...catalog, metadata: { ...catalog.metadata, version: raised }, plugins: catalog.plugins.map((e, i) => (i === entry ? { ...e, version } : e)) };
+  const quoted = JSON.stringify(version);
   return {
     current,
+    meta: [metaVersion, raised],
     files: [
-      { path: manifestPath, text: manifestText, edits: [manifestSpan], expected: expectedManifest },
-      { path: CATALOG, text: catalogText, edits: [catalogSpan], expected: expectedCatalog },
+      { path: manifestPath, text: manifestText, edits: [[...manifestSpan, quoted]], expected: expectedManifest },
+      { path: CATALOG, text: catalogText, edits: [[...metaSpan, JSON.stringify(raised)], [...catalogSpan, quoted]].sort((a, b) => a[0] - b[0]), expected: expectedCatalog },
       ...files,
     ],
   };
 }
 
-function edited(file, version) {
-  const replacement = file.expected ? JSON.stringify(version) : version;
-  const text = splice(file.text, file.edits, replacement);
-  const sound = onlySpansDiffer(file.text, text, file.edits, replacement)
+function edited(file) {
+  const text = splice(file.text, file.edits);
+  const sound = onlySpansDiffer(file.text, text, file.edits)
     && crlfCount(text) === crlfCount(file.text)
     && (!file.expected || JSON.stringify(parseJson(text)) === JSON.stringify(file.expected));
   if (!sound) throw new Refusal(`release: refusing a change beyond the version in ${file.path}`);
@@ -194,10 +203,13 @@ function main() {
   const [plugin, version] = args;
   if (!SEMVER.test(version)) throw new Refusal(`release: ${version} is not semver`);
 
-  const { current, files } = plan(plugin, version);
-  const texts = files.map((f) => edited(f, version));
+  const { current, meta, files } = plan(plugin, version);
+  const texts = files.map((f) => edited(f));
   files.forEach((f, i) => writeFileSync(join(root, f.path), texts[i]));
-  for (const f of files) console.log(`release: ${f.path}: ${current} -> ${version}`);
+  for (const f of files) {
+    console.log(`release: ${f.path}: ${current} -> ${version}`);
+    if (f.path === CATALOG) console.log(`release: ${CATALOG}: metadata.version ${meta[0]} -> ${meta[1]}`);
+  }
 
   const lint = spawnSync(process.execPath, ['tools/lint.mjs'], { cwd: root, env: process.env, encoding: 'utf8', maxBuffer: 1 << 28 });
   process.stdout.write(lint.stdout ?? '');

@@ -50,7 +50,7 @@ These always ask: a force push, `--no-verify`, a merge, anything that deploys, a
 
 ## Open items
 
-What the run leaves open is sorted before anything is published: settled by the run, put to you in the report as a decision, or filed to a ticket on the tracker of the source tickets with a record attached for the next session. The pull request carries one line per filed item and the ticket says what changed for its readers. On a run that ends `prepared` nothing is filed: the report holds each ticket as a draft.
+What the run leaves open is sorted before anything is published: settled by the run, put to you in the report as a decision, or filed to a ticket on the tracker of the source tickets with a record attached for the next session. The pull request carries one line per ticket of the filed items and the ticket says what changed for its readers. On a run that ends `prepared` nothing is filed: the report holds each ticket as a draft.
 
 ## The record
 

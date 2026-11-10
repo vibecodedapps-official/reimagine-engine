@@ -59,7 +59,7 @@ A pull request opened on a continued branch lists, under "Decisions for the revi
 
 **One open pull request on the branch.** It is this loop's own when a `runs` entry in `steps.json` names it in `pr` (`record.md`, steps.json, item 2). Read `pr-body.md`. After the push, with `<pr>` the pull request number:
 
-1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. This is the run's only edit of that body, except the one in 7.3, item 3, after a repair files a ticket; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
+1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. This is the run's only edit of that body, except the one in 7.3, item 3, after a repair; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
 2. Write the continued pull request comment from the `## Continued pull request comment` template to `<record>/comment-<n>.md`, numbered as `record.md` says, then post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`. This is the run's one comment on the pull request.
 3. When it is not this loop's own, the comment is all: never edit its body.
 
@@ -75,7 +75,7 @@ Read `ci-watch.md` and carry out its items 1 to 4 for the pull request, starting
 
 1. Read the failure from the failing run's log with `gh run view <run-id> --log-failed`, in its own Bash call.
 2. Fix it through the implementer that owns the failing code, after a snapshot, as Step 5.1 fixes a regression.
-3. Re-enter Step 5 for one pass over the whole diff from the merge-base at the level of `risk.md`, with its triage and fix batch (5.2 to 5.5), then run Step 6 in full once. An open item the pass adds goes through `tickets.md` as in 7.2. When that files a ticket on a pull request this loop opened, update its body once, when 7.3 ends without a block: write it again as 7.2 does and run `gh pr edit <pr> --body-file <absolute path>`, so Follow-ups lists the ticket. Otherwise the report names the ticket.
+3. Re-enter Step 5 for one pass over the whole diff from the merge-base at the level of `risk.md`, with its triage and fix batch (5.2 to 5.5), then run Step 6 in full once. An open item the pass adds goes through `tickets.md` as in 7.2. On a pull request this loop opened, update its body once, when 7.3 ends without a block, if a repair cycle pushed a commit that makes the body untrue of the new head or its pass filed a ticket: write it again as 7.2 does and run `gh pr edit <pr> --body-file <absolute path>`. Otherwise the report names the ticket.
 4. Commit the repair under the rules of 7.1, judge the deploy as 7.2 says, since a repair can change what the push deploys, read the remote head as 7.2 says (it must equal the last pushed sha), push, and take `date` and the new sha.
 5. Return to `ci-watch.md` item 1 for the new head.
 
@@ -85,8 +85,8 @@ At most three cycles run. A result still red after the third, or a repair the pa
 
 After the pull request is open and 7.3 has ended without a block (green, or not applicable), post one comment for each ticket this run took up. A ticket that was done at Step 0 (`record.md`, An existing record) gets no comment, unless no run's `run.md` section logs a comment on it, as after a run that ended before 7.4. Log each comment in `run.md` with its file. Read the `## Ticket comment` section of `pr-body.md` and write each comment and its record first (`tickets.md`).
 
-- GitHub: write the comment to `<record>/ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on) and its record to `<record>/record-<id-slug>.md`, and then post `gh issue comment <n> --body-file <absolute path>` and attach the record (`tickets.md`, Backends).
-- Azure DevOps: use the Azure DevOps MCP tool when one is listed, else `az boards work-item update --id <n> --discussion "<text>"`, reading the text from a file when quoting fails; attach the record as `tickets.md`, Backends, says.
+- GitHub: write the comment to `<record>/ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on) and its record to `<record>/record-<id-slug>.md`, and then post `gh issue comment <n> -R <owner>/<repo> --body-file <absolute path>` and attach the record (`tickets.md`, Backends).
+- Azure DevOps: use the Azure DevOps MCP tool when one is listed, else `az boards work-item update --org https://dev.azure.com/<org> --id <n> --discussion @<absolute path>`, the file holding the text as HTML paragraphs; attach the record as `tickets.md`, Backends, says.
 - Salesforce: use the Salesforce MCP tool when one is listed; it takes the comment only, no record.
 - A host with no tool: put the comment text in the report instead of posting.
 

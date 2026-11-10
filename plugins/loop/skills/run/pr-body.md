@@ -23,7 +23,7 @@ Write the body to the run's body file in the record: `pr-body.md`, or `pr-body-<
 <each check not run, with the reason and, for one someone must still run, the ticket that tracks it; each check deferred to CI, by job name; each check failing at baseline, with the evidence>
 
 ## Follow-ups
-<one line per filed open item: the item in one line and its ticket reference; "none">
+<one line per ticket: what it holds, in one line, and its ticket reference; "none">
 
 ## Related pull requests
 <"none" in a single-repository run; "pending" first in a multi-repository run, then the sibling links>
@@ -32,7 +32,7 @@ Write the body to the run's body file in the record: `pr-body.md`, or `pr-body-<
 <one line per ticket>
 ```
 
-`## Follow-ups` holds one line per filed open item of every run of the record, from the `new` and `existing` `- ticket` lines of `run.md`; an item settled, put to the user or not yet filed is not listed (`tickets.md`).
+`## Follow-ups` holds one line per ticket, from the latest `new` or `existing` `- ticket` line of `run.md` for it across every run of the record; items that share a ticket share its line. An item settled, put to the user or not yet filed is not listed (`tickets.md`).
 
 In a multi-repository run on a host other than `github`, Related pull requests says the links between the pull requests are added by hand.
 
@@ -50,7 +50,7 @@ Closing rules:
 
 ## Continued pull request comment
 
-Use this when the branch has one open pull request: after the body edit when this loop opened the pull request, and alone when it did not, since a body this loop did not write is never edited. The comment covers this run's work. Write it to `comment-<n>.md`, numbered as `record.md` says, with the sections of the body template above, with `## Closes` replaced by:
+Use this when the branch has one open pull request: after the body edit when this loop opened the pull request, and alone when it did not, since a body this loop did not write is never edited. The comment covers this run's work, so its Follow-ups lists only the tickets this run filed or commented on. Write it to `comment-<n>.md`, numbered as `record.md` says, with the sections of the body template above, with `## Closes` replaced by:
 
 ```
 ## Issues

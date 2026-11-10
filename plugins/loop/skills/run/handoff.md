@@ -96,7 +96,7 @@ One `### R<n>` per filed open item and per draft, in the report's Open items ord
 
 - `ticket`: the filed ticket's reference, in the form the Tickets section uses (`github:<owner>/<repo>#<n>` or `ado:<org>/<project>#<n>`); a draft keeps the local id `<branch-slug>/deferred-<k>`, where `<k>` is the item's rank. A source ticket is never one, since the ids of Tickets and Raised tickets stay apart.
 - `type`: for a filed ticket, new or existing, what the forge shows: on GitHub the first label, else `issue`; on Azure DevOps the work item's type. A draft: `task`.
-- `state`: the forge's state for a filed ticket. A draft: `new`.
+- `state`: the forge's state for a filed ticket: on GitHub lowercase, `open` or `closed`; on Azure DevOps as the work item shows it. A draft: `new`.
 - `iteration`: the forge's milestone (GitHub) or iteration path (Azure DevOps) for a filed ticket, `none` where it shows none. A draft: `none`.
 - `owner`: the forge's assignee (GitHub) or assigned-to (Azure DevOps) for a filed ticket, `none` where it shows none. A draft: `none`.
 - `bundles`: the bundle names the item touches, else the first bundle.

@@ -190,7 +190,7 @@ test('R116, R118: each body file is written first and its publishing command run
   assert.ok(text.includes('runs alone in its own Bash call, naming only the absolute path of that file; never one compound command that writes and posts'));
   assert.ok(text.includes('then run `gh pr edit <pr> --body-file <absolute path>`'));
   assert.ok(text.includes('then post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`'));
-  assert.ok(section(PUBLISH, '7.4 Ticket comments').includes('and then post `gh issue comment <n> --body-file <absolute path>`'));
+  assert.ok(section(PUBLISH, '7.4 Ticket comments').includes('and then post `gh issue comment <n> -R <owner>/<repo> --body-file <absolute path>`'));
 });
 
 test('R56: Step 7.2 judges a deploy from the workflows GitHub runs, listed from the root, before each push', () => {

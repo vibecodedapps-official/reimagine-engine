@@ -71,7 +71,7 @@ test('R56: only an issue other than an open item\'s ticket always prompts', () =
 
 test('R55: one question covers the tickets of all the open items, and a non-yes is not a denial', () => {
   const rule = section(SKILL, 'Approval scope').split('\n').find((line) => line.startsWith('1. '));
-  assert.ok(rule.includes('An ask-first rule that covers a new issue or a comment is asked once for all the tickets of the run\'s open items, listing each with its title and tracker, never once per ticket; a non-yes leaves them unfiled, each a draft as on a `prepared` run, and is not a denial under rule 3.'));
+  assert.ok(rule.includes('An ask-first rule that covers a new issue or a comment is asked once for all the tickets of the run\'s open items, listing each with its title and tracker, never once per ticket; a non-yes leaves them unfiled, each a draft as on a `prepared` run; that, and a refused filing or comment of an open item, is not a denial under rule 3.'));
 });
 
 test('R54, R56: the printed permission statement names ticket filing and any other new issue', () => {
@@ -104,8 +104,8 @@ test('R351: a prepared ending before the first push writes the drafts and the bo
 });
 
 test('R351: a CI repair pass sends its open items through tickets.md and one more body edit lists a ticket it files', () => {
-  assert.ok(section(PUBLISH, '7.3 CI').includes('then run Step 6 in full once. An open item the pass adds goes through `tickets.md` as in 7.2. When that files a ticket on a pull request this loop opened, update its body once, when 7.3 ends without a block: write it again as 7.2 does and run `gh pr edit <pr> --body-file <absolute path>`, so Follow-ups lists the ticket. Otherwise the report names the ticket.'));
-  assert.ok(section(PUBLISH, '7.2 Push and pull request').includes('This is the run\'s only edit of that body, except the one in 7.3, item 3, after a repair files a ticket;'));
+  assert.ok(section(PUBLISH, '7.3 CI').includes('then run Step 6 in full once. An open item the pass adds goes through `tickets.md` as in 7.2. On a pull request this loop opened, update its body once, when 7.3 ends without a block, if a repair cycle pushed a commit that makes the body untrue of the new head or its pass filed a ticket: write it again as 7.2 does and run `gh pr edit <pr> --body-file <absolute path>`. Otherwise the report names the ticket.'));
+  assert.ok(section(PUBLISH, '7.2 Push and pull request').includes('This is the run\'s only edit of that body, except the one in 7.3, item 3, after a repair;'));
   assert.ok(section(PUBLISH, '7.5 Open items').includes('The open items were settled in 7.2, before any body or comment, and those a CI repair pass added in 7.3 (`tickets.md`).'));
 });
 
@@ -193,8 +193,8 @@ test('R352: tickets.md holds the four backend forms, one per tracker', () => {
     'gh api --hostname <host> --method PATCH repos/<owner>/<repo>/issues/<n>/artifacts/<number> -F body=@<absolute path>',
     'One artifact per ticket and branch.',
     '`az boards query --org https://dev.azure.com/<org> --project <project> --wiql`',
-    '`az boards work-item create --org https://dev.azure.com/<org> --project <project> --type <type> --title "<title>" --description "<text>"`',
-    '`az boards work-item update --org https://dev.azure.com/<org> --id <n> --discussion "<text>"`',
+    '`az boards work-item create --org https://dev.azure.com/<org> --project <project> --type <type> --title "<title>" --description @<absolute path>`',
+    '`az boards work-item update --org https://dev.azure.com/<org> --id <n> --discussion @<absolute path>`, the file holding the text as HTML paragraphs, since those fields render HTML.',
     '`wit_work_item_attachment_upload` and `wit_work_item_attachment_link`',
     '- Salesforce: comment only, through its MCP tool; no ticket is filed there and no record attached;',
   ]) assert.ok(TICKETS.includes(needle), `tickets.md lacks: ${needle}`);
@@ -239,7 +239,7 @@ test('R117: the body lists no remainder or deferred item in What changed and has
   assert.ok(what.includes('"complete" or "partial", and what changed'));
   const at = (heading) => body.indexOf(`\n## ${heading}\n`);
   assert.ok(at('Checks not run') !== -1 && at('Follow-ups') > at('Checks not run') && at('Related pull requests') > at('Follow-ups'), 'Follow-ups is not between Checks not run and Related pull requests');
-  assert.ok(body.includes('<one line per filed open item: the item in one line and its ticket reference; "none">'));
+  assert.ok(body.includes('<one line per ticket: what it holds, in one line, and its ticket reference; "none">'));
   assert.ok(body.includes('the ticket that tracks it'));
 });
 
@@ -278,7 +278,7 @@ test('R118: Step 7.4 comments on each source ticket, attaches its record, and op
   const text = section(PUBLISH, '7.4 Ticket comments');
   assert.ok(text.includes('done at Step 0'));
   assert.ok(text.includes('logs a comment on it'));
-  assert.ok(text.includes('and then post `gh issue comment <n> --body-file <absolute path>`'));
+  assert.ok(text.includes('and then post `gh issue comment <n> -R <owner>/<repo> --body-file <absolute path>`'));
   assert.ok(text.includes('`<record>/record-<id-slug>.md`'));
   assert.ok(!text.includes('Open no issue'));
 });
@@ -314,7 +314,7 @@ test('R137: a filed open item is a raised ticket with the filed ticket\'s refere
   for (const needle of [
     'One `### R<n>` per filed open item',
     '`ticket`: the filed ticket\'s reference, in the form the Tickets section uses',
-    '`state`: the forge\'s state for a filed ticket. A draft: `new`.',
+    '`state`: the forge\'s state for a filed ticket: on GitHub lowercase, `open` or `closed`; on Azure DevOps as the work item shows it. A draft: `new`.',
     '`in_bundle_confidence`: `defer`',
     'a draft keeps the local id `<branch-slug>/deferred-<k>`',
     'one entry per ticket',
@@ -352,8 +352,32 @@ test('R351: a run that ends blocked or stopped before tickets.md is read lists i
   assert.ok(section(REPORT, 'Sections').split('### Open items')[1].split('\n### ')[0].includes('on a run that ended `blocked` or `stopped` before `tickets.md` was read, open, with its description and why it is owed, for a later run on the branch to settle'));
 });
 
-test('R351: a filing or comment that fails or is refused leaves a draft and does not hold back the pull request', () => {
-  assert.ok(TICKETS.includes('A filing or comment for an open item that fails, or is refused, is not retried and not done another way: the item stays a draft with its files, logged as a draft, the body carries no line for it, and the pull request, which does not depend on it, still publishes. The report names a failure and the run goes on; a refusal is a denial, so the run ends `blocked` after its independent steps (SKILL.md, Approval scope, rule 3).'));
+test('R351: a filing or comment that fails or is refused leaves a draft and the run goes on, with no denial', () => {
+  assert.ok(TICKETS.includes('A filing or comment for an open item that fails (a non-zero exit) or is refused is handled like a non-yes to the question above, and is never retried or done another way: the item stays a draft with its files, logged as a draft, the body carries no line for it, the report names the failure or the refused call in full, and the run goes on. It is not a denial under rule 3, so the run does not end `blocked` for it (SKILL.md, Approval scope, rule 1).'));
+  assert.ok(!TICKETS.includes('a refusal is a denial'));
+  assert.ok(!TICKETS.includes('still publishes'));
+});
+
+test('R351: a CI repair push that makes the body untrue of the new head edits the body of a pull request this loop opened', () => {
+  const item = section(PUBLISH, '7.3 CI').split('\n').find((l) => l.startsWith('3. '));
+  assert.ok(item.includes('if a repair cycle pushed a commit that makes the body untrue of the new head or its pass filed a ticket'));
+  assert.ok(!item.includes('When that files a ticket'));
+});
+
+test('R117: Follow-ups holds one line per ticket, from its latest line across every run, and the continued comment only this run\'s tickets', () => {
+  assert.ok(PR_BODY.includes('`## Follow-ups` holds one line per ticket, from the latest `new` or `existing` `- ticket` line of `run.md` for it across every run of the record; items that share a ticket share its line.'));
+  assert.ok(!PR_BODY.includes('from the `new` and `existing` `- ticket` lines of `run.md`'));
+  const text = PR_BODY.slice(PR_BODY.indexOf('## Continued pull request comment'), PR_BODY.indexOf('## Ticket comment'));
+  assert.ok(text.includes('The comment covers this run\'s work, so its Follow-ups lists only the tickets this run filed or commented on.'));
+});
+
+test('R352: the Azure DevOps forms pass the file, not inline text, and 7.4 names the organization and the repository', () => {
+  assert.ok(!TICKETS.includes('--discussion "<text>"') && !TICKETS.includes('--description "<text>"'));
+  assert.ok(!TICKETS.includes('reading the text from a file when quoting fails'));
+  const text = section(PUBLISH, '7.4 Ticket comments');
+  assert.ok(text.includes('`az boards work-item update --org https://dev.azure.com/<org> --id <n> --discussion @<absolute path>`, the file holding the text as HTML paragraphs;'));
+  assert.ok(!text.includes('--discussion "<text>"') && !text.includes('reading the text from a file when quoting fails'));
+  assert.ok(text.includes('`gh issue comment <n> -R <owner>/<repo> --body-file <absolute path>`'));
 });
 
 test('R352: one log line per ticket per run, after its last post, and a later run reads the latest', () => {

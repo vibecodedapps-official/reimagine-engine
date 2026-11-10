@@ -376,7 +376,7 @@ Each rule is stated once. `SKILL.md` holds what applies to the whole run, each s
 | Role | Who | Fallback |
 |---|---|---|
 | orchestrator, triage | the session model | none; the run stops |
-| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json` at `models.reviewer`, one per pass, or one per group of `split.mjs` | an Agent at `models.fallback-reviewer` over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run. Once, for one group alone, when its child met a usage limit, on another model than the reviewer's |
+| reviewer | a child session: `claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json` at `models.reviewer`, one per pass, or one per group of `split.mjs` | an Agent at `models.fallback-reviewer` over `diff-<n>[-<slug>].patch` with the level as `effort`, when `claude` is not on the PATH or the child reports the skill missing; stays for the run. A child that met a usage limit fails the pass, which the next run resumes (decision 241) |
 | reader | Agents at `models.reader`, one per batch of findings, when a pass has more than 30 to sort; returns evidence per finding, never a bucket | the orchestrator reads the batch |
 | implementer | an Agent at `models.implementer`, one per group of files | none; a failed call ends `blocked` after the snapshot restore |
 

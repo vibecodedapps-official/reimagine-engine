@@ -36,17 +36,13 @@ cd <root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level
 - At most `parallel` reviews run at once. The first ones, in byte order of slug, start in one message; each later one starts in its own call when one ends.
 - Beside them, start a `sleep` of the pass's review time in seconds, in its own Bash call with `run_in_background`, since a background command notifies only when it ends: the review budget once for each `parallel` reviews or part of them. Wait for the completion notices; do not poll. A review still running when the sleep ends is stopped with TaskStop and is a failed review. When every review ends first, stop the sleep with TaskStop.
 
-The redirect saves each output before anything parses it. Read the saved file's `result`:
-
-- A result that says no review ran because the `code-review` skill is not available, in whatever words, moves the run to the stand-in for the rest of the run, and that group is reviewed again there.
-- A result that is only a usage limit message, or that carries `api_error_status` 429, is an infrastructure failure, which Findings handles.
-- Only then is a result with no findings array a failed review.
+The redirect saves each output before anything parses it. A saved `result` that says no review ran because the `code-review` skill is not available, in whatever words, moves the run to the stand-in for the rest of the run, and that group is reviewed again there. Every other output goes to Findings, which tells a failed review.
 
 ## The stand-in
 
 1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- ` and the group's `paths` for a split pass.
 2. Call an Agent at `models.fallback-reviewer`, passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, with repository-relative paths, and `[]` when there are none. The calls of a split pass go in one message, within the review time above.
-3. Save the reply as `review-<n>[-<slug>].md`, and set `engine` to `stand-in` in `passes.json`: once chosen, the stand-in stays for the run. The one review of a group that met a usage limit (Findings) is no such choice and leaves `engine` as it is.
+3. Save the reply as `review-<n>[-<slug>].md`, and set `engine` to `stand-in` in `passes.json`: once chosen, the stand-in stays for the run.
 
 ## Findings
 
@@ -60,9 +56,7 @@ On exit 0, write one `reviews[]` entry per output from the summary:
 
 `denied` lists each call the review was refused, and `notes` is what the reviewer wrote around its fence, where it says what it could not run. For a stand-in's reply the three numbers and `denied` are `null` and `models` is the one model it was called at.
 
-A `usage limit` line on a non-zero exit is not a failed review. The finished outputs stay. Review each limited group once by the stand-in, for that group only and with `engine` left as it is, at `models.fallback-reviewer` when it differs from `models.reviewer`, else at `sonnet`, or at `opus` when the reviewer is `sonnet`, since the model that met the limit meets it again. The retries run in one message beside a new `sleep`, as the reviews do. Then run the script again over the finished outputs and the replies. The limited output keeps an entry of its own in `reviews[]`, with its slug and target, `"failure": "usage limit"`, `"notes": ""` and the other fields `null`. There is never a second retry, and never a child session run again at another `--model`.
-
-Any other non-zero exit, a retry that fails or runs past its time, or a review stopped at its budget is a failed review. Write the pass `"status": "failed"` with its `ended`, one `reviews[]` entry per output with `null` numbers, and `next` left `null`; keep the stderr lines for the report; end the run `unconverged`. After a limit, the record and the report give `usage limit` as the reason and say that a later run resumes the pass. Never write a finding list of your own.
+A non-zero exit, or a review stopped at its budget, is a failed review. Write the pass `"status": "failed"` with its `ended`, one `reviews[]` entry per output with `null` numbers, and `next` left `null`; keep the stderr lines for the report; end the run `unconverged`. A `usage limit` line names an output that stopped on a usage limit: its entry holds `"failure": "usage limit"`, and the report gives that reason and says that a later run resumes the pass and keeps the reviews that finished. Never write a finding list of your own.
 
 A `findings: warning:` line on stderr names an entry that an earlier triage matched without writing its `match`. Before this triage, add the `match` to that entry in `findings.json`, the earlier id being the one that pass's `findings` in `passes.json` keys the finding under, else the one its reason names, and key the finding under that id in the earlier pass. With neither, leave the entry. Either way the report's Log names it.
 

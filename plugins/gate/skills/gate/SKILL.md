@@ -98,7 +98,7 @@ The gate posts nothing to a forge. Its findings, deferred list, checks, commits 
 | Role | Who | When it fails |
 |---|---|---|
 | orchestrator, triage | the session model | the run stops |
-| reviewer | a child session per review, `claude -p "/code-review <level> <range>"`, at `models.reviewer` | the stand-in: an Agent at `models.fallback-reviewer` over a saved patch, for the rest of the run when `claude` is not on the PATH or the child reports the `code-review` skill missing, and once, on another model than the reviewer's, for a group whose child met a usage limit |
+| reviewer | a child session per review, `claude -p "/code-review <level> <range>"`, at `models.reviewer` | the stand-in: an Agent at `models.fallback-reviewer` over a saved patch, for the rest of the run, when `claude` is not on the PATH or the child reports the `code-review` skill missing |
 | reader | read-only Agents at `models.reader`, when a pass has more than 30 findings to sort | retried once, then the orchestrator reads that batch |
 | implementer | an Agent at `models.implementer` per group of files | the tree is restored from its snapshot and the run ends `blocked` |
 

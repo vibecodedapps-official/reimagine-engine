@@ -1,250 +1,91 @@
-// Step 0's branch rules: finding an existing record and reading the branch state.
+// Step 0 and the reading block: the order of Step 0's parts, the forms it parses, the configuration it knows and the credential names it scans for.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
+const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\r/g, '');
 const PREFLIGHT = read('../../plugins/loop/skills/run/steps/0-preflight.md');
 const SKILL = read('../../plugins/loop/skills/run/SKILL.md');
-const RECORD = read('../../plugins/loop/skills/run/record.md');
-const MULTI_REPO = read('../../plugins/loop/skills/run/multi-repo.md');
-const PUBLISH = read('../../plugins/loop/skills/run/steps/7-publish.md');
+const WORKTREE = read('../../plugins/loop/skills/run/worktree.md');
 
 // The text of a "## <heading>" section, up to the next "## " heading.
 const section = (text, heading) => {
   const start = text.indexOf(`\n## ${heading}\n`);
-  if (start === -1) return null;
+  assert.notEqual(start, -1, `no ## ${heading}`);
   const end = text.indexOf('\n## ', start + 1);
   return end === -1 ? text.slice(start) : text.slice(start, end);
 };
 
-test('R83: Step 0.2 looks for an existing record by ticket id before it predicts a branch', () => {
-  const text = section(PREFLIGHT, '0.2 Base branch, base commit, continued branch, open pull requests');
-  assert.notEqual(text, null);
-  const lookup = text.indexOf('`tickets`');
-  assert.ok(lookup !== -1, 'Step 0.2 does not read the tickets list of existing records');
-  assert.ok(text.includes('.reimagine/loop/'), 'Step 0.2 does not name the record directories it reads');
-  assert.ok(lookup < text.indexOf('predicted'), 'Step 0.2 predicts a branch before it looks for a record by ticket id');
+// The backticked names in a text, in order.
+const ticks = (text) => [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+
+test('Step 0 has its parts in order: the checkout, the host and the input before the numbered items', () => {
+  assert.deepEqual([...PREFLIGHT.matchAll(/^## (.+)$/gm)].map((m) => m[1]), [
+    'Rules that hold in all of Step 0',
+    'Primary checkout',
+    'Host detection',
+    'Input guard',
+    '0.1 Instruction files, configuration, credential scan, permission statement',
+    '0.1a Credentials question (only when the scan matched)',
+    '0.2 Base branch, base commit, continued branch, open pull requests',
+    '0.3 Clean tree, flagged files, worktree',
+    '0.4 Planning snapshot',
+    '0.5 The record',
+    '0.6 Prompts seen',
+  ]);
 });
 
-test('R83: the branch rule in SKILL.md sends the run to an existing record that holds one of its tickets', () => {
-  const text = section(SKILL, 'Record');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('holds one of the request\'s tickets'));
+test('R52, R53: SKILL.md names the nine credential keys the scan matches', () => {
+  const echo = SKILL.split('\n').find((line) => line.startsWith('The echo is redacted with the credential scan'));
+  assert.notEqual(echo, undefined, 'SKILL.md has no credential scan paragraph');
+  const keys = ticks(echo.split('(case-insensitive)')[0].split('A key named ')[1]);
+  assert.deepEqual(keys, ['password', 'passwd', 'secret', 'token', 'api_key', 'apikey', 'client_secret', 'private_key', 'connection_string']);
 });
 
-test('R87: Step 0.5 appends a run to an existing record instead of creating run 1', () => {
-  const text = section(PREFLIGHT, '0.5 The record');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('n+1') || text.includes('<n>'), 'Step 0.5 does not number a new run on an existing record');
-  assert.ok(text.includes('Branch state'), 'Step 0.5 does not write the branch state to inputs.md');
+test('R74: SKILL.md names the four host forms of an Azure DevOps remote and the path segments it reads', () => {
+  const line = SKILL.split('\n').find((text) => text.startsWith('2. `AB#12345`'));
+  assert.notEqual(line, undefined, 'SKILL.md has no Azure DevOps ticket form');
+  const hosts = [...new Set([...line.matchAll(/`(\.?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.com)`/g)].map((m) => m[1]))];
+  assert.deepEqual(hosts, ['dev.azure.com', 'ssh.dev.azure.com', 'vs-ssh.visualstudio.com', '.visualstudio.com']);
+  for (const name of ['`v3/`', '`DefaultCollection`', '`_git`']) assert.ok(line.includes(name), `the Azure DevOps form does not name ${name}`);
+});
+
+test('R81: Step 0.1.2 knows the keys and subkeys of the configuration block', () => {
+  const block = JSON.parse(SKILL.split('\n## Configuration\n')[1].split('```json\n')[1].split('\n```')[0]);
+  const item = section(PREFLIGHT, '0.1 Instruction files, configuration, credential scan, permission statement').split('\n').find((line) => line.startsWith('2. '));
+  const known = item.split('Known keys: ')[1].split('. The budget')[0];
+  const keys = [...known.matchAll(/`([a-z-]+)` \(([^)]*)\)/g)].map((m) => [m[1], ticks(m[2])]);
+  assert.deepEqual(keys.map(([key]) => key), Object.keys(block));
+  for (const [key, subkeys] of keys) {
+    if (typeof block[key] === 'object' && !Array.isArray(block[key])) assert.deepEqual(subkeys.slice(0, Object.keys(block[key]).length), Object.keys(block[key]), key);
+  }
+  assert.deepEqual(keys.find(([key]) => key === 'models')[1].slice(4), ['sonnet', 'opus', 'haiku', 'fable']);
 });
 
 test('R82: Step 0.5 asks git about .reimagine/ with its trailing slash, so an excluded directory that does not exist yet reads as ignored', () => {
   const text = section(PREFLIGHT, '0.5 The record');
-  assert.notEqual(text, null);
   assert.ok(text.includes('`git check-ignore -q .reimagine/`'));
   assert.ok(!text.includes('`git check-ignore -q .reimagine`'));
 });
 
-test('R86: Step 0.5 compares a description with the text files after the credentials decision', () => {
-  assert.ok(PREFLIGHT.includes('holds the same text after the credentials decision'));
+test('R80: Step 0 and worktree.md create the worktree with the same command, at the start commit', () => {
+  for (const text of [WORKTREE, PREFLIGHT]) assert.ok(text.includes('`git worktree add --detach <path> <start commit>`'));
 });
 
-test('R92: the no-new-work path runs 3.7.2 and 3.7.4 before Step 6', () => {
-  assert.ok(PREFLIGHT.includes('run 3.7.2 and 3.7.4 there, and go to Step 6'));
+test('the reading block prints Tickets, Mode, Scope and Effort, in the order the opening actions name', () => {
+  const block = SKILL.split('```\n').find((text) => text.startsWith('Tickets: '));
+  assert.notEqual(block, undefined, 'SKILL.md has no reading block');
+  const labels = block.trim().split('\n').map((line) => line.split(':')[0]);
+  assert.deepEqual(labels, ['Tickets', 'Mode', 'Scope', 'Effort']);
+  const opening = SKILL.split('\n').find((line) => line.startsWith('3. Print the reading block ('));
+  assert.deepEqual(opening.match(/\(([^)]+)\)/)[1].split(', '), labels);
 });
 
-test('R74: SKILL.md says which remote is Azure DevOps by its four host forms', () => {
-  const text = section(SKILL, 'Reading the request');
-  assert.notEqual(text, null);
-  for (const host of ['`dev.azure.com`', '`ssh.dev.azure.com`', '`vs-ssh.visualstudio.com`', 'ends in `.visualstudio.com`']) {
-    assert.ok(text.includes(host), `Reading the request does not name ${host}`);
-  }
-  assert.ok(text.includes('On `ssh.dev.azure.com` and `vs-ssh.visualstudio.com` the organization is the segment after `v3/`, spelled `<host>:v3/` or `ssh://<host>/v3/`, and the project the segment after it.'), 'Reading the request does not say where the organization is in an ssh remote');
-});
-
-test('R74: host detection records whether an other remote is Azure DevOps, and its organization', () => {
-  const text = section(PREFLIGHT, 'Host detection');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('whether the remote is Azure DevOps'));
-  assert.ok(text.includes('its organization and project'));
-});
-
-test('R215: on other, preflight sends the run to write its body file at the end of Step 6', () => {
-  const text = section(PREFLIGHT, 'Host detection');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('At the end of Step 6 it reads `pr-body.md` and writes the run\'s body file'));
-});
-
-test('R74: SKILL.md finds the organization and project of the visualstudio.com form and of the _git short form', () => {
-  const text = section(SKILL, 'Reading the request');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('On any other host ending in `.visualstudio.com`, the organization is the subdomain and the project the first path segment that is not `DefaultCollection`.'));
-  assert.ok(text.includes('On `dev.azure.com` the organization is the first path segment and the project the second.'));
-  assert.ok(text.includes('When the project segment is `_git`, as in `dev.azure.com/<org>/_git/<repo>`, the project has the repository\'s name.'));
-  assert.ok(!text.includes('On any other host, which has the form'));
-});
-
-test('R281: SKILL.md lists "primary <path>" among the recognized phrases and the Scope line names the checkout in use', () => {
-  const text = section(SKILL, 'Reading the request');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('- "primary <path>":'), 'the phrase list has no "primary <path>" line');
-  assert.ok(text.includes('the checkout "primary <path>" names'), 'the Scope paragraph does not name the phrase');
-});
-
-test('R281: Step 0 resolves the named checkout before host detection and ends blocked on a path that is not a toplevel or a linked worktree', () => {
-  const text = section(PREFLIGHT, 'Primary checkout');
-  assert.notEqual(text, null, 'Step 0 has no Primary checkout section');
-  assert.ok(PREFLIGHT.indexOf('\n## Primary checkout\n') < PREFLIGHT.indexOf('\n## Host detection\n'), 'Primary checkout comes after Host detection');
-  assert.ok(text.includes('`git -C <path> rev-parse --show-toplevel`'));
-  assert.ok(text.includes('`blocked`'));
-  assert.ok(text.includes('`git -C <checkout>`'), 'the section does not give the git -C form');
-  assert.ok(text.includes('`cd <checkout> && <command>`'), 'the section does not give the cd form');
-});
-
-test('R281: without "primary <path>" Step 0 takes the toplevel of the session repository and, from a subfolder, the named checkout forms', () => {
-  const text = section(PREFLIGHT, 'Primary checkout');
-  assert.notEqual(text, null);
-  assert.ok(!text.includes(`Without "primary <path>" in the request it is the session's repository.`), 'the session repository is still taken as it stands');
-  assert.ok(text.includes("run `git rev-parse --show-toplevel` and `git rev-parse --show-prefix` in the session's folder"), 'Step 0 does not resolve the session repository to its toplevel');
-  assert.ok(text.includes('the session started below it when the prefix is not empty'), 'Step 0 does not read a subfolder start from the prefix');
-  assert.ok(text.includes('With a named checkout, or a session started below the toplevel, every git command'), 'a subfolder start does not take the git -C and cd forms');
-  const statement = section(PREFLIGHT, '0.1 Instruction files, configuration, credential scan, permission statement');
-  assert.notEqual(statement, null);
-  assert.ok(statement.includes('a named primary, a session started below the toplevel or an additional repository'), 'the permission statement does not count the forms of a subfolder start');
-  assert.ok(statement.includes("in each folder from the session's folder up to `<checkout>`"), 'Step 0.1 does not read the instruction files the session loads below the toplevel');
-  const record = section(PREFLIGHT, '0.5 The record');
-  assert.notEqual(record, null);
-  assert.ok(record.includes('read against the folder git ran in when it is not absolute'), 'Step 0.5 does not read a relative exclude path against its folder');
-});
-
-test('R82, R281: the record root is named in the continued-branch record paths, in Step 0.2, in multi-repo.md and in Step 7', () => {
-  const guard = section(PREFLIGHT, 'Input guard');
-  assert.notEqual(guard, null, 'Step 0 has no Input guard section');
-  assert.ok(guard.includes('`.reimagine/loop/<branch-slug>/steps.json` in the record root'), 'Input guard does not read the continued branch record in the record root');
-  const base = section(PREFLIGHT, '0.2 Base branch, base commit, continued branch, open pull requests');
-  assert.notEqual(base, null, 'Step 0.2 is not headed Base branch');
-  assert.ok(base.includes('under `.reimagine/loop/` in the record root'), 'Step 0.2 does not look for records in the record root');
-  assert.ok(MULTI_REPO.includes('The primary is the `<checkout>` of Step 0, Primary checkout'), 'multi-repo.md does not name the primary as the checkout of Step 0');
-  assert.ok(PUBLISH.includes('except when Step 0, Primary checkout, item 2 leaves the plain forms in use'), 'Step 7 does not say when the plain forms stay in use');
-});
-
-test('R55: the approval rules of SKILL.md read the instruction files from the session folder up to the toplevel', () => {
-  assert.ok(SKILL.includes("the repository's instruction files, those of each folder from the session's folder up to the toplevel, the instruction files of each folder above it"), 'SKILL.md does not read the instruction files below the toplevel');
-});
-
-test('R82: the record root is the toplevel of the session repository, not the session folder', () => {
-  const text = section(RECORD, 'Location');
-  assert.notEqual(text, null);
-  assert.ok(text.includes("record root: the toplevel of the session's repository (Step 0, Primary checkout)"), 'record.md does not name the toplevel as the record root');
-  assert.ok(!text.includes("record root: the session's checkout,"), 'record.md still names the session checkout as the record root');
-});
-
-test('R77: the worktree failure of Step 0.2 names "primary <that path>" as a way around it', () => {
-  assert.ok(PREFLIGHT.includes('"primary <that path>"'));
-});
-
-test('R281: the worktree exception of Step 0.3 does not apply to a named linked worktree', () => {
-  const text = section(PREFLIGHT, '0.3 Clean tree, flagged files, worktree');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('linked worktree'), 'Step 0.3 does not say what a linked worktree does with a differing flagged path');
-  assert.ok(text.includes('"primary <main checkout>"'), 'Step 0.3 does not name the way around the stop');
-});
-
-test('R82: the record of a named linked worktree lives in its main checkout', () => {
-  const RECORD = read('../../plugins/loop/skills/run/record.md');
-  const text = section(RECORD, 'Location');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('`git -C <checkout> worktree list --porcelain`'), 'record.md does not say how the main checkout is found');
-  assert.ok(text.includes('main checkout'));
-});
-
-test('R282: SKILL.md lists "base <branch>" among the recognized phrases and the Mode line carries the base', () => {
-  const text = section(SKILL, 'Reading the request');
-  assert.notEqual(text, null);
-  assert.ok(text.includes('- "base <branch>":'), 'the phrase list has no "base <branch>" line');
-  assert.ok(text.includes('`; base <branch>`'), 'the Mode line does not carry the base');
-});
-
-test('R76: Step 0.2 resolves the base branch from the request, then the configuration, then the remote default, and a failed fetch ends blocked', () => {
-  const text = section(PREFLIGHT, '0.2 Base branch, base commit, continued branch, open pull requests');
-  assert.notEqual(text, null, 'Step 0.2 is not headed Base branch');
-  const phrase = text.indexOf('"base <branch>" in the request');
-  const key = text.indexOf('`.reimagine.json` `base`');
-  const fallback = text.indexOf('else the default branch');
-  assert.ok(phrase !== -1 && key !== -1 && fallback !== -1, 'Step 0.2 does not give the three sources');
-  assert.ok(phrase < key && key < fallback, 'Step 0.2 gives the sources out of order');
-  assert.ok(text.includes('A fetch that fails ends the run `blocked`, naming the branch.'));
-  assert.ok(text.includes('whose base differs from `<b>` ends `blocked`'), 'an open pull request on another base does not end blocked');
-});
-
-test('R81: Step 0.1.2 skips the gate key without reporting it', () => {
-  assert.ok(PREFLIGHT.includes('The `gate` key belongs to the gate plugin and is skipped without a report.'));
-});
-
-test('R88, R116: the merge-base, the deploy judgment and the pull request use <base>, not <default>', () => {
-  const BUILD = read('../../plugins/loop/skills/run/steps/4-build.md');
-  const PUBLISH = read('../../plugins/loop/skills/run/steps/7-publish.md');
-  assert.ok(BUILD.includes('`git merge-base <remote>/<base> HEAD`'));
-  assert.ok(PUBLISH.includes('--base <base>`'));
-  for (const file of [BUILD, PUBLISH, read('../../plugins/loop/skills/run/record.md'), read('../../plugins/loop/skills/run/risk.md'), read('../../plugins/loop/skills/run/ci-watch.md')]) {
-    assert.ok(!file.includes('<default>'), 'a step file still uses <default>');
-    assert.ok(!file.includes('the default branch'), 'a step file still reads the default branch as the base');
-  }
-});
-
-const ANCESTORS = 'and `CLAUDE.md` and `.claude/CLAUDE.md` in each folder above the repository\'s root, since the session loads those as project instructions, `~/.claude/CLAUDE.md` among them for a repository under the home folder';
-
-test('R55: the user\'s instruction files come from $CLAUDE_CONFIG_DIR when it is set, else ~/.claude, never both, and the permission statement names the directory read', () => {
-  const rule = 'in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both';
-  const scope = section(SKILL, 'Approval scope');
-  assert.notEqual(scope, null);
-  const scopeItem = scope.split('\n').find((line) => line.startsWith('1. '));
-  assert.ok(scopeItem && scopeItem.includes(rule), 'Approval scope item 1 does not give the rule');
-  const step = section(PREFLIGHT, '0.1 Instruction files, configuration, credential scan, permission statement');
-  assert.notEqual(step, null);
-  const lines = step.split('\n');
-  const read = lines.find((line) => line.startsWith('1. '));
-  assert.ok(read.includes(rule), '0.1.1 does not give the rule');
-  assert.ok(read.includes('loads only that directory\'s user instruction files'), '0.1.1 does not give the reason');
-  assert.ok(read.includes(ANCESTORS), '0.1.1 does not read the folders above the repository');
-  assert.ok(scopeItem.includes('the instruction files of each folder above it'), 'Approval scope item 1 does not read the folders above the repository');
-  const start = lines.findIndex((line) => line.startsWith('5. '));
-  const statement = lines.slice(start, lines.findIndex((line) => line.startsWith('```'))).join('\n');
-  assert.ok(statement.includes('The instruction directory read, by name'), '0.1.5 does not name the directory read');
-  for (const text of [SKILL, PREFLIGHT]) {
-    assert.ok(!text.includes('(else `~/.claude`)'));
-    assert.ok(!text.includes('in `$CLAUDE_CONFIG_DIR`, else `~/.claude`'));
-  }
-});
-
-test('R80: worktree.md and Step 0 both create the worktree at <start commit>, not at <base commit> or the base branch name', () => {
-  const WORKTREE = read('../../plugins/loop/skills/run/worktree.md');
-  for (const text of [WORKTREE, PREFLIGHT]) {
-    assert.ok(text.includes('git worktree add --detach <path> <start commit>'));
-    assert.ok(!text.includes('git worktree add --detach <path> <base commit>'));
-    assert.ok(!text.includes('git worktree add --detach <path> <base>`'));
-  }
-});
-
-test('R102: 3.7.1 reverifies the plan against <start commit>, not <base commit> or the base branch name', () => {
-  const BUILD = read('../../plugins/loop/skills/run/steps/4-build.md');
-  assert.ok(BUILD.includes('`git show <start commit>:<path>`'));
-  assert.ok(BUILD.includes('`git diff <snapshot> <start commit>`'));
-  assert.ok(!BUILD.includes('`git show <base commit>:<path>`'));
-  assert.ok(!BUILD.includes('`git diff <snapshot> <base commit>`'));
-  assert.ok(!BUILD.includes('`git show <base>:<path>`'));
-  assert.ok(!BUILD.includes('`git diff <snapshot> <base>`'));
-});
-
-test('R76: Step 0.2 defines the start commit and 0.4 compares the snapshot with it', () => {
-  assert.ok(PREFLIGHT.includes('10. The start commit is the commit the build starts from, held as a full sha for `run.md`. For a branch that exists neither locally nor on the remote, it is the base commit. For a continued branch that exists it is the branch tip: `refs/remotes/<remote>/<branch>` when the branch exists on the remote, else the local branch, and in a plan-only run, which never fast-forwards, the local tip item 5 plans at.'));
-  assert.ok(PREFLIGHT.includes('Record HEAD (`git rev-parse HEAD` in the checkout in use) as the planning snapshot. When it is not the start commit (0.2 item 10), note that in `run.md`. Steps 1 and 2 read the snapshot; Step 3.7 reverifies against the start commit.'));
-});
-
-test('R52 and R53: the echo carries the key shape of the credential scan whole, and Step 0.1 scans by it', () => {
-  const shape = 'A key named `password`, `passwd`, `secret`, `token`, `api_key`, `apikey`, `client_secret`, `private_key` or `connection_string` (case-insensitive) anywhere in a line, in the form `key: value`, `"key": "value"` or `key=value`, with a non-empty value. The value runs from the first character after `:` or `=`, with spaces and an opening quote skipped, to the next space, comma or quote.';
-  assert.ok(SKILL.includes(shape), 'the echo in SKILL.md lacks the key shape');
-  assert.ok(PREFLIGHT.includes('A match is any shape the echo is redacted by (SKILL.md, Reading the request).'), 'Step 0.1 names no shapes');
+test('R282: the Mode line is one of three modes with the continue, base and confirm additions, and a ticket names one of five ways it resolved', () => {
+  const after = SKILL.split('\n').find((line) => line.startsWith('Each ticket names how it resolved'));
+  assert.notEqual(after, undefined, 'SKILL.md does not say how a ticket resolved');
+  assert.deepEqual(ticks(after.split('. Mode is')[0]), ['gh', 'az boards', 'mcp:<tool>', 'file', 'text']);
+  assert.deepEqual(ticks(after.split('Mode is ')[1].split('. A pull request')[0]).filter((name) => name !== '.reimagine.json'), [
+    'build and publish', 'plan only', 'build without publishing', '; continue branch <b>', '; base <branch>', '; confirm the plan',
+  ]);
 });

@@ -133,3 +133,16 @@ test('the report template and report.md, Sections, name the same sections in the
   ]);
   assert.deepEqual(headings(sections, '###'), headings(template, '##'));
 });
+
+test('SKILL.md, Supporting files, reads each file at the step that file\'s own opening names first', () => {
+  const list = TEXT['SKILL.md'].split('\n## Supporting files\n')[1];
+  const steps = (text) => [...text.matchAll(/Steps? (\d(?:\.\d+)?)/g)].map((m) => m[1]);
+  let compared = 0;
+  for (const [, file, point] of list.matchAll(/^- `([^`]+)`: (.+)$/gm)) {
+    const [first] = steps(TEXT[file].split('\n')[2]);
+    if (first === undefined || steps(point).length === 0) continue;
+    compared++;
+    assert.ok(steps(point).includes(first), `Supporting files reads ${file} at ${steps(point).join(', ')}, and the file's opening names Step ${first} first`);
+  }
+  assert.ok(compared >= 8, `only ${compared} read points compared`);
+});

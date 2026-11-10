@@ -58,7 +58,7 @@ Each run keeps its files in `.reimagine/loop/<branch-slug>/` in your checkout: t
 
 ## The handoff and the manifest
 
-When a run makes a commit of its own, it also writes `handoff.md` and `audit-manifest.json` in the record. The manifest is what `/audit:run` reads; its `reviews` key holds the level of the final review and its findings by bucket.
+When a run makes a commit of its own, it also writes `handoff.md` and `audit-manifest.json` in the record. The manifest is what `/audit:run` reads. Its `tickets` name a GitHub issue by its id and an Azure DevOps or Salesforce ticket as an export the loop writes beside it, and leave out a file or text input. Its `reviews` key holds the level of the final review and its findings by bucket.
 
 ```
 {"bundles":[{"repo":"<absolute path>","pr":"github:<owner>/<repo>#<n>","tickets":["<ticket id>"]},{"repo":"<absolute path>","branch":"<branch>","base":"<remote>/<base branch>","tickets":["<ticket id>"]}],"claims":["<absolute path of handoff.md>"],"reviews":{"level":"<level>","fixed":[{"file":"<repository-relative path>","summary":"<one line>"}],"deferred":[{"file":"<repository-relative path>","summary":"<one line>"}],"rejected":[{"file":"<repository-relative path>","summary":"<one line>"}]}}
@@ -100,7 +100,7 @@ The `gate` key belongs to the gate plugin and is skipped without a report. Any o
 
 - `git`, and on Windows, Git for Windows.
 - `gh`, signed in, for GitHub repositories.
-- `az`, or an Azure DevOps MCP tool, to read Azure DevOps work items.
+- `az`, or an Azure DevOps MCP tool, to read Azure DevOps work items. Behind a proxy that intercepts TLS, `az` needs the proxy's certificate in the file `REQUESTS_CA_BUNDLE` names. A work item the loop cannot read can be pasted into the request as text.
 - Node is not needed by the loop itself.
 
 On a host other than GitHub the loop runs every step through the checks and ends `prepared`, with the push commands in the report.

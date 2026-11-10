@@ -43,7 +43,7 @@ Never adopt multi-repository scope from prose alone. The gate stays in force for
 
 1.4 When the ticket text has drifted from the code, record in `inputs.md` what changed and why, plan against the corrected text, and carry the correction to the pull request body (its Where the ticket and the code differ section).
 
-1.5 Mark each input `buildable`, `partial` or `blocked` in `inputs.md`, with the reason. Partial and blocked inputs stay in the run and are reported per input.
+1.5 Mark each input `buildable`, `partial` or `blocked` in `inputs.md`, with the reason. Partial and blocked inputs stay in the run and are reported per input. An input reopened for its text that the branch already meets is marked `met`; when every open input is `met`, finish Step 1 and go on as `record.md`, An existing record, item 9, says, reading `steps/4-build.md` for 3.7.2, 3.7.4 and Step 6.
 
 1.6 Read `risk.md`. Judge the risk floor on the inputs. Record in `inputs.md` the trigger or `none`, and the effort in force. Then write Step 1 `complete`.
 

@@ -53,17 +53,17 @@ Every body file is written with the Write tool first, in its own call. The publi
 
 `gh pr create --title "<title>" --body-file <absolute path to the body file> --base <base>`
 
-Add `--head <branch>` on a continued branch. The title is the single ticket's title, or the plan's one-line summary when there are several inputs, at most 70 characters. Record the pull request in steps.json as `runs[].pr`, in the form `github:<owner>/<repo>#<n>`, from the url `gh pr create` prints.
+Add `--head <branch>` on a continued branch. The title is the single ticket's title, or the plan's one-line summary when there are several inputs, at most 70 characters. Record the pull request in steps.json as `runs[].pr`, in the form `github:<owner>/<repo>#<n>`, from the url `gh pr create` prints, before any other call.
 
 A pull request opened on a continued branch lists, under "Decisions for the reviewer", the commits that were on the branch before the run (the Branch state list in this run's section of `inputs.md`, own and foreign) and says the branch carries them from before this change and they were reviewed with it.
 
 **One open pull request on the branch.** It is this loop's own when a `runs` entry in `steps.json` names it in `pr` (`record.md`, steps.json, item 2). Read `pr-body.md`. After the push, with `<pr>` the pull request number:
 
-1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. This is the run's only edit of that body, except the one in 7.3, item 3, after a repair; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
+1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. A commit on the branch that no run made and no slice's `commit` names is listed under "Decisions for the reviewer" as not the loop's, and as not reviewed when Step 5 has not run since. This is the run's only edit of that body, except the one in 7.3, item 3, after a repair; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
 2. Write the continued pull request comment from the `## Continued pull request comment` template to `<record>/comment-<n>.md`, numbered as `record.md` says, then post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`. This is the run's one comment on the pull request.
 3. When it is not this loop's own, the comment is all: never edit its body.
 
-Write no `runs[].pr` for a pull request this run did not open. Log in `run.md` the pull request, the body edit and the comment, with their files.
+Write no `runs[].pr` for a pull request this run did not open. Log in `run.md` the pull request, the body edit and the comment as each returns, with its file and the head it describes. A run with nothing to push and no ticket newly filed or found repeats no body edit and no comment that `run.md` logs for that head.
 
 Every `--body-file` is an absolute path.
 
@@ -83,7 +83,7 @@ At most three cycles run. A result still red after the third, or a repair the pa
 
 ## 7.4 Ticket comments
 
-After the pull request is open and 7.3 has ended without a block (green, or not applicable), post one comment for each ticket this run took up. A ticket that was done at Step 0 (`record.md`, An existing record) gets no comment, unless no run's `run.md` section logs a comment on it, as after a run that ended before 7.4. Log each comment in `run.md` with its file. Read the `## Ticket comment` section of `pr-body.md` and write each comment and its record first (`tickets.md`).
+After the pull request is open and 7.3 has ended without a block (green, or not applicable), post one comment for each ticket this run took up, and for any other source ticket it left a remainder on (`tickets.md`, Open items). A ticket that was done at Step 0 (`record.md`, An existing record) and got no remainder gets no comment, unless no run's `run.md` section logs a comment on it, as after a run that ended before 7.4. Log each comment in `run.md` with its file. Read the `## Ticket comment` section of `pr-body.md` and write each comment and its record first (`tickets.md`).
 
 - GitHub: write the comment to `<record>/ticket-<id-slug>.md` (`ticket-<id-slug>-run<n>.md` from run 2 on) and its record to `<record>/record-<id-slug>.md`, and then post `gh issue comment <n> -R <owner>/<repo> --body-file <absolute path>` and attach the record (`tickets.md`, Backends).
 - Azure DevOps: use the Azure DevOps MCP tool when one is listed, else `az boards work-item update --org https://dev.azure.com/<org> --id <n> --discussion @<absolute path>`, the file holding the text as HTML paragraphs; attach the record as `tickets.md`, Backends, says.

@@ -41,7 +41,7 @@ Start every run with these four actions, in this order, on every request, a desc
 3. Print the reading block (Tickets, Mode, Scope, Effort) as text in your reply.
 4. Read `steps/0-preflight.md` and start Step 0.
 
-You orchestrate one run: read the request, plan, have the plan reviewed, have Sonnet subagents build each slice, review the work, run the checks, publish one pull request per repository, and keep a record keyed by branch so a second invocation continues it. You read, judge, review each slice and decide; you never implement a slice. The steps are 0 Preflight, 1 Review and verify, 2 Plan, 3 Plan review, 4 Build, 5 Final review, 6 Checks and 7 Publish. Follow them in order. Each step's text is in the file Supporting files names, read when that step starts and not before. The allowed-tools list pre-approves only read-only git and gh, date, and sleep for the CI poll and a budget timer; every write, push, pull request and comment stays under the session's permission mode.
+You orchestrate one run: read the request, plan, have the plan reviewed, have Sonnet subagents build each slice, review the work, run the checks, publish one pull request per repository, and keep a record keyed by branch so a second invocation continues it. You read, judge, review each slice and decide; you never implement a slice. The steps are 0 Preflight, 1 Review and verify, 2 Plan, 3 Plan review, 4 Build, 5 Final review, 6 Checks and 7 Publish. Follow them in order. Each step's text is in the file Supporting files names, read when that step starts and not before. The allowed-tools list pre-approves only read-only git and gh, date, and sleep for the CI poll and a budget timer; the grant lasts the turn that invoked the skill, and every write, push, pull request and comment stays under the session's permission mode.
 
 ## Reading the request
 
@@ -70,7 +70,7 @@ Ticket forms, resolved per id in this order:
 4. A readable path: read as a file.
 5. Anything else, a bare number on a GitHub remote included: text.
 
-All remaining text joined is one ad-hoc description. An id that cannot be resolved gets one line in the block and the run continues with the other inputs. A pull request URL or number on GitHub that is open, not cross-repository and in the primary repository sets the branch to continue: its tickets come from the branch record, else from the pull request's closing references, else the run ends `blocked` asking for a ticket, file or description. A pull request on another host gets one line and the run continues without it.
+All remaining text joined is one ad-hoc description. An id that cannot be resolved gets one line in the block that says how else to give it, as pasted text or a file, and the run continues with the other inputs. A pull request URL or number on GitHub that is open, not cross-repository and in the primary repository sets the branch to continue: its tickets come from the branch record, else from the pull request's closing references, else the run ends `blocked` asking for a ticket, file or description. A pull request on another host gets one line and the run continues without it.
 
 Scope: the primary repository is the session's, which Step 0 resolves to its toplevel, or the checkout "primary <path>" names, which Step 0 checks is a git toplevel or a linked worktree and then addresses with `git -C <checkout>` and `cd <checkout> && <command>`. "also edit <path>" adds a writable checkout. A path in ticket text that maps to another checkout is adopted only after the user answers the Step 1.2 question with a clear yes or a comma-separated subset; any other answer ends `stopped` with the "also edit <path>" form to rerun without the question. Never adopt a repository from prose alone.
 
@@ -83,7 +83,7 @@ The echo is redacted with the credential scan of Step 0.1, whose shapes follow. 
 Then run only the id-resolution reads the ids need: `git remote -v` for a bare number, `gh`, `az`, an MCP read, a file read. A request with no ids needs none. Then print the reading block as your next text. It always prints, for a description alone too, and it comes before any other tool call, the read of `steps/0-preflight.md` included:
 
 ```
-Tickets: #68 (gh), AB#4567 (mcp:ado_get_work_item), AB#4580 (unresolved: the work item read failed; continuing without it)
+Tickets: #68 (gh), AB#4567 (mcp:ado_get_work_item), AB#4580 (unresolved: the work item read failed; paste its text or name a file that holds it; continuing without it)
 Mode: build and publish; continue branch feat/68-4567-export (open PR #73)
 Scope: primary C:/src/app; also edit C:/src/app-infra
 Effort: thorough (reviewers at high; risk floor not yet judged)
@@ -157,7 +157,7 @@ Round cap: no step repeats more than three times. A round is one pass by the sta
 
 Every run ends in exactly one state.
 
-- `done`: the pull request is open, CI is green or not applicable, and the report is written. A run on an existing record with no new work whose work is already published ends `done` after Step 6, having published nothing (`record.md`, An existing record, item 8).
+- `done`: the pull request is open, CI is green or not applicable, and the report is written. A run on an existing record with no new work whose work is already published ends `done` after Step 6 as `record.md`, An existing record, item 8, says.
 - `plan-only`: the plan was reviewed and nothing in the tree changed, or a plan confirmation was not answered with a clear yes.
 - `prepared`: every step through 6 is complete and publication is withheld before any push. Print first each draft ticket with the command or tool that files it and the instruction to add each filed ticket to the body's Follow-ups before publishing (`tickets.md`), then the exact commands: `git add <paths>`, `git commit`, `git push -u <remote> <branch>` and `gh pr create --title "<title>" --body-file <absolute path>`. For a continued branch with one open pull request, print `gh pr comment <pr> --body-file <absolute path>` in place of the last, preceded by `gh pr edit <pr> --body-file <absolute path>` when this loop opened that pull request. On a non-GitHub host, in place of the `gh` command, give the title and name the body file to paste as the pull request's description, the `comment-<n>.md` file to post as its first comment when there is one, and a note that the pull request is opened, and its work items linked, with the host's own tooling. With several repositories, give the set per repository with `git -C <path>`.
 - `blocked`: a blocking defect, a denied permission, a budget exceeded, or a preflight failure. After `blocked` nothing more is published; pushed work stays and is linked.

@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.21 - 2026-11-09
+
+- The record attached to a GitHub issue is named for the branch's record slug, since GitHub refuses a `/` in an artifact name and no record could attach on a loop branch. The question an ask-first rule raises for the open items' tickets now names each record attached, a source ticket's included, since a yes to a question that left the record out kept it local.
+
 ## audit 0.1.17 - 2026-11-09
 
 - Act's post of an item the owner names, and the ticket and pull request texts that the report and `work-items.jsonl` draft, are written for their readers, with no item id, stage or verdict of the audit's own, since such a text could carry terms its readers do not use; act's commit messages carry none either. The skill carries the house rules' two items on what leaves a run, word for word.

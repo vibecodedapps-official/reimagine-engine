@@ -92,18 +92,18 @@ One `### D<n>` per choice in the report's Decisions section, numbered in that or
 
 ### Raised tickets
 
-One `### R<n>` per deferred item, in the report's order. Keys, in this order:
+One `### R<n>` per filed open item and per draft, in the report's Open items order, one entry per ticket when several items went to one existing ticket (`tickets.md`). Read a filed GitHub ticket with `gh issue view <n> -R <owner>/<repo> --json state,milestone,assignees,labels`. Keys, in this order:
 
-- `ticket`: `<branch-slug>/deferred-<k>`, where `<k>` is the item's rank.
-- `type`: `task`
-- `state`: `new`
-- `iteration`: `none`
-- `owner`: `none`
+- `ticket`: the filed ticket's reference, in the form the Tickets section uses (`github:<owner>/<repo>#<n>` or `ado:<org>/<project>#<n>`); a draft keeps the local id `<branch-slug>/deferred-<k>`, where `<k>` is the item's rank. A source ticket is never one, since the ids of Tickets and Raised tickets stay apart.
+- `type`: for a filed ticket, new or existing, what the forge shows: on GitHub the first label, else `issue`; on Azure DevOps the work item's type. A draft: `task`.
+- `state`: the forge's state for a filed ticket: on GitHub lowercase, `open` or `closed`; on Azure DevOps as the work item shows it. A draft: `new`.
+- `iteration`: the forge's milestone (GitHub) or iteration path (Azure DevOps) for a filed ticket, `none` where it shows none. A draft: `none`.
+- `owner`: the forge's assignee (GitHub) or assigned-to (Azure DevOps) for a filed ticket, `none` where it shows none. A draft: `none`.
 - `bundles`: the bundle names the item touches, else the first bundle.
 - `summary`: one line.
-- `rank`: the item's position in the report's Deferred items, from 1.
+- `rank`: the item's position in the report's Open items, from 1.
 - `in_bundle_confidence`: `defer`
-- `reason`: the reason the item was deferred.
+- `reason`: why the item is owed and not settled by the run.
 
 ## Manifest
 
@@ -120,7 +120,7 @@ Write `audit-manifest.json` beside the handoff:
 
 ## Example
 
-A run on one GitHub issue, one repository at `/home/dev/widget-app` (owner `acme`), branch `feat/12-sync-retry`, one decision and one deferred item. The record is `/home/dev/widget-app/.reimagine/loop/feat-12-sync-retry/`.
+A run on one GitHub issue, one repository at `/home/dev/widget-app` (owner `acme`), branch `feat/12-sync-retry`, one decision and one filed open item. The record is `/home/dev/widget-app/.reimagine/loop/feat-12-sync-retry/`.
 
 `handoff.md`:
 
@@ -173,9 +173,9 @@ generated: 2026-10-14T19:41:07Z
 
 ### R1
 
-- ticket: feat-12-sync-retry/deferred-1
-- type: task
-- state: new
+- ticket: github:acme/widget-app#31
+- type: issue
+- state: open
 - iteration: none
 - owner: none
 - bundles: widget-app

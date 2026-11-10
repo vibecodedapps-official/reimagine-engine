@@ -52,8 +52,10 @@ common keys and its own fields.
 
 `text` on `set_description`, `set_pr_description`, `set_acceptance_criteria`,
 `add_comment` and `update_comment` is the complete content the forge should hold after
-the operation, drafted by stage 8 from the report, with the permitted
-`{mention:<key>}` placeholders and no forge markup. An instruction to compose the text
+the operation, drafted by stage 8 from the report and written for its reader as
+`SKILL.md`, What leaves the run, says, with the permitted `{mention:<key>}`
+placeholders and no forge markup. It holds no `C<n>`, `claim <n>` or `W<n>`; the ids
+stay in `items` and `reason`. An instruction to compose the text
 at apply time ("replace this with the recorded decision") does not meet this contract;
 nothing renders it.
 
@@ -84,7 +86,9 @@ a cycle of operations with no report item or claim is an error.
 - `set_pr_description`, `update_comment` and `remove_link` (its `target` and `to`) take
   forge ids, never placeholders.
 - Text in `title`, `description`, `text`, `value` and `reason` names no model, agent or
-  tool (`common.md`, "Hard rules").
+  tool (`common.md`, "Hard rules"). `title`, `description`, `text` and `value` are what
+  the forge holds and follow `SKILL.md`, What leaves the run; `reason` is the run's
+  record and may name ids.
 
 ## Validator
 

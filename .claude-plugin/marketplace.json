@@ -2,7 +2,7 @@
   "name": "reimagine-engine",
   "owner": { "name": "vibecodedapps.net" },
   "metadata": {
-    "version": "0.1.61",
+    "version": "0.1.65",
     "description": "A suite of Claude Code plugins: house rules, a ticket-to-pull-request loop, a read-only audit of finished pull requests, a review gate, instruction-file maintenance, and auto mode trust for listed repositories."
   },
   "plugins": [
@@ -10,19 +10,19 @@
       "name": "rules",
       "source": "./plugins/rules",
       "description": "House rules for Claude Code sessions: one block in your CLAUDE.md, kept current, plus the Concise Plain output style, a refactor review against them and a handoff prompt skill.",
-      "version": "0.1.26"
+      "version": "0.1.27"
     },
     {
       "name": "loop",
       "source": "./plugins/loop",
       "description": "Plan, build, review and publish a bundle of tickets as one reviewed pull request per repository, resuming on the same branch when run again.",
-      "version": "0.1.19"
+      "version": "0.1.20"
     },
     {
       "name": "audit",
       "source": "./plugins/audit",
       "description": "A read-only, adversarial audit of finished pull requests that stops at a report, with an act step that commits approved items.",
-      "version": "0.1.16"
+      "version": "0.1.17"
     },
     {
       "name": "primer",
@@ -34,7 +34,7 @@
       "name": "gate",
       "source": "./plugins/gate",
       "description": "Run code-review passes over a pull request, fixing what each pass finds, until a pass finds nothing left to fix.",
-      "version": "0.1.12"
+      "version": "0.1.13"
     },
     {
       "name": "guard",

@@ -140,6 +140,11 @@ After the block, tell the user in one sentence to pause any background fetch on 
 
 Say what happened, what it means for the user, and the next step, in that order. Use short sentences and plain words, with no stage numbers, script names or key names unless the user needs them to act. When a script prints lines for you to judge, explain them in everyday words and keep the raw lines in the run's records: the check file, `stages.json`, the report. Show a raw line only when the user must see it to decide. Parsed lines are never reworded where they are written: `blocked <kind>`, `readonly:`, `status:`, `ledger:`, `handoff <file>:<line>:`, `working-tree: refused:`, `work-items:`, `live:`, `revision:`. The plain explanation goes around them. A stop says what is wrong, what to change, and how to continue, with `/audit:resume <run-id>` when the run can resume.
 
+## What leaves the run
+
+- What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team's words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.
+- Output stays local unless publishing is the task's stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.
+
 ## Preamble
 
 ### Hard rules
@@ -148,7 +153,7 @@ The eight hard rules are in `${CLAUDE_PLUGIN_ROOT}/skills/audit/common.md`, sect
 
 1. Read-only boundary. In stages 1 to 8 your own writes stay inside the run directory and the registry files: `${CLAUDE_PLUGIN_DATA}/runs.json`, its lock directory `runs.json.lock` with the owner directory, and `runs.json.<owner>.tmp`. The audit never writes `.git/info/exclude` or any file of a git directory. You never run `git checkout`, `git switch`, `git reset`, `git stash`, `git worktree`, `git archive` or `git checkout-index`. Three writes happen through commands the stage files name: an approved `git fetch` into remote-tracking refs; `working-tree.sh build` for a `head: working-tree` bundle, which writes git objects only, never the index, a ref or a file; and `revert-tests.sh`, which runs a bundle's own test command in a work directory it creates and removes.
 2. Prevention and detection. Agents have no Edit or NotebookEdit and keep to the Bash allow-list of their definition. `readonly.sh` detects any write after every stage.
-3. Nothing external names a model, an agent or a tool. Report text that could be posted, work-item text and act's commit messages name the activity and the date. The trailer the host's attribution setting adds to a commit stays, even where it names a model or tool. Run records inside the run directory may name them.
+3. Nothing external names a model, an agent or a tool, and what leaves the run is written for its reader, as What leaves the run says. Report text that could be posted, work-item text and act's commit messages name the activity and the date. The trailer the host's attribution setting adds to a commit stays, even where it names a model or tool. Run records inside the run directory may name them.
 4. No advisor tool, for you or any agent.
 5. Live data comes only from a user-supplied `--live` file. Never ask for live access during a run and never run a live query. A needed check becomes a report block.
 6. Evidence is cited. Digests and maps are pointers, never evidence.
@@ -310,7 +315,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 ```json
 {
-  "plugin_version": "0.1.16",
+  "plugin_version": "0.1.17",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],
@@ -407,7 +412,7 @@ For `command: act`, find the run in `runs.json` by `run-id`, append the invocati
 - It recomputes the report's revision and compares it before it starts and before every commit, rebase or merge. An unknown item id stops act. Open live checks warn.
 - HEAD must equal the bundle branch and the tracked tree must be clean. Act never stashes, resets, cleans or checks out. Untracked files are logged, never staged.
 - A commit in `<audited head>..HEAD` that act did not log is drift; act shows it and asks before going on.
-- Act asks before each commit, never pushes, and edits tickets only when told per item. Its commit messages follow the repository's convention and name no model, agent or tool. The trailer the host's attribution setting adds to a commit stays, even where it names a model or tool.
+- Act asks before each commit, never pushes, and edits tickets only when told per item, and a post it makes is written for its reader as What leaves the run says. Its commit messages follow the repository's convention and name no model, agent or tool and no term the audit or a run coined, such as an item id (`C<n>`, `claim <n>`, `W<n>`), a stage or a verdict; where the body speaks of an item, it names the item by what it fixes. The trailer the host's attribution setting adds to a commit stays, even where it names a model or tool.
 
 ## Resume
 

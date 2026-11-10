@@ -41,7 +41,7 @@ test('R87: an existing record lists the commits from the merge-base and writes t
 test('R96: the commit snapshot names its location, its state and the sections of the external form', () => {
   const text = section(RECORD, 'Commit snapshot');
   assert.notEqual(text, null);
-  for (const phrase of ['docs/runs/<branch-slug>/plan.md', 'docs/runs/<branch-slug>/report-<n>.md', '`publishing`', 'What changed', 'Checks', 'Deferred items', 'Blocked, stopped or prepared']) {
+  for (const phrase of ['docs/runs/<branch-slug>/plan.md', 'docs/runs/<branch-slug>/report-<n>.md', '`publishing`', 'What changed', 'Checks', 'Blocked, stopped or prepared']) {
     assert.ok(text.includes(phrase), `Commit snapshot does not mention ${phrase}`);
   }
 });
@@ -102,9 +102,12 @@ test('R92: Step 3.7 sets up the checkout when Step 3 is reused and on the no-new
   assert.ok(text.includes('run only 3.7.2 and 3.7.4'));
 });
 
-test('R96: under commit: true a run with no new work on published work posts no report comment', () => {
-  assert.ok(section(RECORD, 'Commit snapshot').includes('except on the no-new-work path of published work'));
-  assert.ok(section(SKILL, 'Final report handling').includes('no-new-work path of published work posts nothing'));
+test('R96: under commit: true no run posts the report, and the snapshot is still committed', () => {
+  const text = section(RECORD, 'Commit snapshot');
+  assert.ok(text.includes('The report is not posted on the pull request'));
+  assert.ok(text.includes('A run that publishes commits a snapshot at Step 7.1'));
+  assert.ok(!text.includes('except on the no-new-work path of published work'));
+  assert.ok(!section(SKILL, 'Final report handling').includes('post the report'));
 });
 
 test('R90: work is published when its pull request is open, whoever opened it', () => {

@@ -75,7 +75,12 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    checks every audited repository after every stage, and a write that check does not
    accept ends the run `blocked`. The user's own edits during a run trip it too.
 3. **No model, agent or tool names** in anything external: commit messages, pull request
-   and ticket text, and drafted comments. The trailer the host's attribution setting adds
+   and ticket text, and drafted comments. Pull request and ticket text, posted or
+   drafted, is written for its reader as `SKILL.md`, What leaves the run, says: on a
+   ticket, what changed for its readers, what happens next and who decides; on a pull
+   request, what its reviewer needs about the code; never an audit id (`C<n>`,
+   `claim <n>`, `W<n>`), a stage, a verdict or another term the audit coined, and never
+   a model, agent or tool. The trailer the host's attribution setting adds
    to a commit stays, even where it names a model or tool. The report and the run records
    stay in the run directory and may name them.
 4. **No advisor tool**, in the orchestrator or in any agent.

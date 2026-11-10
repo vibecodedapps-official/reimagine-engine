@@ -1,6 +1,6 @@
 # The report
 
-Read this file from `steps/4-publish.md`, 4.5, at every terminal state (`pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`).
+Read this file from `steps/4-publish.md`, 4.4, at every terminal state (`pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`).
 
 Fill every section from the record (`passes.json`, `findings.json` and the saved reviews), never from memory. The passes of a run are those whose `run` is its number, and its findings are those of its passes. Every section is present; an empty one says `none`.
 
@@ -39,8 +39,6 @@ A headless session does not show text written before a Skill call, so the header
 
 ## Blocked or stopped
 
-## Comment
-
 ## Log
 ```
 
@@ -77,10 +75,6 @@ For `unconverged`: each open finding as `steps/3-next.md`, Decide, item 6, lists
 
 For `blocked` and `stopped`: what is blocked, or the question with both positions; where the work is (the branch, the pull request link, the head, the paths left as they are); what would unblock it; and the exact commands in order, ending with the request that runs the gate again (`/gate PR <n>`, `/gate this branch`). A budget that ran out is given with its value. Otherwise `none`.
 
-### Comment
-
-The link of the comment posted. For a host other than GitHub, the comment's text. Otherwise why none was posted: the state, a branch target, a denied or failed post, or a stop that Step 3, Resume, met in the record.
-
 ### Log
 
 Each review with its slug, models, duration, cost, denial count and notes, from `reviews[]`, a review that stopped on a usage limit named as `usage limit`, the notes printed as the reviewer wrote them, or `none` when empty; each reader call with its batch's size and whether it was retried; each implementer call with its group's files and its `duration_ms` from the completion notification, and the `date -u` outputs Step 2 kept before and after that call or its parallel batch; and the elapsed time against the run budget.
@@ -89,7 +83,7 @@ Each review with its slug, models, duration, cost, denial count and notes, from 
 
 - The report has exactly one terminal state, one of the five.
 - Name every cap that ended the run, and the engine when it is the stand-in. A `budget` cap is named as the next pass not started because the run budget could not hold it.
-- For `blocked` and `stopped`, nothing is published after the state.
-- The report may name models, agents and tools, because it stays in the record. The comment follows the deny list of `steps/4-publish.md`, 4.4.
+- For `blocked` and `stopped`, nothing is pushed after the state.
+- The report may name models, agents and tools, because it stays in the record. The gate posts nothing to a forge, so the report is the only place the run's findings, checks, commits and verdict are written for a reader.
 
 Return to `steps/4-publish.md`.

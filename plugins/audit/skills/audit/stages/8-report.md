@@ -148,8 +148,9 @@ result's text, approver and time; a `result_file` result's text is its copy
       evidence, no side picked.
    5. **Recommended next steps**: the ordered plan of step 14.
    6. **Code fixes**, by repository and file, with item ids.
-   7. **Work-item fixes**: the ticket text to change, drafted, naming no model, agent
-      or tool; then each operation of `work-items.jsonl` with its `W<n>` id, op,
+   7. **Work-item fixes**: the ticket text to change, drafted, written for its reader as
+      `SKILL.md`, What leaves the run, says, with the item ids beside it and no model,
+      agent or tool; then each operation of `work-items.jsonl` with its `W<n>` id, op,
       target, the item ids it covers and its reason. The operations are decided here
       and numbered from `W1` in order, so step 7 writes the same list with the same
       ids.

@@ -72,6 +72,7 @@ Skills are user-invocable and carry their trigger phrases in `description` (veri
 - A PreToolUse hook denies a tool call with the JSON deny form on stdout and exit 0, or with stderr and exit 2; the agent sees `PreToolUse:<tool> hook error: <reason>` (verified, spike 6). With `CLAUDE_CODE_USE_POWERSHELL_TOOL=1` the tool name is `PowerShell`, so the matcher is `Bash|PowerShell`.
 - The host adds an attribution trailer only when the attribution setting is on; with it off, three of three commit runs on 2.1.296 produced none (verified, spike 5). No hook guards this. The gate's commit step, the loop's publish step and pull request text, primer's commits and the audit's act commits type no trailer of their own and keep one the host adds (decisions 136 and 170).
 - `gh pr edit --body-file` and `gh pr comment --body-file` exist in gh 2.91.0 (verified, spike 7).
+- GitHub issue artifacts, in public preview, are reachable through the REST API with `gh api` on gh 2.91.0: `GET repos/<owner>/<repo>/issues/<n>/artifacts` answered with a list on an existing issue; the create and update calls were not run (decision 224). `gh issue artifact` needs gh 2.103.0 or later. Azure DevOps attaches a file to a work item in two calls, an upload to `_apis/wit/attachments` and a relation of type `AttachedFile`; `az boards` has no attachment command, and the Azure DevOps MCP server lists upload and link tools (documentation, not verified).
 - An HTML comment on the first line of a root `CLAUDE.md` or `AGENTS.md` is stripped before the content reaches context (verified, decision 74, on 2.1.304). A root `AGENTS.md` is read directly when no `CLAUDE.md` or `CLAUDE.local.md` exists at or above the working directory (documented, 2.1.277 and later), and no `InstructionsLoaded` event fires for it (verified).
 - A `.claude/rules/` file with `paths` loads when a matching file is touched; a pattern without a slash matches at any depth, `git ls-files -- ':(glob)<pattern>'` matches the same files for every documented pattern once braces are expanded and a slashless pattern gets `**/`, and a `paths` value the host cannot parse never loads the rule (verified, decisions 80 and 81).
 - `@path` inside a `.claude/rules/` file is not expanded at launch or on load; the model sees the literal line (verified, decision 82).
@@ -123,7 +124,7 @@ Manifest:
 
 ### Content
 
-`core.md` is the agreed house rules text with eight edits, requirements 19, 20, 232 to 236 and 269. Under Working, two items are added: "When a tool, integration, or file in the session can answer a question, use it before asking me." and "Report once, when the task is done or when the next step turns on my answer."; the decision item also names the assumption every option shares and what would overturn the recommendation, a new item after it raises a wrong request as the first decision, and an item after the read-only review item makes finding issues or proposing changes a judgment, not a count. Under Code, the first item asks for the smallest change that stays correct as the code grows. Under Ask first, two items are added: name the steps the permission mode is likely to deny, and treat a denied call as a question, never routed around. Nothing else changes; no stop is removed. `windows.md` is the four-line Git Bash paragraph, applied only when the script runs on Windows. The rendered body is `windows` (on Windows) then `core`, joined by one blank line.
+`core.md` is the agreed house rules text with eight edits, requirements 19, 20, 232 to 236 and 269. Under Working, two items are added: "When a tool, integration, or file in the session can answer a question, use it before asking me." and "Report once, when the task is done or when the next step turns on my answer."; the decision item also names the assumption every option shares and what would overturn the recommendation, a new item after it raises a wrong request as the first decision, and an item after the read-only review item makes finding issues or proposing changes a judgment, not a count. Under Code, the first item asks for the smallest change that stays correct as the code grows. Under Ask first, two items are added: name the steps the permission mode is likely to deny, and treat a denied call as a question, never routed around. Nothing else changes; no stop is removed. Edit twenty-two adds two Working items after the issue item: what leaves the session is written for its reader, with run output kept in the run folder or a record attached to a ticket, and output stays local unless publishing is the task's purpose, with two checks before any post (requirement 348). The loop, the gate and the audit carry both word for word, each copy pinned to `core.md` by a test in that plugin's own area (requirement 349, decision 221). `windows.md` is the four-line Git Bash paragraph, applied only when the script runs on Windows. The rendered body is `windows` (on Windows) then `core`, joined by one blank line.
 
 ### Mechanism
 
@@ -179,6 +180,7 @@ plugins/loop/
   skills/run/multi-repo.md
   skills/run/worktree.md
   skills/run/pr-body.md            body, comment and ticket comment templates
+  skills/run/tickets.md            open items, ticket text and records, one backend per tracker
   skills/run/report.md
   skills/run/handoff.md
 ```
@@ -200,7 +202,7 @@ Resolution order per id: GitHub forms through `gh`; `AB#n`, or a bare number whe
 
 ### Approval scope
 
-Invoking by name approves branch, commit, push, one pull request per repository, editing the body of a pull request this loop opened, one comment per run on it, and ticket comments. Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, deploy, repository settings and a new issue always ask. A denial is final: never retried, never routed around.
+Invoking by name approves branch, commit, push, one pull request per repository, editing the body of a pull request this loop opened, one comment per run on it, ticket comments, and the open items' tickets with their records (decision 223). Ask-first rules in instruction files win over that grant; one that covers a new issue or a comment asks once for all the open items' tickets. Force push, `--no-verify`, merge, deploy, repository settings and any other new issue always ask. A denial is final: never retried, never routed around.
 
 ### Roles
 
@@ -239,7 +241,7 @@ Per-call budgets in minutes: subagent 20, review 30, check 15, CI 45. One defaul
 4. Build: implementers per slice, slice checks, orchestrator slice review, re-evaluation.
 5. Final review: integrate, one `code-review` pass over the whole diff from the merge-base, triage into fix, defer and reject, the fix bucket applied once through the implementers, no second pass.
 6. Checks: discovery, baseline matching, reuse of 5.1; on a non-GitHub host, the body file and the `prepared` end.
-7. Publish: commit, push, pull request create or update, ticket comments, CI watch and repair, deferred list, handoff and manifest.
+7. Publish: commit, push, open items settled, put to the user or filed, pull request create or update, CI watch and repair, ticket comments with their records, handoff and manifest.
 
 ### Record and idempotency
 
@@ -257,6 +259,7 @@ The record is keyed by branch, not by run, so a second invocation finds it:
   pre-<n>.status, pre-<n>.patch, pre-<n>.hashes   snapshots before implementer calls
   diff.patch, diff-<slug>.patch                   review patches
   pr-body.md, comment-<n>.md, ticket-<id>.md      never committed; per-run names take -run<n> from run 2 on
+  record-<id>.md, item-<k>.md, item-<k>-record.md a source ticket's record, an open item's ticket text and its record; never committed
 ```
 
 `<branch-slug>` is the branch name lowercased with each run of characters outside `[a-z0-9]` replaced by `-`, at most 60 characters; `steps.json` keeps the exact branch name, and a record whose branch differs from the run's is a collision that ends preflight `blocked`. The branch is known at preflight: the continued branch, the "on branch" name, the branch of the one existing record whose `tickets` list holds one of the request's tickets, or the predicted `fix/<ids>-<slug>`, `feat/<ids>-<slug>` or `work/<slug>`. `.reimagine/` is excluded through `.git/info/exclude` so that a run that commits nothing leaves the tree clean (verified, spike 7).
@@ -294,7 +297,7 @@ Terminal states: `done`, `plan-only`, `prepared`, `blocked`, `stopped`.
 
 ### Publication texts
 
-The pull request is created with `gh pr create --title "<title>" --body-file <absolute path>`, the title being the single ticket's title or the plan's one-line summary. `pr-body.md` sections: What changed, Drift corrections, Decisions for the reviewer, Checks not run, Related pull requests, Closes. On a non-GitHub host the run ends `prepared` after step 6 with a body file covering every input of every run of the record, one per repository; on an Azure DevOps remote that body is the short form under the 4,000-character description cap, the full body goes to a comment file to post first, and an Azure DevOps ticket is a `_workitems/edit/<n>` link in place of `AB#<n>`, which links only from GitHub through the Azure Boards app. Ticket comments carry state, pull request link, criteria, not done, deferred. Neither names a model, an agent, a tool, or a run-internal path; a report posted as a comment under `commit: true` is cut to its external sections for the same reason. The handoff (`reimagine-handoff: 1`) and `audit-manifest.json` (`{"bundles":[{"repo","pr","tickets"}|{"repo","branch","base","tickets"}],"claims":["<absolute handoff.md>"],"reviews":{"level","fixed":[{"file","summary"}],"deferred":[...],"rejected":[...]}}`) are written when the run has its own commit; the report's `Gate:` line suggests `/gate PR <n>` for 500 or more changed lines, and its `Audit:` line suggests `/audit:run "<manifest>"` for bundles with more than one repository or more than one ticket, and after the gate when the line count alone called for one.
+The pull request is created with `gh pr create --title "<title>" --body-file <absolute path>`, the title being the single ticket's title or the plan's one-line summary. `pr-body.md` sections: What changed, Where the ticket and the code differ, Decisions for the reviewer, Checks not run, Follow-ups (one line per ticket of the filed open items), Related pull requests, Closes. On a non-GitHub host the run ends `prepared` after step 6 with a body file covering every input of every run of the record, one per repository; on an Azure DevOps remote that body is the short form under the 4,000-character description cap, the full body goes to a comment file to post first, and an Azure DevOps ticket is a `_workitems/edit/<n>` link in place of `AB#<n>`, which links only from GitHub through the Azure Boards app. Ticket comments are written for the ticket's readers, what changed, what happens next and who it waits on, and the criteria with their evidence go in a record attached to the ticket: an issue artifact through `gh api` on GitHub, the MCP attachment tools on Azure DevOps, else the record stays local and the report says so (`tickets.md`, decisions 224 and 225). None names a model, an agent, a tool, a run-internal path or a term the loop coined; `SKILL.md` carries the two house-rule items on what leaves a run, pinned to `core.md` by a test (requirement 349). The report is never posted, `commit: true` included. The handoff (`reimagine-handoff: 1`) and `audit-manifest.json` (`{"bundles":[{"repo","pr","tickets"}|{"repo","branch","base","tickets"}],"claims":["<absolute handoff.md>"],"reviews":{"level","fixed":[{"file","summary"}],"deferred":[...],"rejected":[...]}}`) are written when the run has its own commit; the report's `Gate:` line suggests `/gate PR <n>` for 500 or more changed lines, and its `Audit:` line suggests `/audit:run "<manifest>"` for bundles with more than one repository or more than one ticket, and after the gate when the line count alone called for one.
 
 ## The `audit` plugin
 
@@ -352,7 +355,7 @@ plugins/gate/
   skills/gate/steps/1-pass.md      size, split, the child session, parsing, triage
   skills/gate/steps/2-fix.md       implementers, snapshots, checks, the commit and the push
   skills/gate/steps/3-next.md      next.mjs, caps, resume, terminal states
-  skills/gate/steps/4-publish.md   comment, manifest, report
+  skills/gate/steps/4-publish.md   the run's end: manifest, report, next target; posts nothing
   skills/gate/record.md            record files, passes.json, findings.json
   skills/gate/report.md
   scripts/findings.mjs             a review's output to ledger entries
@@ -377,7 +380,7 @@ Scripts: <the plugin's directory>/scripts
 
 ### Approval scope
 
-Invoking by name approves fix commits on each target's branch, whether or not the loop opened its pull request, pushing that branch, and one comment per run on each target pull request (decision 127). Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, rebase, amend, reset, a push that triggers a deploy, repository settings and a new issue always ask; the deploy is judged before each push, in the target's repository (decision 216). A denial is final: never retried, never routed around. A dirty tree, a merged or closed pull request and a remote head that is neither the one preflight fetched nor the run's own last push end `blocked`.
+Invoking by name approves fix commits on each target's branch, whether or not the loop opened its pull request, and pushing that branch (decisions 127 and 222). Ask-first rules in instruction files win over that grant. Force push, `--no-verify`, merge, rebase, amend, reset, a push that triggers a deploy, repository settings and a new issue always ask; the deploy is judged before each push, in the target's repository (decision 216). A denial is final: never retried, never routed around. A dirty tree, a merged or closed pull request and a remote head that is neither the one preflight fetched nor the run's own last push end `blocked`.
 
 ### Roles
 
@@ -414,7 +417,6 @@ The child session is the engine (decision 124). It runs at `gate.models.reviewer
   review-<n>[-<slug>].json | .md    each review's saved output
   pre-<n>.status, pre-<n>.patch, pre-<n>.hashes   snapshots before implementer calls
   diff-<n>[-<slug>].patch           a stand-in's input
-  comment-<n>.md                    the comment as posted, never committed
   audit-manifest.json               written when the run did not come from one
 ```
 
@@ -444,7 +446,7 @@ An entry is written `running` when the pass starts and `complete` after the fix 
 
 ### Publication texts
 
-The comment, one per run per pull request through `gh pr comment --body-file`: the verdict, the findings fixed, deferred and rejected with their reasons, the checks, the commits. It names no model, agent, tool, run-internal path, review pass or level, which the report keeps (decision 213), writes the user's home directory as `~` in text it quotes from a review, and the deferred list never goes to the body. The manifest the run came from gains a top-level `gate` key, an object keyed by each bundle's `repo` with `{"verdict", "passes", "record"}`; a run without one writes a minimal manifest in the record, so the report can suggest `/audit:run "<manifest>"`. Terminal states: `pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`.
+The gate posts nothing to a pull request or a ticket (requirement 350, decision 222). The verdict, the findings fixed, deferred and rejected with their reasons, the checks and the commits stay in `passes.json`, `findings.json` and `report.md`, and the report is the run's last message; `SKILL.md` carries the two house-rule items on what leaves a run, pinned to `core.md` by a test (requirement 349). The only text the gate sends out is its fix commits' messages, which name no model, agent, tool, review pass or level. The manifest the run came from gains a top-level `gate` key, an object keyed by each bundle's `repo` with `{"verdict", "passes", "record"}`; a run without one writes a minimal manifest in the record, so the report can suggest `/audit:run "<manifest>"`. Terminal states: `pass`, `pass-with-deferred`, `unconverged`, `blocked`, `stopped`.
 
 ## The `primer` plugin
 

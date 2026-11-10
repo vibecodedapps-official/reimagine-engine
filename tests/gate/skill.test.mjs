@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
+import { loadTexts, units } from '../../plugins/rules/scripts/rules.mjs';
 
 const GATE = new URL('../../plugins/gate/', import.meta.url);
 const SKILL_DIR = new URL('skills/gate/', GATE);
@@ -319,9 +320,15 @@ test('R295: Step 0 blocks on an unauthenticated gh, a merged or closed pull requ
   holds('steps/0-preflight.md', 'not authenticated', 'merged or closed', 'cross-repository', 'slug collision');
 });
 
+test('R295: the authentication test names the item of 0.2 that holds the gh repo view', () => {
+  const text = holds('steps/0-preflight.md', 'Test it with the `gh repo view` of 0.2.4.');
+  assert.ok(!text.includes('0.2.5'), 'steps/0-preflight.md names an item 0.2.5 that does not exist');
+  assert.ok(text.split('\n').find((l) => l.startsWith('4. `<r>` is the remote')).includes('`gh repo view --json nameWithOwner,url`'));
+});
+
 test('R294 and R313: Step 0 reads the instruction files and the configuration and states the prompts', () => {
   const text = holds('steps/0-preflight.md', '$CLAUDE_CONFIG_DIR', '.reimagine.json', 'ask-first', 'whether a prompt will occur');
-  for (const action of ['fetch', 'checkout', 'exclude', 'child session', 'subagent', 'check', 'node', 'commit', 'push', 'comment']) {
+  for (const action of ['fetch', 'checkout', 'exclude', 'child session', 'subagent', 'check', 'node', 'commit', 'push']) {
     assert.ok(text.toLowerCase().includes(action), `the permission statement lacks ${action}`);
   }
   const item = text.split('\n').find((l) => l.startsWith('3. Print the permission statement'));
@@ -329,6 +336,8 @@ test('R294 and R313: Step 0 reads the instruction files and the configuration an
   assert.ok(item.includes('the checks, the `node` scripts each pass runs (`findings.mjs`, and `next.mjs` outside "no fixes" mode), the commit'), 'item 3 does not list the node scripts');
   assert.ok(text.includes('checks: yes; node scripts: yes; commit: yes'), 'the sample Prompts line lacks node scripts');
   assert.ok(text.includes('the checks, the node scripts, the commit'), 'the sample prompt line lacks the node scripts');
+  assert.ok(!text.toLowerCase().includes('comment'), 'the permission statement still names a comment');
+  assert.ok(text.includes('Approved for this run: fix commits on each target\'s branch, push it.\n'), 'the approved line lists more than the fix commits and the push');
 });
 
 test('R294: the gate reads the instruction files of one directory only and the statement names it', () => {
@@ -342,7 +351,7 @@ test('R294: the gate reads the instruction files of one directory only and the s
 });
 
 test('R290: Step 0 runs several targets one after another and a manifest by bundle', () => {
-  holds('steps/0-preflight.md', 'one after another', '`pr` or a `branch`', '`repo`', 'bundle order', 'unresolved', 'comment skipped');
+  holds('steps/0-preflight.md', 'one after another', '`pr` or a `branch`', '`repo`', 'bundle order', 'unresolved');
 });
 
 test('R310: Step 0 writes passes.json and the run entry, then sends the run to pass 1 or to Resume', () => {
@@ -437,7 +446,7 @@ test('R300: Step 2 stages each path by name and never stages everything', () => 
 });
 
 test('R11: Step 2 types no attribution trailer of its own and keeps the host\'s', () => {
-  holds('steps/2-fix.md', 'The commit message follows it and names no model, agent, tool, review pass or its level. Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.');
+  holds('steps/2-fix.md', 'The commit message follows it and names no model, agent, tool, review pass or its level, or a term the suite or a run coined. Type no attribution trailer of your own, and keep one the host\'s attribution setting adds, even where it names a model or tool.');
 });
 
 test('R295: Step 2 reads the remote head with git ls-remote and compares it before every push', () => {
@@ -460,7 +469,7 @@ test('R294: the always-ask list holds a deploy and Step 2 judges one before each
     'ask first, naming the workflow, and treat any answer but a clear yes as a denial of the push (item 4)',
     'A yes covers that push only, since a fix round can change what the next push deploys.');
   for (const old of ['ls-tree -r']) assert.ok(!read('steps/2-fix.md').includes(old), `steps/2-fix.md still holds: ${old}`);
-  holds('steps/0-preflight.md', 'Outside "no fixes" mode, a push that triggers a deploy prompts', 'the Prompts line ends with `deploy: judged before each push`', 'comment: yes; deploy: judged before each push', 'the comment, and before a push that triggers a deploy');
+  holds('steps/0-preflight.md', 'Outside "no fixes" mode, a push that triggers a deploy prompts', 'the Prompts line ends with `deploy: judged before each push`', 'push: yes; deploy: judged before each push', 'the push, and before a push that triggers a deploy');
 });
 
 test('R301: Step 2 judges the fix round with the six change kinds next.mjs accepts', () => {
@@ -517,29 +526,57 @@ test('R316: the skill runs a pass, and every terminal state reads Step 4', () =>
   assert.ok(SKILL.includes('Every terminal state reads `steps/4-publish.md`'));
 });
 
-const DENY = ['Claude', 'Anthropic', 'Opus', 'Sonnet', 'Haiku', 'Fable', 'model', 'agent', 'subagent', 'LLM', 'AI',
-  'code-review', 'child session', 'stand-in', 'Skill', 'TaskStop', 'Bash', '.reimagine'];
-const wholeWord = (w) => new RegExp(`(?<![A-Za-z0-9_-])${w.replace('.', '[.]')}(?![A-Za-z0-9_-])`, 'i');
+// Every file of a directory, by its path under it, found recursively.
+const filesUnder = (dir, rel = '') => readdirSync(new URL(rel, dir), { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? filesUnder(dir, `${rel}${e.name}/`) : [`${rel}${e.name}`]));
 
-test('R314: the comment template is one fenced block with no deny word, and Step 4 lists every deny word', () => {
-  const text = holds('steps/4-publish.md', 'gh pr comment <number> --body-file <absolute path>', '`blocked` and `stopped` post nothing');
-  const blocks = fences(text).filter((b) => b.lines[0]?.startsWith('Gate verdict:'));
-  assert.equal(blocks.length, 1, 'expected one fenced block that starts with "Gate verdict:"');
-  const body = blocks[0].lines.join('\n');
-  for (const w of DENY) assert.ok(!wholeWord(w).test(body), `the comment template holds ${w}`);
-  for (const w of DENY) assert.ok(text.includes(`\`${w}\``), `steps/4-publish.md does not list ${w}`);
+test('R350: no file of the plugin holds a command that posts to a forge', () => {
+  const files = filesUnder(GATE);
+  for (const rel of ['README.md', 'skills/gate/SKILL.md', 'skills/gate/steps/4-publish.md', 'scripts/next.mjs']) assert.ok(files.includes(rel), `the scan does not reach ${rel}`);
+  for (const rel of files) {
+    const text = readFileSync(new URL(rel, GATE), 'utf8');
+    for (const command of ['gh pr comment', 'gh pr review', 'gh pr edit', 'gh issue comment', 'gh issue create']) {
+      assert.ok(!text.includes(command), `${rel} holds ${command}`);
+    }
+  }
 });
 
-test('R11 and R314: the comment names no review pass or its level', () => {
-  const text = holds('steps/4-publish.md', 'The comment names no model, agent, tool, run-internal path, review pass or its level.');
-  const body = fences(text).find((b) => b.lines[0]?.startsWith('Gate verdict:')).lines;
-  assert.ok(!body.includes('Passes:'), 'the comment template still has a Passes section');
-  assert.ok(!body.some((l) => l.includes('<level>')), 'the comment template still names a level');
-  holds('steps/4-publish.md', 'Check every reason in the filled comment also for a review pass or its level, the ones the record carries from the scripts and earlier passes as well as your own words: a reason names no pass number and none of the level words `xhigh`, `high` and `medium`, so a carried rejection reads as carried from an earlier review and a regression as `regression: fixed in an earlier review`.');
+test('R350: the record and the report stay local, and no step writes or posts a comment', () => {
+  for (const rel of ['record.md', 'report.md', ...supporting().filter((r) => r.startsWith('steps/'))]) {
+    assert.ok(!/comment-<n>|--body-file|## Comment|### Comment/.test(read(rel)), `${rel} still holds a comment file, a body file or a Comment section`);
+  }
+  assert.ok(!SKILL.includes('comment-<n>'), 'SKILL.md still lists the comment file');
+  holds('steps/4-publish.md', 'The gate posts nothing to a forge');
+  holds('steps/3-next.md', 'rewrites the report and commits nothing');
 });
 
-test('R314: the comment writes the home directory as ~ in text quoted from a review', () => {
-  holds('steps/4-publish.md', 'except that the user\'s home directory in it is written `~`', 'the drive letter in either case, or the `/c/` form of Git Bash');
+test('R293: invoking the gate approves fix commits and the push, and nothing else', () => {
+  holds('SKILL.md', 'Invoking this skill by name approves, for this run only: fix commits on each target\'s branch, whether or not the loop opened its pull request; and pushing that branch. Nothing else is approved: no branch, no pull request, no comment, no body edit, no ticket comment and no issue.');
+  assert.ok(README.includes('Invoking the gate by name approves, for that run only: fix commits on each target\'s branch and pushing that branch. Nothing else: no new branch, no pull request, no comment, no edit of a pull request body, no ticket comment and no issue.'), 'README.md does not state the approval');
+});
+
+test('R11 and R213: the report keeps the passes and levels, which a text for a reader may not carry', () => {
+  holds('report.md', '- Passes: <n> at <level> (<rule>), ... | none', 'The report may name models, agents and tools, because it stays in the record.');
+});
+
+test('R349: SKILL.md carries the two items of core.md word for word under What leaves the run', () => {
+  const items = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => u.norm);
+  const lines = SKILL.split('\n');
+  const start = lines.indexOf('## What leaves the run');
+  assert.notEqual(start, -1, 'SKILL.md has no ## What leaves the run');
+  const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
+  const section = lines.slice(start + 1, end < 0 ? lines.length : end);
+  const literal = [
+    'What leaves the session is written for its reader, not for the work that made it. Run output, such as verdicts, pass lists, levels, commit ids, manifests, logs and handoff context, is for an agent or a later session: it stays in the local run folder or a record attached to a ticket, and outside the session that record is the only place a term a plugin or session coined may appear. A pull request carries only what its reviewer needs about the code in it, as technical as the code needs, in the team\'s words, true of the head it describes and replaced when a push makes it stale. A ticket tells its readers what changed for them, what happens next and who decides, never how it was reached or with what tools; technical detail that must travel with it goes in an attached record, not in its body or a comment.',
+    'Output stays local unless publishing is the task\'s stated purpose or I asked for it. Before any post, check that its reader will act on it and that it holds nothing they would not say themselves.',
+  ];
+  ['What leaves the session is written for its reader', 'Output stays local unless publishing'].forEach((prefix, i) => {
+    const found = items.filter((n) => n.startsWith(prefix));
+    assert.equal(found.length, 1, `core.md does not hold exactly one item that starts with: ${prefix}`);
+    assert.equal(found[0], literal[i], 'the literal of this test differs from core.md');
+    assert.ok(section.includes(`- ${found[0]}`), `SKILL.md lacks the core.md item that starts with: ${prefix}`);
+    assert.ok(section.includes(`- ${literal[i]}`), `SKILL.md differs from the text of the item that starts with: ${prefix}`);
+  });
 });
 
 test('R315: Step 4 holds the minimal manifest literal and the gate key shape', () => {
@@ -565,7 +602,7 @@ test('the README describes a run: no prerelease notice, the use phrases, the fiv
   }
 });
 
-test('R317: report.md holds the report header line for line and its seven sections in order', () => {
+test('R317: report.md holds the report header line for line and its six sections in order', () => {
   const block = fences(holds('report.md')).find((b) => b.lines[0] === '# gate report');
   assert.notEqual(block, undefined, 'report.md has no fenced block that starts with "# gate report"');
   assert.deepEqual(block.lines.slice(0, 14), [
@@ -585,12 +622,17 @@ test('R317: report.md holds the report header line for line and its seven sectio
     '- Audit: /audit:run "<absolute path of the manifest>" (the command needs the audit plugin) | not suggested (<reason>)',
   ]);
   assert.deepEqual(block.lines.filter((l) => l.startsWith('## ')), [
-    '## Findings', '## Checks', '## Commits and pushes', '## Open findings', '## Blocked or stopped', '## Comment', '## Log',
+    '## Findings', '## Checks', '## Commits and pushes', '## Open findings', '## Blocked or stopped', '## Log',
   ]);
 });
 
 test('R317: Step 4 prints the written report whole as the last text, with nothing after it', () => {
   holds('steps/4-publish.md', 'print the whole text of the report, unchanged, as the last text of this target', 'Nothing follows it: no summary, note or offer.');
+});
+
+test('R290: Step 4 limits no run to a list of its sections, so 4.5 Next moves a resumed stop on to the next target', () => {
+  const text = holds('steps/4-publish.md', '## 4.5 Next', 'With another target left in the order of the reading block, read `steps/0-preflight.md` for it');
+  assert.ok(!/\b4\.\d(?:,| and)?(?: 4\.\d(?:,| and)?)* only\b/.test(text), 'steps/4-publish.md limits a run to a list of its sections');
 });
 
 test('R303: a check whose budget is over the foreground limit runs in the background and is stopped at expiry', () => {
@@ -696,12 +738,6 @@ test('R300: before staging, the commit compares the changed paths with the group
     'a path outside every group\'s files, such as a file a check regenerated, is restored as Snapshots, item 4, restores a path and named in the report, and only then are the fix round\'s paths staged');
 });
 
-test('R314: the comment file is written first with the Write tool and the post runs alone, naming only its path', () => {
-  holds('steps/4-publish.md',
-    'Write the comment to `comment-<n>.md` with the Write tool, in its own call.',
-    'alone in its own Bash call, naming only that path, never one compound command that writes and posts');
-});
-
 test('R295 and R312: the next run pushes a commit a blocked push kept, then reviews the branch afresh', () => {
   holds('steps/2-fix.md',
     'writes the `changes` and `checks` known so far, and the commit\'s sha as `commit` once The commit, item 4, has made it, leaves `next` null',
@@ -737,11 +773,10 @@ test('R295 and R312: the next run pushes a commit a blocked push kept, then revi
     'and the kept commit this run pushed, the `kept` of this run\'s entry in `runs`, with its sha, subject and the pass that made it.',
     'names that commit as kept local, from git and the record, not from memory.');
   holds('steps/4-publish.md',
-    'Fixed lists the findings of state `fixed`, and also the findings of the pass whose `commit` is the `kept` of this run\'s entry in `runs` that are in ledger state `fixed`',
-    'and Commits the passes\' commits, and also that `kept` commit. A finding that a pass of this run also has in its fix bucket is listed once, under this run\'s pass, not again as fixed by the kept commit.',
-    'for the passes of this run, with the additions of item 1 for a kept commit, never from memory.',
     'with `ended` that time and `state` the terminal state, keeping every other key of the entry, `kept` among them.',
     'a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes.');
+  holds('report.md',
+    'and the kept commit this run pushed, the `kept` of this run\'s entry in `runs`, with its sha, subject and the pass that made it.');
   assert.ok(README.includes('a push that failed, a "no fixes" run that meets a kept commit, or a check still failing after three fixes'), 'README.md does not list the kept commit causes of blocked');
   assert.ok(README.includes('The commit of a refused push stays local, and the next run on the branch pushes it first when the remote still ends at its parent, asking again where a push must ask, then reviews the branch afresh; when the remote has moved on, the run ends `blocked`, naming the branch, and on a branch the remote does not have, the run reviews the branch as new'), 'README.md does not say when the next run pushes a kept commit');
 });

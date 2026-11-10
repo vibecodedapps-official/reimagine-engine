@@ -2,6 +2,28 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.17 - 2026-11-09
+
+- Act's post of an item the owner names, and the ticket and pull request texts that the report and `work-items.jsonl` draft, are written for their readers, with no item id, stage or verdict of the audit's own, since such a text could carry terms its readers do not use; act's commit messages carry none either. The skill carries the house rules' two items on what leaves a run, word for word.
+
+## loop 0.1.20 - 2026-11-09
+
+- After the first push and before any pull request text is written, each open item is settled with its evidence, put to the owner in full in the report, or filed to a ticket, new or existing, with its handoff context attached as a record; the body carries one line per ticket. Items left as prose in the body never reached the ticket board and could be lost on merge. Invoking the loop now approves those tickets, and an ask-first rule that covers them asks once for all of them; a declined ask, or a filing that is refused or fails, leaves the item a draft and the pull request still publishes.
+- After a CI repair push that makes the body untrue of the new head, the loop rewrites the body of a pull request it opened once, since the body describes its head.
+- Ticket comments are written for the ticket's readers, with the criteria and their evidence in a record attached to the ticket, an issue artifact on GitHub or a work item attachment on Azure DevOps, since the comment carried the run's own vocabulary.
+- Under `commit: true` the report is no longer posted on the pull request, since it is run output and the committed snapshot carries it.
+- The skill carries the house rules' two items on what leaves a run, word for word.
+
+## gate 0.1.13 - 2026-11-09
+
+- The gate posts nothing to the pull request: the verdict, the findings, the checks and the commits stay in the report, since the comment carried the gate's own verdict and commit ids that a later push made stale. The skill carries the house rules' two items on what leaves a run, word for word.
+- A run that resumes on a stop already in the record goes on to its next target, since the end of the run skipped the step that moves on.
+
+## rules 0.1.27 - 2026-11-09
+
+- The house rules add two Working items: what leaves a session is written for its reader, with run output kept in the run folder or a record attached to a ticket; and output stays local unless publishing is the task's purpose, with two checks before any post. Output a session wrote for itself had reached readers it was not written for.
+- Concise Plain 4.14 takes a draft's detail level from its reader, not from what the session just did, since status notes to people outside the session came back one level too detailed; the chat block carries the bullet.
+
 ## gate 0.1.12 - 2026-11-09
 
 - The next run on a branch pushes a fix commit that a refused push left local, judging the deploy and asking again as before any push, then reviews the branch afresh at `xhigh`, leaving the failed pass as it was, since preflight blocked on the branch ahead of its remote and resume skipped the push, so the commit had to be pushed or dropped by hand. A "no fixes" run blocks on that commit, naming it. The comment and the report list the kept commit the run pushed and the findings it fixed, since they listed only the passes' own commits and findings, so the pushed commit and its fixes went unreported. A push that fails without a denial now ends the run `blocked` with its commit kept, like a denied one, since the step named only a denied push.

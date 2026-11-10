@@ -104,7 +104,8 @@ test('every file a skill file tells the run to read is a skill file or a file of
 test('every record file a skill file names is a row of record.md, Files, and every row is named outside it', () => {
   assert.deepEqual(ROWS.slice(0, 5), ['inputs.md', 'plan.md', 'run.md', 'steps.json', 'report.md']);
   // A per-run copy takes "-run<n>" before its extension. "*" in a name and "<slug>" in a row stand for the part that varies.
-  const pattern = (name, hole, part) => new RegExp(`^${name.split(hole).map((piece) => piece.replace(/[.<>]/g, '\\$&')).join(part)}$`);
+  const literal = (piece) => piece.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+  const pattern = (name, hole, part) => new RegExp(`^${name.split(hole).map(literal).join(part)}$`);
   const row = (name) => {
     const plain = name.replace(/-run(?:<n>|\d+)(?=\.)/, '');
     return ROWS.some((r) => r === plain || pattern(plain, '*', '.*').test(r) || pattern(r, /<[a-z-]+>/, '[^.]+').test(plain));

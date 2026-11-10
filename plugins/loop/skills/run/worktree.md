@@ -18,7 +18,7 @@ Record two roots in `run.md`:
 ## Working in it
 
 - Run every git command for the primary as `git -C <checkout>`.
-- Run every other command that acts on its tree (checks, `git add -N`, every `gh` call that names no repository) in one Bash call as `cd <checkout> && <command>`, with absolute paths. A bare `cd` that outlives the call is never used.
+- Run every other command that acts on its tree (checks, `git add -N`, `gh` calls that read its branch) in one Bash call as `cd <checkout> && <command>`, with absolute paths. A bare `cd` that outlives the call is never used.
 - Install dependencies in the worktree before the baseline, with the install the repository names, under the `check` budget. When no install is known and a check fails for that reason, the check is "not run" in the worktree, not a baseline failure.
 - A continued branch checked out in the session's checkout cannot be checked out in the worktree. Step 0.2 detached the session in place; if the session is still on the branch, end the run `blocked`.
 - A branch switch inside the worktree detaches in place and fast-forwards with `git fetch . refs/remotes/<remote>/<branch>:refs/heads/<branch>`.

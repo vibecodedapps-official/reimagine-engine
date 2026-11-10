@@ -105,21 +105,23 @@ before(() => {
 
 after(() => rmSync(base, { recursive: true, force: true }));
 
-test('R221: rules 0.1.0 changes only the version in the manifest and its catalog entry', () => {
+test('R221: rules 0.1.0 changes only the version in the manifest and its catalog entry, and raises the catalog version by one', () => {
   const dir = caseDir();
   const before = read(dir, manifest('rules'));
   const r = release(dir, 'rules', '0.1.0');
   assert.equal(r.status, 0, shown(r));
   const lines = r.stdout.split('\n');
   assert.equal(lines.pop(), '', shown(r));
-  assert.equal(lines.length, 3, shown(r));
+  assert.equal(lines.length, 4, shown(r));
   assert.equal(lines[0], 'release: plugins/rules/.claude-plugin/plugin.json: 0.1.0-alpha.1 -> 0.1.0', shown(r));
   assert.equal(lines[1], 'release: .claude-plugin/marketplace.json: 0.1.0-alpha.1 -> 0.1.0', shown(r));
-  assert.ok(lines[2].startsWith('lint: ok ('), shown(r));
+  assert.equal(lines[2], 'release: .claude-plugin/marketplace.json: metadata.version 0.1.0-alpha.1 -> 0.1.0-alpha.2', shown(r));
+  assert.ok(lines[3].startsWith('lint: ok ('), shown(r));
   assert.ok(before.includes('"version": "0.1.0-alpha.1"'));
   assert.equal(read(dir, manifest('rules')), before.replace('"version": "0.1.0-alpha.1"', '"version": "0.1.0"'));
   const versions = Object.fromEntries(JSON.parse(read(dir, catalog)).plugins.map((p) => [p.name, p.version]));
   assert.deepEqual(versions, { guard: '0.1.0-alpha.1', gate: '0.1.0-alpha.1', primer: '0.1.0-alpha.1', audit: '0.1.0-alpha.1', loop: '0.1.0-alpha.1', rules: '0.1.0' });
+  assert.equal(JSON.parse(read(dir, catalog)).metadata.version, '0.1.0-alpha.2');
   assert.deepEqual(changed(dir), [' M .claude-plugin/marketplace.json', ' M plugins/rules/.claude-plugin/plugin.json']);
 });
 
@@ -129,15 +131,16 @@ test('R221: audit 0.1.0 also sets the plugin_version literals', () => {
   assert.equal(r.status, 0, shown(r));
   const lines = r.stdout.split('\n');
   assert.equal(lines.pop(), '', shown(r));
-  assert.equal(lines.length, 6, shown(r));
-  assert.deepEqual(lines.slice(0, 5), [
+  assert.equal(lines.length, 7, shown(r));
+  assert.deepEqual(lines.slice(0, 6), [
     'release: plugins/audit/.claude-plugin/plugin.json: 0.1.0-alpha.1 -> 0.1.0',
     'release: .claude-plugin/marketplace.json: 0.1.0-alpha.1 -> 0.1.0',
+    'release: .claude-plugin/marketplace.json: metadata.version 0.1.0-alpha.1 -> 0.1.0-alpha.2',
     'release: plugins/audit/skills/audit/SKILL.md: 0.1.0-alpha.1 -> 0.1.0',
     'release: plugins/audit/skills/audit/resume.md: 0.1.0-alpha.1 -> 0.1.0',
     'release: plugins/audit/skills/audit/stages/1-orient.md: 0.1.0-alpha.1 -> 0.1.0',
   ], shown(r));
-  assert.ok(lines[5].startsWith('lint: ok ('), shown(r));
+  assert.ok(lines[6].startsWith('lint: ok ('), shown(r));
   assert.deepEqual(changed(dir), [
     ' M .claude-plugin/marketplace.json',
     ' M plugins/audit/.claude-plugin/plugin.json',
@@ -203,6 +206,12 @@ test('R221: releasing loop leaves the other manifests unchanged', () => {
   }
 });
 
+refuses('R221: refuses a catalog version it cannot raise, before any write', (dir) => {
+  put(dir, catalog, read(dir, catalog).replace('"version": "0.1.0-alpha.1"', '"version": "abc"'));
+  commit(dir);
+}, ['rules', '0.1.0'], 1,
+  'release: cannot raise metadata.version in .claude-plugin/marketplace.json');
+
 refuses('R221: refuses a usage error with one argument', () => {}, ['rules'], 2,
   'release: usage: node tools/release.mjs <plugin> <version>');
 
@@ -246,6 +255,7 @@ test('R221: runs lint afterwards and exits with its status', () => {
   assert.equal(r.stdout, [
     'release: plugins/rules/.claude-plugin/plugin.json: 0.1.0-alpha.1 -> 0.1.0',
     'release: .claude-plugin/marketplace.json: 0.1.0-alpha.1 -> 0.1.0',
+    'release: .claude-plugin/marketplace.json: metadata.version 0.1.0-alpha.1 -> 0.1.0-alpha.2',
     'lint: 1 failure(s)',
     '- plugins/rules/notes.txt: not something a plugin installs',
     '',

@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 Done when the tag `<plugin>--v<version>` exists on the remote, `CHANGELOG.md` has the heading for it, and `docs/acceptance.md` records the eval scores.
 
-1. Bump: `node tools/release.mjs <plugin> <version>`. The output lists the edited paths and ends with `lint: ok`. Raise the catalog's `metadata.version` by one, and for rules move the shipped version literals of `tests/rules/rules.test.mjs`.
+1. Bump: `node tools/release.mjs <plugin> <version>`. The output lists the edited paths, with the catalog's own `metadata.version` raised by one, and ends with `lint: ok`.
 2. Commit the bump on the milestone's branch, staging those paths and step 1's edits only. Add `## <plugin> <version> - <YYYY-MM-DD>` to `CHANGELOG.md` with the release notes and commit it as `docs(changelog): add the <plugin> <version> heading`.
 3. After a yes, push the branch; after another, open the pull request. The owner merges it; CI is green on the merge commit before the next step.
 4. Evals: `npm run eval`, or `npm run eval -- --trust-plugin` from a session without a terminal. The output shows each case's score with and without its plugin. Record the scores, the baseline and the host version under item 38 in `docs/acceptance.md`.

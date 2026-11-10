@@ -369,9 +369,22 @@ describe('primer drift hook', () => {
       const dir = await make('twice', { 'CLAUDE.md': hubOf(opening('docs/gone.md') + ' See `docs/gone.md` again.') });
       assert.equal(await run('git commit -m x', dir), deny(brokenFinding));
     });
-    test('a backticked URL is checked as a path', async () => {
-      const dir = await make('url', { 'CLAUDE.md': hubOf(opening('https://example.invalid/x')) });
-      assert.equal(await run('git commit -m x', dir), deny('CLAUDE.md names missing path https://example.invalid/x'));
+    test('a branch, a slug, a home path, an absolute path, a drive path and a URL are not repository paths', async () => {
+      const others = 'See `origin/main`, `and/or`, `~/.claude/settings.json`, `/etc/hosts`, `C:/work/notes.md` and `https://example.invalid/x.md`.';
+      const dir = await make('not-paths', { 'CLAUDE.md': hubOf(opening('docs/design.md') + ' ' + others) });
+      assert.equal(await run('git commit -m x', dir), '');
+    });
+    test('a first segment in another case is still a missing path', async () => {
+      const dir = await make('case-top', { 'CLAUDE.md': hubOf(opening('docs/design.md') + ' See `Src/a.ts`.') });
+      assert.equal(await run('git commit -m x', dir), deny('CLAUDE.md names missing path Src/a.ts'));
+    });
+    test('a path written from ./ is checked without it', async () => {
+      const dir = await make('dot-slash', { 'CLAUDE.md': hubOf(opening('./docs/design.md') + ' See `./src/gone.ts`.') });
+      assert.equal(await run('git commit -m x', dir), deny('CLAUDE.md names missing path ./src/gone.ts'));
+    });
+    test('a missing path under a top-level entry that exists is a finding', async () => {
+      const dir = await make('under-top', { 'CLAUDE.md': hubOf(opening('docs/design.md') + ' See `src/gone.ts`.') });
+      assert.equal(await run('git commit -m x', dir), deny('CLAUDE.md names missing path src/gone.ts'));
     });
     test('a double quote and a backslash in the finding are escaped', async () => {
       const dir = await make('quote', { 'CLAUDE.md': hubOf(opening('docs/a"b\\c.md')) });

@@ -33,10 +33,9 @@ The hub is the root `CLAUDE.md`, or the root `AGENTS.md` under the AGENTS.md sec
 - List a command only when a manifest, build file, script or workflow holds it. List a constraint only when the repository states or enforces it.
 - Nothing for people goes in the hub. No `@path` import appears in it, except the one-line `@AGENTS.md` file of the AGENTS.md section.
 
-The drift hook checks the opening paragraph, which runs from the `# ` heading to the first `## ` line. Every backticked token there that holds a `/` or ends in `.md`, and holds no space, `<`, `>`, `*`, `{` or `?`, must name a path that exists, spelled exactly as written, case included. So:
+The drift hook checks the opening paragraph, which runs from the `# ` heading to the first `## ` line. Every backticked token there that holds a `/` or ends in `.md`, and holds no space, `<`, `>`, `*`, `{` or `?`, must name a path that exists, spelled exactly as written, case included. A token is not checked when it starts with `~`, `/` or a drive letter, when it is a URL, or when it does not end in `.md` and its first segment is no top-level entry of the repository, as with the branch `origin/main`. So:
 
 - Put a placeholder in angle brackets, as in `plugins/<name>/`. A token with `<` is not checked.
-- Write a URL as plain text or as a Markdown link, never in backticks.
 - Write a glob with its `*`.
 
 ## Nested CLAUDE.md

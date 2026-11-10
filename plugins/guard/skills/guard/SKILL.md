@@ -1,7 +1,7 @@
 ---
 name: guard
 description: Keeps the auto mode classifier's entries for the repositories you list in your user settings file, and shows each change before it is made.
-argument-hint: "[add PATH [merge] | drop PATH-OR-REMOTE | clear | list | status | denials]"
+argument-hint: "[add PATH [merge] [reads] | drop PATH-OR-REMOTE | clear | list | status | denials]"
 disable-model-invocation: true
 allowed-tools:
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" status *)
@@ -23,7 +23,7 @@ $ARGUMENTS
 ## Accepted arguments
 
 - Empty.
-- `add <path>`, or `add <path> merge`.
+- `add <path>`, then `merge`, `reads`, both or neither.
 - `drop <path or remote>`
 - `clear`
 - `list`
@@ -50,8 +50,7 @@ Run exactly one command with the Bash tool, chosen by the arguments:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}"`
 - `add <path>`:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}" --add "<path>"`
-- `add <path> merge`:
-  `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}" --add "<path>" --merge`
+- `add <path>` with `merge`, `reads` or both: the same command with `--merge`, `--reads` or both after the path.
 - `drop <path or remote>`:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}" --drop "<path or remote>"`
 - `clear`:
@@ -75,6 +74,6 @@ Wait for the reply. Any other reply is a no: say nothing was written, and stop.
 
 ## Step 3: apply
 
-On that reply, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" apply "${CLAUDE_PLUGIN_DATA}"` with the Bash tool. Show the output verbatim in a fenced code block.
+On that reply, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" apply "${CLAUDE_PLUGIN_DATA}" <id>` with the Bash tool, where `<id>` is the twelve characters on the `plan:` line of the Step 1 output you showed. The script then writes that plan and no other. Show the output verbatim in a fenced code block.
 
 If the permission mode denies the command, report the denial in full and wait. Never retry it another way, and never write the file yourself.

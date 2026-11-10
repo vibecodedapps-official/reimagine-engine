@@ -218,6 +218,21 @@ jesc() {
 	END { printf "%s", out }'
 }
 
+# top_entry <name>: true when $root has a top-level entry of that name in any case, so a
+# first segment spelled in another case still reaches exact and is a finding.
+top_entry() {
+	[ -n "${tops+x}" ] || tops=$(cd "$root" 2>/dev/null && ls -A | tr '[:upper:]' '[:lower:]')
+	te_seg=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+	case "
+$tops
+" in
+	*"
+$te_seg
+"*) return 0 ;;
+	esac
+	return 1
+}
+
 # exact <path>: true when every segment of <path> exists under $root with that spelling.
 # `test -e` alone accepts another case on a case-insensitive filesystem, where a pointer
 # written that way passes here and is a missing path on Linux.
@@ -476,7 +491,16 @@ check_root() {
 	}' "$root/$hub" 2>/dev/null)
 	while IFS= read -r tok; do
 		[ -n "$tok" ] || continue
-		exact "$tok" || addf "$hub names missing path $tok"
+		# A home, absolute or drive path and a URL lie outside the repository. Any other token
+		# that is no .md file is a path only when its first segment is a top-level entry in
+		# any case, which a branch such as origin/main is not.
+		rel=${tok#./}
+		case $rel in
+		'~'* | /* | [A-Za-z]:[\\/]* | *://*) continue ;;
+		*.md) ;;
+		*) top_entry "${rel%%/*}" || continue ;;
+		esac
+		exact "$rel" || addf "$hub names missing path $tok"
 	done <<EOF
 $tokens
 EOF

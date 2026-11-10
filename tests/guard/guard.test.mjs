@@ -32,7 +32,7 @@ const sourceFor = (remotes) => `**Source control**: The trusted repo and its rem
 const mergeFor = (remotes) => `Owner-reviewed merges: merging a pull request in ${remotes}, when the user's own message names that pull request and asks for the merge; the user reviews their own pull requests in these repositories. (reimagine guard)`;
 const CHECK = "guard: the host's effective configuration holds every guard entry once";
 const PLAN_CHECK = "check: the dry run's effective configuration holds every guard entry once";
-const FORMS = 'plan takes one of --add <path> [--merge], --drop <path or remote> or --clear; nothing else is accepted';
+const FORMS = 'plan takes one of --add <path> [--merge] [--reads], --drop <path or remote> or --clear; nothing else is accepted';
 
 const dirs = [];
 after(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
@@ -51,7 +51,16 @@ function world({ configEnv = true } = {}) {
   w.settings = join(configEnv ? w.config : join(w.home, '.claude'), 'settings.json');
   w.list = join(configEnv ? w.config : join(w.home, '.claude'), 'reimagine-guard.json');
   w.claude = (args, d) => stand(w, args, d);
-  w.run = (...argv) => main([argv[0], w.data, ...argv.slice(1)], { env: w.env, now: w.now, home: w.home, cwd: w.work, claude: w.claude, platform: w.platform });
+  const call = (argv) => main([argv[0], w.data, ...argv.slice(1)], { env: w.env, now: w.now, home: w.home, cwd: w.work, claude: w.claude, platform: w.platform });
+  // One session: it takes the id from its plan's plan: line and gives it to apply, as the skill does.
+  w.run = (...argv) => {
+    if (argv[0] === 'apply' && argv.length === 1) return call(['apply', w.planId ?? '000000000000']);
+    const out = call(argv);
+    if (argv[0] !== 'plan') return out;
+    const i = out.findIndex((l) => l.startsWith('plan: '));
+    w.planId = i < 0 ? undefined : out[i].slice(6);
+    return out.filter((_, k) => k !== i);
+  };
   return w;
 }
 
@@ -153,16 +162,15 @@ test('R335: the first add writes both files in the configuration directory, with
     `entry: + environment: ${t}`,
     `entry: + environment: ${s}`,
     `entry: + allow: ${A1}`,
-    `entry: + allow: ${A2}`,
     PLAN_CHECK,
     'change: ready',
   ]);
   assert.equal(existsSync(w.settings), false);
   w.now = new Date('2026-11-04T10:00:01Z');
   assert.deepEqual(w.run('apply'), [`guard: wrote ${w.settings}`, `guard: wrote ${w.list}`, CHECK]);
-  assert.equal(read(w.settings), `{\n  "autoMode": {\n    "environment": [\n      ${j(ORG)},\n      ${j(VIS)},\n      ${j(t)},\n      ${j(s)},\n      ${j(DOMAINS)}\n    ],\n    "allow": [\n      "$defaults",\n      ${j(A1)},\n      ${j(A2)}\n    ]\n  }\n}\n`);
+  assert.equal(read(w.settings), `{\n  "autoMode": {\n    "environment": [\n      ${j(ORG)},\n      ${j(VIS)},\n      ${j(t)},\n      ${j(s)},\n      ${j(DOMAINS)}\n    ],\n    "allow": [\n      "$defaults",\n      ${j(A1)}\n    ]\n  }\n}\n`);
   assert.equal(read(w.list), `{\n  "version": 1,\n  "repos": [\n    {\n      "path": "${top}",\n      "remotes": [\n        "${NA}"\n      ],\n      "merge": false\n    }\n  ]\n}\n`);
-  assert.deepEqual(JSON.parse(read(join(w.data, 'guard-state.json'))), { written: [t, s, A1, A2], copied: [ORG, VIS, DOMAINS], created: true });
+  assert.deepEqual(JSON.parse(read(join(w.data, 'guard-state.json'))), { written: [t, s, A1], copied: [ORG, VIS, DOMAINS], created: true });
   assert.equal(read(join(w.data, 'guard-plan.json')), '{}\n');
   assert.equal(existsSync(join(w.data, 'guard.lock')), false);
 });
@@ -383,12 +391,12 @@ test('R342: a dry run whose effective configuration lacks a guard entry refuses 
 test('R342: a check that fails after the write exits 1 with what is missing and the backup', () => {
   const w = repoWorld();
   writeFileSync(w.settings, '{}\n');
-  w.stand.drop = { prefix: 'Settings reads', real: true };
+  w.stand.drop = { prefix: "User's own repositories", real: true };
   w.run('plan', '--add', w.repo.path);
   w.now = new Date('2026-11-04T12:34:56Z');
   const backup = `${w.settings}.reimagine-backup-20261104123456`;
-  assert.throws(() => w.run('apply'), refusal(`wrote ${w.settings}, but the host's effective configuration fails the check: Settings reads: reading Claude Code settings files, the sett appears 0 times; the backup is ${backup}`));
-  assert.equal(JSON.parse(read(w.settings)).autoMode.allow.length, 3);
+  assert.throws(() => w.run('apply'), refusal(`wrote ${w.settings}, but the host's effective configuration fails the check: User's own repositories: pushing a branch to a repository li appears 0 times; the backup is ${backup}`));
+  assert.equal(JSON.parse(read(w.settings)).autoMode.allow.length, 2);
   assert.equal(read(backup), '{}\n');
 });
 
@@ -553,8 +561,8 @@ test('R340: a path outside a git work tree, and a drop of an unknown entry, are 
 
 test('R340: argument errors are refused before any claude call', () => {
   const w = world();
-  for (const argv of [['plan', '--add'], ['plan', '--add', 'x', '--clear'], ['plan', '--add', 'x', '--drop', 'y'], ['plan', '--merge'], ['plan', '--drop', 'x', '--merge'], ['plan', '--clear', '--merge'], ['plan', 'bogus'], ['plan', '--drop', '--clear']]) noCall(w, argv, FORMS);
-  noCall(w, ['apply', 'x'], 'apply takes no arguments');
+  for (const argv of [['plan', '--add'], ['plan', '--add', 'x', '--clear'], ['plan', '--add', 'x', '--drop', 'y'], ['plan', '--merge'], ['plan', '--reads'], ['plan', '--drop', 'x', '--reads'], ['plan', '--clear', '--reads'], ['plan', '--drop', 'x', '--merge'], ['plan', '--clear', '--merge'], ['plan', 'bogus'], ['plan', '--drop', '--clear']]) noCall(w, argv, FORMS);
+  noCall(w, ['apply', 'x'], 'apply takes the id on the plan: line of the plan it writes');
   noCall(w, ['status', 'x'], 'status takes no arguments');
   noCall(w, ['list', 'x'], 'list takes no arguments');
   assert.throws(() => main(['nope', w.data], { env: w.env }), refusal('unknown command nope; use status, list, plan, apply or denials'));
@@ -568,7 +576,7 @@ test('R340: --add of a listed path updates it, and --merge sets merge and adds t
   const { plan } = change(w, '--add', w.repo.path, '--merge');
   assert.deepEqual(plan, [`target: ${w.settings}`, `list: ${w.list}`, 'state: stale', `repository: ~ ${w.repo.top} (${NA}) merge`, `entry: + allow: ${merge}`, PLAN_CHECK, 'change: ready']);
   assert.deepEqual(JSON.parse(read(w.list)).repos, [{ path: w.repo.top, remotes: [NA], merge: true }]);
-  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', A1, A2, merge]);
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', A1, merge]);
   const back = w.run('plan', '--add', w.repo.path);
   assert.deepEqual(back.slice(2), ['state: stale', `repository: ~ ${w.repo.top} (${NA})`, `entry: - allow: ${merge}`, PLAN_CHECK, 'change: ready']);
 });
@@ -590,7 +598,7 @@ test('R338: two repositories are sorted by path, each named with its remotes, an
     sourceFor(`${NA}, ${NB1}, ${NB2}`),
     DOMAINS,
   ]);
-  assert.deepEqual(mode.allow, ['$defaults', A1, A2, mergeFor(`${NB1}, ${NB2}`)]);
+  assert.deepEqual(mode.allow, ['$defaults', A1, mergeFor(`${NB1}, ${NB2}`)]);
   assert.deepEqual(w.run('list'), [`${app.top} ${NA}`, `${lib.top} ${NB1},${NB2} merge`]);
 });
 
@@ -677,7 +685,7 @@ test('R336: other keys of the file and of autoMode keep their values and place, 
   writeFileSync(w.settings, `{\n  "autoMode": {\n    "soft_deny": ["Keep: never push."],\n    "classifyAllShell": true,\n    "environment": ["**Organization**: Mine.", "A line with no label"]\n  }${tail}`);
   const { plan } = change(w, '--add', w.repo.path);
   const t = trustedFor(`${w.repo.top} (${NA})`), s = sourceFor(NA);
-  assert.deepEqual(plan.slice(2), ['state: absent', `repository: + ${w.repo.top} (${NA})`, `entry: + environment: ${t}`, `entry: + environment: ${s}`, `entry: + allow: ${A1}`, `entry: + allow: ${A2}`, PLAN_CHECK, 'change: ready']);
+  assert.deepEqual(plan.slice(2), ['state: absent', `repository: + ${w.repo.top} (${NA})`, `entry: + environment: ${t}`, `entry: + environment: ${s}`, `entry: + allow: ${A1}`, PLAN_CHECK, 'change: ready']);
   const text = read(w.settings);
   assert.ok(text.endsWith(tail));
   const doc = JSON.parse(text);
@@ -686,7 +694,7 @@ test('R336: other keys of the file and of autoMode keep their values and place, 
   assert.deepEqual(doc.autoMode.soft_deny, ['Keep: never push.']);
   assert.equal(doc.autoMode.classifyAllShell, true);
   assert.deepEqual(doc.autoMode.environment, ['**Organization**: Mine.', 'A line with no label', t, s]);
-  assert.deepEqual(doc.autoMode.allow, ['$defaults', A1, A2]);
+  assert.deepEqual(doc.autoMode.allow, ['$defaults', A1]);
   change(w, '--clear');
   const back = JSON.parse(read(w.settings));
   assert.deepEqual(back.autoMode, { soft_deny: ['Keep: never push.'], classifyAllShell: true, environment: ['**Organization**: Mine.', 'A line with no label', TRUSTED, SOURCE] });
@@ -761,13 +769,13 @@ test('R339: an allow of [] stays [], and an allow left as ["$defaults"] is remov
   const w = repoWorld();
   writeFileSync(w.settings, '{"autoMode":{"allow":[]}}\n');
   change(w, '--add', w.repo.path);
-  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, [A1, A2]);
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, [A1]);
   change(w, '--clear');
   assert.deepEqual(JSON.parse(read(w.settings)), { autoMode: { allow: [] } });
   const v = repoWorld();
   writeFileSync(v.settings, '{"autoMode":{"allow":["$defaults"],"soft_deny":["Keep."]}}\n');
   change(v, '--add', v.repo.path);
-  assert.deepEqual(JSON.parse(read(v.settings)).autoMode.allow, ['$defaults', A1, A2]);
+  assert.deepEqual(JSON.parse(read(v.settings)).autoMode.allow, ['$defaults', A1]);
   change(v, '--clear');
   assert.deepEqual(JSON.parse(read(v.settings)), { autoMode: { soft_deny: ['Keep.'] } });
 });
@@ -776,7 +784,7 @@ test('R339: the allow entries ride after the user\'s own allow entries, and a us
   const w = repoWorld();
   writeFileSync(w.settings, '{"autoMode":{"allow":["$defaults","Mine: allowed."]}}\n');
   change(w, '--add', w.repo.path, '--merge');
-  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', 'Mine: allowed.', A1, A2, mergeFor(NA)]);
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', 'Mine: allowed.', A1, mergeFor(NA)]);
   change(w, '--clear');
   assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', 'Mine: allowed.']);
 });
@@ -801,7 +809,7 @@ for (const [name, original, start] of RETURNS) {
     const added = read(w.settings);
     assert.ok(added.startsWith(start), added);
     if (original.includes('\r\n')) assert.equal(/(?<!\r)\n/.test(added), false);
-    assert.equal(JSON.parse(added.replace(/^\uFEFF/, '')).autoMode.allow.length, 3);
+    assert.equal(JSON.parse(added.replace(/^\uFEFF/, '')).autoMode.allow.length, 2);
     change(w, '--clear');
     assert.ok(readFileSync(w.settings).equals(Buffer.from(original, 'utf8')), JSON.stringify(read(w.settings)));
     assert.equal(existsSync(w.list), false);
@@ -1000,4 +1008,92 @@ test('R341: session-start prints nothing when claude cannot run, and the hook ex
   const run = spawnSync(process.execPath, [SCRIPT, 'session-start', w.data], { env, encoding: 'utf8' });
   assert.equal(run.status, 0);
   assert.equal(run.stdout, '');
+});
+
+test('R342: apply writes only the plan whose id it is given, so a plan another session saved since is refused', () => {
+  const w = repoWorld();
+  const raw = (...argv) => main([argv[0], w.data, ...argv.slice(1)], { env: w.env, now: w.now, home: w.home, cwd: w.work, claude: w.claude });
+  const shown = raw('plan', '--add', w.repo.path);
+  const id = shown.at(-2).match(/^plan: ([0-9a-f]{12})$/)[1];
+  assert.equal(shown.at(-1), 'change: ready');
+  raw('plan', '--add', w.repo.path, '--merge');
+  assert.throws(() => raw('apply', id), refusal('the saved plan is not the one this session was shown, so nothing was written; run /guard again'));
+  assert.equal(existsSync(w.settings), false);
+  assert.throws(() => raw('apply'), refusal('apply takes the id on the plan: line of the plan it writes'));
+  assert.equal(raw('plan', '--add', w.repo.path).at(-2), `plan: ${id}`);
+  const file = join(w.data, 'guard-plan.json');
+  const saved = read(file);
+  writeFileSync(file, saved.replace('"created": true', '"created": false'));
+  assert.notEqual(read(file), saved);
+  assert.throws(() => raw('apply', id), refusal('the saved plan is not the one this session was shown, so nothing was written; run /guard again'));
+  writeFileSync(file, saved);
+  raw('apply', id);
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', A1]);
+});
+
+test('R335: a denial line carries no credential its command held, and cuts the reason, the path and the cwd', () => {
+  const w = world();
+  denied(w, { cwd: `/work/${'d'.repeat(400)}`, tool_name: 'Bash', tool_input: { command: 'curl -H "Authorization: Bearer sk-SECRET123" -d token=abc123 https://user:pw9@host.example.invalid/x' }, reason: `[Credential Leakage] ${'r'.repeat(600)}` });
+  denied(w, { cwd: '/w', tool_name: 'Write', tool_input: { file_path: `/w/${'p'.repeat(400)}` }, reason: 'x' });
+  const [bash, write] = read(DENIALS(w)).trim().split('\n').map((l) => JSON.parse(l));
+  assert.equal(bash.command, 'curl -H "Authorization: Bearer [redacted]" -d token=[redacted] https://[redacted]@host.example.invalid/x');
+  assert.equal(bash.reason.length, 500);
+  assert.equal(bash.cwd.length, 300);
+  assert.equal(write.path.length, 300);
+});
+
+test('R335: a denial line takes each credential form from a command, and leaves the words of a reason', () => {
+  const w = world();
+  const record = (command, reason = 'x') => {
+    rmSync(DENIALS(w), { force: true });
+    denied(w, { cwd: '/w', tool_name: 'Bash', tool_input: { command }, reason });
+    return JSON.parse(read(DENIALS(w)));
+  };
+  assert.equal(record('git clone https://x-access-token:ghp_abc123@git.example.invalid/o/r').command, 'git clone https://[redacted]@git.example.invalid/o/r');
+  assert.equal(record('git clone https://ghp_abc123@git.example.invalid/o/r').command, 'git clone https://[redacted]@git.example.invalid/o/r');
+  assert.equal(record('curl -u x -H "X-Api-Key: abc123" --basic').command, 'curl -u x -H "X-Api-Key: [redacted]" --basic');
+  assert.equal(record('GITHUB_TOKEN=ghp_abc npm publish --password=hunter2 --secret "s"').command, 'GITHUB_TOKEN=[redacted] npm publish --password=[redacted] --secret "s"');
+  assert.equal(record('gh auth login --with-token ghp_abc123XYZ').command, 'gh auth login --with-token [redacted]');
+  assert.equal(record('mysql --password hunter2 -u root').command, 'mysql --password hunter2 -u root');
+  assert.equal(record('curl -H "Authorization: Basic dXNlcjpwdzEyMw=="').command, 'curl -H "Authorization: Basic [redacted]"');
+  assert.equal(record('git clone https://user:pa@ss@git.example.invalid/o/r').command, 'git clone https://[redacted]@git.example.invalid/o/r');
+  assert.equal(record('gh auth token --hostname git.example.invalid').command, 'gh auth token --hostname git.example.invalid');
+  assert.equal(record(`AWS_SESSION_TOKEN=${'A'.repeat(600)}TAILSECRET aws s3 ls`).command, 'AWS_SESSION_TOKEN=[redacted] aws s3 ls');
+  assert.equal(record(`curl -H "Authorization: Bearer ${'a1'.repeat(350)}TAILSECRET"`).command, 'curl -H "Authorization: Bearer [redacted]"');
+  const prose = 'The command sends a token to a third party; a basic read-only check prints the token x-access-token. Keys: listed';
+  assert.equal(record('ls', prose).reason, prose);
+  assert.equal(record('ls', 'It ran with password=hunter2 and a bearer ghp_abc123XYZ in view').reason, 'It ran with password=[redacted] and a bearer [redacted] in view');
+});
+
+test('R335: a denial of 300,000 characters is recorded in under two seconds', () => {
+  const w = world();
+  const started = Date.now();
+  for (const word of ['key', 'token ', 'password']) denied(w, { cwd: '/w', tool_name: 'Bash', tool_input: { command: word.repeat(100000) }, reason: word.repeat(100000) });
+  assert.ok(Date.now() - started < 2000);
+  assert.equal(read(DENIALS(w)).trim().split('\n').length, 3);
+});
+
+test('R335: the denial record keeps its newest 100 lines once it passes 256 KiB', () => {
+  const w = world();
+  const old = Array.from({ length: 300 }, (_, i) => j({ time: `old-${i + 1}`, reason: 'r'.repeat(900), tool: 'Bash', command: 'ls', cwd: '/w' }));
+  writeFileSync(DENIALS(w), `${old.join('\n')}\n`);
+  denied(w, { cwd: '/w', tool_name: 'Bash', tool_input: { command: 'ls' }, reason: 'new' });
+  const lines = read(DENIALS(w)).trim().split('\n').map((l) => JSON.parse(l));
+  assert.equal(lines.length, 100);
+  assert.equal(lines[0].time, 'old-202');
+  assert.equal(lines.at(-1).reason, 'new');
+});
+
+test('R339: the settings reads entry is written only while a repository is listed with --reads', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', A1]);
+  assert.deepEqual(JSON.parse(read(w.list)).repos, [{ path: w.repo.top, remotes: [NA], merge: false }]);
+  const on = change(w, '--add', w.repo.path, '--reads');
+  assert.deepEqual(on.plan.slice(2), ['state: stale', `repository: ~ ${w.repo.top} (${NA}) reads`, `entry: + allow: ${A2}`, PLAN_CHECK, 'change: ready']);
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', A1, A2]);
+  assert.deepEqual(JSON.parse(read(w.list)).repos, [{ path: w.repo.top, remotes: [NA], merge: false, reads: true }]);
+  assert.deepEqual(w.run('list'), [`${w.repo.top} ${NA} reads`]);
+  const off = change(w, '--add', w.repo.path);
+  assert.deepEqual(off.plan.slice(2), ['state: stale', `repository: ~ ${w.repo.top} (${NA})`, `entry: - allow: ${A2}`, PLAN_CHECK, 'change: ready']);
 });

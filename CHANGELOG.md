@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.24 - 2026-11-10
+
+- The effort hint in a request goes to every subagent. One file passed it to reviewers only, so a run that followed that file would build its slices at the default effort.
+- With "primary <path>" naming a checkout of another repository, the reads of the pull request's checks run in that checkout. The text said `gh` takes the repository from the session's folder; it takes it from the folder the call runs in.
+- A credential block, an AWS access key and a PEM key get the same marker in the echo as in the record. Before, the echo printed `<redacted: key>` for all three.
+- Each rule for a reviewer or an implementer is written once, in the step that acts on it, and the review step names the model its stand-in is retried at.
+- The skill is about 530 words shorter. Nothing else changes for a run.
+
 ## loop 0.1.23 - 2026-11-10
 
 - A later run on a branch takes a done input up again, like a new one, when its ticket's title or body, or its file's text, changed since the run that last planned from it. Before, a criterion added to an issue after its work was committed was never read.

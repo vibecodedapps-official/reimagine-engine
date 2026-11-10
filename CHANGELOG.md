@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.25 - 2026-11-10
+
+- Under an ask-first rule, the question a run asks before its commit names the record attached with each ticket comment it lists, and a yes covers what the question listed and nothing more. Four of thirteen such questions had left the record out, and of the runs that went on, one kept the record local and one attached it although no question had listed it. The rule stood among the approval rules and in a file a run reads after its first push; the publish step now states it where the question is asked.
+- A record that no question of the run named gets its own question before it is attached, and is not attached unasked. A reply that is not a clear yes keeps it local and named in the report, and does not end the run.
+- The file for steps 3.6 to 6 repeated within itself what its own sections already said. It goes from 3,786 to 3,582 words with every condition, limit, ban, step and brief item kept.
+
 ## loop 0.1.24 - 2026-11-10
 
 - The effort hint in a request goes to every subagent. One file passed it to reviewers only, so a run that followed that file would build its slices at the default effort.

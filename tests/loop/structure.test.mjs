@@ -105,6 +105,10 @@ test('the terminal states are five, and a run ends in no other', () => {
   assert.ok(ends >= 60, `only ${ends} endings found`);
 });
 
+test('the effort words are mapped to an effort in one file', () => {
+  assert.deepEqual(FILES.filter((file) => TEXT[file].includes('"very thorough"')), ['SKILL.md']);
+});
+
 test('the report template and report.md, Sections, name the same sections in the same order', () => {
   const report = TEXT['report.md'];
   const template = report.split('\n## Template\n')[1].split('\n```\n')[1];

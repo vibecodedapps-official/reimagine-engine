@@ -64,6 +64,9 @@ const PRE_APPROVED = new RegExp(`^Bash\\((date|date \\*|sleep \\*|git (${GIT_REA
 // earlier one admits git's -c. The last form is the placeholder for a check in the gate's child list.
 const ALLOWED_SHELL = new RegExp(`^Bash\\(((date|sleep|git (--no-optional-locks )?(${[...GIT_READS, 'config --list'].join('|')})|gh (${GH_READS.join('|')})`
   + `|(node|sh) "\\$\\{CLAUDE_PLUGIN_ROOT\\}/scripts/[\\w.-]+")( [\\w-]+)*( \\*)?|<check>\\*)\\)$`);
+// For the PowerShell tool, only the forms of the gate's child list: a session refused each command that began like one
+// of them and also wrote a file.
+const ALLOWED_POWERSHELL = /^PowerShell\((git (status|ls-files) \*|<check>\*)\)$/;
 const OWN_ALLOW_RULE = [GUARD_SKILL, LOOP_SKILL, GATE_SKILL];
 
 const HEADING = new RegExp(`^## (${[...NAMES, ...RETIRED].join('|')}) (${SEMVER_CORE}) - (\\d{4}-\\d{2}-\\d{2})$`);
@@ -409,7 +412,8 @@ function skillFailures(ctx) {
     // A child session's list as the text shows it, where [ ] and ... mark its optional part.
     for (const m of text.matchAll(/--allowed-?[Tt]ools[ =](?:"([^"]+)"|'([^']+)')/g)) entries.push(...listEntries((m[1] ?? m[2]).replace(/[[\]]|\.\.\./g, '')));
     for (const entry of entries) {
-      if (/\bBash\b/.test(entry) && !ALLOWED_SHELL.test(entry)) out.push(`${file}: pre-approves ${entry}, which is not a known read or a run of the plugin's own script`);
+      const allowed = /\bBash\b/.test(entry) ? ALLOWED_SHELL : /\bPowerShell\b/.test(entry) ? ALLOWED_POWERSHELL : null;
+      if (allowed && !allowed.test(entry)) out.push(`${file}: pre-approves ${entry}, which is not a known read or a run of the plugin's own script`);
     }
   }
 

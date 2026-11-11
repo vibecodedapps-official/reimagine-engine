@@ -440,6 +440,14 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, 'plugins/gate/skills/gate/steps/1-pass.md', 'TaskStop,Bash(git status *)', 'TaskStop,Bash(git show *),Bash(git status *)');
     bump(dir, 'gate');
   }, 1, ['plugins/gate/skills/gate/steps/1-pass.md: pre-approves Bash(git show *), which is not a known read or a run of the plugin\'s own script']);
+  negative('R356: <file>: pre-approves <entry> (a PowerShell entry of a child session)', (dir) => {
+    edit(dir, 'plugins/gate/skills/gate/steps/1-pass.md', 'PowerShell(git ls-files *)[', 'PowerShell(git ls-files *),PowerShell(git rev-parse *),PowerShell(npm test; *),PowerShell[');
+    bump(dir, 'gate');
+  }, 3, [
+    'plugins/gate/skills/gate/steps/1-pass.md: pre-approves PowerShell(git rev-parse *), which is not a known read or a run of the plugin\'s own script',
+    'plugins/gate/skills/gate/steps/1-pass.md: pre-approves PowerShell(npm test; *), which is not a known read or a run of the plugin\'s own script',
+    'plugins/gate/skills/gate/steps/1-pass.md: pre-approves PowerShell, which is not a known read or a run of the plugin\'s own script',
+  ]);
   negative('R356: <file>: pre-approves <entry> (a * before the entry\'s end, in a command)', (dir) => {
     edit(dir, 'plugins/audit/commands/run.md', 'allowed-tools: Read, Skill', 'allowed-tools: Bash(git -C * rev-parse *), Read, Skill');
     settle(dir, 'audit');

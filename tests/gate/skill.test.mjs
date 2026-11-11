@@ -229,7 +229,7 @@ test('R305: the child session runs headless with no write tool, its output saved
   for (const flag of ['--comment', '--fix', '--max-findings', '--dangerously-skip-permissions']) assert.ok(!line.includes(flag), `the command holds ${flag}`);
   const allowed = /--allowedTools "([^"]+)"/.exec(line);
   assert.notEqual(allowed, null, 'the command has no --allowedTools list');
-  assert.equal(allowed[1], 'Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]');
+  assert.equal(allowed[1], 'Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git status *),Bash(git ls-files *),PowerShell(git status *),PowerShell(git ls-files *)[,Bash(<check>*),PowerShell(<check>*)...]');
 });
 
 test('R305: the command hands the child its prompt unchanged, under Git Bash too', () => {

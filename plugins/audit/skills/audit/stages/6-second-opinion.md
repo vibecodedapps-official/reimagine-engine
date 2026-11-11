@@ -95,8 +95,8 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
      and count them with `wc -l`. When `_test.drop_ack` names an input by its
      run-relative path, treat its acknowledgment as missing for the first `times` checks,
      counted across batches and relaunches, whatever the answer says;
-   - a mandatory id of its batch has no position: run `sh
-     ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh missing <run dir> > <run dir>/tmp/missing.txt`
+   - a mandatory id of its batch has no position: run
+     `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" missing <run dir> > <run dir>/tmp/missing.txt`
      (a nonzero exit fails stage 6). The script scans every `second-opinion/response*.md`,
      so for one batch count `tmp/missing.txt` with `wc -l`; for batch `<k>` of several,
      run `LC_ALL=C comm -12 <run dir>/second-opinion/batch-<k>.txt

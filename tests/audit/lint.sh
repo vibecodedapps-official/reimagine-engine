@@ -288,7 +288,8 @@ fi
 # A shell step is one command a permission rule can match: a script runs by a quoted
 # path, and nothing sets a variable before a git command.
 for f in $(listed '^(skills|agents|commands)/.*\.md$'); do
-	! grep -qF 'sh ${CLAUDE_PLUGIN_ROOT}/scripts/' "$f" ||
+	# The path right after `sh`, or first on a line the run wraps onto, has no quote before it.
+	! grep -qE '(^[[:space:]]*|sh )\$\{CLAUDE_PLUGIN_ROOT\}/scripts/' "$f" ||
 		fail "$f: runs a script by an unquoted path"
 	! grep -qF 'GIT_NO_LAZY_FETCH' "$f" ||
 		fail "$f: sets a variable before a git command"

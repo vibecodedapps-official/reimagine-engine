@@ -116,3 +116,14 @@ test('the files that draft or post text for a reader point at common.md hard rul
     );
   }
 });
+
+test('the files that judge an agent output point at the rule for a failed output', () => {
+  const cites = (file, target, name) =>
+    citations(TEXT[file]).some(([base, words]) => base === target && words.startsWith(name));
+  for (const file of ['skills/audit/SKILL.md', 'skills/audit/resume.md']) {
+    assert.ok(cites(file, 'common.md', 'Output contract'), `${file} does not point at the output contract`);
+  }
+  for (const file of ['skills/audit/stages/4-pass-one.md', 'skills/audit/stages/5-pass-two.md']) {
+    assert.ok(cites(file, 'SKILL.md', 'Roles'), `${file} does not point at SKILL.md, Roles`);
+  }
+});

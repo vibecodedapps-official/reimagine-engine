@@ -784,12 +784,9 @@ for f in skills/audit/audit-evidence.md:'becomes a finding only when it names th
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "$s" "$tmp/list" || fail "$f: the bar on a lead or a named row is gone"
 done
-# A pass report without its claims heading is a failed output, which report.sh skips: the
-# stage fails it and resume does not keep it.
-for f in skills/audit/stages/4-pass-one.md:'when its last line is not `status: complete`, or when it has no `## Claims` heading' \
-	skills/audit/stages/5-pass-two.md:'its last line is not `status: complete`, it has no `## Claims challenged` heading' \
-	skills/audit/resume.md:'or has no `## Claims` (stage 4) or `## Claims challenged` (stage 5) heading, moves as above' \
-	skills/audit/common.md:'and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
+# A pass report without its claims heading is a failed output, which report.sh skips; the
+# stages and resume take the rule from common.md.
+for f in skills/audit/common.md:'A missing file, or one whose last line is not `status: complete`, is a failed output, whatever the agent returned, and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
 	skills/audit/audit-evidence.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
 	agents/auditor.md:'with no claim assigned, the heading and the one line `none`'; do
 	s=${f#*:}

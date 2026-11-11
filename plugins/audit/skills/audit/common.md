@@ -307,9 +307,9 @@ section it opened, with the path and the reason, one per line. It is not a `runs
 entry: the merger has no shell, and `runs:` holds only commands, directories and exit
 statuses, or `none`.
 
-A file whose last line is not `status: complete` is a failed output, whatever the agent
-returned, and so is a pass-one file without `## Claims` or a pass-two file other than a
-map-correction `-topup.md` without `## Claims challenged`.
+A missing file, or one whose last line is not `status: complete`, is a failed output,
+whatever the agent returned, and so is a pass-one file without `## Claims` or a pass-two
+file other than a map-correction `-topup.md` without `## Claims challenged`.
 
 ```
 runs:

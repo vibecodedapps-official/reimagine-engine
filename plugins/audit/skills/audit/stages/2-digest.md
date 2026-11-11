@@ -1,9 +1,9 @@
 # Stage 2: digest
 
 Stage 2 starts as soon as stage 1 completes, together with stages 3 and 4. It applies when
-`audit-brief.md` classes a source of truth as a document corpus, meaning more than half of
-its files have document extensions. Its inputs are `audit-brief.md`, `common.md`,
-`claims.md`, `groups.md`, every `diffs/<bundle>.stat`, and each corpus at its pinned sha.
+`audit-brief.md` classes a source of truth as a document corpus. Its inputs are
+`audit-brief.md`, `common.md`, `claims.md`, `groups.md`, every `diffs/<bundle>.stat`, and
+each corpus at its pinned sha.
 Its outputs are one `guidelines/chunk-N.md` and one `guidelines/digest-N.md` per chunk, and
 `baseline/2-check.md`. A digest is a pointer for the auditors: they cite the original
 document at its sha, never the digest. Agents: one `audit:digester` per chunk.
@@ -11,8 +11,7 @@ document at its sha, never the digest. Agents: one `audit:digester` per chunk.
 ## Steps
 
 1. **Applicability.** When the brief lists no document corpus, write the stage 2 entry
-   with status `not_applicable`, no outputs and no agents, and stop. The stage counts as
-   satisfied for the barrier and the report lists it in Coverage.
+   with status `not_applicable`, no outputs and no agents, and stop.
 2. **Entry.** Write the stage 2 entry as `running` (SKILL.md, State files). Its inputs are
    the `git hash-object --no-filters` hashes of `audit-brief.md`, `common.md`, `claims.md`,
    `groups.md` and each `diffs/<bundle>.stat`, the pinned sha of each corpus, and
@@ -64,9 +63,7 @@ document at its sha, never the digest. Agents: one `audit:digester` per chunk.
    `repo@sha:path:line`; and add a `potential finding:` line naming the group wherever a
    rule collides with a claim or the diff stat. The agent definition holds the rest.
 5. **On each completion.** Apply `_test` `fail` for role `digester` at scope `digest-N`
-   or `any`. Read the output; its last line must be `status: complete`. On a failure,
-   follow the ladder (SKILL.md, Roles): relaunch on the same model, then on `opus`, or
-   on `sonnet` for a role already on `opus`, recorded as a swap, then the scope fails.
+   or `any`. Read the output; on a failure, follow the ladder (SKILL.md, Roles).
    Record each agent in the entry. On success,
    run `git hash-object --no-filters guidelines/digest-N.md` and record the hash in the
    entry's `output_hashes` map as `"guidelines/digest-N.md": "<hash>"`. These are the
@@ -82,8 +79,8 @@ document at its sha, never the digest. Agents: one `audit:digester` per chunk.
       by range, `{ "source": "<source>", "path": "<path>", "bytes": <size>, "ranges":
       ["<start>-<end>", ...], "chunks": [<N>, ...] }`, or an empty list. The report lists
       every `split_files` entry in its Coverage.
-   3. Print the stage boundary line (SKILL.md, Soft budget). With `_test`
-      `expire_budget_after_stage: 2`, the budget expires now.
+   3. Print the stage boundary line (SKILL.md, Stage order and control flow). With
+      `_test` `expire_budget_after_stage: 2`, the budget expires now.
 
 A failed stage 2 counts as satisfied for the barrier, so the run goes on; the chunks never
 digested are coverage loss and the run ends `partial`. Next, go to the barrier step of

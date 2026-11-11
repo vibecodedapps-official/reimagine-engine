@@ -11,8 +11,7 @@ per code base.
 ## Steps
 
 1. **Applicability.** When the brief lists no code base, write the stage 3 entry with
-   status `not_applicable`, no outputs and no agents, and stop. The stage counts as
-   satisfied for the barrier and the report lists it in Coverage.
+   status `not_applicable`, no outputs and no agents, and stop.
 2. **Entry.** Write the stage 3 entry as `running` (SKILL.md, State files). Its inputs are
    the `git hash-object --no-filters` hashes of `audit-brief.md`, `common.md`, `claims.md`,
    `groups.md` and every `forge/<bundle>/` file, the pinned sha of each code base, and
@@ -38,9 +37,7 @@ per code base.
    the source holds no answer; and note each place where this source and another code base
    disagree, with a quote from each. The agent definition holds the rest.
 5. **On each completion.** Apply `_test` `fail` for role `mapper` at scope `<source>` or
-   `any`. Read the output; its last line must be `status: complete`. On a failure, follow
-   the ladder (SKILL.md, Roles): relaunch on the same model, then on `opus`, or on `sonnet`
-   for a role already on `opus`, recorded as a swap, then the scope fails. Record each
+   `any`. Read the output; on a failure, follow the ladder (SKILL.md, Roles). Record each
    agent in the entry. On success:
    1. When `_test` `plant_map_error` names this source, change one quoted answer's
       conclusion in `domain/<source>-map.md` to its opposite, keep its quote, and record
@@ -56,8 +53,8 @@ per code base.
       `failed` with the failed sources in a `failed_scopes` list; outputs: every question
       file, every completed map and `baseline/3-check.md`; `output_hashes`; and
       `test_planted` when set.
-   3. Print the stage boundary line (SKILL.md, Soft budget). With `_test`
-      `expire_budget_after_stage: 3`, the budget expires now.
+   3. Print the stage boundary line (SKILL.md, Stage order and control flow). With
+      `_test` `expire_budget_after_stage: 3`, the budget expires now.
 
 A failed stage 3 counts as satisfied for the barrier, so the run goes on; the questions
 never answered are coverage loss and the run ends `partial`. The stage 3 map and its hash

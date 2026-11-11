@@ -153,7 +153,7 @@ After a compaction, or whenever you cannot account for your state, stop. Before 
 | second opinion (stage 6) | a fresh `audit:adversary` in second-opinion mode | opus | per batch: relaunch on sonnet, or on opus for a second opinion already on sonnet, a swap; then stage 6 fails |
 | merger (stage 7) | `audit:merger` | sonnet | you merge, a swap; a second failure fails stage 7 |
 
-An agent fails when it returns an error, when the last line of its output file is not `status: complete`, when its pass-one file has no `## Claims` heading or its pass-two file, other than a map-correction `-topup.md`, has no `## Claims challenged` heading, or when `_test` marks it failed. A swap changes who fills a role and never removes a stage. Record each swap in the stage entry's `swaps` list with role, scope, from, to and reason, and name it in the report. A stage fails when any of its scopes failed. A failed stage counts as satisfied for every stage that waits on it; the run goes on, records the coverage loss, and ends `partial`.
+An agent fails when it returns an error, when its output file is a failed output (`common.md`, "Output contract"), or when `_test` marks it failed. A swap changes who fills a role and never removes a stage. Record each swap in the stage entry's `swaps` list with role, scope, from, to and reason, and name it in the report. A stage fails when any of its scopes failed. A failed stage counts as satisfied for every stage that waits on it; the run goes on, records the coverage loss, and ends `partial`.
 
 ### Agent launch rules
 
@@ -187,7 +187,7 @@ At every stage boundary print one line: the stage, the elapsed time, and the age
 
 ### Stage applicability
 
-A stage is `not_applicable` when its input is absent: stage 2 without a document corpus among the sources of truth (more than half of its files have document extensions), stage 3 without a code base among them. Stage 1 classifies each source of truth that has a path. The audited repositories' own documents and the ticket text never make stage 2 or 3 applicable. A not-applicable entry has no outputs, counts as satisfied, and is listed in the report's Coverage. A stage fails when it is applicable and no complete output exists for some scope after the ladder.
+A stage is `not_applicable` when its input is absent: stage 2 without a document corpus among the sources of truth, stage 3 without a code base among them. Stage 1 classifies each source of truth that has a path. The audited repositories' own documents and the ticket text never make stage 2 or 3 applicable. A not-applicable entry has no outputs, counts as satisfied, and is listed in the report's Coverage. A stage fails when it is applicable and no complete output exists for some scope after the ladder.
 
 ### Terminal states
 
@@ -197,7 +197,9 @@ A stage is `not_applicable` when its input is absent: stage 2 without a document
 
 At the end, set the run's `state` in `runs.json`, then print the terminal message: the run id, the run directory, the terminal state, the report path and verdict when there is a report, and `/audit:resume <run-id>` when the run can resume (or the manual registry entry, State files). The report's closing adds the items to act on first, the exact `/audit:act` line, the decisions left to the user, and the `--live` line when eligible, as `stages/8-report.md` says.
 
-Headless: text asked of the model before a Skill call is not shown, so the terminal message and the report header carry the run id, the run directory and the resume command. Never end the turn while a background agent or a `revert-tests.sh bg` run is live. Wait on `revert-tests.sh wait <result file>` in at most eight nine-minute loops; after the eighth exit 3 the run stops and the message gives the elapsed time.
+Headless: text asked of the model before a Skill call is not shown, so the terminal message and the report header carry the run id, the run directory and the resume command.
+
+In every session, never end the turn while a background agent or a `revert-tests.sh bg` run is live: in a headless session the end of the turn ends the session. Wait on `revert-tests.sh wait <result file>` in at most eight nine-minute loops; after the eighth exit 3 the run stops and the message gives the elapsed time.
 
 ### Queue
 
@@ -218,7 +220,7 @@ Stage 1 takes the baseline per audited repository `<name>` in its step 1b, once 
 
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`
 
-It writes `.marker`, `.status`, `.refs`, `.stash`, `.config`, `.hashes` and `.ignored` under that prefix, walking nested repositories and submodules with `GIT_OPTIONAL_LOCKS=0`. A path git prints quoted, or a partial clone at the top level or nested, is unsupported and exits 2.
+It writes `.marker`, `.status`, `.refs`, `.stash`, `.config`, `.hashes` and `.ignored` under that prefix, walking nested repositories and submodules with `GIT_OPTIONAL_LOCKS=0`. A path git prints quoted, or a partial clone at the top level or nested, a checked-out submodule included, is unsupported and exits 2.
 
 After every stage, stages 1 and 8 included, and before that stage's final entry, create `<run dir>/baseline/<stage>/` and run for each repository:
 
@@ -255,7 +257,7 @@ When the manifest has a `_test` key, read `${CLAUDE_PLUGIN_ROOT}/skills/audit/fa
 
 The run directory is `<scratch>/audit/<run-id>/`. `<scratch>` is the first that holds:
 
-1. The manifest `scratch` key, when it is inside the primary repository and ignored, or inside the main checkout of a linked worktree with the same `--git-common-dir`.
+1. The manifest `scratch` key, which must be inside the primary repository and ignored, or inside the main checkout of a linked worktree with the same `--git-common-dir`; a key that is neither stops the run, and the rules below are not tried.
 2. `scratch/`, `tmp/` or `.scratch/` in the primary repository, when present and ignored.
 3. `.reimagine/`, when already ignored.
 4. `${CLAUDE_PLUGIN_DATA}/runs/`.

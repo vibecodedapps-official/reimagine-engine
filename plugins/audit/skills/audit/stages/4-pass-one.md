@@ -86,18 +86,14 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
 
 6. **On each completion** of a pass-one auditor:
    1. Record the end time, the notification's `subagent_tokens` and `duration_ms`, labeled
-      "task notification, subagent_tokens; scope not documented", in the entry and in
-      `usage.md`.
-   2. The agent failed when it returned an error, when `pass1/<scope>.md` is missing,
-      when its last line is not `status: complete`, or when it has no `## Claims`
-      heading, which every report holds, with `none` when no claim is assigned. A
-      `_test` `fail` entry with role `auditor` and this scope or `any` turns the scope's
-      first `times` completions into failures.
-   3. On a failure, follow the ladder (SKILL.md, Roles): relaunch on the same model with
-      the same prompt; then relaunch on `opus`, or on `sonnet` for a role already on
-      `opus`, recorded as a swap with role, scope, from, to and reason; then the scope
-      fails, with its coverage loss recorded. A relaunch overwrites the output file. A failed
-      scope counts as done for the barrier and for the stage, and gets no pass two.
+      as SKILL.md, Usage, says, in the entry and in `usage.md`.
+   2. The agent failed as SKILL.md, Roles, says; the `## Claims` heading is in every
+      report, with `none` when no claim is assigned. A `_test` `fail` entry with role
+      `auditor` and this scope or `any` turns the scope's first `times` completions into
+      failures.
+   3. On a failure, follow the ladder (SKILL.md, Roles); its relaunch on the same model
+      takes the same prompt. A relaunch overwrites the output file. A failed scope counts
+      as done for the barrier and for the stage, and gets no pass two.
    4. On success, check that the report has a `runs:` heading and a `consumed:` heading;
       either may say none. `consumed:` names each digest and map read, with its hash.
       Then check coverage. The report's `## Decisions` must name every `decision` claim of
@@ -145,9 +141,8 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
       once no miss remains.
 
 8. **Budget.** Before every launch, relaunch and top-up, check the budget (SKILL.md, Soft
-   budget). Once it has expired, launch nothing more, let running agents finish, record
-   each scope or top-up not run as "not run: budget expired", and go to stage 8 when no
-   agent runs.
+   budget). Once it has expired, record each scope or top-up not run as "not run: budget
+   expired".
 
 9. **Completion.** Stage 4 is done when every scope has a complete report or has failed,
    every scope has cleared the barrier, and every top-up has finished or failed. Its
@@ -156,9 +151,7 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
    not wait for this step.
 
 10. **Read-only check.** Run the check of SKILL.md (Read-only check), which writes
-    `baseline/4-check.md`. Auditors have Bash, so an ignored-file difference is accepted
-    as pending while any of them runs and is settled against the finished auditors'
-    `runs:` headings. A difference in tracked files, untracked files that are not
+    `baseline/4-check.md`. A difference in tracked files, untracked files that are not
     ignored, refs, the index, the stash or config ends the run `blocked`.
 
 11. **Entry last.** Once the check has passed, write the stage 4 entry (SKILL.md, State

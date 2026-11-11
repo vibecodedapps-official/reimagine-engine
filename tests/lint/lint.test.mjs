@@ -425,6 +425,25 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, gateSkill, '  - Bash(date)\n', '  - Bash(date)\n  - Bash(git push *)\n');
     bump(dir, 'gate');
   }, 1, [`${gateSkill}: allowed-tools entry Bash(git push *) is not a pre-approved read`]);
+  negative('R356: <file>: pre-approves <entry>, which is not a known read or a run of the plugin\'s own script', (dir) => {
+    edit(dir, 'plugins/primer/skills/primer/SKILL.md', '  - Bash(git status *)\n',
+      '  - Bash(git status *)\n  - Bash(git diff *)\n  - Bash(git diff:*)\n  - Bash(git --no-pager diff *)\n  - Bash(git *)\n  - Bash\n');
+    bump(dir, 'primer');
+  }, 5, [
+    'plugins/primer/skills/primer/SKILL.md: pre-approves Bash(git diff *), which is not a known read or a run of the plugin\'s own script',
+    'plugins/primer/skills/primer/SKILL.md: pre-approves Bash(git diff:*), which is not a known read or a run of the plugin\'s own script',
+    'plugins/primer/skills/primer/SKILL.md: pre-approves Bash(git --no-pager diff *), which is not a known read or a run of the plugin\'s own script',
+    'plugins/primer/skills/primer/SKILL.md: pre-approves Bash(git *), which is not a known read or a run of the plugin\'s own script',
+    'plugins/primer/skills/primer/SKILL.md: pre-approves Bash, which is not a known read or a run of the plugin\'s own script',
+  ]);
+  negative('R356: <file>: pre-approves <entry> (the list of a child session)', (dir) => {
+    edit(dir, 'plugins/gate/skills/gate/steps/1-pass.md', 'TaskStop,Bash(git status *)', 'TaskStop,Bash(git show *),Bash(git status *)');
+    bump(dir, 'gate');
+  }, 1, ['plugins/gate/skills/gate/steps/1-pass.md: pre-approves Bash(git show *), which is not a known read or a run of the plugin\'s own script']);
+  negative('R356: <file>: pre-approves <entry> (a * before the entry\'s end, in a command)', (dir) => {
+    edit(dir, 'plugins/audit/commands/run.md', 'allowed-tools: Read, Skill', 'allowed-tools: Bash(git -C * rev-parse *), Read, Skill');
+    settle(dir, 'audit');
+  }, 1, ['plugins/audit/commands/run.md: pre-approves Bash(git -C * rev-parse *), which is not a known read or a run of the plugin\'s own script']);
 
   negative('R142: <file>: description does not name "reimagine audit"', (dir) => {
     edit(dir, 'plugins/audit/skills/audit/SKILL.md', '"reimagine audit"', '"reimagine-audit"');

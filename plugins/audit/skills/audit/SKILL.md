@@ -214,7 +214,7 @@ A budget applies only to the invocation that gave it; `resume` runs with none un
 
 ### Read-only check
 
-Before stage 1 does anything else, take the baseline per audited repository `<name>`:
+Stage 1 takes the baseline per audited repository `<name>` in its step 1b, once the run directory exists and the fetch is done, and before any other work on the repositories:
 
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`
 
@@ -324,7 +324,7 @@ At each stage boundary write `usage.md` from `stages.json`: per stage, each agen
 
 ## Stage 1: orient
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It takes the read-only baseline first, resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, asks once for the fetch, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. It sets the tier: `low` for one bundle, one ticket and under 500 changed lines; `medium` up to three bundles, five tickets and under 5,000 lines; `high` otherwise; an effort hint overrides it. Then run the read-only check and start stages 2, 3 and 4 together.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, asks once for the fetch, takes the read-only baseline before any other work on the repositories, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. It sets the tier: `low` for one bundle, one ticket and under 500 changed lines; `medium` up to three bundles, five tickets and under 5,000 lines; `high` otherwise; an effort hint overrides it. Then run the read-only check and start stages 2, 3 and 4 together.
 
 The tier sets three things:
 

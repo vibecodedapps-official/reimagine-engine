@@ -128,7 +128,7 @@ The eight hard rules are in `${CLAUDE_PLUGIN_ROOT}/skills/audit/common.md`, sect
 
 1. Read-only boundary. In stages 1 to 8 your own writes stay inside the run directory and the registry files: `${CLAUDE_PLUGIN_DATA}/runs.json`, its lock directory `runs.json.lock` with the owner directory, and `runs.json.<owner>.tmp`. The audit never writes `.git/info/exclude` or any file of a git directory. You never run `git checkout`, `git switch`, `git reset`, `git stash`, `git worktree`, `git archive` or `git checkout-index`. Three writes happen through commands the stage files name: an approved `git fetch` into remote-tracking refs; `working-tree.sh build` for a `head: working-tree` bundle, which writes git objects only, never the index, a ref or a file; and `revert-tests.sh`, which runs a bundle's own test command in a work directory it creates and removes.
 2. Prevention and detection. Agents have no Edit or NotebookEdit and keep to the Bash allow-list of their definition. `readonly.sh` detects any write after every stage.
-3. Nothing external names a model, an agent or a tool, and what leaves the run is written for its reader, as What leaves the run says. Report text that could be posted, work-item text and act's commit messages name the activity and the date. The trailer the host's attribution setting adds to a commit stays, even where it names a model or tool. Run records inside the run directory may name them.
+3. Nothing external names a model, an agent or a tool, and what leaves the run is written for its reader, as What leaves the run says. Report text that could be posted and work-item text name the activity and the date. Act's commit messages follow the repository's convention and carry a date only where that convention does. The trailer the host's attribution setting adds to a commit stays, even where it names a model or tool. Run records inside the run directory may name them.
 4. No advisor tool, for you or any agent.
 5. Live data comes only from a user-supplied `--live` file. Never ask for live access during a run and never run a live query. A needed check becomes a report block.
 6. Evidence is cited. Digests and maps are pointers, never evidence.
@@ -153,7 +153,7 @@ After a compaction, or whenever you cannot account for your state, stop. Before 
 | second opinion (stage 6) | a fresh `audit:adversary` in second-opinion mode | opus | per batch: relaunch on sonnet, or on opus for a second opinion already on sonnet, a swap; then stage 6 fails |
 | merger (stage 7) | `audit:merger` | sonnet | you merge, a swap; a second failure fails stage 7 |
 
-An agent fails when it returns an error, when the last line of its output file is not `status: complete`, or when `_test` marks it failed. A swap changes who fills a role and never removes a stage. Record each swap in the stage entry's `swaps` list with role, scope, from, to and reason, and name it in the report. A stage fails when any of its scopes failed. A failed stage counts as satisfied for every stage that waits on it; the run goes on, records the coverage loss, and ends `partial`.
+An agent fails when it returns an error, when the last line of its output file is not `status: complete`, when its pass-one file has no `## Claims` heading or its pass-two file, other than a map-correction `-topup.md`, has no `## Claims challenged` heading, or when `_test` marks it failed. A swap changes who fills a role and never removes a stage. Record each swap in the stage entry's `swaps` list with role, scope, from, to and reason, and name it in the report. A stage fails when any of its scopes failed. A failed stage counts as satisfied for every stage that waits on it; the run goes on, records the coverage loss, and ends `partial`.
 
 ### Agent launch rules
 
@@ -205,7 +205,7 @@ Keep one queue of agent jobs across all stages. At most `max_agents` agents run 
 
 ### Soft budget
 
-A budget applies only to the invocation that gave it; `resume` runs with none unless its own request gives one. Record the start time of stage 1. At every completion notification and every stage boundary, compare the elapsed time with the budget. `budget: 0` expires as soon as stage 1 completes. Once it expires:
+A budget applies only to the invocation that gave it; a resumed run has none. Record the start time of stage 1. At every completion notification and every stage boundary, compare the elapsed time with the budget. `budget: 0` expires as soon as stage 1 completes. Once it expires:
 
 1. Launch nothing more from stages 2 to 7, relaunches and top-ups included.
 2. Wait for running agents and record their results.
@@ -214,7 +214,7 @@ A budget applies only to the invocation that gave it; `resume` runs with none un
 
 ### Read-only check
 
-Before stage 1 does anything else, take the baseline per audited repository `<name>`:
+Stage 1 takes the baseline per audited repository `<name>` in its step 1b, once the run directory exists and the fetch is done, and before any other work on the repositories:
 
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`
 
@@ -290,7 +290,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 ```json
 {
-  "plugin_version": "0.1.22",
+  "plugin_version": "0.1.23",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],
@@ -324,7 +324,7 @@ At each stage boundary write `usage.md` from `stages.json`: per stage, each agen
 
 ## Stage 1: orient
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It takes the read-only baseline first, resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, asks once for the fetch, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. It sets the tier: `low` for one bundle, one ticket and under 500 changed lines; `medium` up to three bundles, five tickets and under 5,000 lines; `high` otherwise; an effort hint overrides it. Then run the read-only check and start stages 2, 3 and 4 together.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, asks once for the fetch, takes the read-only baseline before any other work on the repositories, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. It sets the tier: `low` for one bundle, one ticket and under 500 changed lines; `medium` up to three bundles, five tickets and under 5,000 lines; `high` otherwise; an effort hint overrides it. Then run the read-only check and start stages 2, 3 and 4 together.
 
 The tier sets three things:
 
@@ -354,9 +354,9 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/5-pass-two.md` when the first gr
 
 ## Stage 6: second opinion
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/6-second-opinion.md` and `${CLAUDE_PLUGIN_ROOT}/skills/audit/second-opinion-request.md` when stage 5 is complete or failed. Stage 6 always runs.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/6-second-opinion.md` and `${CLAUDE_PLUGIN_ROOT}/skills/audit/second-opinion-request.md` when stage 5 is complete or failed. Stage 6 runs whatever stage 5's result, unless the budget has expired.
 
-1. Copy every input to `second-opinion/inputs/<run-relative path>` with a first line `audit-sentinel: <run-relative path> <16 hex>`, the token from `od -An -N8 -tx1 /dev/urandom` with spaces removed. Audited sources are never copied, only named by absolute read path and sha from the brief.
+1. Copy every input to `second-opinion/inputs/<run-relative path>` with a first line `audit-sentinel: <run-relative path> <16 hex>`, the token from `od -An -N8 -tx1 /dev/urandom | tr -d ' \n'`. Audited sources are never copied, only named by absolute read path and sha from the brief.
 2. Write the mandatory set with `ledger.sh mandatory` into `tmp/mandatory.txt` and move it to `ledger/mandatory.txt` only on exit 0; a nonzero exit fails stage 6. Over 60 ids, split it by shell into `second-opinion/batch-<k>.txt` files of at most 60. The `IDS-BATCH-<k>` placeholder is replaced by shell, never typed.
 3. Launch one fresh `audit:adversary` per batch in second-opinion mode, at opus or the override, in the background: scope `second-opinion` for a single batch, else `second-opinion-<k>`; request `second-opinion/request.md` for batch 1, else `second-opinion/request-<k>.md`, which holds asks 1 and 2 only. The agent writes `second-opinion/response.md` or `second-opinion/response-<k>.md` itself and ends `status: complete`. Only the first batch may add `X<n>` findings with `origin: second-opinion`. The answer file is the agent's own and is never retyped.
 4. Per batch, check the sentinel acknowledgments and run `ledger.sh missing` for that batch's ids. A failed check or a missing `status: complete` follows the ladder: relaunch on sonnet, or on opus for a second opinion already on sonnet, then stage 6 fails.

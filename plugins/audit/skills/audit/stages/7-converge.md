@@ -17,8 +17,9 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
 
 ## Steps
 
-1. **Budget and entry.** When the budget has expired, stage 7 does not start and gets no
-   entry; go to stage 8. Otherwise write the stage 7 entry as `running` with its input
+1. **Budget and entry.** When the budget has expired, stage 7 does not start: write its
+   entry `failed` with the reason "not run: budget expired" (`SKILL.md`, "Soft budget")
+   and go to stage 8. Otherwise write the stage 7 entry as `running` with its input
    hashes. Before every launch in this stage check the budget again; once it has
    expired, launch nothing more, let the running agents finish, and go to stage 8
    (`SKILL.md`, "Soft budget").

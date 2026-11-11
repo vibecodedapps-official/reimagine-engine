@@ -157,7 +157,7 @@ The registry `runs.json` in the plugin data directory lists every run with its p
 During `/audit:run` and `/audit:resume`, the audit changes nothing in an audited repository: not tracked files, untracked files that are not ignored, the index, branches, tags, stashes, config or remotes. Every bundle, reference and source of truth counts as audited. It writes its run directory and its data directory. The report discloses the other writes: a fetch you approve updates remote-tracking refs, a `head: working-tree` bundle adds unreferenced objects to the object store, and a `test_command` you set may write outside the audited repositories.
 
 - Agents have no Edit or NotebookEdit tool, and run only read-only commands.
-- A snapshot taken before stage 1 is checked after every stage. Any change to an audited repository during a run stops it as `blocked`, your own edits included.
+- A snapshot taken in stage 1, after the fetch and before any other work on the repositories, is checked after every stage. Any change to an audited repository during a run stops it as `blocked`, your own edits included.
 - Live data, such as a database query or a production log, enters only from a file you supply with `--live`. The audit never fetches it.
 
 ## How a run ends

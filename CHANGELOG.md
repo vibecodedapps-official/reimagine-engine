@@ -2,6 +2,18 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.23 - 2026-11-11
+
+- The audit's files said different things about the same step in eight places. Each is corrected to the copy that the scripts, the requirements and the rest of the text bear out.
+- The skill and the README put the read-only baseline before stage 1. Stage 1 takes it after it has made the run directory and after the fetch, and the text now says so everywhere.
+- For a run, the skill's reading block and its sentence on background fetch are the only ones. Stage 1 asked for both a second time, and `/audit:run` for a fetch sentence of its own; stage 1 now prints the block only under `/audit:resume`.
+- A stage 7 that the budget left unstarted gets its entry `failed` with "not run: budget expired", as every unstarted stage does; its file said it gets none. The skill said stage 6 always runs and now says it does not once the budget has expired.
+- The skill and the request template give the sentinel token's whole command, which removes the newline as well as the spaces.
+- The report template's Coverage list and stage 8's hold the same lines; each lacked some of the other's.
+- A commit message of `/audit:act` follows the repository's convention and carries a date only where that convention does. Hard rule 3 read as if each must name one.
+- A resumed run applies no budget. The skill allowed one from the resume's own request, and nothing kept a rerun of stage 1 from applying the budget the manifest or the first request recorded.
+- The skill's definition of a failed agent names a pass report without its claims heading.
+
 ## audit 0.1.22 - 2026-11-11
 
 - On Windows the script that runs the changed tests sends no TERM before the KILL that ends a test command's process group; 0.1.21 added one. A shell that waits on a native program answers a TERM by ending the program's tree itself, following each process's recorded parent id, and that id outlives the parent: a TERM and then a KILL to a job's group reached shells that were no kin of the job. So the TERM could end a process the audit never started. The KILL goes alone again, and a native program's own children outlive it, as before 0.1.21.

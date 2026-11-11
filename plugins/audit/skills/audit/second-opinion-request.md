@@ -30,7 +30,7 @@ audit-sentinel: <run-relative path> <token>
 ```
 
 `<token>` is 16 hexadecimal characters, new for each copy, from `od -An -N8 -tx1
-/dev/urandom` with the spaces removed. The stage keeps every path and token for its
+/dev/urandom | tr -d ' \n'`. The stage keeps every path and token for its
 `sentinels` map. The originals are never changed.
 
 Audited sources are never inputs and never copied: the request names each one by the

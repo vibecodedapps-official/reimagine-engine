@@ -26,8 +26,8 @@ branch to it in the manifest."
 
 0. **Inputs, run directory and record.**
 
-   a. **Tool check.** Run `command -v jq`. When it prints nothing, tell the user before
-      anything else, in plain words: `jq` is not installed, so a GitHub pull request
+   a. **Tool check.** Run `command -v jq`. When it prints nothing, tell the user in
+      plain words: `jq` is not installed, so a GitHub pull request
       cannot be read (its fields are read with `jq`), the open pull request check
       (`collisions.sh`) does not run, the work-items file is not checked
       (`work-items.sh` reports `work-items: jq not found`), and live results cannot be
@@ -47,7 +47,9 @@ branch to it in the manifest."
       inputs are relative to the session's directory. Under `/audit:resume`, ignore
       `manifest: none` and `inputs:` and rebuild both from the `source` key of the run's
       `manifest.json`; when the manifest file it names does not exist, stop with one line
-      saying so.
+      saying so. A resumed run has no budget (SKILL.md, Soft budget): a `budget` in the
+      manifest or in the recorded request stays in `manifest.json` as it was and is
+      not applied.
 
    c. **Merge the inputs into bundles.** Each `inputs:` token (SKILL.md, Reading the
       request) is merged into the manifest's `bundles[]`:
@@ -88,7 +90,7 @@ branch to it in the manifest."
         name. A name is never changed to make it pass. `cross-cutting` is not reserved.
       - Ticket and pull request ids: `github:owner/repo#n`, `ado:<org>/<project>#<n>`,
         `sf:<case number>` or `file:<absolute path>`, the forms a handoff writes; an id
-        in another form stays as the user wrote it. How a ticket resolved (0h) is recorded
+        in another form stays as the user wrote it. How a ticket resolved (SKILL.md, Reading the request) is recorded
         beside its id, never as it. A short `#n` is accepted only when the bundle's
         repository has exactly one GitHub remote (`git -C <repo> remote -v`); otherwise
         stop with
@@ -201,11 +203,14 @@ branch to it in the manifest."
       Unmapped bundles and tickets keep the handoff's names and are listed in the
       brief's Handoff section.
 
-   h. **Reading block.** Print the reading block (SKILL.md, Reading the request): the
+   h. **Reading block.** For `command: run` the reading block and the sentence on
+      background fetch were printed before this stage (SKILL.md, Reading the request);
+      do not print them again. Under `/audit:resume` print the block here: the
       bundles with repository, pull request or branch and base, and tickets; the
-      references; the sources of truth; the claims files; the effort hint; the budget
-      and model overrides; and how each ticket resolved (`gh`, `file`, `text`,
-      `mcp:<tool>`). Then tell the user to pause background fetch for these
+      references; the sources of truth; the claims files; the effort hint; the budget,
+      `none` for a resumed run, and the model overrides; and how each ticket resolved
+      (`gh`, `file`, `mcp:<tool>` or `text`, the last printed as
+      `text, body not read`). Then tell the user to pause background fetch for these
       repositories until the run ends, for example VS Code's `git.autofetch`, since a
       fetch during the run moves remote-tracking refs.
 
@@ -289,7 +294,7 @@ branch to it in the manifest."
       cases.
 
    n. **Completion record.** Write `stages.json` through `stages.json.tmp` and
-      `mv -f`, with `plugin_version` `0.1.22`, empty `approvals`, and a stage 1 entry
+      `mv -f`, with `plugin_version` `0.1.23`, empty `approvals`, and a stage 1 entry
       with status `running` whose inputs are the `git hash-object --no-filters` hashes
       of `manifest.json`, each claims file, the questions file and each `file:` export,
       and `plugin_version`. Record the stage's start time for the budget.

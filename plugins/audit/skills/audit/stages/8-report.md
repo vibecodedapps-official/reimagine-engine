@@ -204,9 +204,10 @@ result's text, approver and time; a `result_file` result's text is its copy
        - each handoff claims file with its path, hash and whether `handoff.sh check`
          validated it, from the brief;
        - the `work-items.sh` result, filled in at step 8;
-       - each stage 1 to 7 run, not applicable, failed or swapped, and why, with the
-         read-only checks it accepted; every swap by name, with the requested model of
-         each agent, written as "requested", never "used";
+       - each stage 1 to 7 run, not applicable, failed, swapped or `not run: budget
+         expired`, and why, with the read-only checks it accepted; every swap with its stage, role, scope, the requested model it
+         left, the one it went to and the reason, each model written as "requested",
+         never "used";
        - the stage 8 line, the fixed sentence ``Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.`` written as it stands:
          the report is hashed before the check of step 11 runs, so its result is only in
          that file;
@@ -214,35 +215,48 @@ result's text, approver and time; a `result_file` result's text is its copy
          current one, the recorded and the current version, from the rerun stage's entry;
        - at low tier, that one auditor covered the ticket, the tests and work-item
          hygiene;
-       - failed scopes and scopes not run because the budget expired, with the last
-         byte offset of a digest that ended `status: failed at byte <offset>`;
+       - failed scopes and scopes not run because the budget expired, the files, rules
+         or questions they left unreviewed, and the last byte offset of a digest that
+         ended `status: failed at byte <offset>`;
        - each `decision` or `scope` claim recorded `not assessed`, and each entry
          `not challenged` because pass two wrote no line for it;
        - each line of the stage 5 entry's `brief_errata`, as the adversaries wrote it;
        - the outward trace, from the `pass1/` and `pass2/` files and the stage 4 and 5
-         entries, so it shows even when pass two failed: each scope recorded
+         entries, so it shows even when pass two failed or never ran: each scope recorded
          `outward trace: not assessed`; each `not traced:` symbol; each entry with
-         result `incomplete`; each entry cut to `(<k> of <n> checked)` with its
-         `not listed:` locations; each `outward trace:` line of a pass-two
+         result `incomplete`; each entry cut to `(<k> of <n> checked)`, a cut
+         decision list included, with its `not listed:` locations; each `outward trace:` line of a pass-two
          `## Coverage gaps`; and the number of entries `not challenged`. A symbol on
          two lists shows once. None of these fails a scope or changes a count;
        - each bundle whose base refresh was declined (the brief's `base: local ref,
-         refresh declined` line);
+         refresh declined` line), whose base commit list and overlap set are as of
+         that ref;
        - each `head: working-tree` bundle: the loose objects `working-tree.sh build`
-         wrote to the object store, that the head commit has no ref and may be pruned
-         by `git gc`, the files untracked and the paths flagged at audit time, and
-         that a flagged path is held at its index version, so a change to it during
-         the run may escape the read-only check;
+         wrote to the object store (an allowed write), that the head commit has no ref
+         and may be pruned by `git gc`, the files untracked and the paths flagged at
+         audit time, and that a flagged path is held at its index version, so its local
+         content is not in the head and a change to it during the run may escape the
+         read-only check;
+       - each bundle with `test_command`: whether the changed test files ran with the
+         change reverted or none were found to run, the setup exit status per copy
+         when `test_setup` is set, the verdict counts, every `not run` with its
+         reason, the changed paths outside `test_paths`, whose tests were not
+         measured, and that the bundle's own commands ran with the user's environment
+         and credentials, in copies under the plugin's data directory that were
+         removed, and may have written outside the audited repositories;
        - stage 6: whether the mandatory ids went out in batches (`batched`), each
          sentinel acknowledgment that failed (`sentinels`), every mandatory id left
          without a position (`missing_positions`), and each batch relaunched,
          with its model, or failed;
        - every file stage 2 split by byte range (`split_files`): source, path, size,
          each range and the chunk id that covered it, with that chunk's status;
-       - unanswered questions and departures from the stage plan;
+       - unanswered questions, questions marked "not run", and departures from the
+         stage plan;
        - map corrections not applied, from `ledger/5.md`;
-       - when exports were used, that the forge was not queried;
-       - the ignored-file differences each read-only check accepted, and what the check
+       - the bundles whose forge was not queried because exports were used, each ticket
+         whose body was not read, and each export's "not in export" keys;
+       - each `baseline/<stage>-check.md` result for stages 1 to 7, the ignored-file
+         differences each accepted, with the run that wrote each file, and what the check
          does not detect: an ignored file replaced at the same size with a restored
          modification time; changes inside `.git/` other than refs, stashes and
          config; a nested repository's changes other than its HEAD, stashes or
@@ -250,7 +264,8 @@ result's text, approver and time; a `result_file` result's text is its copy
          linked worktree, other than a top-level entry added or removed; and changes
          outside the audited repositories. When a `baseline/<stage>-check.md` holds
          `note mtime precision: seconds`, say the comparison used whole seconds, so a
-         same-size rewrite within one second went unseen;
+         same-size rewrite within one second went unseen. A user's own edit to an
+         audited repository during the run would also have tripped the check;
        - the manifest's `_test` key, when present.
    12. **Usage**, a run record, per stage from `usage.md` and the stage entries:
        agents run with their requested models, wall-clock time, and tokens, each

@@ -55,8 +55,6 @@ memory: none
 ```
 
    Show the user a short summary in plain words, not the block: the manifest and the inputs.
-   Then add one plain sentence: a background fetch, such as VS Code's `git.autofetch`, moves
-   remote refs and can stop the audit, so pause it while the audit runs.
 
 4. Invoke the Skill tool with skill `audit:audit` and that block as the args, then follow the
    skill. Do not read the request into bundles, plan the audit or act on it yourself.

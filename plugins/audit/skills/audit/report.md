@@ -305,11 +305,14 @@ A run record.
   than the current one, the recorded and the current plugin version.
 - Swaps: every swap, with stage, role, scope, the requested model it left, the requested
   model it went to, and the reason.
-- Failed scopes and the files, rules or questions they left unreviewed, with the last
-  byte offset of a digest that ended `status: failed at byte <offset>`.
+- Failed scopes, scopes not run because the budget expired, and the files, rules or
+  questions they left unreviewed, with the last byte offset of a digest that ended
+  `status: failed at byte <offset>`.
 - Each `decision` or `scope` claim that is `not assessed` (the pass-one report has no
   entry for it), and each entry `not challenged` because pass two wrote no line for it.
   Neither fails a scope or changes a count.
+- Brief errata: each line of the stage 5 entry's `brief_errata`, as the adversaries
+  wrote it.
 - Outward trace, from the pass files and stage entries, so it shows even when pass two
   failed or never ran: each scope whose trace is `not assessed`; each `not traced:`
   symbol; each entry with result `incomplete`; each entry cut to `(<k> of <n> checked)`,
@@ -336,8 +339,9 @@ A run record.
 - Corpus files stage 2 split by byte range: source, path, size, each range, and the
   chunk id (`digest-N`) that covered it, with that chunk's status.
 - Unanswered questions, and questions marked "not run".
+- Map corrections not applied, from `ledger/5.md`.
 - Departures from the stage plan, such as the low tier's single auditor covering the
-  tests and work-item hygiene.
+  ticket, the tests and work-item hygiene.
 - Read-only check: each `baseline/<stage>-check.md` result for stages 1 to 7, and every
   ignored file accepted, with the run that wrote it. What the check does not detect: an ignored file
   replaced at the same size with a restored modification time; changes inside `.git/`

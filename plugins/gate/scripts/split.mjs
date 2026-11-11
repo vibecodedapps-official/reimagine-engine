@@ -9,11 +9,15 @@
 //   - the files are grouped by their first d path segments, d being the lowest depth that gives more than one group; the
 //     files with no more than d segments are their folder's own files, a group whose paths names them one by one
 //   - a folder's group still over <split> is grouped again one segment deeper, unless that gives a single group
+//   - a changed file that is also the folder of other changed files, a file replaced by a folder of its name, is in that
+//     folder's group, which is not grouped again: the file's path selects them all
 //   - sibling groups under one fifth of <split> are merged in byte order of path, a folder's own files last; a merged group
 //     closes when it reaches that fifth, names its files one by one, and is never made of one group alone
 //   - a slug is the group's path in lowercase with each run outside [a-z0-9] written as one `-`; a folder's own files end in
 //     `root` and a merged group in `small`; a path that gives no slug is `group`; a slug already taken, `all` included,
 //     gets `-2`, else `-3`, and so on
+// The paths are names. Git reads a path as a pattern unless it is told not to (--literal-pathspecs); read so, a name
+// that holds `[`, `*` or `?` can select another file as well.
 // Exit 1 for input that is not numstat records, exit 2 for usage, one line on stderr, nothing on stdout.
 // Everything above main() is pure.
 import { readFileSync, realpathSync } from 'node:fs';
@@ -39,9 +43,13 @@ export function parse(text) {
 
 // Groups files that share their first depth - 1 segments, at the lowest depth from `depth` that gives more than one
 // group. Returns the groups, each { key, prefix, files, lines }; key is a folder path, or '.' for the files of `prefix` itself.
+// A file that is also a folder of the others has that folder's key, and the files of such a folder are one group.
 function level(files, depth) {
   for (let d = depth; ; d++) {
-    const keyOf = (f) => (f.segs.length > d ? f.segs.slice(0, d).join('/') : '.');
+    const own = files.find((f) => f.segs.length < d);
+    if (own) return [{ key: '.', prefix: own.path, files, lines: sum(files) }];
+    const folders = new Set(files.filter((f) => f.segs.length > d).map((f) => f.segs.slice(0, d).join('/')));
+    const keyOf = (f) => (f.segs.length > d ? f.segs.slice(0, d).join('/') : folders.has(f.path) ? f.path : '.');
     const byKey = new Map();
     for (const f of files) byKey.set(keyOf(f), [...(byKey.get(keyOf(f)) ?? []), f]);
     if (byKey.size === 1 && files.some((f) => f.segs.length > d)) continue;

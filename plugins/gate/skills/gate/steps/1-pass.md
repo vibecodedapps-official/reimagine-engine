@@ -40,7 +40,7 @@ The redirect saves each output before anything parses it. A saved `result` that 
 
 ## The stand-in
 
-1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- ` and the group's `paths` for a split pass.
+1. Write `diff-<n>[-<slug>].patch` in the record from `git --literal-pathspecs diff <merge-base>...HEAD`, with `-- ` and the group's `paths` for a split pass.
 2. Call an Agent at `models.fallback-reviewer`, passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, with repository-relative paths, and `[]` when there are none. The calls of a split pass go in one message, within the review time above.
 3. Save the reply as `review-<n>[-<slug>].md`, and set `engine` to `stand-in` in `passes.json`: once chosen, the stand-in stays for the run.
 

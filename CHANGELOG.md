@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.27 - 2026-11-10
+
+- An item that another pull request or ticket already resolves is kept out of the Follow-ups of the pull request body, as the body template says. The ticket rules said out of the body, so a run that told its reviewer which of two options it built, or named unchanged behavior a reader could take for a bug, went against them.
+
 ## audit 0.1.19 - 2026-11-10
 
 - The skill no longer pre-approves `git diff`, `git log`, `git show`, `git grep` and `git stash list`, or any `git -C <repo>` form. An option of each of the five writes a file or runs a program, and the `*` after `-C` admitted `-c`, which runs a program through an alias or a config key, so text an audit reads could ask for such a form and no prompt would come. Under the default permission mode the audit now asks before each git read of a repository other than the session's folder, and a run with no one to answer is refused those reads.

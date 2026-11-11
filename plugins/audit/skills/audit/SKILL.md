@@ -354,7 +354,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/5-pass-two.md` when the first gr
 
 ## Stage 6: second opinion
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/6-second-opinion.md` and `${CLAUDE_PLUGIN_ROOT}/skills/audit/second-opinion-request.md` when stage 5 is complete or failed. Stage 6 always runs.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/6-second-opinion.md` and `${CLAUDE_PLUGIN_ROOT}/skills/audit/second-opinion-request.md` when stage 5 is complete or failed. Stage 6 runs whatever stage 5's result, unless the budget has expired.
 
 1. Copy every input to `second-opinion/inputs/<run-relative path>` with a first line `audit-sentinel: <run-relative path> <16 hex>`, the token from `od -An -N8 -tx1 /dev/urandom` with spaces removed. Audited sources are never copied, only named by absolute read path and sha from the brief.
 2. Write the mandatory set with `ledger.sh mandatory` into `tmp/mandatory.txt` and move it to `ledger/mandatory.txt` only on exit 0; a nonzero exit fails stage 6. Over 60 ids, split it by shell into `second-opinion/batch-<k>.txt` files of at most 60. The `IDS-BATCH-<k>` placeholder is replaced by shell, never typed.

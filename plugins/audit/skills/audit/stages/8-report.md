@@ -41,7 +41,7 @@ result's text, approver and time; a `result_file` result's text is its copy
       Recompute every gate:
 
       ```
-      sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh gate <run dir> --tier <tier> --stage6 <stage 6 status> --late failed > <run dir>/tmp/gate-report.md
+      sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" gate <run dir> --tier <tier> --stage6 <stage 6 status> --late failed > <run dir>/tmp/gate-report.md
       ```
 
       With `--late failed` no late verdict is credited, so every `P`, `T` and `X`
@@ -291,12 +291,12 @@ result's text, approver and time; a `result_file` result's text is its copy
       `12-usage.md`. Sections 3 and 9 stay yours: no format fixes the pass-two line
       that marks a Verified OK item challenged, and a Live checks status joins
       approvals, gate reasons and result copies.
-   4. Run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/report.sh parts "<run dir>"`, with
+   4. Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/report.sh" parts "<run dir>"`, with
       `${CLAUDE_PLUGIN_ROOT}` resolved as step 8 says. It writes `08-decisions.md`,
       `10-claims.md` and `claims-verdicts.body.md`, all three or none. On exit 1 or 2,
       write those three parts with the Write tool in the shapes `report.md` fixes, and
       name the failure, with the script's stderr line, in `11-coverage.md`.
-   5. Run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/report.sh assemble "<run dir>"`, which joins
+   5. Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/report.sh" assemble "<run dir>"`, which joins
       every `report/parts/*.md` but `claims-verdicts.body.md`, in byte order of name,
       into `<run dir>/report.body.tmp`. On a nonzero exit stop with its message and
       write no `report.md`.
@@ -315,7 +315,7 @@ result's text, approver and time; a `result_file` result's text is its copy
 8. **Validate it** from the run directory, with `${CLAUDE_PLUGIN_ROOT}` resolved:
 
    ```
-   sh ${CLAUDE_PLUGIN_ROOT}/scripts/work-items.sh check work-items.jsonl report.body.tmp claims.md
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/work-items.sh" check work-items.jsonl report.body.tmp claims.md
    ```
 
    Put the result in `report/parts/11-coverage.md` and run `report.sh assemble` again,
@@ -350,7 +350,7 @@ result's text, approver and time; a `result_file` result's text is its copy
     `report/parts/claims-verdicts.body.md`, in the format below. It is not hashed:
 
     ```
-    sh ${CLAUDE_PLUGIN_ROOT}/scripts/report.sh claims-verdicts "<run dir>" <hex>
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/report.sh" claims-verdicts "<run dir>" <hex>
     ```
 
     On a nonzero exit, write it with the Write tool in that format.

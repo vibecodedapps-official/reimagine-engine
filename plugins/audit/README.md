@@ -41,7 +41,7 @@ Phrases the audit recognizes:
 
 Everything else goes in the manifest.
 
-Before it does anything else, the audit prints what it read: bundles, references, sources of truth, claims files, effort, budget, model overrides, and how each ticket was found. Then it asks you to pause background fetch, for example VS Code `git.autofetch`, since a fetch during the run can stop it. Under the default permission mode it asks before each script it runs and before each git read of a repository other than the session's folder; the skill pre-approves neither, since a pattern wide enough to cover those reads would also cover a git option that writes a file or runs a program.
+Before it does anything else, the audit prints what it read: bundles, references, sources of truth, claims files, effort, budget, model overrides, and how each ticket was found. Then it asks you to pause background fetch, for example VS Code `git.autofetch`, since a fetch during the run can stop it. Under the default permission mode it asks before each script it runs and before each git read of a repository other than the session's folder; the skill pre-approves neither, since a pattern wide enough to cover those reads would also cover a git option that writes a file or runs a program. What it does pre-approve holds until your first reply. So a run with no one to answer needs a permission mode that lets its commands run. Allow rules of your own may not be enough: a rule matches a command issued alone, and a session often joins several in one call. The commands are its scripts run by `sh`, `git -C <repo>` reads, `mkdir`, `mv`, `rmdir`, `sleep`, `find`, `stat`, `od`, `sha256sum` or `shasum`, `jq`, `awk` and `wc`.
 
 Commands:
 
@@ -82,7 +82,7 @@ A JSON file. Relative paths in it are relative to the manifest's directory. Ever
   - `repo`: the local checkout.
   - `pr`, or `branch` with `base`: what to audit.
   - `tickets`: the ticket ids or `file:` exports.
-  - `ticket_token`: how commit messages name an exported ticket; `{n}` stands for its id.
+  - `ticket_token`: how commit messages name an exported ticket; `{n}` stands for its id, or for the number of an `ado:` or `sf:` id.
   - `run_once`: glob patterns for run-once files, such as database migrations.
   - `head`: only `working-tree`, which audits the uncommitted state of the checkout.
   - `test_command`: runs the changed tests with the change reverted. Setting it is your consent to run the repository's own commands.
@@ -103,7 +103,20 @@ An error names the key that is wrong.
 
 ### Exported tickets and pull requests
 
-A ticket or pull request on a host without a tool goes in as a `file:` export, in markdown with frontmatter or in JSON. A ticket requires `id`, `url`, `title`, `state` and `description`. A pull request requires `id`, `url`, `title` and `body`. Every export also requires `source`, `exported_by` and `exported_at`. A missing key stops the run before stage 1. An Azure DevOps or Salesforce MCP tool, when present, can read a ticket instead.
+A ticket or pull request on a host without a tool goes in as a `file:` export, in markdown with frontmatter or in JSON. A ticket requires `id`, `url`, `title`, `state` and `description`. A pull request requires `id`, `url`, `title` and `body`. Every export also requires `source`, `exported_by` and `exported_at`. A missing key stops the run before stage 1. An Azure DevOps or Salesforce MCP tool, when present, can read a ticket instead. A ticket export in markdown, its description the text below the frontmatter:
+
+```markdown
+---
+id: APP-1
+url: https://tickets.example.invalid/browse/APP-1
+title: Deactivate users without deleting them
+state: In Progress
+source: file export
+exported_by: export-tickets
+exported_at: 2026-10-01T09:00:00Z
+---
+Deactivation keeps the user's row and sets its status to inactive.
+```
 
 ## Effort tiers
 

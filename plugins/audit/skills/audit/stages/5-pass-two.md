@@ -126,7 +126,7 @@ restate the finding schema or the output contract.
       under `pass1/` and `pass2/` except `*.pre-topup.md` gets exactly one record, in scope
       order.
    2. Run `mkdir -p <run dir>/tmp`, then
-      `sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh build5 <run dir> > <run dir>/tmp/ledger5.md`.
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" build5 <run dir> > <run dir>/tmp/ledger5.md`.
       Never redirect it into `ledger/5.md`: a failed build (exit 1, no output) must leave
       no `ledger/5.md`, since stage 8 prefers the ledger files when they exist. Per scope
       in inventory order, the script writes the pass-one findings (barrier top-up
@@ -159,7 +159,7 @@ restate the finding schema or the output contract.
       write them; `check --through 5` compares only the text before the first
       `## Map corrections applied` line with the script's output.
    4. Run `mv -f <run dir>/tmp/ledger5.md <run dir>/ledger/5.md`, then
-      `sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh check <run dir> --through 5 > <run dir>/tmp/check5.txt`.
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" check <run dir> --through 5 > <run dir>/tmp/check5.txt`.
       Read only `wc -l` of that file and its first 50 lines (`head -n 50`), never the
       whole output.
    5. A nonzero exit from `build5` or from the check comes with problem lines starting

@@ -36,7 +36,7 @@ You orchestrate one audit run in the main session. `run` runs stages 1 to 8 and 
 
 The allowed-tools list pre-approves `date` and a few git and gh reads in the session's own folder, each a form with no option that writes to a path the call names or runs a command the call names. Everything else follows the session's permission mode: every `git -C <repo>` call, `git diff`, `git log`, `git show`, `git grep` and `git stash list` in any form, `mkdir`, `mv -f`, `rmdir` of the lock, `sleep`, `find`, `stat`, `od`, `sha256sum` or `shasum`, `command -v jq`, `jq`, `awk`, `wc -c`, and the `sh` runs of the scripts. Tell the user once, before stage 1, that these may prompt. `git fetch` and every act write are never pre-approved; ask for each in words first.
 
-`${CLAUDE_PLUGIN_ROOT}` is the plugin's directory and `${CLAUDE_PLUGIN_DATA}` its data directory. Neither is a shell variable. Read skill files with the Read tool, never through Bash. In every Bash command write the resolved absolute path, never the unexpanded text. Run each script as `sh ${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh ...` with that path resolved. Times come from `date -u +%Y-%m-%dT%H:%M:%SZ`; copy the output, never write a time from memory.
+`${CLAUDE_PLUGIN_ROOT}` is the plugin's directory and `${CLAUDE_PLUGIN_DATA}` its data directory. Neither is a shell variable. Read skill files with the Read tool, never through Bash. In every Bash command write a path resolved, absolute and in double quotes, never as the unexpanded text, since a directory name may hold a space; so too for a placeholder that stands for a path, such as `<repo>` or `<run dir>`. Run each script with the Bash tool, as `sh "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh" ...` with that path resolved. Times come from `date -u +%Y-%m-%dT%H:%M:%SZ`; copy the output, never write a time from memory.
 
 ## Invocation block
 
@@ -99,7 +99,7 @@ Tickets: AB#4567 (mcp:<tool>), AB#4580 (file)
 - Effort: the hint and where it came from, or `default (set from size at stage 1)`.
 - Budget: the minutes, or `none`.
 - Models: each override as `<role> on <model>`, or `none`.
-- Tickets: each id with how it resolved: `gh`, `file`, `text` or `mcp:<tool>`. A ticket that resolved nowhere reads `unresolved: <reason>`; stage 1 decides whether the run goes on.
+- Tickets: each id with how it resolved: `gh`, `file`, `mcp:<tool>` or `text`, the last printed as `text, body not read`. A ticket that resolved nowhere reads `unresolved: <reason>`; stage 1 decides whether the run goes on.
 
 Each ticket resolves by the first form that applies:
 
@@ -216,13 +216,13 @@ A budget applies only to the invocation that gave it; `resume` runs with none un
 
 Before stage 1 does anything else, take the baseline per audited repository `<name>`:
 
-`sh ${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh snapshot <repo> <run dir> <run dir>/baseline/<name>`
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`
 
-It writes `.marker`, `.status`, `.refs`, `.stash`, `.config`, `.hashes` and `.ignored` under that prefix, walking nested repositories and submodules with `GIT_OPTIONAL_LOCKS=0`. A path git prints quoted is unsupported and exits 2.
+It writes `.marker`, `.status`, `.refs`, `.stash`, `.config`, `.hashes` and `.ignored` under that prefix, walking nested repositories and submodules with `GIT_OPTIONAL_LOCKS=0`. A path git prints quoted, or a partial clone at the top level or nested, is unsupported and exits 2.
 
 After every stage, stages 1 and 8 included, and before that stage's final entry, create `<run dir>/baseline/<stage>/` and run for each repository:
 
-`sh ${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh check <repo> <run dir> <run dir>/baseline/<name> <ignored base prefix> <run dir>/baseline/<stage>/<name>`
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" check <repo> <run dir> <run dir>/baseline/<name> <ignored base prefix> <run dir>/baseline/<stage>/<name>`
 
 The ignored base prefix is `<run dir>/baseline/<name>` until a check passes after the baseline was taken, then the out prefix of the last check that passed. Everything else is compared with the stage 1 baseline, which never moves. The script prints `blocked <status|stash|config|hashes|refs> <-|+> <line>`, `remote-ref <-|+> <line>`, `local-branch <-|+> <line>`, `ignored <added|deleted|changed> <path>` and `touched <path>`, and may lead with `note mtime precision: seconds`, which is not a difference.
 
@@ -290,7 +290,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 ```json
 {
-  "plugin_version": "0.1.19",
+  "plugin_version": "0.1.20",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],
@@ -324,7 +324,7 @@ At each stage boundary write `usage.md` from `stages.json`: per stage, each agen
 
 ## Stage 1: orient
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It takes the read-only baseline first, resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, sets `GIT_NO_LAZY_FETCH=1`, asks once for the fetch, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. It sets the tier: `low` for one bundle, one ticket and under 500 changed lines; `medium` up to three bundles, five tickets and under 5,000 lines; `high` otherwise; an effort hint overrides it. Then run the read-only check and start stages 2, 3 and 4 together.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It takes the read-only baseline first, resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, asks once for the fetch, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. It sets the tier: `low` for one bundle, one ticket and under 500 changed lines; `medium` up to three bundles, five tickets and under 5,000 lines; `high` otherwise; an effort hint overrides it. Then run the read-only check and start stages 2, 3 and 4 together.
 
 The tier sets three things:
 

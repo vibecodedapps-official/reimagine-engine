@@ -8,7 +8,7 @@ Open items are deferred findings that affect correctness or risk or cost more to
 
 Before the run's first pull request body or comment is written (for an item a CI repair pass adds, before 7.3's body update), record each open item in `run.md` as one of three, with its evidence:
 
-- Settled by the run: the same stretch of work can settle it, inside the plan's files and acceptance criteria, needing no input the run lacks, within the budget, and with no edit in Step 7. Record the evidence: a check, a test, a read or a commit. An item already resolved elsewhere (an open or merged pull request that resolves it, or a ticket that already holds everything the item would add) is settled by naming where, and is not listed in the body.
+- Settled by the run: the same stretch of work can settle it, inside the plan's files and acceptance criteria, needing no input the run lacks, within the budget, and with no edit in Step 7. Record the evidence: a check, a test, a read or a commit. An item already resolved elsewhere (an open or merged pull request that resolves it, or a ticket that already holds everything the item would add) is settled by naming where, and is not listed in Follow-ups.
 - A decision for the user: an item whose answer is the user's call. Put it in full in the report's `### Decisions for you` section: the assumption every option shares, each option, the recommendation first, and what would overturn it. It does not block publishing: the pull request publishes with its pointers, and the answer comes in a later run's request on the branch.
 - Filed to a ticket: everything else someone still owes: work outside the plan, an input the run cannot get (a date, an environment, a fixture, an owner), a question someone other than the user owns, a bug found outside the change, a check someone must still run. Search the tracker first, closed tickets included. An open ticket that covers the same symptom but lacks what the item adds gets a comment and a record; a closed one is not commented on, and the new ticket's body links it; else a new ticket, one symptom each. The remainder of a source ticket the run took up stays on that ticket: its pull request line is `Refs`, and Step 7.4's comment says what is not done; it is not a new ticket. A source ticket is never the ticket of an open item. That holds for every ticket a run of the record took up (`steps.json`, `tickets`): one the search finds gets no comment for the item, and the new ticket's body links it.
 
@@ -24,7 +24,7 @@ A run that ends `prepared` (a host other than `github`, "do not publish", or a d
 
 Every draft, on any run, including each ticket of a non-yes reply, is logged in `run.md` as `- draft <file>: <one line>`, is listed in the report's Open items with its files and the command that files it, and, when the run writes a handoff, keeps a local id there (`handoff.md`, Raised tickets).
 
-The pull request body and the continued comment carry at most one line per ticket: what it holds, in one line, and its ticket reference (`pr-body.md`, Follow-ups). An item settled or put to the user is not listed. A new ticket's record names the branch, and the pull request once one exists.
+The pull request body and the continued comment carry at most one line per ticket: what it holds, in one line, and its ticket reference (`pr-body.md`, Follow-ups). An item settled or put to the user is not listed in Follow-ups. A new ticket's record names the branch, and the pull request once one exists.
 
 ## Ticket text and records
 

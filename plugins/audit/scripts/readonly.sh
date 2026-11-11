@@ -34,7 +34,8 @@
 # A file that vanishes while the snapshot runs is recorded as absent: left out of
 # .ignored, or `deleted <path>` in .hashes.
 # A path git prints quoted (one with a double quote, backslash, tab, newline, or other
-# control character) is not supported: exit 2 naming it.
+# control character) is not supported: exit 2 naming it. A partial clone, at the top level
+# or nested, is not supported either: exit 2, naming a nested one by its path.
 # Nested repositories: a checked-out submodule (a gitlink in the index whose directory has
 # a .git) or an untracked directory that has a .git, at any depth. Each one's own status
 # lines go into .status with its path from the top level in front of every path, for
@@ -163,6 +164,12 @@ collect() {
 	else
 		cdir=$top/$1
 		cpre=$1/
+	fi
+	# A git read of an object a partial clone lacks would fetch it. The read names no
+	# file, so it covers every configuration source.
+	if git -C "$cdir" config --get-regexp '^(remote\..*\.promisor|extensions\.partialclone)$' \
+		> /dev/null 2>&1 < /dev/null; then
+		die "partial clones are not supported${cpre:+: $1}"
 	fi
 	# --ignore-submodules=none so a configured `ignore` cannot hide a submodule's changes.
 	git -c core.quotePath=false -c core.fsmonitor=false -C "$cdir" status --porcelain=v2 --branch \

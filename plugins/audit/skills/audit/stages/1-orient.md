@@ -13,10 +13,7 @@ work on the repositories, so everything after it is covered by the stage's read-
 check.
 
 Scripts are `${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh`, run as
-`sh <resolved absolute path> ...`. Every Bash command of this stage that runs git, or a
-script that runs git, begins with `export GIT_NO_LAZY_FETCH=1;`, so a missing object
-fails instead of being fetched from a promisor remote; the commands below are written
-without that prefix. Every `gh api` call passes `--hostname <host>`, names one endpoint,
+`sh "<resolved absolute path>" ...`. Every `gh api` call passes `--hostname <host>`, names one endpoint,
 is the only read of its Bash call, and never runs inside a shell loop. Forge output goes
 to a file by shell redirect and never passes through the model: a tool result cannot
 hold a large output, and the Write tool would re-serialize it.
@@ -71,11 +68,12 @@ branch to it in the manifest."
       - Every path absolute. Every `repo`, reference `path` and source of truth `path`
         is a git checkout: store `git -C <path> rev-parse --show-toplevel`. For each
         such top level `<repo>`, when
-        `git -C <repo> config --local --includes --get-regexp '^(remote\..*\.promisor|extensions\.partialclone)$'`
+        `git -C <repo> config --get-regexp '^(remote\..*\.promisor|extensions\.partialclone)$'`
         exits 0, stop with one line per repository,
         `<repo>: partial clones are not supported`: an agent's `git show` or `git diff`
-        would fetch missing objects over the network. `--includes` follows the file's
-        `include` directives, which `--local` alone skips.
+        would fetch missing objects over the network. The read names no file, so it
+        covers every configuration source and follows `include` directives. A partial
+        clone nested in a repository is refused at the baseline (1b).
       - A slug is the text lowercased, with each run of characters outside `a-z0-9`
         turned into one `-`. Bundle names are the repository directory's base name,
         slugged, with `-2`, `-3` when two bundles share it; `<bundle>` in file names is
@@ -88,13 +86,15 @@ branch to it in the manifest."
         `groups: <name> collides with the top-up files of <scope>` when it equals
         `<scope>-topup` or `<scope>-maptopup` for another entry's slug or a reserved
         name. A name is never changed to make it pass. `cross-cutting` is not reserved.
-      - Ticket and pull request ids: `github:owner/repo#n`, `file:<absolute path>`,
-        `mcp:<tool>` for a ticket read with an Azure DevOps or Salesforce MCP tool the
-        session has, or `text` for a ticket known only by the id and the words the user
-        gave. A short `#n` is accepted only when the bundle's repository has exactly one
-        GitHub remote (`git -C <repo> remote -v`); otherwise stop with
+      - Ticket and pull request ids: `github:owner/repo#n`, `ado:<org>/<project>#<n>`,
+        `sf:<case number>` or `file:<absolute path>`, the forms a handoff writes; an id
+        in another form stays as the user wrote it. How a ticket resolved (0h) is recorded
+        beside its id, never as it. A short `#n` is accepted only when the bundle's
+        repository has exactly one GitHub remote (`git -C <repo> remote -v`); otherwise
+        stop with
         `<id>: write it as github:owner/repo#n or file:<path>`, and add that a ticket
-        on another forge comes in as a `file:` export. `<ticket>` in file names is the
+        on another forge is written `ado:<org>/<project>#<n>` or `sf:<case number>`, or
+        comes in as a `file:` export. `<ticket>` in file names is the
         id slugged, except for a `file:` ticket, whose `<ticket>` is the export's `id`
         slugged, else the file's base name without its extension slugged; the
         normalized id `file:<path>` stays the ticket's identity everywhere else. For
@@ -166,7 +166,7 @@ branch to it in the manifest."
       bundle needs its branch checked out: `git -C <repo> rev-parse --abbrev-ref HEAD`
       equals it, else stop with
       `bundle <name>: head working-tree needs <branch> checked out, found <x>`. Then run
-      `sh ${CLAUDE_PLUGIN_ROOT}/scripts/working-tree.sh check <repo>`, which writes
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/working-tree.sh" check <repo>`, which writes
       nothing and runs no filter, hook or program; exit 1 or 2 stops the run showing the
       script's stderr lines. For a GitHub pull request bundle without a manifest
       `branch`, both checks run in 0k against `headRefName`. The refusals are thus known
@@ -182,13 +182,16 @@ branch to it in the manifest."
       frontmatter does not set it. A missing required key stops the run with exactly
       `export <path>: missing <key>`, the path as given, the first missing key in the
       order above; check every export first and show one line per file that fails.
+      The sentence after them says that a `file:` input is an exported ticket or pull
+      request with these keys, as the plugin's README shows, and that any other document
+      belongs in `claims` or `sources_of_truth`.
       Keep each missing optional key per file for the brief's "not in export" lines.
 
    g. **Claims files.** For each file in `claims`, run
-      `sh ${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh detect <file>`. Exit 0 is a handoff
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh" detect <file>`. Exit 0 is a handoff
       (it has a `reimagine-handoff:` key, whatever its value), exit 1 a prose claims
       file, exit 2 stops the run naming the file. For each handoff run
-      `sh ${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh check <file>`: it prints
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh" check <file>`: it prints
       `handoff: ok`, or exits 1 with `handoff <file>:<line>: <message>` lines. Check
       every handoff, then stop showing every such line; exit 2 stops naming the file.
       Map each handoff to the manifest: a handoff bundle maps to the manifest bundle
@@ -286,7 +289,7 @@ branch to it in the manifest."
       cases.
 
    n. **Completion record.** Write `stages.json` through `stages.json.tmp` and
-      `mv -f`, with `plugin_version` `0.1.19`, empty `approvals`, and a stage 1 entry
+      `mv -f`, with `plugin_version` `0.1.20`, empty `approvals`, and a stage 1 entry
       with status `running` whose inputs are the `git hash-object --no-filters` hashes
       of `manifest.json`, each claims file, the questions file and each `file:` export,
       and `plugin_version`. Record the stage's start time for the budget.
@@ -354,13 +357,14 @@ branch to it in the manifest."
 
    b. **Baseline.** Create `baseline/` in the run directory. For each audited repository
       `<name>`, once even when it has several roles, run
-      `sh ${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh snapshot <repo> <run dir> <run dir>/baseline/<name>`.
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`.
       It writes `baseline/<name>.marker`, `.status`, `.refs`, `.stash`, `.config`,
-      `.hashes` and `.ignored`. A non-zero exit ends the run `blocked` with the script's
-      message, since the boundary cannot be checked.
+      `.hashes` and `.ignored`, and refuses a partial clone in the repository or nested in
+      it, a checked-out submodule included. A non-zero exit ends the run `blocked` with
+      the script's message, since the boundary cannot be checked.
 
    c. **Working-tree head.** For each bundle with `head: working-tree`, run
-      `sh ${CLAUDE_PLUGIN_ROOT}/scripts/working-tree.sh build <repo>`. It builds a commit
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/working-tree.sh" build <repo>`. It builds a commit
       from the working tree in a temporary index copied from the repository's own, so
       the index, refs and files stay untouched; its only writes are objects. Exit 0
       prints `head <sha>`, `parent <sha>`, `tree <sha>`, an `untracked <path>` line per
@@ -437,7 +441,7 @@ branch to it in the manifest."
      and `<baseRefName>` from `pr.json`:
      `gh pr list -R <host>/<owner>/<repo> --base <baseRefName> --state open --limit 100 --json number,url,headRefName,changedFiles,files > forge/<bundle>/open-prs.json`
      then
-     `sh ${CLAUDE_PLUGIN_ROOT}/scripts/collisions.sh forge/<bundle>/open-prs.json <PR number> 100 <new path>... > forge/<bundle>/collisions.tsv`,
+     `sh "${CLAUDE_PLUGIN_ROOT}/scripts/collisions.sh" forge/<bundle>/open-prs.json <PR number> 100 <new path>... > forge/<bundle>/collisions.tsv`,
      one argument per new path. It prints `collision`, `cut` and `cut-list` rows; a
      candidate is a lead, never a finding. Hash `collisions.tsv` into `forge_hashes`,
      never `open-prs.json`, so an unrelated open pull request does not invalidate stage
@@ -516,9 +520,9 @@ branch to it in the manifest."
          the script's default list applies). No key's text passes through a shell
          command line.
       2. Start, with the Bash tool's `run_in_background` set to true,
-         `sh ${CLAUDE_PLUGIN_ROOT}/scripts/revert-tests.sh bg <repo> <base> <head> <run dir>/revert/<bundle>.keys <run dir>/tmp/revert-work/<bundle> <run dir>/revert/<bundle>.md`,
+         `sh "${CLAUDE_PLUGIN_ROOT}/scripts/revert-tests.sh" bg <repo> <base> <head> <run dir>/revert/<bundle>.keys <run dir>/tmp/revert-work/<bundle> <run dir>/revert/<bundle>.md`,
          with the shas of step 3. Then run
-         `sh ${CLAUDE_PLUGIN_ROOT}/scripts/revert-tests.sh wait <run dir>/revert/<bundle>.md`
+         `sh "${CLAUDE_PLUGIN_ROOT}/scripts/revert-tests.sh" wait <run dir>/revert/<bundle>.md`
          in the foreground with the Bash tool's `timeout` at 600000. It returns within
          nine minutes; while it exits 3 (still running), run it again, at most eight
          times in all. Never end the turn while the run is in the background: in a
@@ -573,7 +577,7 @@ branch to it in the manifest."
 
    The first shape is a handoff claim, the second a prose claim, the third a prose
    sentence that is not a claim. A handoff's claims are the lines of
-   `sh ${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh claims <file>` (kind, ref, bundle,
+   `sh "${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh" claims <file>` (kind, ref, bundle,
    ticket, line, text, tab-separated), one claim per line, never split, with the
    script's kind, never one chosen by judgment; a mapped bundle or ticket takes the
    manifest's name (0g). The handoff's other lines are not listed. A prose file is
@@ -602,14 +606,15 @@ branch to it in the manifest."
    1. A ticket's commits are those whose message names its token: for
       `github:owner/repo#n`, `owner/repo#n`, and `#n` when the issue is in the bundle's
       repository; for any other ticket its `id`, or, when the bundle has `ticket_token`,
-      each pattern with `{n}` replaced by the `id` as written. A pattern is a literal
+      each pattern with `{n}` replaced by the `id` as written, or by the number alone
+      for an `ado:` or `sf:` id. A pattern is a literal
       template, never a regex. A token matches only when the characters just before and
       after it, when present, are neither a letter nor a digit, and the one before a
       GitHub token is also not `-`, `_`, `.` or `/`. So `#12` does not match `#123`,
       `APP-1` does not match `APP-10` or `XAPP-1` but matches in `feature/APP-1`, and
       with `#{n}` the commit `fix(#4567 #4568)` belongs to both tickets while `AB#4567`
       belongs to neither. In a bundle with one ticket, every commit is that ticket's. A
-      handoff's commits, from `sh ${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh commits <file>`
+      handoff's commits, from `sh "${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh" commits <file>`
       (bundle, sha, ticket, line), are matched by prefix among
       `git -C <repo> log --format=%H <merge-base>..<head>` and join the ticket's
       commits; a sha that matches none or several, or a commit whose message names
@@ -738,7 +743,7 @@ branch to it in the manifest."
        four defaults, or the manifest's list with `extends: default` applied. Then run
 
        ```
-       sh ${CLAUDE_PLUGIN_ROOT}/scripts/run-copies.sh <run dir> <run id> <tier> <run dir>/questions.md
+       sh "${CLAUDE_PLUGIN_ROOT}/scripts/run-copies.sh" <run dir> <run id> <tier> <run dir>/questions.md
        ```
 
        which writes `common.md` with its header filled (run id, run directory, tier and

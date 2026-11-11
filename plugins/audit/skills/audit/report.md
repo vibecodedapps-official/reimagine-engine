@@ -348,7 +348,7 @@ A run record.
   `note mtime precision: seconds`, the ignored-file comparison used whole seconds, so a
   same-size rewrite within one second went unseen. A user's own edit to an audited
   repository during the run would also have tripped the check.
-- Forge: the bundles not queried, and each export's "not in export" keys.
+- Forge: the bundles not queried, each ticket whose body was not read, and each export's "not in export" keys.
 - Test injection: the manifest's `_test` key, when present.
 
 ### 12. Usage

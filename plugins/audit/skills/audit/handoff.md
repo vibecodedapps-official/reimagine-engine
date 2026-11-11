@@ -179,7 +179,7 @@ line order, nothing else, and exit 1. A usage error or an unreadable file exits 
 `/audit:handoff` runs this procedure in the build session, from the invocation block's
 `out`, `verdicts` and `memory` fields. It writes one file, the handoff. It never edits a
 tracked file, commits, pushes or posts to a forge. Scripts run as
-`sh <resolved absolute path of ${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh> ...`.
+`sh "<resolved absolute path of ${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh>" ...`.
 
 1. **Check the flags.** A `memory` directory needs a `verdicts` file, since
    `memory.sh` reads the false entries of one: with `memory` and no `verdicts`, stop

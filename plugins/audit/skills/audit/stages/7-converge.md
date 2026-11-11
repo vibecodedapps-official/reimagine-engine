@@ -32,7 +32,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
 
       ```
       mkdir -p <run dir>/tmp
-      sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh late-ids <run dir> --tier <tier> --stage6 <complete|failed> > <run dir>/tmp/late-ids.txt
+      sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" late-ids <run dir> --tier <tier> --stage6 <complete|failed> > <run dir>/tmp/late-ids.txt
       ```
 
       `--stage6` is stage 6's status. A nonzero exit fails stage 7. The list holds, at
@@ -68,7 +68,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
    4. Check the file by script, then read only the size and the head of the output:
 
       ```
-      sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh late-check <run dir> --tier <tier> --stage6 <complete|failed> > <run dir>/tmp/late-check.txt
+      sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" late-check <run dir> --tier <tier> --stage6 <complete|failed> > <run dir>/tmp/late-check.txt
       wc -l < <run dir>/tmp/late-check.txt
       head -n 50 <run dir>/tmp/late-check.txt
       ```
@@ -111,7 +111,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
 
    ```
    mkdir -p <run dir>/tmp
-   sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh gate <run dir> --tier <tier> --stage6 <complete|failed> --late <complete|failed|not-run> > <run dir>/tmp/gate.md
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" gate <run dir> --tier <tier> --stage6 <complete|failed> --late <complete|failed|not-run> > <run dir>/tmp/gate.md
    ```
 
    Only on exit 0 run `mv -f <run dir>/tmp/gate.md <run dir>/gate.md`. A nonzero exit
@@ -316,7 +316,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
 8. **Check the merge against the ledger,** once `converged.md` exists:
 
    ```
-   sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh check <run dir> --through 7 --tier <tier> --stage6 <complete|failed> --late <complete|failed|not-run> > <run dir>/tmp/check7.txt
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" check <run dir> --through 7 --tier <tier> --stage6 <complete|failed> --late <complete|failed|not-run> > <run dir>/tmp/check7.txt
    wc -l < <run dir>/tmp/check7.txt
    head -n 50 <run dir>/tmp/check7.txt
    ```

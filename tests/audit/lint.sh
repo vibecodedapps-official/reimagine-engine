@@ -84,12 +84,10 @@
 # - The stage 6 section of skills/audit/SKILL.md writes the mandatory set into
 #   `tmp/mandatory.txt`, moves it only on exit 0, and names `## Additions` for the first
 #   batch's `### X<n>:` additions.
-# - The command list in hard rule 2 of skills/audit/common.md and in Boundaries item 2
-#   of agents/auditor.md, adversary.md, mapper.md and digester.md, read as one line,
-#   names `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with `-t`,
-#   `-s` or `-p`, and `git branch --list`; all but the digester's also name `cut`,
-#   `uniq` and `cat` of an exported file, and bar `sort -o`, `--output` or
-#   `--compress-program` and `uniq` with an output file operand.
+# - The command list in hard rule 2 of skills/audit/common.md, read as one line, names
+#   `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with `-t`, `-s` or
+#   `-p`, `git branch --list`, `cut`, `uniq` and `cat` of an exported file, and bars
+#   `sort -o`, `--output` or `--compress-program` and `uniq` with an output file operand.
 # - The default rank in skills/audit/stages/1-orient.md lists `AGENTS.md`, `CLAUDE.md`,
 #   `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and `REVIEW.md` in that
 #   order, and says `REVIEW.md` is read at the pinned base with `git show <base>:<path>`;
@@ -666,28 +664,20 @@ code
 exit 0'
 fi
 
-# The command list of hard rule 2 and of each Bash agent's Boundaries item 2 holds the
-# read-only git commands agents use; all but the digester's also hold the pipe stages
-# cut and uniq and cat of an exported file, and bar the sort and uniq forms that write
-# a file.
-for f in skills/audit/common.md agents/auditor.md agents/adversary.md agents/mapper.md agents/digester.md; do
-	[ -f "$f" ] || continue
-	case $f in
-	skills/*) s='^2[.] [*][*]Prevention and detection' ;;
-	*) s='^2[.] Bash runs only' ;;
-	esac
+# The command list of hard rule 2, which every agent definition points at, holds the
+# read-only git commands agents use and the pipe stages cut and uniq and cat of an
+# exported file, and bars the sort and uniq forms that write a file.
+f=skills/audit/common.md
+if [ -f "$f" ]; then
+	s='^2[.] [*][*]Prevention and detection'
 	step "$f" "$s" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	[ -s "$tmp/list" ] || fail "$f: no command list matching $s"
-	set -- '`git rev-parse`' '`git merge-base`' '`git ls-tree`' \
-		'`git cat-file` with `-t`, `-s` or `-p`' '`git branch --list`'
-	case $f in
-	agents/digester.md) ;;
-	*) set -- "$@" '`cut`' '`uniq`' '`cat` of an exported file' '`sort -o`, `--output` or `--compress-program`' '`uniq` with an output file operand' ;;
-	esac
-	for c in "$@"; do
+	for c in '`git rev-parse`' '`git merge-base`' '`git ls-tree`' \
+		'`git cat-file` with `-t`, `-s` or `-p`' '`git branch --list`' \
+		'`cut`' '`uniq`' '`cat` of an exported file' '`sort -o`, `--output` or `--compress-program`' '`uniq` with an output file operand'; do
 		grep -qF "$c" "$tmp/list" || fail "$f: the command list lacks $c"
 	done
-done
+fi
 
 # The default rank, the required checks and the instruction files read before a change
 # name the rules and skills directories and REVIEW.md at the base; each file is read as

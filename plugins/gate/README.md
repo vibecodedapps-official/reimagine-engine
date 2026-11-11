@@ -24,7 +24,7 @@ With no target, the current branch is gated against its base. There are no flags
 Phrases the gate recognizes:
 
 - `repo <path>`: gate the branch checked out at that path in place of the session's, since a `cd` in one call does not carry to the next. The path must be a git toplevel or a linked worktree, else the target is unresolved. The check may ask for permission once before the run starts, unless an allow rule covers `git -C`.
-- A session started in a subfolder of the repository gates the whole repository: the run works from the repository's root, where its record and `.reimagine.json` are. Its git commands then take the `git -C` form, which asks for permission unless an allow rule covers it.
+- A session started in a subfolder of the repository gates the whole repository: the run works from the repository's root, where its record and `.reimagine.json` are. Its git commands then take the `git -C` form, which asks for permission unless an allow rule covers it. Such a rule should name the path: a `*` after `-C` also covers `-c`, which runs a program.
 - `no fixes`: make the first pass only. Nothing is edited, committed or pushed; the report says what a fix run would do.
 - `budget <n> minutes`: set the run budget.
 - `base <branch>`: name the base branch of a branch target. A pull request keeps its own base, so a different one stops the run.

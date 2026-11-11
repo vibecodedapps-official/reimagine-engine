@@ -896,9 +896,9 @@ for f in skills/audit/stages/9-act.md skills/audit/common.md skills/audit/SKILL.
 done
 
 # Coverage lists stages 1 to 7 with the checks each accepted, and stage 8's line is one
-# fixed sentence, since stage 8's own check runs after the report is hashed; the files
-# are read as one line.
-for f in skills/audit/report.md skills/audit/stages/8-report.md; do
+# fixed sentence, since stage 8's own check runs after the report is hashed; the file is
+# read as one line.
+for f in skills/audit/report.md; do
 	if [ -f "$f" ]; then
 		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 		grep -qF 'Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.' "$tmp/list" ||
@@ -926,7 +926,7 @@ done
 
 # Section 3 names its cut by tier: every item in full at low tier; at medium and high tier
 # the challenged items in full and the others as a cut first line with the pass-one path.
-for f in skills/audit/report.md skills/audit/stages/8-report.md; do
+for f in skills/audit/report.md; do
 	if [ -f "$f" ]; then
 		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 		grep -qF 'every Verified OK item shows in full.' "$tmp/list" ||

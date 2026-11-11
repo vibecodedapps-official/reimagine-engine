@@ -107,3 +107,12 @@ test('each stage section of SKILL.md names its stage file and holds no list or t
     assert.ok(!/^(?:\d+\. |- |\|)/m.test(body), `the stage ${n} section holds a list or a table; its steps belong in the stage file`);
   }
 });
+
+test('the files that draft or post text for a reader point at common.md hard rule 3', () => {
+  for (const file of ['skills/audit/report.md', 'skills/audit/stages/9-act.md']) {
+    assert.ok(
+      citations(TEXT[file]).some(([name, words]) => name === 'common.md' && /^hard rule 3\b/.test(words)),
+      `${file} does not point at common.md hard rule 3`,
+    );
+  }
+});

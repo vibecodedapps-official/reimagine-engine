@@ -110,7 +110,7 @@ result's text, approver and time; a `result_file` result's text is its copy
    - `provisional`: never counts, whatever its disposition.
 
    A label of `unverified assumption` caps a severity at `medium` (`common.md`,
-   "Evidence"). The report shows the counts so a reader can check the verdict.
+   "Evidence").
 
 5. **Decide the verdict.**
    - A `partial` run: `audit incomplete`, with the counts so far; never `ready to
@@ -119,158 +119,45 @@ result's text, approver and time; a `result_file` result's text is its copy
    - Else any counted item at `medium`: `merge after fixes`.
    - Else `ready to merge`.
 
-   The verdict line gives the verdict, the counts by severity, the provisional,
-   contested and dismissed counts, in the form `report.md` fixes.
-
-6. **Fill the body** in the order of `report.md`. The first line is
-   `# audit report: <run-id>`. The header under it carries what a reader needs to find
-   the record when nothing else was shown, as in a headless session: the run id, the
-   absolute run directory, the manifest path, the terminal state, and the resume
-   command `/audit:resume <run-id>`, with the tier and the bundles as `report.md` lays
-   them out, and the `REVIEW.md:` line from the brief. Outside the Coverage and Usage
-   sections, which are run records, the report names no model, agent type or tool: a
-   position is named by its review (pass one, pass two, second opinion, late review),
-   never by what produced it. The twelve sections:
+6. **Fill the body** in the order of `report.md`, the header as `report.md`, "Body",
+   lays it out, with the `REVIEW.md:` line from the brief. The twelve sections:
    1. **Verdict**, from steps 4 and 5, then the `next:` block of step 14.
-   2. **Findings by ticket**, severity first. Each item sits under a heading
-      `#### C<n>: <title>`, which the work-items validator reads, with its evidence,
-      gate, disposition and absorbed ids. A `provisional` item says which review it
-      still lacks, from its `gate.md` reason, or from the recomputed gate in path 2,
-      or that a `REVIEW.md` rule holds it. Then the skip lines of step 2.
+   2. **Findings by ticket**, as `report.md`, "2. Findings by ticket", says. A
+      `provisional` item's missing review comes from its `gate.md` reason, or from the
+      recomputed gate in path 2. Then the skip lines of step 2.
    3. **Verified as sound**: every Verified OK item of the pass-one reports, marked
       `challenged` when a pass-two `## Verified OK challenged` list names it, else
-      `not challenged`. At low tier every one is `not challenged`, and every Verified
-      OK item shows in full. At medium and high tier an item marked
-      `challenged` shows in full, and an item marked `not challenged` shows as its first
-      line cut at 150 characters, then its pass-one file path, grouped by scope with the
-      scope's count.
-   4. **Disagreements kept**: every `contested` item with each position and its
-      evidence, no side picked.
+      `not challenged`, shown as `report.md`, "3. Verified as sound", says.
+   4. **Disagreements kept**, as `report.md`, "4. Disagreements kept", says.
    5. **Recommended next steps**: the ordered plan of step 14.
    6. **Code fixes**, by repository and file, with item ids.
-   7. **Work-item fixes**: the ticket text to change, drafted, written for its reader as
-      `SKILL.md`, What leaves the run, says, with the item ids beside it and no model,
-      agent or tool; then each operation of `work-items.jsonl` with its `W<n>` id, op,
-      target, the item ids it covers and its reason. The operations are decided here
-      and numbered from `W1` in order, so step 7 writes the same list with the same
-      ids.
-   8. **Decisions**, in three parts. Decision and scope entries are report entries,
-      not findings: they get no `C<n>`, enter no ledger and change no count; a finding
-      an entry names in its `finding:` field is in section 2 like any other.
-      1. Decision ledger: each `decision` claim with its class (`stale deferral`,
-         `needs <owner>`, `default taken`, `evidenced`), its resolution, authority and
-         evidence from the pass-one `## Decisions` entry, its reversibility class, the
-         recommendation and the owner, then the auditor's position and the
-         adversary's from `## Decisions challenged`, or `not challenged` when that
-         list has no line for it. When the two differ both stay. A claim the stage 4
-         entry records as `not assessed` is listed with that mark alone.
-      2. Raised tickets: each `scope` claim with the fields of the pass-one `## Scope`
-         entry (introduced by the bundle, fix inside the bundle's repositories, cost,
-         recommendation, the handoff's ranking, whether facts or recommendation
-         differ from the handoff) and the adversary's position from
-         `## Scope challenged`, or `not challenged`. A `not assessed` scope claim is
-         listed with that mark alone.
-      3. Other decisions: each decision the change made or needs that is not a
-         `decision` claim, with recommendation, reason and reversibility class
-         (`reversible`, `hard to reverse`, `contract change`); an owner only for the
-         last two and only when the tickets name one, else `owner not recorded`.
-   9. **Live checks**: one block per check, in the form of `live.md`, "The report's
-      Live checks blocks": `#### live <finding id>` for a finding, `#### live claim <n>`
-      for an environment claim. Each `status` comes from `live/findings.md`,
-      `live/claims.md`, the results files they cite and the `live` approvals in
-      `stages.json`: `not run: not approved`, or a run result with its approver, time,
-      derivation and review state, `under review` while its `gate.md` reason is
+   7. **Work-item fixes**, as `report.md`, "7. Work-item fixes", says. The operations
+      are decided here and numbered from `W1` in order, so step 7 writes the same list
+      with the same ids.
+   8. **Decisions**, as `report.md`, "8. Decisions", says: the entries of the pass-one
+      `## Decisions` and `## Scope` lists, each with its line from
+      `## Decisions challenged` or `## Scope challenged`, or `not challenged` when that
+      list has no line for it, and `not assessed` for a claim the stage 4 entry records
+      so.
+   9. **Live checks**, as `report.md`, "9. Live checks", says. Each `status` comes from
+      `live/findings.md`, `live/claims.md`, the results files they cite and the `live`
+      approvals in `stages.json`, `under review` while its `gate.md` reason is
       `live result not yet reviewed`. A result kept as a file is cited by its copy and
-      the hash from `SHA256SUMS`, and so is each result a newer one outranks. Every
-      result shown is logged as an access with its approver and time. Results come back through
-      `/audit:resume <run-id> --live <file>`.
-   10. **Claims**: every numbered claim of `claims.md` with its kind, its verdict and
-       the finding or evidence, from the pass-one Claims lists as revised by later
-       verdicts. A `verification` claim is `true, reproduced` only when the audit
-       reproduced the stated result itself, `false, contradicted` only with
-       counter-evidence, else `not verified, not reproduced` with the reason. A claim
-       no list covers, or one the stage 4 entry records as `not assessed`, is
-       `not verified`, the reason `not assessed` for the latter. A claim a
-       `## Claims challenged` line overturned shows both verdicts and is `contested`.
-       A live claim takes its derived verdict: `true, reproduced` stays when the late
-       adversary's line in `late/adversary.md` is `upheld`, becomes `contested` when it
-       is `overturned`, and becomes `not verified, not reproduced`, reason `live result
-       not challenged`, when there is no line. An environment claim with no live
-       result stays `not verified, not reproduced`, reason `needs a live check: env
-       <name>` (`common.md`, "Claim kinds"). Say once here that reproducing a stated
-       result does not show that the build session ran its stated check.
-   11. **Coverage**, a run record, from `stages.json`, `audit-brief.md` and the check
-       files:
-       - each handoff claims file with its path, hash and whether `handoff.sh check`
-         validated it, from the brief;
+      the hash from `SHA256SUMS`, and so is each result a newer one outranks.
+   10. **Claims**, as `report.md`, "10. Claims", says, from the pass-one Claims lists
+       as revised by later verdicts (a `## Claims challenged` line; for a live claim,
+       the late adversary's line in `late/adversary.md`), with `not assessed` for a
+       claim the stage 4 entry records so.
+   11. **Coverage**, as `report.md`, "11. Coverage", says, from `stages.json`,
+       `audit-brief.md` and the check files:
+       - each handoff claims file from the brief;
        - the `work-items.sh` result, filled in at step 8;
-       - each stage 1 to 7 run, not applicable, failed, swapped or `not run: budget
-         expired`, and why, with the read-only checks it accepted; every swap with its stage, role, scope, the requested model it
-         left, the one it went to and the reason, each model written as "requested",
-         never "used";
-       - the stage 8 line, the fixed sentence ``Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.`` written as it stands:
-         the report is hashed before the check of step 11 runs, so its result is only in
-         that file;
-       - when a `--live` resume went on with a recorded plugin version other than the
-         current one, the recorded and the current version, from the rerun stage's entry;
-       - at low tier, that one auditor covered the ticket, the tests and work-item
-         hygiene;
-       - failed scopes and scopes not run because the budget expired, the files, rules
-         or questions they left unreviewed, and the last byte offset of a digest that
-         ended `status: failed at byte <offset>`;
-       - each `decision` or `scope` claim recorded `not assessed`, and each entry
-         `not challenged` because pass two wrote no line for it;
-       - each line of the stage 5 entry's `brief_errata`, as the adversaries wrote it;
-       - the outward trace, from the `pass1/` and `pass2/` files and the stage 4 and 5
-         entries, so it shows even when pass two failed or never ran: each scope recorded
-         `outward trace: not assessed`; each `not traced:` symbol; each entry with
-         result `incomplete`; each entry cut to `(<k> of <n> checked)`, a cut
-         decision list included, with its `not listed:` locations; each `outward trace:` line of a pass-two
-         `## Coverage gaps`; and the number of entries `not challenged`. A symbol on
-         two lists shows once. None of these fails a scope or changes a count;
-       - each bundle whose base refresh was declined (the brief's `base: local ref,
-         refresh declined` line), whose base commit list and overlap set are as of
-         that ref;
-       - each `head: working-tree` bundle: the loose objects `working-tree.sh build`
-         wrote to the object store (an allowed write), that the head commit has no ref
-         and may be pruned by `git gc`, the files untracked and the paths flagged at
-         audit time, and that a flagged path is held at its index version, so its local
-         content is not in the head and a change to it during the run may escape the
-         read-only check;
-       - each bundle with `test_command`: whether the changed test files ran with the
-         change reverted or none were found to run, the setup exit status per copy
-         when `test_setup` is set, the verdict counts, every `not run` with its
-         reason, the changed paths outside `test_paths`, whose tests were not
-         measured, and that the bundle's own commands ran with the user's environment
-         and credentials, in copies under the plugin's data directory that were
-         removed, and may have written outside the audited repositories;
-       - stage 6: whether the mandatory ids went out in batches (`batched`), each
-         sentinel acknowledgment that failed (`sentinels`), every mandatory id left
-         without a position (`missing_positions`), and each batch relaunched,
-         with its model, or failed;
-       - every file stage 2 split by byte range (`split_files`): source, path, size,
-         each range and the chunk id that covered it, with that chunk's status;
-       - unanswered questions, questions marked "not run", and departures from the
-         stage plan;
-       - map corrections not applied, from `ledger/5.md`;
-       - the bundles whose forge was not queried because exports were used, each ticket
-         whose body was not read, and each export's "not in export" keys;
-       - each `baseline/<stage>-check.md` result for stages 1 to 7, the ignored-file
-         differences each accepted, with the run that wrote each file, and what the check
-         does not detect: an ignored file replaced at the same size with a restored
-         modification time; changes inside `.git/` other than refs, stashes and
-         config; a nested repository's changes other than its HEAD, stashes or
-         config; changes inside a repository in an ignored directory, such as a
-         linked worktree, other than a top-level entry added or removed; and changes
-         outside the audited repositories. When a `baseline/<stage>-check.md` holds
-         `note mtime precision: seconds`, say the comparison used whole seconds, so a
-         same-size rewrite within one second went unseen. A user's own edit to an
-         audited repository during the run would also have tripped the check;
-       - the manifest's `_test` key, when present.
-   12. **Usage**, a run record, per stage from `usage.md` and the stage entries:
-       agents run with their requested models, wall-clock time, and tokens, each
-       labeled "task notification, subagent_tokens; scope not documented", the stage
-       6 agents included like any other. No total is presented as exact.
+       - the plugin versions of a `--live` resume from the rerun stage's entry;
+       - the outward trace from the `pass1/` and `pass2/` files and the stage 4 and 5
+         entries; a scope whose trace is `not assessed` is recorded there as
+         `outward trace: not assessed`;
+       - the files stage 2 split by byte range, from `split_files`.
+   12. **Usage**, as `report.md`, "12. Usage", says.
 
    The body is built from part files under `<run dir>/report/parts/`, joined into
    `<run dir>/report.body.tmp`, not yet into `report.md`. The layout of each part is in
@@ -295,17 +182,15 @@ result's text, approver and time; a `result_file` result's text is its copy
       `report.sh` reads only pass files that end `status: complete`, skips blank list
       lines, and stops on a repeated claim number or a pass file missing its claims
       heading.
-   3. With the Write tool, write the parts that are yours, each beginning with its
-      section heading `## <n>. <title>` (the header part with the
-      `# audit report: <run-id>` title instead) and ending with one empty line:
-      `00-header.md`, `01-verdict.md`, `02-findings.md`, `03-verified.md`,
-      `04-disagreements.md`, `05-next-steps.md`, `06-code-fixes.md`,
-      `07-work-item-fixes.md`, `08-other.md` (section 8's Other decisions only, under
-      `### Other decisions`, since `08-decisions.md` holds the heading and the other two
-      parts), `09-live.md`, `11-coverage.md` (without the `work-items.sh` result) and
-      `12-usage.md`. Sections 3 and 9 stay yours: no format fixes the pass-two line
-      that marks a Verified OK item challenged, and a Live checks status joins
-      approvals, gate reasons and result copies.
+   3. With the Write tool, write the parts that are yours: `00-header.md`,
+      `01-verdict.md`, `02-findings.md`, `03-verified.md`, `04-disagreements.md`,
+      `05-next-steps.md`, `06-code-fixes.md`, `07-work-item-fixes.md`, `08-other.md`
+      (section 8's Other decisions only, under `### Other decisions`, since
+      `08-decisions.md` holds the heading and the other two parts), `09-live.md`,
+      `11-coverage.md` (without the `work-items.sh` result) and `12-usage.md`. Sections
+      3 and 9 stay yours: no format fixes the pass-two line that marks a Verified OK
+      item challenged, and a Live checks status joins approvals, gate reasons and result
+      copies.
    4. Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/report.sh" parts "<run dir>"`, with
       `${CLAUDE_PLUGIN_ROOT}` resolved as step 8 says. It writes `08-decisions.md`,
       `10-claims.md` and `claims-verdicts.body.md`, all three or none. On exit 1 or 2,
@@ -390,23 +275,24 @@ result's text, approver and time; a `result_file` result's text is its copy
     JSON entry and the resolved registry path for adding by hand, as `SKILL.md`, "State
     files", says, in place of a bare resume command, and say that the `/audit:act` and
     `--live` lines need the entry first. Then print the closing lines, the same ones the
-    report's `next:` block holds, computed from the report just written:
+    report's `next:` block holds, computed from the report just written and the stage
+    entries:
     - `act first: <ids, each with one short reason, or none>`. An item is listed when
       it counts, its disposition is `agreed`, its severity is `blocker`, `high` or
       `medium`, and its recommended change lies inside the bundle's repositories;
       ordered by severity, then id. A `low` or `note` item stays in the report and may
       still be given to act; one clause says that leaving it off this line dismisses
       nothing.
-    - The ordered plan of section 5: two to five numbered steps, each one plain line
-      starting `1. `, `2. ` and so on, with a reason clause, covering what to fix
-      before merge, what to check live, and what to record for later. It names which
-      contested or decision items it takes and why; a decision entry is named in
-      words, never with an invented `C<n>`.
+    - The ordered plan of section 5: two to five numbered steps, each with a reason
+      clause, covering what to fix before merge, what to check live, and what to record
+      for later. It names which contested or decision items it takes and why;
+      contested items keep their status and the user chooses; a decision entry is
+      named in words, never with an invented `C<n>`.
     - `/audit:act <run-id> <ids>`: the `act first` ids in that order, and only report
       items `C<n>`; omitted when none are listed. A decision or scope entry has no
-      `C<n>` and never appears, and a `W<n>` operation is not an act argument. With no
-      registry entry the line is still printed, since act takes the run id, with the
-      note that act stops at its first step until the entry is added.
+      `C<n>` and never appears on either act line, and a `W<n>` operation is not an act
+      argument. With no registry entry the line is still printed, since act takes the
+      run id, with the note that act stops at its first step until the entry is added.
     - `recommended: /audit:act <run-id> <ids>`, only when its ids differ from the strict
       line: the strict ids in order, then the contested `C<n>` items the orchestrator
       would take that are fixable inside the bundle's repositories, by severity and id,

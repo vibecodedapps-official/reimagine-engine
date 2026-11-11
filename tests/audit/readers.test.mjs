@@ -15,13 +15,13 @@ const POST =
   'written for its reader as `SKILL.md`, What leaves the run, says: on a ticket, what changed for its readers, what happens next and who decides; on a pull request, what its reviewer needs about the code; never an audit id (`C<n>`, `claim <n>`, `W<n>`), a stage, a verdict or another term the audit coined, and never a model, agent or tool';
 const POINTER = 'written for its reader as `SKILL.md`, What leaves the run, says';
 
-for (const file of ['stages/9-act.md', 'common.md', 'report.md']) {
+for (const file of ['common.md']) {
   test(`R194: ${file} holds the reader rule for a post or a drafted text`, () => {
     assert.ok(flat(DIR + file).includes(POST), `${file} lacks the reader rule`);
   });
 }
 
-for (const file of ['stages/8-report.md', 'work-items.md']) {
+for (const file of ['work-items.md']) {
   test(`R194: ${file} points drafted text at What leaves the run`, () => {
     assert.ok(flat(DIR + file).includes(POINTER), `${file} lacks the pointer`);
   });

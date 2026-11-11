@@ -139,7 +139,7 @@ You alone talk to the user, run `git fetch`, export pinned trees, build the seco
 
 ### Compaction recovery
 
-After a compaction, or whenever you cannot account for your state, stop. Before any other action re-read, in the run directory: the last block in `invocations.md`, `audit-brief.md`, `common.md` and `stages.json`; then the stage file of the current stage. In the same session, a stage marked `running` waits for its agents' notifications and relaunches nothing. Under `resume`, `running` counts as incomplete and is rerun. Approvals recorded in `stages.json` are never asked again.
+After a compaction, or whenever you cannot account for your state, stop. Before any other action re-read `${CLAUDE_PLUGIN_ROOT}/skills/audit/SKILL.md`, since the host keeps only the first part of this file across a compaction; then, in the run directory, the last block in `invocations.md`, `audit-brief.md`, `common.md` and `stages.json`; then the files Supporting files gives for the current stage. In the same session, a stage marked `running` waits for its agents' notifications and relaunches nothing. Under `resume`, `running` counts as incomplete and is rerun. Approvals recorded in `stages.json` are never asked again.
 
 ### Roles
 
@@ -409,6 +409,7 @@ For `command: handoff`, read `${CLAUDE_PLUGIN_ROOT}/skills/audit/handoff.md` and
 
 Read each file at its point and not before. A sentence that only says where a rule lives is not a read.
 
+- `SKILL.md`: again after a compaction.
 - `common.md`: before stage 1, resume or act, for the hard rules; again after a compaction.
 - `stages/1-orient.md`: after the reading block, for `run`.
 - `stages/2-digest.md`, `stages/3-domain.md`, `stages/4-pass-one.md`: when stage 1 completes.

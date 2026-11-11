@@ -88,8 +88,9 @@
 #    gets KILL, and the script waits until no process in it is left. On Windows a
 #    native program's own children are outside the group: a TERM to the group ends them
 #    with the program and a KILL alone leaves them, so there a TERM goes before that
-#    KILL. A process that leaves the group (setsid, a daemon) is beyond reach, and so on
-#    Windows is a native program's child that outlives it.
+#    KILL, and before the KILL that ends a running command's group when the run is
+#    interrupted. A process that leaves the group (setsid, a daemon) is beyond reach,
+#    and so on Windows is a native program's child that outlives it.
 # 5. Verdicts per file:
 #    passes at head and without the change   exit 0 in both copies
 #    passes at head only                     exit 0 at the head, another status reverted

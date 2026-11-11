@@ -2,6 +2,16 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.20 - 2026-11-10
+
+- No command of stage 1 sets a variable before git. Each began with an export of `GIT_NO_LAZY_FETCH`, and the host asks for such a command whatever rule matches its git part, so a run with no one to answer stopped at its first git read. The refusal of a partial clone is what keeps a run from a lazy fetch; it now reads every configuration source, where it missed a promisor remote set in a worktree's configuration.
+- The script runs are shown with their path in double quotes, and the skill says to run them with the Bash tool. An unquoted path with a space split the command.
+- The README says that what the skill pre-approves holds until your first reply, and what a run with no one to answer needs.
+- A ticket's id is `github:`, `ado:`, `sf:` or `file:`, or stays as you wrote it, and how the ticket was read is recorded beside it. Before, a ticket read through an MCP tool or known by its id alone took that as its id, so two such tickets shared one, and an `ado:` or `sf:` id from a handoff matched none.
+- The reading block and the report's Coverage name each ticket whose body was not read.
+- A stop on a file that is not an export says what an export holds and where the README shows it, and the README has an example.
+- With `ticket_token`, a pattern takes the number of an `ado:` or `sf:` id.
+
 ## loop 0.1.27 - 2026-11-10
 
 - An item that another pull request or ticket already resolves is kept out of the Follow-ups of the pull request body, as the body template says. The ticket rules said out of the body, so a run that told its reviewer which of two options it built, or named unchanged behavior a reader could take for a bug, went against them.

@@ -102,8 +102,9 @@
 #   `REVIEW.md`'s severity calibration and do-not-report rules were absent, since the
 #   report applies them and counts what each skips.
 # - skills/audit/SKILL.md allowed-tools pre-approves `git ls-tree`, `git cat-file` and
-#   `git branch --list`, each also in its `git -C *` form; the bare `git cat-file` only
-#   with `-t`, `-s` or `-p`, since `--textconv` and `--filters` run configured programs.
+#   `git branch --list`; the bare `git cat-file` only with `-t`, `-s` or `-p`, since
+#   `--textconv` and `--filters` run configured programs; and no `git -C *` form, since
+#   its first `*` admits a `-c` option that runs a program.
 # - skills/audit/stages/1-orient.md, read as one line, spreads a claim that names no
 #   file across the bundle's groups in turn, caps a group at 80 such claims, and has
 #   the brief's Claims section record each scope's claim count and each move.
@@ -269,12 +270,14 @@ if grep -qx "$skill" "$files"; then
 		grep -q "stages/$s\.md" "$tmp/skill" || fail "$skill: does not name stages/$s.md"
 	done
 	grep -q 'skills/audit/resume\.md' "$tmp/skill" || fail "$skill: does not name skills/audit/resume.md"
-	for t in 'git ls-tree' 'git -C * ls-tree' 'git cat-file -t' 'git cat-file -s' \
-		'git cat-file -p' 'git -C * cat-file' 'git branch --list' 'git -C * branch --list'; do
+	for t in 'git ls-tree' 'git cat-file -t' 'git cat-file -s' 'git cat-file -p' \
+		'git branch --list'; do
 		grep -qF "Bash($t *)" "$tmp/fm" || fail "$skill: allowed-tools lacks Bash($t *)"
 	done
 	! grep -qF 'Bash(git cat-file *)' "$tmp/fm" ||
 		fail "$skill: allowed-tools pre-approves every form of git cat-file"
+	! grep -qF 'Bash(git -C ' "$tmp/fm" ||
+		fail "$skill: allowed-tools pre-approves a git -C form, whose first * admits -c"
 	for p in $(grep -oE 'stages/[A-Za-z0-9._-]+\.md' "$tmp/skill" | sort -u); do
 		[ -f "skills/audit/$p" ] || fail "missing: skills/audit/$p (named in $skill)"
 	done

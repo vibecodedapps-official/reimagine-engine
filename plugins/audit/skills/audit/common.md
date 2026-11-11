@@ -58,7 +58,9 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    No command edits a file in place: no `sed -i`, no `awk -i inplace`, no sed `w`, `W` or
    `e` command, no `w` or `e` flag, no `sort -o`, `--output` or `--compress-program`, no
    `uniq` with an output file operand, and no awk program with `system()`, output
-   redirection, `getline` from a command, or a pipe to a command. There is no interpreter
+   redirection, `getline` from a command, or a pipe to a command. No git command takes
+   `-c`, `--output`, `-O`, `--open-files-in-pager`, `--upload-pack` or `--exec`, since
+   each writes a file or runs a program. There is no interpreter
    run with an inline program or a heredoc, such as `python3 - <<EOF`, `node -e` or
    `perl -e`, and no command that waits on input; the repository's own test or lint
    commands stay allowed as the list above says. No output goes into an audited tree. An

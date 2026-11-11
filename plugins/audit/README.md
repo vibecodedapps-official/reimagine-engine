@@ -41,7 +41,7 @@ Phrases the audit recognizes:
 
 Everything else goes in the manifest.
 
-Before it does anything else, the audit prints what it read: bundles, references, sources of truth, claims files, effort, budget, model overrides, and how each ticket was found. Then it asks you to pause background fetch, for example VS Code `git.autofetch`, since a fetch during the run can stop it.
+Before it does anything else, the audit prints what it read: bundles, references, sources of truth, claims files, effort, budget, model overrides, and how each ticket was found. Then it asks you to pause background fetch, for example VS Code `git.autofetch`, since a fetch during the run can stop it. Under the default permission mode it asks before each script it runs and before each git read of a repository other than the session's folder; the skill pre-approves neither, since a pattern wide enough to cover those reads would also cover a git option that writes a file or runs a program.
 
 Commands:
 

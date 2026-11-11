@@ -2,6 +2,28 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.19 - 2026-11-10
+
+- The skill no longer pre-approves `git diff`, `git log`, `git show`, `git grep` and `git stash list`, or any `git -C <repo>` form. An option of each of the five writes a file or runs a program, and the `*` after `-C` admitted `-c`, which runs a program through an alias or a config key, so text an audit reads could ask for such a form and no prompt would come. Under the default permission mode the audit now asks before each git read of a repository other than the session's folder, and a run with no one to answer is refused those reads.
+- No git command of the audit takes `-c`, `--output`, `-O`, `--open-files-in-pager`, `--upload-pack` or `--exec`.
+
+## rules 0.1.29 - 2026-11-10
+
+- `/rules:refactor` no longer pre-approves `git diff`, `git log`, `git show` and `git grep`. An option of each writes a file or runs a program, and the pre-approval let such a form run without a prompt when text the review reads asked for it. The plain reads of the session's own repository still run without a prompt, since the host allows them itself.
+
+## primer 0.1.10 - 2026-11-10
+
+- `/primer` and `/primer:fold` no longer pre-approve `git diff`, `git log`, `git show` and `git grep`, for the reason given under rules 0.1.29. The plain reads still run without a prompt.
+- The guidance for a skill's `allowed-tools` says to list no command with an option that writes a file or runs a program, and to put no `*` before an entry's end.
+
+## gate 0.1.16 - 2026-11-10
+
+- The skill no longer pre-approves `git diff`, `git log`, `git show` and `git ls-remote`, and its review sessions no longer get the first three, for the reason given under rules 0.1.29. The plain reads still run without a prompt, in the run and in a review session. `git ls-remote` asks under the default permission mode, and the permission statement counts it.
+
+## loop 0.1.26 - 2026-11-10
+
+- The skill no longer pre-approves `git diff`, `git log`, `git show` and `git ls-remote`, for the reason given under rules 0.1.29. The plain reads still run without a prompt. `git ls-remote` asks under the default permission mode, and the permission statement counts it.
+
 ## loop 0.1.25 - 2026-11-10
 
 - Under an ask-first rule, the question a run asks before its commit names the record attached with each ticket comment it lists, and a yes covers what the question listed and nothing more. Four of thirteen such questions had left the record out, and of the runs that went on, one kept the record local and one attached it although no question had listed it. The rule stood among the approval rules and in a file a run reads after its first push; the publish step now states it where the question is asked.

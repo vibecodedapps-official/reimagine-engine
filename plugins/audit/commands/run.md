@@ -1,7 +1,7 @@
 ---
 description: "Start a read-only, adversarial audit of a finished bundle of pull requests and tickets, from a manifest file or inputs given in words, ending in a report. /audit:run also answers to the prose request \"reimagine audit ...\"."
 argument-hint: '[<manifest.json>] [<inputs...>] [<prose>]'
-allowed-tools: Bash(git -C * rev-parse *), Read, Skill
+allowed-tools: Read, Skill
 ---
 
 You forward this request to the audit skill. Take the steps below in order, and write no file in any of them.

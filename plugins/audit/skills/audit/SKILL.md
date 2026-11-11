@@ -5,43 +5,19 @@ allowed-tools:
   - Bash(date *)
   - Bash(git status *)
   - Bash(git --no-optional-locks status *)
-  - Bash(git diff *)
-  - Bash(git log *)
-  - Bash(git show *)
   - Bash(git rev-parse *)
   - Bash(git merge-base *)
   - Bash(git for-each-ref *)
-  - Bash(git stash list *)
   - Bash(git check-ignore *)
   - Bash(git hash-object --no-filters *)
-  - Bash(git grep *)
-  - Bash(git -C * status *)
-  - Bash(git -C * --no-optional-locks status *)
-  - Bash(git -C * diff *)
-  - Bash(git -C * log *)
-  - Bash(git -C * show *)
-  - Bash(git -C * rev-parse *)
-  - Bash(git -C * merge-base *)
-  - Bash(git -C * for-each-ref *)
-  - Bash(git -C * stash list *)
-  - Bash(git -C * check-ignore *)
-  - Bash(git -C * hash-object --no-filters *)
-  - Bash(git -C * grep *)
   - Bash(git config --list --local)
-  - Bash(git -C * config --list --local)
-  - Bash(git -C * config --local --includes --get-regexp *)
   - Bash(git remote -v)
-  - Bash(git -C * remote -v)
   - Bash(git ls-files *)
-  - Bash(git -C * ls-files *)
   - Bash(git ls-tree *)
-  - Bash(git -C * ls-tree *)
   - Bash(git cat-file -t *)
   - Bash(git cat-file -s *)
   - Bash(git cat-file -p *)
-  - Bash(git -C * cat-file *)
   - Bash(git branch --list *)
-  - Bash(git -C * branch --list *)
   - Bash(gh pr view *)
   - Bash(gh pr list *)
   - Bash(gh issue view *)
@@ -58,7 +34,7 @@ Start every invocation with these actions, in this order.
 
 You orchestrate one audit run in the main session. `run` runs stages 1 to 8 and stops at a report. `resume` reruns a run from the first stage whose inputs changed and reuses every output that still holds. `act` runs stage 9, the only phase that writes to an audited repository, on items the user approved by id. `handoff` writes a typed handoff from a build session. Each stage's procedure is in its stage file. Read that file when the stage starts and not before.
 
-The allowed-tools list pre-approves `date` and read-only git and gh only. Everything else follows the session's permission mode: `mkdir`, `mv -f`, `rmdir` of the lock, `sleep`, `find`, `stat`, `od`, `sha256sum` or `shasum`, `command -v jq`, `jq`, `awk`, `wc -c`, and the `sh` runs of the scripts. Tell the user once, before stage 1, that these may prompt. `git fetch` and every act write are never pre-approved; ask for each in words first.
+The allowed-tools list pre-approves `date` and a few git and gh reads in the session's own folder, each a form with no option that writes to a path the call names or runs a command the call names. Everything else follows the session's permission mode: every `git -C <repo>` call, `git diff`, `git log`, `git show`, `git grep` and `git stash list` in any form, `mkdir`, `mv -f`, `rmdir` of the lock, `sleep`, `find`, `stat`, `od`, `sha256sum` or `shasum`, `command -v jq`, `jq`, `awk`, `wc -c`, and the `sh` runs of the scripts. Tell the user once, before stage 1, that these may prompt. `git fetch` and every act write are never pre-approved; ask for each in words first.
 
 `${CLAUDE_PLUGIN_ROOT}` is the plugin's directory and `${CLAUDE_PLUGIN_DATA}` its data directory. Neither is a shell variable. Read skill files with the Read tool, never through Bash. In every Bash command write the resolved absolute path, never the unexpanded text. Run each script as `sh ${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh ...` with that path resolved. Times come from `date -u +%Y-%m-%dT%H:%M:%SZ`; copy the output, never write a time from memory.
 
@@ -314,7 +290,7 @@ Failure rule: on any refused or failed step, release any lock you hold with `rmd
 
 ```json
 {
-  "plugin_version": "0.1.18",
+  "plugin_version": "0.1.19",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],

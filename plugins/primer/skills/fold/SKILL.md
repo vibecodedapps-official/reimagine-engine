@@ -7,13 +7,9 @@ allowed-tools:
   - Grep
   - Glob
   - Bash(git status *)
-  - Bash(git diff *)
-  - Bash(git log *)
-  - Bash(git show *)
   - Bash(git rev-parse *)
   - Bash(git ls-files *)
   - Bash(git check-ignore *)
-  - Bash(git grep *)
   - WebFetch(domain:code.claude.com)
 ---
 

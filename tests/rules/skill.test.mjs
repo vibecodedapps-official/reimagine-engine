@@ -57,13 +57,9 @@ test('R330: the refactor frontmatter names the skill, sets the flag, takes no ar
     'Grep',
     'Glob',
     'Bash(git status *)',
-    'Bash(git diff *)',
-    'Bash(git log *)',
-    'Bash(git show *)',
     'Bash(git rev-parse *)',
     'Bash(git ls-files *)',
     'Bash(git check-ignore *)',
-    'Bash(git grep *)',
   ]);
 });
 
@@ -170,7 +166,7 @@ test('R332: a refactor ticket holds the release it needs when the bundle names o
 
 test('R330: refactor runs each git read with the Bash tool, before its first git read', () => {
   const text = readRefactor();
-  const sentence = text.indexOf('Run each `git` read with the Bash tool, which the `allowed-tools` list pre-approves.');
+  const sentence = text.indexOf('Run each `git` read with the Bash tool. The `allowed-tools` list pre-approves the reads no option of which writes a file or runs a program;');
   assert.notEqual(sentence, -1);
   assert.ok(sentence < text.indexOf('`git check-ignore`'));
   assert.equal(text.includes('PowerShell'), false);

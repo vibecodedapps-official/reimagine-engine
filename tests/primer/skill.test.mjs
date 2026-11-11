@@ -41,13 +41,9 @@ test('R245: the frontmatter names the skill, the four phrases first, and read-on
     'Grep',
     'Glob',
     'Bash(git status *)',
-    'Bash(git diff *)',
-    'Bash(git log *)',
-    'Bash(git show *)',
     'Bash(git rev-parse *)',
     'Bash(git ls-files *)',
     'Bash(git check-ignore *)',
-    'Bash(git grep *)',
   ]);
 });
 
@@ -224,13 +220,9 @@ test('R326: the fold frontmatter names the skill, sets the flag, takes no argume
     'Grep',
     'Glob',
     'Bash(git status *)',
-    'Bash(git diff *)',
-    'Bash(git log *)',
-    'Bash(git show *)',
     'Bash(git rev-parse *)',
     'Bash(git ls-files *)',
     'Bash(git check-ignore *)',
-    'Bash(git grep *)',
     'WebFetch(domain:code.claude.com)',
   ]);
 });
@@ -264,4 +256,5 @@ test('Decision 166: placement says a skill with disable-model-invocation is not 
 test('the allowed-tools rule limits the grant to the invoking turn and no longer names read-only commands every run needs', () => {
   assert.ok(SHAPES.includes("- Add `allowed-tools` only for read-only commands the skill runs in the turn that invokes it. The grant clears at the user's next message, so it does not cover a command run after a reply; a grant that lasts the session is a permission allow rule in the user's settings, which primer never writes."));
   assert.ok(!SHAPES.includes('read-only commands every run needs'));
+  assert.ok(SHAPES.includes("An entry's `*` admits any option, so the list names no command with an option that writes a file or runs a program, such as `git diff`, `git log`, `git show` or `git grep`, and no entry has a `*` before its end."));
 });

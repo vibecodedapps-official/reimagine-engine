@@ -41,7 +41,7 @@ test('R116, R118: every gh command that posts a body passes it with --body-file 
   assert.ok(create.includes('--base <base>'), 'gh pr create does not name --base <base>');
 });
 
-test('R56: the workflow files Step 7.2 lists for the deploy judgment come from ls-tree with --full-tree, one folder deep, and the skill pre-approves each git command it uses', () => {
+test('R56: the workflow files Step 7.2 lists for the deploy judgment come from ls-tree with --full-tree, one folder deep, a listing the skill pre-approves', () => {
   const text = section(PUBLISH, '7.2 Push and pull request');
   const lists = [...text.matchAll(/`(git -C <checkout> ls-tree [^`]+)`/g)].map((m) => m[1]);
   assert.equal(lists.length, 2, 'Step 7.2 lists the workflow files of the base branch and of HEAD');
@@ -51,7 +51,7 @@ test('R56: the workflow files Step 7.2 lists for the deploy judgment come from l
     assert.ok(!/ -r\b/.test(command), `${command} lists recursively`);
   }
   const allowed = SKILL.match(/^---\n([\s\S]*?)\n---\n/)[1];
-  for (const sub of ['ls-tree', 'show']) assert.ok(allowed.includes(`  - Bash(git ${sub} *)`), `allowed-tools lacks git ${sub}`);
+  assert.ok(allowed.includes('  - Bash(git ls-tree *)'), 'allowed-tools lacks git ls-tree');
 });
 
 // The closing rules of pr-body.md, which sit after the body template's fence.

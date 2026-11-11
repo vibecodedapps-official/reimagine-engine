@@ -55,10 +55,16 @@ const GUARD_RUNS = ['status', 'list', 'plan', 'denials'].map((verb) => `Bash(nod
 const EXECUTABLE_EXTENSIONS = ['.sh', '.mjs', '.js', '.cjs', '.py', '.ps1', '.bat', '.cmd', '.exe'];
 const PLUGIN_TOP = ['.claude-plugin', 'skills', 'commands', 'agents', 'hooks', 'scripts', 'output-styles', 'rules', 'chat', 'README.md', 'LICENSE'];
 const GITATTRIBUTES = ['* text=auto eol=lf', '*.sh text eol=lf', '*.mjs text eol=lf', '*.md text eol=lf'];
-const GIT_READS = ['status', 'diff', 'log', 'show', 'rev-parse', 'merge-base', 'branch --list', 'ls-remote', 'check-ignore',
-  'check-ref-format', 'remote -v', 'ls-files', 'cat-file', 'hash-object', 'worktree list', 'config --get', 'for-each-ref', 'ls-tree', 'grep'];
+const GIT_READS = ['status', 'rev-parse', 'merge-base', 'branch --list', 'check-ignore',
+  'check-ref-format', 'remote -v', 'ls-files', 'cat-file', 'hash-object', 'worktree list', 'config --get', 'for-each-ref', 'ls-tree'];
 const GH_READS = ['repo view', 'issue view', 'issue list', 'pr view', 'pr list', 'pr checks', 'run list', 'run view'];
 const PRE_APPROVED = new RegExp(`^Bash\\((date|date \\*|sleep \\*|git (${GIT_READS.join('|')})( \\*)?|gh (${GH_READS.join('|')})( \\*)?)\\)$`);
+// What any plugin may pre-approve in the shell: a read with no option that writes to a path or runs a command the call
+// names, or a run of its own script. Fixed words may follow, and the only * is the entry's last character, since an
+// earlier one admits git's -c. The last form is the placeholder for a check in the gate's child list.
+const ALLOWED_SHELL = new RegExp(`^Bash\\(((date|sleep|git (--no-optional-locks )?(${[...GIT_READS, 'config --list'].join('|')})|gh (${GH_READS.join('|')})`
+  + `|(node|sh) "\\$\\{CLAUDE_PLUGIN_ROOT\\}/scripts/[\\w.-]+")( [\\w-]+)*( \\*)?|<check>\\*)\\)$`);
+const OWN_ALLOW_RULE = [GUARD_SKILL, LOOP_SKILL, GATE_SKILL];
 
 const HEADING = new RegExp(`^## (${[...NAMES, ...RETIRED].join('|')}) (${SEMVER_CORE}) - (\\d{4}-\\d{2}-\\d{2})$`);
 const FENCE = /^\s*```/;
@@ -395,6 +401,16 @@ function skillFailures(ctx) {
   for (const c of ['run', 'resume', 'act', 'handoff']) {
     const file = `plugins/audit/commands/${c}.md`;
     if (!ctx.fileSet.has(file)) out.push(`${file}: missing`);
+  }
+
+  for (const file of ctx.files.filter((f) => /^plugins\/[^/]+\/(skills|commands)\/.*\.md$/.test(f))) {
+    const text = ctx.text(file) ?? '';
+    const entries = OWN_ALLOW_RULE.includes(file) ? [] : [...listEntries(frontmatter(text).get('allowed-tools'))];
+    // A child session's list as the text shows it, where [ ] and ... mark its optional part.
+    for (const m of text.matchAll(/--allowed-?[Tt]ools[ =](?:"([^"]+)"|'([^']+)')/g)) entries.push(...listEntries((m[1] ?? m[2]).replace(/[[\]]|\.\.\./g, '')));
+    for (const entry of entries) {
+      if (/\bBash\b/.test(entry) && !ALLOWED_SHELL.test(entry)) out.push(`${file}: pre-approves ${entry}, which is not a known read or a run of the plugin's own script`);
+    }
   }
 
   const primer = String(frontmatter(ctx.text(PRIMER_SKILL)).get('description') ?? '');

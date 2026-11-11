@@ -285,6 +285,15 @@ else
 	fail "missing: $skill"
 fi
 
+# A shell step is one command a permission rule can match: a script runs by a quoted
+# path, and nothing sets a variable before a git command.
+for f in $(listed '^skills/.*\.md$'); do
+	! grep -qF 'sh ${CLAUDE_PLUGIN_ROOT}/scripts/' "$f" ||
+		fail "$f: runs a script by an unquoted path"
+	! grep -qF 'GIT_NO_LAZY_FETCH' "$f" ||
+		fail "$f: sets a variable before a git command"
+done
+
 # The handoff and work-item formats, and the scripts the plugin files name.
 for f in skills/audit/handoff.md skills/audit/live.md skills/audit/work-items.md skills/audit/resume.md; do
 	grep -qx "$f" "$files" || fail "missing: $f"

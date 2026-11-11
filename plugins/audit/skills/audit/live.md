@@ -103,7 +103,7 @@ report: sha256:<hex>
 
 ## What check validates
 
-`sh ${CLAUDE_PLUGIN_ROOT}/scripts/live.sh check <file> <report.md>` prints `live: ok` and
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/live.sh" check <file> <report.md>` prints `live: ok` and
 exits 0, or prints one line per error, `live <file>:<line>: <message>`, in line order, on
 stdout and exits 1. It exits 2 with one line `live: <what failed>` on stderr on a usage
 error, an unreadable file or report, no `sha256sum` and no `shasum`, or a report without
@@ -213,7 +213,7 @@ number those ids again.
 
 ## The modes
 
-The orchestrator runs each mode as `sh <resolved absolute path of live.sh> <mode> ...`
+The orchestrator runs each mode as `sh "<resolved absolute path of live.sh>" <mode> ...`
 and never edits anything under `live/` itself. Every mode runs under `LC_ALL=C`, so
 listings and sorting are byte order. A usage error, an unreadable input or a failed
 operation (`cp`, `mkdir`, `mv`, `rm`, a temp file write, `jq`) exits 2 with one line

@@ -10,7 +10,7 @@ resume first imports the user's live check results, and a result reruns the stag
 review it (`${CLAUDE_PLUGIN_ROOT}/skills/audit/live.md`). The orchestrator reads this file
 when the invocation block says `command: resume`; the rules of
 `${CLAUDE_PLUGIN_ROOT}/skills/audit/SKILL.md` hold throughout, and every script runs as
-`sh <resolved absolute path of ${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh> ...`.
+`sh "<resolved absolute path of ${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh>" ...`.
 
 ## Steps
 

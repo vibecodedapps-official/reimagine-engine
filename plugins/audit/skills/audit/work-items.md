@@ -93,7 +93,7 @@ a cycle of operations with no report item or claim is an error.
 ## Validator
 
 ```
-sh ${CLAUDE_PLUGIN_ROOT}/scripts/work-items.sh check <file> <report body> <claims.md>
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/work-items.sh" check <file> <report body> <claims.md>
 ```
 
 The report body is the report without its revision line, as stage 8 holds it in

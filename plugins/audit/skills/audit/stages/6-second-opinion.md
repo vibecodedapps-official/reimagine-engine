@@ -42,7 +42,7 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
       absolute read path and sha from the brief, the asks in the template's order. When
       `live/carried/` holds an `X<n>`, fill ask 4 with the first free number after the
       highest carried `X<n>`; a carried id is reserved.
-   3. **The mandatory set.** Run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh mandatory
+   3. **The mandatory set.** Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" mandatory
       <run dir> > <run dir>/tmp/mandatory.txt` and, only on exit 0, `mv -f
       <run dir>/tmp/mandatory.txt <run dir>/ledger/mandatory.txt`. A nonzero exit fails
       stage 6. The file holds one id per line, sorted and unique: every `ledger/5.md` id
@@ -148,7 +148,7 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
    - `## Merge verdict (non-binding)`: the answer's verdict per bundle, marked
      non-binding; it never replaces the report's verdict rules.
    - `## Seen, no position`: write this heading line yourself, ending with a newline,
-     then run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh seen <run dir> >>
+     then run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" seen <run dir> >>
      <run dir>/ledger/6.md`, redirected and never read. The script reads `ledger/6.md`,
      so the parts above must be on disk first. It lists every `ledger/5.md` id that is
      neither mandatory nor positioned; a mandatory id is never listed there.
@@ -160,7 +160,7 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
    The file is complete then and is not rewritten. Step 6 may only append to
    `## Stage failure`.
 
-6. **Check the ledger.** When no batch failed, run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh
+6. **Check the ledger.** When no batch failed, run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh"
    check <run dir> --through 6 --stage6 complete > <run dir>/tmp/check6.txt` and read only
    its line count (`wc -l`) and its first 50 lines (`head -n 50`). It checks one position
    per id, each position's provenance line in the answer files, the mandatory set, the

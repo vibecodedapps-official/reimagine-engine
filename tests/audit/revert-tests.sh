@@ -458,9 +458,9 @@ fi
 # 5f to 5h. Windows only: a native program's own child is not in the process group. The test
 # file runs a batch file, so cmd is the program, and its child is a node that writes the time
 # to $RT_BEAT every 100 ms and ends itself after 30 seconds. beats: that child wrote, and
-# writes no more.
+# writes no more. The file can be empty: a write cut short leaves it so.
 beats() {
-	[ -s "$RT_BEAT" ] || mismatch "$case_id: the program's child wrote nothing"
+	[ -e "$RT_BEAT" ] || mismatch "$case_id: the program's child wrote nothing"
 	b_1=$(cat "$RT_BEAT" 2> /dev/null)
 	sleep 1
 	b_2=$(cat "$RT_BEAT" 2> /dev/null)
@@ -475,7 +475,7 @@ if command -v cygpath > /dev/null 2>&1; then
 	put 100644 README 'x\n'
 	commit main
 	put 100644 tests/beat.js 'const fs = require("node:fs");\nconst end = Date.now() + 30000;\nsetInterval(() => {\n  if (Date.now() > end) process.exit(0);\n  fs.writeFileSync(process.argv[2], String(Date.now()));\n}, 100);\n'
-	put 100644 tests/tree.cmd '@node tests/beat.js "%RT_BEAT%"\r\n'
+	put 100755 tests/tree.cmd '@node tests/beat.js "%RT_BEAT%"\r\n'
 	put 100644 tests/test_stray.sh 'rm -f "$RT_BEAT"\n./tests/tree.cmd &\nwhile [ ! -s "$RT_BEAT" ]; do sleep 0.1; done\n'
 	put 100644 tests/test_tree.sh './tests/tree.cmd\n'
 	commit feature main

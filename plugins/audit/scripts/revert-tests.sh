@@ -85,9 +85,11 @@
 #    cap case does not wait 30 minutes). Each command starts as a
 #    job under `set -m`, in its own process group. At the deadline the group gets TERM,
 #    then KILL ten ticks later. Whether the command ends or times out, the group then
-#    gets KILL, and the script waits until no process in it is left. A process that
-#    leaves the group (setsid, a daemon) is beyond reach; on Windows, a native program's
-#    own children are outside the group.
+#    gets KILL, and the script waits until no process in it is left. On Windows a
+#    native program's own children are outside the group: a TERM to the group ends them
+#    with the program and a KILL alone leaves them, so there a TERM goes before that
+#    KILL. A process that leaves the group (setsid, a daemon) is beyond reach, and so on
+#    Windows is a native program's child that outlives it.
 # 5. Verdicts per file:
 #    passes at head and without the change   exit 0 in both copies
 #    passes at head only                     exit 0 at the head, another status reverted
@@ -327,6 +329,13 @@ renamed=
 stopdog() {
 	kill -KILL "$wdog" 2> /dev/null
 }
+# endgroup <pgid>: KILL the group. On Windows a TERM goes first (see step 4).
+endgroup() {
+	case $OSTYPE in
+	msys* | cygwin*) kill -TERM -"$1" 2> /dev/null ;;
+	esac
+	kill -KILL -"$1" 2> /dev/null
+}
 cleanup() {
 	cl_st=$?
 	# A signal during the cleanup must not cut it short.
@@ -335,7 +344,7 @@ cleanup() {
 		stopdog
 	fi
 	if [ -n "$live" ]; then
-		kill -KILL -"$live" 2> /dev/null
+		endgroup "$live"
 		cn_start=$SECONDS
 		while kill -0 -"$live" 2> /dev/null && [ $((SECONDS - cn_start)) -lt $((10 + slack)) ]; do
 			sleep "$tick"
@@ -725,7 +734,7 @@ runone() {
 	stopdog
 	wait "$wdog" 2> /dev/null
 	wdog=
-	kill -KILL -"$ro_pg" 2> /dev/null
+	endgroup "$ro_pg"
 	gone "$ro_pg" || die "process group $ro_pg still live 10 seconds after KILL"
 	live=
 	secs=$(($(date +%s) - ro_now))

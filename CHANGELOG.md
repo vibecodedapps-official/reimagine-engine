@@ -2,6 +2,15 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.24 - 2026-11-11
+
+- After a compaction the audit reads `SKILL.md` again before it goes on, and then the files of the stage it is in. The host keeps only the first part of a skill's text across a compaction and the recovery section did not name the file, so the rest of a long run went on without the rules that come after that part.
+- Each rule of the audit is stated once, in a file its reader holds, and the other files point at it: the commands an agent may run and the leads a finding must clear, each stage's steps, what a report section holds, and the budget, the failure ladder and when an output counts as failed. The copies had drifted apart before, and the text is about 3,800 words shorter.
+- A manifest `scratch` key that is neither inside the primary repository and ignored nor inside the main checkout of a linked worktree stops the run. The skill read as if the next choice were tried; stage 1 already stopped.
+- After a failed second-opinion batch, stage 6 runs its ledger check with `--stage6 failed`. The stage file ran the check only when no batch failed, and the skill's summary alone held the other case.
+- The rule against ending the turn while a background agent or test run is live holds in every session. The skill gave it under its headless heading, and stage 1 without a condition.
+- The adversary's rules quote the brief's line for a base that was not fetched, and say that a finding on an open pull request states the forge fact, and that the brief read the list at stage 1, before its effect. The auditor's definition had held these alone.
+
 ## gate 0.1.17 - 2026-11-11
 
 - A child review's allow list names each shell entry for the PowerShell tool as well as the Bash tool. A session on Windows may run a command with either, and with only the Bash entries a review that ran a check through PowerShell was refused, so its findings came unverified.

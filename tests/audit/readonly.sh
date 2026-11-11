@@ -694,6 +694,19 @@ git -C "$A" update-ref refs/heads/sibling "$sha2"
 ro check "$A" "$R" "$R/b" "$R/b" "$R/c"
 expect "case 43" 1 "blocked refs + $sha2 commit\trefs/heads/sibling\nblocked refs - $sha commit\trefs/heads/sibling\n" ''
 
+# 44. a partial clone, as a checked-out submodule or at the top level: refused, since a git
+# read of an object it lacks would fetch it.
+case_id="case 44"
+fresh
+add_sub
+git -C "$A/sub" config remote.origin.promisor true
+ro snapshot "$A" "$R" "$R/b"
+expect "case 44, submodule" 2 '' 'readonly: partial clones are not supported: sub\n'
+git -C "$A/sub" config --unset remote.origin.promisor
+git -C "$A" config remote.origin.promisor true
+ro snapshot "$A" "$R" "$R/b"
+expect "case 44, top level" 2 '' 'readonly: partial clones are not supported\n'
+
 if [ "$bad" -gt 0 ]; then
 	exit 1
 fi

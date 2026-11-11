@@ -218,7 +218,7 @@ Before stage 1 does anything else, take the baseline per audited repository `<na
 
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`
 
-It writes `.marker`, `.status`, `.refs`, `.stash`, `.config`, `.hashes` and `.ignored` under that prefix, walking nested repositories and submodules with `GIT_OPTIONAL_LOCKS=0`. A path git prints quoted is unsupported and exits 2.
+It writes `.marker`, `.status`, `.refs`, `.stash`, `.config`, `.hashes` and `.ignored` under that prefix, walking nested repositories and submodules with `GIT_OPTIONAL_LOCKS=0`. A path git prints quoted, or a partial clone at the top level or nested, is unsupported and exits 2.
 
 After every stage, stages 1 and 8 included, and before that stage's final entry, create `<run dir>/baseline/<stage>/` and run for each repository:
 

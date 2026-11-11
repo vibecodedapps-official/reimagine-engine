@@ -72,7 +72,8 @@ branch to it in the manifest."
         exits 0, stop with one line per repository,
         `<repo>: partial clones are not supported`: an agent's `git show` or `git diff`
         would fetch missing objects over the network. The read names no file, so it
-        covers every configuration source and follows `include` directives.
+        covers every configuration source and follows `include` directives. A partial
+        clone nested in a repository is refused at the baseline (1b).
       - A slug is the text lowercased, with each run of characters outside `a-z0-9`
         turned into one `-`. Bundle names are the repository directory's base name,
         slugged, with `-2`, `-3` when two bundles share it; `<bundle>` in file names is
@@ -357,8 +358,9 @@ branch to it in the manifest."
       `<name>`, once even when it has several roles, run
       `sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`.
       It writes `baseline/<name>.marker`, `.status`, `.refs`, `.stash`, `.config`,
-      `.hashes` and `.ignored`. A non-zero exit ends the run `blocked` with the script's
-      message, since the boundary cannot be checked.
+      `.hashes` and `.ignored`, and refuses a partial clone in the repository or nested in
+      it, a checked-out submodule included. A non-zero exit ends the run `blocked` with
+      the script's message, since the boundary cannot be checked.
 
    c. **Working-tree head.** For each bundle with `head: working-tree`, run
       `sh "${CLAUDE_PLUGIN_ROOT}/scripts/working-tree.sh" build <repo>`. It builds a commit

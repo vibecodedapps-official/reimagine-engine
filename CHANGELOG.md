@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.22 - 2026-11-11
+
+- On Windows the script that runs the changed tests sends no TERM before the KILL that ends a test command's process group; 0.1.21 added one. A shell that waits on a native program answers a TERM by ending the program's tree itself, following each process's recorded parent id, and that id outlives the parent: a TERM and then a KILL to a job's group reached shells that were no kin of the job. So the TERM could end a process the audit never started. The KILL goes alone again, and a native program's own children outlive it, as before 0.1.21.
+
 ## audit 0.1.21 - 2026-11-11
 
 - On Windows the script that runs the changed tests sends a TERM before the KILL that ends a test command's process group, once the command has ended and when the run is interrupted. A native program's own children are outside that group: after a KILL alone the child of a batch file kept running and held the work dir, so the run ended by naming the work dir as left. With the TERM first the child ends with the program. A native child whose parent has already exited stays out of reach.

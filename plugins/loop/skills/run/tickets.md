@@ -24,7 +24,7 @@ A run that ends `prepared` (a host other than `github`, "do not publish", or a d
 
 Every draft, on any run, including each ticket of a non-yes reply, is logged in `run.md` as `- draft <file>: <one line>`, is listed in the report's Open items with its files and the command that files it, and, when the run writes a handoff, keeps a local id there (`handoff.md`, Raised tickets).
 
-The pull request body and the continued comment carry at most one line per ticket: what it holds, in one line, and its ticket reference (`pr-body.md`, Follow-ups). An item settled or put to the user is not listed. A new ticket's record names the branch, and the pull request once one exists.
+The pull request body and the continued comment carry at most one line per ticket: what it holds, in one line, and its ticket reference (`pr-body.md`, Follow-ups). An item settled or put to the user is not listed in Follow-ups. A new ticket's record names the branch, and the pull request once one exists.
 
 ## Ticket text and records
 

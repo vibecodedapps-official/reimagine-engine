@@ -85,11 +85,12 @@ branch to it in the manifest."
         `groups: <name> collides with the top-up files of <scope>` when it equals
         `<scope>-topup` or `<scope>-maptopup` for another entry's slug or a reserved
         name. A name is never changed to make it pass. `cross-cutting` is not reserved.
-      - Ticket and pull request ids: `github:owner/repo#n`, `file:<absolute path>`,
-        `mcp:<tool>` for a ticket read with an Azure DevOps or Salesforce MCP tool the
-        session has, or `text` for a ticket known only by the id and the words the user
-        gave. A short `#n` is accepted only when the bundle's repository has exactly one
-        GitHub remote (`git -C <repo> remote -v`); otherwise stop with
+      - Ticket and pull request ids: `github:owner/repo#n`, `ado:<org>/<project>#<n>`,
+        `sf:<case number>` or `file:<absolute path>`, the forms a handoff writes; an id
+        in another form stays as the user wrote it. How a ticket resolved (0h) is recorded
+        beside its id, never as it. A short `#n` is accepted only when the bundle's
+        repository has exactly one GitHub remote (`git -C <repo> remote -v`); otherwise
+        stop with
         `<id>: write it as github:owner/repo#n or file:<path>`, and add that a ticket
         on another forge comes in as a `file:` export. `<ticket>` in file names is the
         id slugged, except for a `file:` ticket, whose `<ticket>` is the export's `id`
@@ -179,6 +180,9 @@ branch to it in the manifest."
       frontmatter does not set it. A missing required key stops the run with exactly
       `export <path>: missing <key>`, the path as given, the first missing key in the
       order above; check every export first and show one line per file that fails.
+      The sentence after them says that a `file:` input is an exported ticket or pull
+      request with these keys, as the plugin's README shows, and that any other document
+      belongs in `claims` or `sources_of_truth`.
       Keep each missing optional key per file for the brief's "not in export" lines.
 
    g. **Claims files.** For each file in `claims`, run
@@ -599,7 +603,8 @@ branch to it in the manifest."
    1. A ticket's commits are those whose message names its token: for
       `github:owner/repo#n`, `owner/repo#n`, and `#n` when the issue is in the bundle's
       repository; for any other ticket its `id`, or, when the bundle has `ticket_token`,
-      each pattern with `{n}` replaced by the `id` as written. A pattern is a literal
+      each pattern with `{n}` replaced by the `id` as written, or by the number alone
+      for an `ado:` or `sf:` id. A pattern is a literal
       template, never a regex. A token matches only when the characters just before and
       after it, when present, are neither a letter nor a digit, and the one before a
       GitHub token is also not `-`, `_`, `.` or `/`. So `#12` does not match `#123`,

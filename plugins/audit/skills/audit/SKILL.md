@@ -99,7 +99,7 @@ Tickets: AB#4567 (mcp:<tool>), AB#4580 (file)
 - Effort: the hint and where it came from, or `default (set from size at stage 1)`.
 - Budget: the minutes, or `none`.
 - Models: each override as `<role> on <model>`, or `none`.
-- Tickets: each id with how it resolved: `gh`, `file`, `text` or `mcp:<tool>`. A ticket that resolved nowhere reads `unresolved: <reason>`; stage 1 decides whether the run goes on.
+- Tickets: each id with how it resolved: `gh`, `file`, `mcp:<tool>`, or `text, body not read`. A ticket that resolved nowhere reads `unresolved: <reason>`; stage 1 decides whether the run goes on.
 
 Each ticket resolves by the first form that applies:
 

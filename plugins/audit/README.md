@@ -103,7 +103,20 @@ An error names the key that is wrong.
 
 ### Exported tickets and pull requests
 
-A ticket or pull request on a host without a tool goes in as a `file:` export, in markdown with frontmatter or in JSON. A ticket requires `id`, `url`, `title`, `state` and `description`. A pull request requires `id`, `url`, `title` and `body`. Every export also requires `source`, `exported_by` and `exported_at`. A missing key stops the run before stage 1. An Azure DevOps or Salesforce MCP tool, when present, can read a ticket instead.
+A ticket or pull request on a host without a tool goes in as a `file:` export, in markdown with frontmatter or in JSON. A ticket requires `id`, `url`, `title`, `state` and `description`. A pull request requires `id`, `url`, `title` and `body`. Every export also requires `source`, `exported_by` and `exported_at`. A missing key stops the run before stage 1. An Azure DevOps or Salesforce MCP tool, when present, can read a ticket instead. A ticket export in markdown, its description the text below the frontmatter:
+
+```markdown
+---
+id: APP-1
+url: https://tickets.example.invalid/browse/APP-1
+title: Deactivate users without deleting them
+state: In Progress
+source: file export
+exported_by: export-tickets
+exported_at: 2026-10-01T09:00:00Z
+---
+Deactivation keeps the user's row and sets its status to inactive.
+```
 
 ## Effort tiers
 

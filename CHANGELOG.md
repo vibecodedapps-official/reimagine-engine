@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.17 - 2026-11-11
+
+- A child review's allow list names each shell entry for the PowerShell tool as well as the Bash tool. A session on Windows may run a command with either, and with only the Bash entries a review that ran a check through PowerShell was refused, so its findings came unverified.
+- A file replaced by a folder of the same name is reviewed in that folder's group. It was listed among its parent's own files while the folder's files made a group of their own, both groups selected both, and each of those files was reviewed twice in the pass.
+- The stand-in's patch reads a group's paths as names. Read as patterns, a name that holds a bracket selected a file of another group as well.
+
 ## audit 0.1.23 - 2026-11-11
 
 - The audit's files said different things about the same step in eight places. Each is corrected to the copy that the scripts, the requirements and the rest of the text bear out.

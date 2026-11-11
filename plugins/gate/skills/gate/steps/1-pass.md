@@ -26,10 +26,10 @@ In the first pass of a run, print one line before the reviews start: the changed
 With `stand-in` on the block's Engine line, or once a review of this run has chosen it, go to The stand-in. Otherwise each review is one Bash call with `run_in_background`:
 
 ```
-cd <root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git status *),Bash(git ls-files *)[,Bash(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json
+cd <root> && env -u CLAUDECODE MSYS_NO_PATHCONV=1 claude -p "/code-review <level> <merge-base>...HEAD[ <path>]" --model <reviewer> --output-format json --permission-mode default --allowedTools "Read,Grep,Glob,Skill,Agent,TaskStop,Bash(git status *),Bash(git ls-files *),PowerShell(git status *),PowerShell(git ls-files *)[,Bash(<check>*),PowerShell(<check>*)...]" < /dev/null > <record>/review-<n>[-<slug>].json
 ```
 
-- `[ <path>]` is the group's paths and is absent for the group `all`. `[,Bash(<check>*)...]` adds one entry per command of the run's checks.
+- `[ <path>]` is the group's paths and is absent for the group `all`. `[,Bash(<check>*),PowerShell(<check>*)...]` adds the two entries per command of the run's checks. Each shell entry is there once per shell tool, since a session on Windows may run a command with either.
 - `<reviewer>` is `gate.models.reviewer` of the target's configuration. Always pass it, since a child session without `--model` takes the model of its settings files, not the session's.
 - `MSYS_NO_PATHCONV=1` keeps Git Bash on Windows from rewriting the prompt's leading `/` into a path.
 - Never add `--comment`, `--fix` or `--max-findings`.
@@ -40,7 +40,7 @@ The redirect saves each output before anything parses it. A saved `result` that 
 
 ## The stand-in
 
-1. Write `diff-<n>[-<slug>].patch` in the record from `git diff <merge-base>...HEAD`, with `-- ` and the group's `paths` for a split pass.
+1. Write `diff-<n>[-<slug>].patch` in the record from `git --literal-pathspecs diff <merge-base>...HEAD`, with `-- ` and the group's `paths` for a split pass.
 2. Call an Agent at `models.fallback-reviewer`, passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, with repository-relative paths, and `[]` when there are none. The calls of a split pass go in one message, within the review time above.
 3. Save the reply as `review-<n>[-<slug>].md`, and set `engine` to `stand-in` in `passes.json`: once chosen, the stand-in stays for the run.
 

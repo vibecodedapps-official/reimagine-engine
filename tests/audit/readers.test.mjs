@@ -33,7 +33,7 @@ test('R194: act keeps the evidence and the item ids in the run directory', () =>
 
 test('R194: the naming rule in SKILL.md points at What leaves the run and keeps the host trailer', () => {
   const lines = read(SKILL).split('\n');
-  for (const start of ['3. Nothing external names a model, an agent or a tool', '- Act asks before each commit']) {
+  for (const start of ['3. Nothing external names a model, an agent or a tool']) {
     const line = lines.find((l) => l.startsWith(start));
     assert.ok(line, `SKILL.md has no line that starts "${start}"`);
     assert.ok(line.includes('as What leaves the run says'), `the line that starts "${start}" lacks the pointer`);
@@ -47,7 +47,6 @@ const COINED =
 
 for (const [file, body] of [
   ['stages/9-act.md', 'its body speaks of an item, it names the item by what it fixes'],
-  ['SKILL.md','the body speaks of an item, it names the item by what it fixes'],
 ]) {
   test(`R194: ${file} bars coined terms from act's commit messages and names each item by what it fixes`, () => {
     const text = flat(DIR + file);

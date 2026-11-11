@@ -83,7 +83,8 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
    that file with `status: complete`. Launch every batch at once, within the queue cap
    (`max_agents`); a batch that does not fit waits for a free slot, and a relaunch goes
    first. The headless rule holds: never end the turn while a batch runs, since the
-   turn's end ends the session; wait for each completion notification.
+   turn's end ends the session; wait for each completion notification. There is no
+   timeout cap and no inline form.
 
 4. **Check each completion.** The answer file is the agent's own: it is never retyped,
    copied over or edited, and nothing is appended to it. A batch's attempt fails when:
@@ -160,9 +161,10 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
    The file is complete then and is not rewritten. Step 6 may only append to
    `## Stage failure`.
 
-6. **Check the ledger.** When no batch failed, run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh"
-   check <run dir> --through 6 --stage6 complete > <run dir>/tmp/check6.txt` and read only
-   its line count (`wc -l`) and its first 50 lines (`head -n 50`). It checks one position
+6. **Check the ledger.** Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh"
+   check <run dir> --through 6 --stage6 complete > <run dir>/tmp/check6.txt`, with
+   `--stage6 failed` when a batch failed, and read only its line count (`wc -l`) and its
+   first 50 lines (`head -n 50`). It checks one position
    per id, each position's provenance line in the answer files, the mandatory set, the
    `## Seen, no position` list and the `X<n>` additions. A nonzero exit fails stage 6:
    append `## Stage failure` with the review-gate line when it is not there yet, then the

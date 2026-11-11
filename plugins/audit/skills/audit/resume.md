@@ -2,10 +2,7 @@
 
 `/audit:resume <run-id> [--from <stage>] [--live <file>]` reruns an audit from a stage,
 reusing only the outputs whose inputs have not changed: it never reuses a stale stage and
-never throws away a finished one. The first stage to rerun is the earliest of the
-`--from` stage; the first stage whose entry is missing, not complete, or lists a missing
-output; stage 5 when `ledger/inventory.txt` is missing; the first stage whose inputs
-changed; and stage 1 when a direct tree or a working-tree bundle changed. With `--live`,
+never throws away a finished one. Step 6 picks the first stage to rerun. With `--live`,
 resume first imports the user's live check results, and a result reruns the stages that
 review it (`${CLAUDE_PLUGIN_ROOT}/skills/audit/live.md`). The orchestrator reads this file
 when the invocation block says `command: resume`; the rules of

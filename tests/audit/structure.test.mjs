@@ -98,3 +98,12 @@ test('compaction recovery sits early in SKILL.md and has the session read SKILL.
   assert.ok(end < 15000, `"Compaction recovery" ends ${end} characters into SKILL.md, past what a compaction is sure to keep`);
   assert.ok(body.slice(start, end).includes('/SKILL.md`'),'"Compaction recovery" does not name SKILL.md among what is read again');
 });
+
+test('each stage section of SKILL.md names its stage file and holds no list or table of its own', () => {
+  const sections = [...TEXT['skills/audit/SKILL.md'].matchAll(/^## Stage (\d): [^\n]+\n([^]*?)(?=^## )/gm)];
+  assert.deepEqual(sections.map((m) => m[1]), ['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+  for (const [, n, body] of sections) {
+    assert.ok(new RegExp(`skills/audit/stages/${n}-[a-z-]+\.md`).test(body), `the stage ${n} section names no stage file`);
+    assert.ok(!/^(?:\d+\. |- |\|)/m.test(body), `the stage ${n} section holds a list or a table; its steps belong in the stage file`);
+  }
+});

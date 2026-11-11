@@ -72,7 +72,7 @@ Bundle forms in prose:
 - `in <path>`: the repository of the bundles in the same phrase. Without it, the session's repository.
 - `branch <b> against <base>`: a branch bundle.
 - `tickets <id>, <id>`: the tickets of the request's bundles.
-- `file:<path>`: an exported forge file, in markdown with frontmatter or JSON. A ticket needs id, url, title, state and description; a pull request needs id, url, title and body; every file needs source, exported_by and exported_at. A missing key stops the run. `forge_exports.command` is recorded, never run.
+- `file:<path>`: an exported forge file, in markdown with frontmatter or JSON. `forge_exports.command` is recorded, never run.
 - A token ending in `.json` with no scheme prefix: the manifest.
 
 Everything else lives in the manifest: `bundles[]` (`repo`, `pr` or `branch` plus `base`, `tickets[]`, `ticket_token`, `run_once`, `head`, `test_command`, `test_run`, `test_paths`, `test_setup`, `test_timeout`), `references[]`, `sources_of_truth[]`, `claims[]`, `scratch`, `forge_exports`, `groups[]`, `questions`, `models`, `budget`, `max_agents`, `_test`. Each validation message names the key. A prose budget or model override wins over the manifest's.
@@ -260,7 +260,7 @@ The run directory is `<scratch>/audit/<run-id>/`. `<scratch>` is the first that 
 3. `.reimagine/`, when already ignored.
 4. `${CLAUDE_PLUGIN_DATA}/runs/`.
 
-Compare parent and child as whole resolved paths. Make `<scratch>/audit/` with `mkdir -p` and the run directory with `mkdir` without `-p`, so an existing id moves to the next suffix. The run id is `<YYYY-MM-DD-HHMM>-<slug>`, where the slug is the first bundle's repository name, then its pull request number (an export's `id`) for a pull request bundle, or its branch for a branch bundle, joined with `-`, the whole slugged and cut at 40 characters, with `-2`, `-3` on collision. For example, a pull request bundle of repository `app` and pull request 123 gives `<YYYY-MM-DD-HHMM>-app-123`, and a branch bundle of repository `app` and branch `feat/export` gives `<YYYY-MM-DD-HHMM>-app-feat-export`. Never add an ignore rule to make a directory ignored.
+Compare parent and child as whole resolved paths. Make `<scratch>/audit/` with `mkdir -p` and the run directory with `mkdir` without `-p`, so an existing id moves to the next suffix. Never add an ignore rule to make a directory ignored.
 
 Write `stages.json` only through `stages.json.tmp` beside it, then `mv -f` it over the destination. Never edit a state file in place.
 
@@ -324,17 +324,7 @@ At each stage boundary write `usage.md` from `stages.json`: per stage, each agen
 
 ## Stage 1: orient
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, asks once for the fetch, takes the read-only baseline before any other work on the repositories, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. It sets the tier: `low` for one bundle, one ticket and under 500 changed lines; `medium` up to three bundles, five tickets and under 5,000 lines; `high` otherwise; an effort hint overrides it. Then run the read-only check and start stages 2, 3 and 4 together.
-
-The tier sets three things:
-
-| Tier | Pass-one scopes | Pass two attacks | Late adversary |
-|---|---|---|---|
-| `low` | one `combined` | no Verified OK or outward-trace entry | only with live files |
-| `medium` | one per group, `tests-hygiene`, and `interactions` with more than one bundle | the five riskiest entries | runs |
-| `high` | one per group, `tests`, `hygiene`, `interactions` | every entry | runs |
-
-Custom group names are slugged. A reserved name (`tests`, `hygiene`, `tests-hygiene`, `interactions`, `combined`, `unticketed`) or a `-topup` or `-maptopup` collision stops the run.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, asks once for the fetch, takes the read-only baseline before any other work on the repositories, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, sets the tier, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. Then run the read-only check and start stages 2, 3 and 4 together.
 
 ## Stage 2: digest
 
@@ -354,23 +344,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/5-pass-two.md` when the first gr
 
 ## Stage 6: second opinion
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/6-second-opinion.md` and `${CLAUDE_PLUGIN_ROOT}/skills/audit/second-opinion-request.md` when stage 5 is complete or failed. Stage 6 runs whatever stage 5's result, unless the budget has expired.
-
-1. Copy every input to `second-opinion/inputs/<run-relative path>` with a first line `audit-sentinel: <run-relative path> <16 hex>`, the token from `od -An -N8 -tx1 /dev/urandom | tr -d ' \n'`. Audited sources are never copied, only named by absolute read path and sha from the brief.
-2. Write the mandatory set with `ledger.sh mandatory` into `tmp/mandatory.txt` and move it to `ledger/mandatory.txt` only on exit 0; a nonzero exit fails stage 6. Over 60 ids, split it by shell into `second-opinion/batch-<k>.txt` files of at most 60. The `IDS-BATCH-<k>` placeholder is replaced by shell, never typed.
-3. Launch one fresh `audit:adversary` per batch in second-opinion mode, at opus or the override, in the background: scope `second-opinion` for a single batch, else `second-opinion-<k>`; request `second-opinion/request.md` for batch 1, else `second-opinion/request-<k>.md`, which holds asks 1 and 2 only. The agent writes `second-opinion/response.md` or `second-opinion/response-<k>.md` itself and ends `status: complete`. Only the first batch may add `X<n>` findings with `origin: second-opinion`. The answer file is the agent's own and is never retyped.
-4. Per batch, check the sentinel acknowledgments and run `ledger.sh missing` for that batch's ids. A failed check or a missing `status: complete` follows the ladder: relaunch on sonnet, or on opus for a second opinion already on sonnet, then stage 6 fails.
-5. Write `ledger/6.md` once, with these sections in order:
-   - `## Role`: the role, the requested model of each batch, and any swap.
-   - `## Acknowledgments`: each input's sentinel and whether the answer acknowledged it.
-   - One `## <id>` section per position, with `- position:`, `- evidence:` and `- answer location:`.
-   - `## Additions`: the `### X<n>:` additions of the first batch.
-   - `## Merge verdict (non-binding)`.
-   - `## Seen, no position`, from `ledger.sh seen`, appended by redirection.
-   - `## Stage failure`, only when stage 6 failed.
-6. Run `ledger.sh check <run dir> --through 6 --stage6 complete`, or `--stage6 failed` when stage 6 failed.
-
-There is no timeout cap and no inline form. Headless, never end the turn while a batch runs.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/6-second-opinion.md` and `${CLAUDE_PLUGIN_ROOT}/skills/audit/second-opinion-request.md` when stage 5 is complete or failed. Stage 6 runs whatever stage 5's result, unless the budget has expired. It copies the inputs with sentinel lines, writes the mandatory set with `ledger.sh mandatory`, launches one fresh second-opinion adversary per batch of ids, checks each answer, and writes `ledger/6.md` and checks it with `ledger.sh check`.
 
 ## Stage 7: converge
 
@@ -384,22 +358,9 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/8-report.md` when stage 7 is com
 
 For `command: act`, find the run in `runs.json` by `run-id`, append the invocation block, and read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/9-act.md`. Act is outside the read-only boundary and is gated by the user's approval per item.
 
-- It recomputes the report's revision and compares it before it starts and before every commit, rebase or merge. An unknown item id stops act. Open live checks warn.
-- HEAD must equal the bundle branch and the tracked tree must be clean. Act never stashes, resets, cleans or checks out. Untracked files are logged, never staged.
-- A commit in `<audited head>..HEAD` that act did not log is drift; act shows it and asks before going on.
-- Act asks before each commit, never pushes, and edits tickets only when told per item, and a post it makes is written for its reader as What leaves the run says. Its commit messages follow the repository's convention and name no model, agent or tool and no term the audit or a run coined, such as an item id (`C<n>`, `claim <n>`, `W<n>`), a stage or a verdict; where the body speaks of an item, it names the item by what it fixes. The trailer the host's attribution setting adds to a commit stays, even where it names a model or tool.
-
 ## Resume
 
-For `command: resume`, find the run in `runs.json` by `run-id`, append the invocation block, and read `${CLAUDE_PLUGIN_ROOT}/skills/audit/resume.md`. It reruns from the earliest of:
-
-- the `from` stage;
-- the first stage whose entry is missing, not `complete`, or lists a missing output;
-- stage 5 when `ledger/inventory.txt` is missing;
-- the first stage whose inputs changed: forge data, pinned shas, upstream outputs, `plugin_version`, live inputs;
-- stage 1 when a direct tree or a working-tree bundle changed.
-
-A changed head or base asks before restarting from stage 1; with `live` it refuses. A new report gets a new revision, which voids the act approvals of the report before it. Resume moves superseded outputs to `superseded/<k>/`, and continues at that stage's section above. With `live: <file>`, read `${CLAUDE_PLUGIN_ROOT}/skills/audit/live.md` first: `live.sh` checks and imports the file, a finding result reruns stages 6 to 8, and a claim-only result reruns stages 7 and 8.
+For `command: resume`, find the run in `runs.json` by `run-id`, append the invocation block, and read `${CLAUDE_PLUGIN_ROOT}/skills/audit/resume.md`. With `live: <file>`, read `${CLAUDE_PLUGIN_ROOT}/skills/audit/live.md` first: `live.sh` checks and imports the file, a finding result reruns stages 6 to 8, and a claim-only result reruns stages 7 and 8.
 
 ## Handoff
 

@@ -81,9 +81,8 @@
 #   ends the file inside an open fence ends with a closing fence line while its
 #   existence check still exits 0. Output and exit status are compared with literal
 #   text.
-# - The stage 6 section of skills/audit/SKILL.md writes the mandatory set into
-#   `tmp/mandatory.txt`, moves it only on exit 0, and names `## Additions` for the first
-#   batch's `### X<n>:` additions.
+# - skills/audit/stages/6-second-opinion.md, read as one line, moves the mandatory set
+#   only on exit 0.
 # - The command list in hard rule 2 of skills/audit/common.md, read as one line, names
 #   `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with `-t`, `-s` or
 #   `-p`, `git branch --list`, `cut`, `uniq` and `cat` of an exported file, and bars
@@ -125,8 +124,8 @@
 #   skills/audit/common.md and rule 3 of skills/audit/SKILL.md keep it too; each file is
 #   read as one line.
 # - The roles table in skills/audit/SKILL.md carries the swap rung off the top tier and
-#   the second opinion row defaults to opus; the stage 6 summary line in that file and
-#   the README's second opinion row carry the same ladder; no stage 2 to 7 file says
+#   the second opinion row defaults to opus; the README's second opinion row carries the
+#   same ladder; no stage 2 to 7 file says
 #   "on `fable`" or "model: fable".
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
@@ -732,8 +731,8 @@ if [ -f "$f" ]; then
 		fail "$f: 0d does not give the file ticket slug example"
 fi
 # The run id's slug is the first bundle's repository name and then its pull request number
-# or its branch, with one worked example of each; each file is read as one line.
-for f in skills/audit/stages/1-orient.md skills/audit/SKILL.md; do
+# or its branch, with one worked example of each; the file is read as one line.
+for f in skills/audit/stages/1-orient.md; do
 	[ -f "$f" ] || continue
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "the slug is the first bundle's repository name, then its pull request number (an export's \`id\`) for a pull request bundle, or its branch for a branch bundle, joined with \`-\`, the whole slugged and cut at 40 characters" "$tmp/list" ||
@@ -836,13 +835,12 @@ if [ -f "$f" ]; then
 		fail "$f: does not say a late completion notification changes nothing"
 	grep -qF 'for an agent this session did not launch, such as one an earlier session launched, also changes nothing' "$tmp/list" ||
 		fail "$f: does not say a completion notification for an unlisted agent changes nothing"
-	# Stage 6 builds the mandatory set in tmp/ and moves it on exit 0, and files the
-	# first batch's additions under ## Additions in ledger/6.md.
-	tr -d '\r' < "$f" | awk '/^## Stage 6: second opinion$/ { on = 1; next } /^## / { if (on) exit } on' |
-		tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	for s in 'into `tmp/mandatory.txt`' 'only on exit 0' '`## Additions`: the `### X<n>:` additions'; do
-		grep -qF "$s" "$tmp/list" || fail "$f: the stage 6 section does not name '$s'"
-	done
+fi
+# Stage 6 moves the mandatory set into ledger/ only on exit 0; the file is read as one line.
+f=skills/audit/stages/6-second-opinion.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'only on exit 0' "$tmp/list" || fail "$f: does not move the mandatory set only on exit 0"
 fi
 # The roles table carries the swap rung off the top tier and the second opinion row
 # defaults to opus; no stage file names the top tier as a default or a fallback.
@@ -853,8 +851,6 @@ if [ -f "$f" ]; then
 		fail "$f: the roles table does not carry the swap rung off the top tier"
 	grep -qF '| opus | per batch: relaunch on sonnet, or on opus for a second opinion already on sonnet, a swap; then stage 6 fails |' "$tmp/list" ||
 		fail "$f: the second opinion row does not default to opus with the sonnet relaunch"
-	grep -qF 'follows the ladder: relaunch on sonnet, or on opus for a second opinion already on sonnet, then stage 6 fails.' "$tmp/list" ||
-		fail "$f: the stage 6 summary does not follow the roles table's second opinion ladder"
 fi
 f=README.md
 if [ -f "$f" ]; then

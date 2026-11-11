@@ -36,7 +36,7 @@ You orchestrate one audit run in the main session. `run` runs stages 1 to 8 and 
 
 The allowed-tools list pre-approves `date` and a few git and gh reads in the session's own folder, each a form with no option that writes to a path the call names or runs a command the call names. Everything else follows the session's permission mode: every `git -C <repo>` call, `git diff`, `git log`, `git show`, `git grep` and `git stash list` in any form, `mkdir`, `mv -f`, `rmdir` of the lock, `sleep`, `find`, `stat`, `od`, `sha256sum` or `shasum`, `command -v jq`, `jq`, `awk`, `wc -c`, and the `sh` runs of the scripts. Tell the user once, before stage 1, that these may prompt. `git fetch` and every act write are never pre-approved; ask for each in words first.
 
-`${CLAUDE_PLUGIN_ROOT}` is the plugin's directory and `${CLAUDE_PLUGIN_DATA}` its data directory. Neither is a shell variable. Read skill files with the Read tool, never through Bash. In every Bash command write the resolved absolute path, never the unexpanded text, in double quotes, since a directory name may hold a space; so too for a placeholder that stands for a path, such as `<repo>` or `<run dir>`. Run each script with the Bash tool, as `sh "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh" ...` with that path resolved. Times come from `date -u +%Y-%m-%dT%H:%M:%SZ`; copy the output, never write a time from memory.
+`${CLAUDE_PLUGIN_ROOT}` is the plugin's directory and `${CLAUDE_PLUGIN_DATA}` its data directory. Neither is a shell variable. Read skill files with the Read tool, never through Bash. In every Bash command write a path resolved, absolute and in double quotes, never as the unexpanded text, since a directory name may hold a space; so too for a placeholder that stands for a path, such as `<repo>` or `<run dir>`. Run each script with the Bash tool, as `sh "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh" ...` with that path resolved. Times come from `date -u +%Y-%m-%dT%H:%M:%SZ`; copy the output, never write a time from memory.
 
 ## Invocation block
 
@@ -99,7 +99,7 @@ Tickets: AB#4567 (mcp:<tool>), AB#4580 (file)
 - Effort: the hint and where it came from, or `default (set from size at stage 1)`.
 - Budget: the minutes, or `none`.
 - Models: each override as `<role> on <model>`, or `none`.
-- Tickets: each id with how it resolved: `gh`, `file`, `mcp:<tool>`, or `text, body not read`. A ticket that resolved nowhere reads `unresolved: <reason>`; stage 1 decides whether the run goes on.
+- Tickets: each id with how it resolved: `gh`, `file`, `mcp:<tool>` or `text`, the last printed as `text, body not read`. A ticket that resolved nowhere reads `unresolved: <reason>`; stage 1 decides whether the run goes on.
 
 Each ticket resolves by the first form that applies:
 

@@ -93,7 +93,8 @@ branch to it in the manifest."
         repository has exactly one GitHub remote (`git -C <repo> remote -v`); otherwise
         stop with
         `<id>: write it as github:owner/repo#n or file:<path>`, and add that a ticket
-        on another forge comes in as a `file:` export. `<ticket>` in file names is the
+        on another forge is written `ado:<org>/<project>#<n>` or `sf:<case number>`, or
+        comes in as a `file:` export. `<ticket>` in file names is the
         id slugged, except for a `file:` ticket, whose `<ticket>` is the export's `id`
         slugged, else the file's base name without its extension slugged; the
         normalized id `file:<path>` stays the ticket's identity everywhere else. For

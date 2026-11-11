@@ -41,7 +41,7 @@ Phrases the audit recognizes:
 
 Everything else goes in the manifest.
 
-Before it does anything else, the audit prints what it read: bundles, references, sources of truth, claims files, effort, budget, model overrides, and how each ticket was found. Then it asks you to pause background fetch, for example VS Code `git.autofetch`, since a fetch during the run can stop it. Under the default permission mode it asks before each script it runs and before each git read of a repository other than the session's folder; the skill pre-approves neither, since a pattern wide enough to cover those reads would also cover a git option that writes a file or runs a program. What it does pre-approve holds until your first reply. So a run with no one to answer needs a permission mode that lets its commands run, or allow rules of your own that name each repository's path; the commands are its scripts run by `sh`, `git -C <repo>` reads, `mkdir`, `mv`, `rmdir`, `sleep`, `find`, `stat`, `od`, `sha256sum` or `shasum`, `jq`, `awk` and `wc`.
+Before it does anything else, the audit prints what it read: bundles, references, sources of truth, claims files, effort, budget, model overrides, and how each ticket was found. Then it asks you to pause background fetch, for example VS Code `git.autofetch`, since a fetch during the run can stop it. Under the default permission mode it asks before each script it runs and before each git read of a repository other than the session's folder; the skill pre-approves neither, since a pattern wide enough to cover those reads would also cover a git option that writes a file or runs a program. What it does pre-approve holds until your first reply. So a run with no one to answer needs a permission mode that lets its commands run. Allow rules of your own may not be enough: a rule matches a command issued alone, and a session often joins several in one call. The commands are its scripts run by `sh`, `git -C <repo>` reads, `mkdir`, `mv`, `rmdir`, `sleep`, `find`, `stat`, `od`, `sha256sum` or `shasum`, `jq`, `awk` and `wc`.
 
 Commands:
 
@@ -82,7 +82,7 @@ A JSON file. Relative paths in it are relative to the manifest's directory. Ever
   - `repo`: the local checkout.
   - `pr`, or `branch` with `base`: what to audit.
   - `tickets`: the ticket ids or `file:` exports.
-  - `ticket_token`: how commit messages name an exported ticket; `{n}` stands for its id.
+  - `ticket_token`: how commit messages name an exported ticket; `{n}` stands for its id, or for the number of an `ado:` or `sf:` id.
   - `run_once`: glob patterns for run-once files, such as database migrations.
   - `head`: only `working-tree`, which audits the uncommitted state of the checkout.
   - `test_command`: runs the changed tests with the change reverted. Setting it is your consent to run the repository's own commands.

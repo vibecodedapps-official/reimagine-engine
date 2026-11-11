@@ -94,8 +94,9 @@ test("the stand-in's diff, as the step shows it, reads a group's paths as names 
   });
   // Read as patterns, the group's paths select a file of the other group as well.
   assert.deepEqual(git('diff', '--name-only', RANGE, '--', 'l[i]b/x.js', 'm.md'), ['l[i]b/x.js', 'lib/x.js', 'm.md']);
-  const shown = /^1\. Write `diff-[^`]+` in the record from `git ([^`]+)`/m.exec(PASS);
-  assert.ok(shown, 'the stand-in step shows its git command');
+  const section = /^## The stand-in\n([^]*?)^## /m.exec(PASS);
+  const shown = section && /`git ([^`]*diff <merge-base>\.\.\.HEAD)`/.exec(section[1]);
+  assert.ok(shown, 'the stand-in section shows its git diff');
   const args = shown[1].split(' ').map((word) => (word === '<merge-base>...HEAD' ? RANGE : word));
   assert.deepEqual(git(...args, '--name-only', '--', 'l[i]b/x.js', 'm.md'), ['l[i]b/x.js', 'm.md']);
 });

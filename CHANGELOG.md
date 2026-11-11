@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.21 - 2026-11-11
+
+- On Windows the script that runs the changed tests sends a TERM before the KILL that ends a test command's process group, once the command has ended and when the run is interrupted. A native program's own children are outside that group: after a KILL alone the child of a batch file kept running and held the work dir, so the run ended by naming the work dir as left. With the TERM first the child ends with the program. A native child whose parent has already exited stays out of reach.
+
 ## audit 0.1.20 - 2026-11-10
 
 - No command of stage 1 sets a variable before git. Each began with an export of `GIT_NO_LAZY_FETCH`, and the host asks for such a command whatever rule matches its git part, so a run with no one to answer stopped at its first git read. The refusal of a partial clone is what keeps a run from a lazy fetch; it now reads every configuration source, where it missed a promisor remote set in a worktree's configuration, and the baseline refuses a partial clone nested in an audited repository, a checked-out submodule included, which a diff can enter.

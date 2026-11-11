@@ -25,7 +25,8 @@
 #    after its parent dies at the deadline (5a); a command that ignores TERM until KILL,
 #    with REVERT_TESTS_TICK unset (5b); 5a with no controlling terminal, under dash where
 #    installed (5c, needs setsid); 5b with the low tick (5d); the watchdog's deadline under
-#    the low tick, from the script's own text (5e)
+#    the low tick, from the script's own text (5e); on Windows, a native program's own child:
+#    left by a passing file (5f), at an interrupt (5g), at the timeout (5h)
 #  6 the time cap                        7 the file cap, with 21 files
 #  8 a path conflict                     9 the environment: LC_ALL, GIT_*, TMPDIR, and
 #    GIT_CEILING_DIRECTORIES
@@ -452,6 +453,72 @@ if command -v setsid > /dev/null 2>&1; then
 	verdicts '- `tests/test_bg.sh`: passes at head and without the change
 - `tests/test_child.sh`: does not pass at head (timed out)
 '
+fi
+
+# 5f to 5h. Windows only: a native program's own child is not in the process group. The test
+# file runs a batch file, so cmd is the program, and its child is a node that writes the time
+# to $RT_BEAT every 100 ms and ends itself after 30 seconds. beats: that child wrote, and
+# writes no more. The file can be empty: a write cut short leaves it so.
+beats() {
+	[ -e "$RT_BEAT" ] || mismatch "$case_id: the program's child wrote nothing"
+	b_1=$(cat "$RT_BEAT" 2> /dev/null)
+	sleep 1
+	b_2=$(cat "$RT_BEAT" 2> /dev/null)
+	if [ "$b_1" != "$b_2" ]; then
+		mismatch "$case_id: the program's child is still running"
+		# It holds the work dir until it ends itself.
+		sleep 30
+	fi
+}
+if command -v cygpath > /dev/null 2>&1; then
+	mkrepo c5f
+	put 100644 README 'x\n'
+	commit main
+	put 100644 tests/beat.js 'const fs = require("node:fs");\nconst end = Date.now() + 30000;\nsetInterval(() => {\n  if (Date.now() > end) process.exit(0);\n  fs.writeFileSync(process.argv[2], String(Date.now()));\n}, 100);\n'
+	put 100755 tests/tree.cmd '@node tests/beat.js "%RT_BEAT%"\r\n'
+	put 100644 tests/test_stray.sh 'rm -f "$RT_BEAT"\n./tests/tree.cmd &\nwhile [ ! -s "$RT_BEAT" ]; do sleep 0.1; done\n'
+	put 100644 tests/test_tree.sh './tests/tree.cmd\n'
+	commit feature main
+
+	# 5f. The file leaves the program running and passes.
+	case_id="case 5f"
+	RT_BEAT=$root/beat-5f
+	export RT_BEAT
+	run_only "$R" 'command\tsh\nrun\ttests/test_stray.sh\ntimeout\t10\n'
+	beats
+	checkleft
+	ok
+	verdicts '- `tests/test_stray.sh`: passes at head and without the change\n'
+
+	# 5g. An interrupt while the program runs, as in case 10.
+	case_id="case 5g"
+	RT_BEAT=$root/beat-5g
+	printf '%b' 'command\tsh\nrun\ttests/test_tree.sh\n' > "$tmp/keys"
+	rm -f "$tmp/res"
+	wd=$root/rw
+	"$sh_bin" "$rt" run "$R" main feature "$tmp/keys" "$wd" "$tmp/res" > "$tmp/out" 2> "$tmp/err" &
+	sp=$!
+	n=0
+	while [ ! -s "$RT_BEAT" ] && [ "$n" -lt 100 ]; do
+		sleep 0.2
+		n=$((n + 1))
+	done
+	kill -TERM "$sp"
+	wait "$sp"
+	rc=$?
+	[ "$rc" = 2 ] || mismatch "$case_id: exit $rc, expected 2"
+	[ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
+	beats
+	checkleft
+
+	# 5h. The timeout while the program runs.
+	case_id="case 5h"
+	RT_BEAT=$root/beat-5h
+	run_only "$R" 'command\tsh\nrun\ttests/test_tree.sh\ntimeout\t5\n'
+	beats
+	checkleft
+	ok
+	verdicts '- `tests/test_tree.sh`: does not pass at head (timed out)\n'
 fi
 
 # 6. The time cap: the first file uses the bundle's 3 seconds, and the second is not run.

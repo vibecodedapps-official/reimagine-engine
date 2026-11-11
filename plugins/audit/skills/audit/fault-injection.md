@@ -30,7 +30,8 @@ every relaunch and swap it causes is recorded in the stage entry and named in th
   until every initial agent of stage `until` has ended (for stage 4, the pass-one agents,
   before any barrier top-up).
 - `expire_budget_after_stage`: a stage number. The budget counts as expired the moment
-  that stage's entry is written, whether or not the run has a `budget`.
+  that stage's entry is written, whether or not the run has a `budget`, a resumed run
+  included.
 - `plant_map_error`: a source name. When that source's mapper completes, and before the
   orchestrator accepts its file, it changes the conclusion of one quoted answer in
   `domain/<source>-map.md` to its opposite, keeping the quote, and records the line in the

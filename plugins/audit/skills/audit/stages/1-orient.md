@@ -47,7 +47,9 @@ branch to it in the manifest."
       inputs are relative to the session's directory. Under `/audit:resume`, ignore
       `manifest: none` and `inputs:` and rebuild both from the `source` key of the run's
       `manifest.json`; when the manifest file it names does not exist, stop with one line
-      saying so.
+      saying so. A resumed run has no budget (SKILL.md, Soft budget): a `budget` in the
+      manifest or in the recorded request stays in `manifest.json` as it was and is
+      not applied.
 
    c. **Merge the inputs into bundles.** Each `inputs:` token (SKILL.md, Reading the
       request) is merged into the manifest's `bundles[]`:

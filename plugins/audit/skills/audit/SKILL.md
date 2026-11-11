@@ -205,7 +205,7 @@ Keep one queue of agent jobs across all stages. At most `max_agents` agents run 
 
 ### Soft budget
 
-A budget applies only to the invocation that gave it; `resume` runs with none unless its own request gives one. Record the start time of stage 1. At every completion notification and every stage boundary, compare the elapsed time with the budget. `budget: 0` expires as soon as stage 1 completes. Once it expires:
+A budget applies only to the invocation that gave it; a resumed run has none. Record the start time of stage 1. At every completion notification and every stage boundary, compare the elapsed time with the budget. `budget: 0` expires as soon as stage 1 completes. Once it expires:
 
 1. Launch nothing more from stages 2 to 7, relaunches and top-ups included.
 2. Wait for running agents and record their results.

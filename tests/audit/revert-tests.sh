@@ -40,7 +40,9 @@
 #    deadline (15c), wait's window (15d), no run (15e), TERM to bg (15f), wrong arguments
 #    (15g), the deadline during a blocked git step (15h), KILL to bg (15i); on Windows, a
 #    native program's own child at the deadline (15j) and when bg is KILLed (15k), and the
-#    same two stops with a PowerShell that fails (15l, 15m)
+#    same two stops with a PowerShell that fails (15l, 15m); TERM to bg as a setup ends, so
+#    the test file would start during the stop (15n); on Windows, TERM to bg while the run
+#    ends a passed file's program by id (15o)
 # 16 a partial clone is refused without fetching   17 a tab path is not used
 # 18 forkdone, from the script's own text: bash's `child setpgid` line is dropped and any
 #    other fork-time line kept (18a); a job started outside its own group fails the start
@@ -57,6 +59,9 @@
 #    seconds)
 # 25 the same shim on a run that fails (a keys error): exit 2, and stderr is the failure's one
 #    line, with no line about the work dir (waits the whole window)
+# 26 on Windows, leadstop from the script's own text, on a shell that traps TERM and holds a
+#    sleep: with the mark of a run that is ending a group by id, the shell gets the TERM and
+#    the sleep is left (26a); with the mark empty, the sleep is ended by id (26b)
 #
 # Prints one line per mismatch, then `revert-tests test: ok` when there were none. Exit 0
 # when every case matches, otherwise 1.
@@ -483,9 +488,12 @@ fi
 # 5f to 5h. Windows only: a native program's own child is not in the process group. The test
 # file runs a batch file, so cmd is the program, and its child is a node that writes the time
 # to the end of $RT_BEAT every 100 ms and ends itself after 30 seconds. beats: that child
-# wrote, and writes no more.
+# wrote, and writes no more. still: it writes no more.
 beats() {
 	[ -s "$RT_BEAT" ] || mismatch "$case_id: the program's child wrote nothing"
+	still
+}
+still() {
 	b_1=$(cat "$RT_BEAT" 2> /dev/null)
 	sleep 1
 	b_2=$(cat "$RT_BEAT" 2> /dev/null)
@@ -980,8 +988,8 @@ if [ -n "$win_t" ]; then
 	rm -f "$tmp/res.err"
 
 	# 15l and 15m. Windows only: a stand-in for PowerShell that fails, first on PATH, so no
-	# process is ended by id. The run alone gets the TERM and ends its command itself, at the
-	# deadline and when bg is KILLed.
+	# process is ended by id. The group's leader says so in `.err`, and the run ends its
+	# command with the KILL alone, at the deadline and when bg is KILLed.
 	mkdir "$root/fakeps"
 	printf '#!/bin/sh\nexit 1\n' > "$root/fakeps/powershell.exe"
 	chmod +x "$root/fakeps/powershell.exe"
@@ -993,12 +1001,10 @@ if [ -n "$win_t" ]; then
 	export REVERT_TESTS_DEADLINE
 	bgstart "$root/c15" 'command\tsh\nrun\ttests/test_slow.sh\ntimeout\t60\n'
 	unset REVERT_TESTS_DEADLINE
+	bgdone 0
+	printf 'revert-tests: cannot end a process tree by id; a step of the run can hold off its end\nrevert-tests: stopped at the deadline of 4 seconds\n' > "$tmp/exp"
+	cmp -s "$tmp/exp" "$tmp/res.err" || mismatch "$case_id: .err is [$(tr '\n' '|' < "$tmp/res.err")]"
 	waitrun
-	wait "$bp"
-	b_rc=$?
-	[ "$b_rc" = 0 ] || mismatch "$case_id: bg exit $b_rc, expected 0"
-	printf 'revert-tests: cannot end a process tree by id; the run gets TERM\n' > "$tmp/exp"
-	cmp -s "$tmp/exp" "$tmp/bgout" || mismatch "$case_id: bg printed [$(tr '\n' '|' < "$tmp/bgout")]"
 	checkleft
 	fails 'revert-tests: stopped at the deadline of 4 seconds'
 	nosides
@@ -1012,10 +1018,58 @@ if [ -n "$win_t" ]; then
 	checkleft
 	[ ! -e "$tmp/res.exit" ] || mismatch "$case_id: .exit was written"
 	[ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
-	printf 'revert-tests: cannot end a process tree by id; the run gets TERM\n' > "$tmp/exp"
+	printf 'revert-tests: cannot end a process tree by id; a step of the run can hold off its end\n' > "$tmp/exp"
 	cmp -s "$tmp/exp" "$tmp/res.err" || mismatch "$case_id: .err is [$(tr '\n' '|' < "$tmp/res.err")]"
 	rm -f "$tmp/res.err"
 	PATH=$real_path
+fi
+
+# 15n. TERM to bg while a setup waits on a gate that opens 0.3 seconds after it, so the test
+# file would start while the stop is under way: no test process is left.
+case_id="case 15n"
+RT_GATE=$root/gate-15n
+export RT_GATE
+bgstart "$root/c15" 'command\tsh\nsetup\techo $$ > "$RT_PIDS/setup"; while [ ! -e "$RT_GATE" ]; do sleep 0.1; done\nrun\ttests/test_slow.sh\ntimeout\t60\n'
+started setup
+kill -TERM "$bp"
+sleep 0.3
+: > "$RT_GATE"
+bgdone 2
+wdgone
+checkleft
+[ ! -e "$tmp/res.exit" ] || mismatch "$case_id: .exit was written"
+[ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
+rm -f "$tmp/res.err"
+
+# 15o. Windows only: TERM to bg while the run ends by id the program that 5f's passing file
+# left, which the run marks in the work dir. The run's call finishes, so the program's
+# child and the work dir go.
+if [ -n "$win_t" ]; then
+	case_id="case 15o"
+	RT_BEAT=$root/beat-15o
+	bgstart "$root/c5f" 'command\tsh\nrun\ttests/test_stray.sh\ntimeout\t60\n'
+	n=0
+	seen=
+	while [ "$n" -lt 600 ]; do
+		if [ -s "$wd/.state/byid" ]; then
+			seen=1
+			break
+		fi
+		sleep 0.05
+		n=$((n + 1))
+	done
+	[ -n "$seen" ] || mismatch "$case_id: the run marked no call"
+	# Read here: a stop that reaches the run after its call can find the file started
+	# again in the other copy, where it removes the beat file first.
+	[ -s "$RT_BEAT" ] || mismatch "$case_id: the program's child wrote nothing"
+	kill -TERM "$bp"
+	bgdone 2
+	wdgone
+	still
+	checkleft
+	[ ! -e "$tmp/res.exit" ] || mismatch "$case_id: .exit was written"
+	[ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
+	rm -f "$tmp/res.err"
 fi
 
 # 12. The patterns fixture: both files pass at the head only, and the reverted run of
@@ -1238,6 +1292,51 @@ PATH=$old_path
 fails 'revert-tests: keys: no command'
 [ -e "$root/fb24/fired" ] || mismatch "$case_id: the shim did not fire"
 checkleft
+
+# 26. Windows only: leadstop, taken from the script's own text with wtlist and wtend, as
+# the leader of the `bg` child's group uses it on its run. A shell that traps TERM holds a
+# sleep. With the mark of a run that is ending a group by id, the shell gets the TERM and
+# the sleep is left (26a); with the mark empty, the sleep is ended by id (26b).
+if [ -n "$win_t" ]; then
+	sed -n '/^wtlist() {/,/^# endgroup /p' "$rt" > "$tmp/wt.sh"
+	RT_WT_TERM=$root/wt-term
+	export RT_WT_TERM
+	printf '%s\n' 'trap "echo term > \"\$RT_WT_TERM\"; exit 0" TERM' 'sleep 30 &' \
+		'echo $! > "$RT_PIDS/wtsleep"' 'wait' > "$tmp/wt-run.sh"
+	mkdir -p "$root/wt26/.state"
+	# ls26: run leadstop on a new shell; sets wt_p to the sleep's pid.
+	ls26() {
+		rm -f "$RT_WT_TERM" "$RT_PIDS/wtsleep"
+		bash -c '. "$1"
+			cr=$(printf "\r")
+			sh "$2" &
+			r=$!
+			n=0
+			while [ ! -s "$RT_PIDS/wtsleep" ] && [ "$n" -lt 100 ]; do sleep 0.2; n=$((n + 1)); done
+			leadstop "$r" "$3"
+			echo "leadstop $?"
+			wait "$r"' x "$tmp/wt.sh" "$tmp/wt-run.sh" "$root/wt26" > "$tmp/out" 2> "$tmp/err"
+		[ "$(cat "$tmp/out")" = 'leadstop 0' ] || mismatch "$case_id: stdout [$(tr '\n' '|' < "$tmp/out")]"
+		[ ! -s "$tmp/err" ] || mismatch "$case_id: stderr [$(tr '\n' '|' < "$tmp/err")]"
+		[ "$(cat "$RT_WT_TERM" 2> /dev/null)" = term ] || mismatch "$case_id: the shell got no TERM"
+		wt_p=$(cat "$RT_PIDS/wtsleep" 2> /dev/null)
+	}
+	case_id="case 26a"
+	[ "$(grep -cE '^(wtlist|wtend|leadstop)\(\) \{$' "$tmp/wt.sh")" = 3 ] ||
+		mismatch "$case_id: wtlist, wtend or leadstop is not in the script"
+	echo 1 > "$root/wt26/.state/byid"
+	ls26
+	if kill -0 "$wt_p" 2> /dev/null; then
+		kill -KILL "$wt_p" 2> /dev/null
+	else
+		mismatch "$case_id: the sleep was ended"
+	fi
+	rm -f "$RT_PIDS/wtsleep"
+	case_id="case 26b"
+	: > "$root/wt26/.state/byid"
+	ls26
+	checkleft
+fi
 
 if [ "$bad" -gt 0 ]; then
 	exit 1

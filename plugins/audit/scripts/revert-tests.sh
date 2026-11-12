@@ -47,25 +47,28 @@
 # Windows: a signal that the runtime of Git for Windows delivers to a native program ends
 # that program's tree by the parent ids Windows records, and Windows hands a freed id to a
 # new process, so the signal can reach a process this run never started. There no group
-# gets a TERM. Where another system sends one, and before the KILL at a command's end, the
-# script ends the group's processes by id, in one call of Windows PowerShell: the processes
-# the runtime lists in the group, those it lists under them or in a group one of them
-# leads, and every Windows process under one of those that started no earlier than its
-# parent. A listed process counts only if it started before the list was taken, and each
-# is ended only while its id still names the process that was listed. Each query and each
-# end is given 30 seconds. The KILL then goes to a group with no native program left. A
-# child's TERM trap does not run, and a command ended this way has the status Windows
-# reports for the process that leads it: 0 for a shell, 137 for a native program. `bg`
-# stops its child's group the same way: it ends the group by id, then removes what the run
-# it ended could not, the work dir (unless it was there before the run) and the result's
-# `.tmp`, and at the deadline it records status 2. A lost `bg`'s leader does the same for
-# the run and all under it. When the call fails, one line on stderr says so, once per
-# process: a command's group then gets the KILL alone, and from `bg` or its leader the run
-# alone gets the TERM, when the call left it, which it answers once any git step in the
-# foreground returns. The KILL 60 seconds later goes alone. Beyond reach: a native child
+# gets a TERM. At a command's deadline, and before the KILL at a command's end, the run
+# ends the command's group by id, in one call of Windows PowerShell: the processes the
+# runtime lists in the group, those it lists under them, and every Windows process under
+# one of those that started no earlier than its parent. A listed process counts only if
+# it started before the list was taken, and each is ended only while its id still names
+# the process that was listed. Each query and each end is given 30 seconds. The KILL then
+# goes to a group with no native program left. A child's TERM trap does not run, and a
+# command ended this way has the status Windows reports for the process that leads it: 0
+# for a shell, 137 for a native program. Where `bg` or its group's leader sends the group
+# TERM on another system, the run alone gets it, since only the run knows what it started:
+# it ends its command and removes the work dir as it does there. A step in the run's
+# foreground holds off its trap, so the leader first lists what the run has in its own
+# group, then sends the TERM, then ends the listed by id. Nothing the run starts after the
+# listing is touched, and while the run is itself ending a command's group by id, which
+# it marks in the work dir, the leader ends nothing. The KILL 60 seconds later goes to
+# the group alone. When the call fails, one line on stderr says so, once per process, and
+# a command's group gets the KILL alone; a run that a signal ends while it waits on a
+# command has no stderr by then and prints no such line. Beyond reach: a native child
 # whose parent had already exited; the children of a native program that started while
-# the list was taken, which the KILL ends alone; and for `bg` and its leader, any process
-# that started then and a group whose own leader is gone.
+# the list was taken, which the KILL ends alone; and a step the run starts in its
+# foreground between the leader's listing and the TERM: if it blocks, the run ends at the
+# KILL 60 seconds later and the work dir stays.
 #
 # Keys file: one line per value, `<key><TAB><value>`. `command` (required), `setup`, and
 # `timeout` (whole seconds, 1 or more, default 300) at most once; `run` (one or more) and
@@ -202,13 +205,12 @@ forkdone() {
 	fi
 }
 
-# wintree -g <pgid> | -p <pid>: on Windows, end by id the processes the runtime lists in the
-# group, or the one process, those it lists under them or in a group one of them leads,
-# and every Windows process under one of those (see Windows). Fails unless PowerShell
-# reports each of them gone.
-wintree() {
-	# A listed process counts only if it started before this moment, so an id that Windows
-	# hands to a new process after the listing names nothing here.
+# wtlist -g <pgid> | -u <pid>: on Windows, set wt_roots to the Windows ids of the processes
+# the runtime lists in the group, or of those it lists under the process and in the
+# process's own group, then of those it lists under them, and wt_at to the time before
+# the listing.
+wtlist() {
+	# So an id that Windows hands to a new process after the listing names nothing here.
 	wt_at=$(date +%s%3N)
 	wt_roots=$(ps 2> /dev/null | awk -v m="$1" -v id="$2" '
 		NR > 1 {
@@ -219,44 +221,38 @@ wintree() {
 			ppid[n] = $(2 + o)
 			pgid[n] = $(3 + o)
 			winpid[n] = $(4 + o)
-			if ((m == "-g" && pgid[n] == id) || (m == "-p" && pid[n] == id)) {
-				first[pid[n]] = 1
+			if (pid[n] == id) {
+				own = pgid[n]
 			}
 		}
-		# take <row>: add the row, in the order its process is to end.
-		function take(i) {
-			tree[pid[i]] = 1
-			out = out sep winpid[i]
-			sep = ","
-		}
 		END {
+			for (i = 1; i <= n; i++) {
+				if ((m == "-g" && pgid[i] == id) || (m == "-u" && ppid[i] == id && pgid[i] == own)) {
+					first[pid[i]] = 1
+				}
+			}
 			# A parent before its children, so a shell ends before the programs it would
 			# start next: a row joins once its parent has, or at once when its parent is
-			# not among those asked for. Then, one at a time, a row whose parent has
-			# exited and whose group a row leads, with what is under it.
+			# not among those asked for.
 			do {
-				do {
-					added = 0
-					for (i = 1; i <= n; i++) {
-						if (pid[i] in tree) {
-							continue
-						}
-						if ((ppid[i] in tree) || ((pid[i] in first) && !(ppid[i] in first))) {
-							take(i)
-							added = 1
-						}
-					}
-				} while (added)
-				more = 0
-				for (i = 1; i <= n && !more; i++) {
-					if (!(pid[i] in tree) && (pgid[i] in tree)) {
-						take(i)
-						more = 1
+				added = 0
+				for (i = 1; i <= n; i++) {
+					if (!(pid[i] in tree) && ((ppid[i] in tree) || ((pid[i] in first) && !(ppid[i] in first)))) {
+						tree[pid[i]] = 1
+						out = out sep winpid[i]
+						sep = ","
+						added = 1
 					}
 				}
-			} while (more)
+			} while (added)
 			print out
 		}')
+}
+
+# wtend: end by id the processes wtlist found and every Windows process under one of them
+# (see Windows). A listed process counts only if it started before the listing. Fails
+# unless PowerShell reports each of them gone.
+wtend() {
 	[ -n "$wt_roots" ] || return 0
 	# The text reaches PowerShell on stdin, so no execution policy applies to it.
 	RT_ROOTS=$wt_roots RT_AT=$wt_at powershell.exe -NoProfile -NonInteractive -Command \
@@ -314,11 +310,34 @@ PS1
 	}
 }
 
-# endgroup <pgid>: KILL the group. On Windows its processes are ended by id first.
+# leadstop <pid> <work dir>: on Windows, the stop that the leader of the `bg` child's group
+# gives its run. The TERM is the run's alone, since only the run knows what it started. A
+# step in the run's foreground holds off its trap, so what the run has in its own group is
+# listed, then the run gets the TERM, then the listed are ended by id; what the run starts
+# after the listing is its own to end. While the run is ending a command's group by id,
+# which endgroup marks in the work dir, nothing is ended here: that call is the run's own,
+# and its trap follows it. The mark is read before the TERM, which the run answers by
+# ending its command's group.
+leadstop() {
+	wtlist -u "$1"
+	ls_busy=
+	[ ! -s "$2/.state/byid" ] || ls_busy=1
+	kill -TERM "$1" 2> /dev/null
+	[ -z "$ls_busy" ] || return 0
+	wtend
+}
+
+# endgroup <pgid>: KILL the group. On Windows its processes are ended by id first, with a
+# mark in the work dir meanwhile (see leadstop).
 endgroup() {
-	if [ -n "$winos" ] && kill -0 -"$1" 2> /dev/null && ! wintree -g "$1" && [ -z "$wt_said" ]; then
-		wt_said=1
-		echo "revert-tests: cannot end a process tree by id; its group gets KILL alone" >&2
+	if [ -n "$winos" ] && kill -0 -"$1" 2> /dev/null; then
+		{ echo 1 > "$w/byid"; } 2> /dev/null
+		wtlist -g "$1"
+		if ! wtend && [ -z "$wt_said" ]; then
+			wt_said=1
+			echo "revert-tests: cannot end a process tree by id; its group gets KILL alone" >&2
+		fi
+		{ : > "$w/byid"; } 2> /dev/null
 	fi
 	kill -KILL -"$1" 2> /dev/null
 }
@@ -356,6 +375,7 @@ esac
 if [ "${1:-}" = bg ]; then
 	[ $# -eq 7 ] || usage
 	shift
+	work=$5
 	out=$6
 	outdir=$(dirname "$out")
 	[ -d "$outdir" ] || die "no directory for the result file: $outdir"
@@ -366,39 +386,15 @@ if [ "${1:-}" = bg ]; then
 	true 2> /dev/null > "$out.fork" || die "cannot write $out.fork"
 	true 2> /dev/null > "$out.err" || die "cannot write $out.err"
 	child=
-	work=$5
-	had=
-	if [ -e "$work" ] || [ -L "$work" ]; then
-		had=1
-	fi
-	# unmade: what a run ended by id could not remove: the work dir, unless it was there
-	# before the run, and the result's `.tmp`.
-	unmade() {
-		[ -n "$had" ] || rmwork
-		rm -f "$out.tmp"
-	}
 	# stoprun: TERM to the child's group, which the run answers by ending its command and
-	# removing the work dir. On Windows the group is ended by id instead, which sets byid;
-	# when that fails and the leader is still there, the TERM goes to the leader alone,
-	# which passes it to the run (see Windows).
-	byid=
+	# removing the work dir. On Windows the TERM goes to the group's leader alone, which
+	# passes it to the run alone (see Windows).
 	stoprun() {
-		if [ -z "$winos" ]; then
+		if [ -n "$winos" ]; then
+			kill -TERM "$child" 2> /dev/null
+		else
 			kill -TERM -"$child" 2> /dev/null
-			return
 		fi
-		kill -0 -"$child" 2> /dev/null || return 0
-		if ! wintree -g "$child"; then
-			if kill -0 "$child" 2> /dev/null; then
-				echo "revert-tests: cannot end a process tree by id; the run gets TERM" >&2
-				kill -TERM "$child" 2> /dev/null
-				return
-			fi
-			echo "revert-tests: cannot end a process tree by id; its group gets KILL alone" >&2
-		fi
-		kill -KILL -"$child" 2> /dev/null
-		unmade
-		byid=1
 	}
 	trap 'if [ -n "$child" ]; then stoprun; fi; exit 2' HUP INT TERM
 	# Its own process group, so TERM also reaches a foreground git step, which would
@@ -408,32 +404,28 @@ if [ "${1:-}" = bg ]; then
 	set -m
 	{ (
 		termed=
-		r=
-		# On Windows a TERM comes to the leader alone, for the run (see stoprun).
-		trap 'termed=1; if [ -n "$winos" ] && [ -n "$r" ]; then kill -TERM "$r" 2> /dev/null; fi' TERM
+		trap 'termed=1' TERM
 		bash "$0" run "$@" &
 		r=$!
 		lost=
+		asked=
 		while kill -0 "$r" 2> /dev/null; do
 			if ! kill -0 "$bgpid" 2> /dev/null; then
 				if [ -z "$lost" ]; then
 					lost=$SECONDS
 					if [ -n "$winos" ]; then
-						if wintree -p "$r"; then
-							unmade
-						elif kill -0 "$r" 2> /dev/null; then
-							echo "revert-tests: cannot end a process tree by id; the run gets TERM" >&2
-							kill -TERM "$r" 2> /dev/null
-						else
-							echo "revert-tests: cannot end a process tree by id; some of it may be left" >&2
-							unmade
-						fi
+						termed=1
 					elif [ -z "$termed" ]; then
 						kill -TERM 0 2> /dev/null
 					fi
 				elif [ $((SECONDS - lost)) -ge $((60 + slack)) ]; then
 					kill -KILL 0 2> /dev/null
 				fi
+			fi
+			if [ -n "$winos" ] && [ -n "$termed" ] && [ -z "$asked" ]; then
+				asked=1
+				leadstop "$r" "$work" ||
+					echo "revert-tests: cannot end a process tree by id; a step of the run can hold off its end" >&2
 			fi
 			sleep "$tick"
 		done
@@ -457,19 +449,14 @@ if [ "${1:-}" = bg ]; then
 			fi
 			sleep "$tick"
 		done
-		[ -n "$fired" ] || exit 0
-		[ -z "$byid" ] || exit 4
-		exit 3
+		[ -z "$fired" ] || exit 3
 	) &
 	dog=$!
 	wait "$child"
 	st=$?
 	wait "$dog"
-	dg=$?
-	if [ "$dg" -eq 3 ] || [ "$dg" -eq 4 ]; then
+	if [ $? -eq 3 ]; then
 		echo "revert-tests: stopped at the deadline of $deadline seconds" >> "$out.err"
-		# A shell ended by id reports 0, where a run that got the TERM exits 2.
-		[ "$dg" -ne 4 ] || st=2
 	fi
 	rm -f "$out.fork"
 	if ! { printf '%s\n' "$st" > "$out.exit.tmp" && mv -f "$out.exit.tmp" "$out.exit"; }; then

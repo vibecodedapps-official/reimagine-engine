@@ -7,7 +7,8 @@
 # file with a literal: a new file, a repeated command, a second run, a file as a JSON
 # tool prints it, an entry with a key of its own, a path with a backslash and a quote.
 # Then the lock: one held by another, one older than a minute, one that is released
-# while a run waits, twelve runs at once against an old lock, and four at once.
+# while a run waits, twelve runs at once against an old lock, four at once, and one
+# that is taken while a run rewrites the file.
 # Each refused command is run with its exit code and message, and must leave the file
 # and no lock or temp file behind.
 #
@@ -228,6 +229,40 @@ holds "four at once" "$tmp/crowd.sorted" '  {"run_id": "run-1", "path": "/p/1", 
 [
 ]'
 clean "four at once" "$reg"
+
+# A lock that is taken while a run rewrites the file. An `awk` first on the path, which
+# the script finds by that name, removes the lock as a run that found it old would,
+# then runs the real one. The run starts again, and stops when it is taken three times.
+TAKE_AWK=$(command -v awk)
+mkdir "$tmp/bin"
+cat > "$tmp/bin/awk" << 'EOF'
+#!/bin/sh
+echo call >> "$TAKE_LOG"
+if [ "$(($(wc -l < "$TAKE_LOG")))" -le "$TAKE_TIMES" ]; then
+	rmdir "$TAKE_LOCK"/* "$TAKE_LOCK" 2> /dev/null
+fi
+exec "$TAKE_AWK" "$@"
+EOF
+chmod +x "$tmp/bin/awk"
+reg=$tmp/taken/runs.json
+TAKE_LOCK=$reg.lock
+TAKE_LOG=$tmp/taken-once.log
+TAKE_TIMES=1
+export TAKE_AWK TAKE_LOCK TAKE_LOG TAKE_TIMES
+path=$PATH
+PATH=$tmp/bin:$PATH
+run "a lock taken once" 0 "added $A" "" add "$reg" "$A" /p /r 2026-10-24T09:12:00Z
+clean "a lock taken once" "$reg"
+TAKE_LOG=$tmp/taken-thrice.log
+TAKE_TIMES=3
+run "a lock taken three times" 2 "" "registry: $reg.lock was taken three times; run the command again" set "$reg" "$A" reported
+PATH=$path
+[ "$(($(wc -l < "$tmp/taken-once.log")))" = 2 ] || fail "a lock taken once: the file was read $(($(wc -l < "$tmp/taken-once.log"))) times"
+[ "$(($(wc -l < "$tmp/taken-thrice.log")))" = 3 ] || fail "a lock taken three times: the file was read $(($(wc -l < "$tmp/taken-thrice.log"))) times"
+holds "a lock taken three times" "$reg" '[
+  {"run_id": "2026-10-24-0912-app-1", "path": "/p", "primary_repo": "/r", "created": "2026-10-24T09:12:00Z", "state": "running"}
+]'
+clean "a lock taken three times" "$reg"
 
 if [ "$fails" -ne 0 ]; then
 	exit 1

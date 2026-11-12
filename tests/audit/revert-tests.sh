@@ -25,7 +25,9 @@
 #    after its parent dies at the deadline (5a); a command that ignores TERM until KILL,
 #    with REVERT_TESTS_TICK unset (5b); 5a with no controlling terminal, under dash where
 #    installed (5c, needs setsid); 5b with the low tick (5d); the watchdog's deadline under
-#    the low tick, from the script's own text (5e)
+#    the low tick, from the script's own text (5e); on Windows, a native program's own child:
+#    left by a passing file (5f), at an interrupt (5g), at the timeout (5h); a child that
+#    traps TERM gets one at the deadline, and none on Windows (5i)
 #  6 the time cap                        7 the file cap, with 21 files
 #  8 a path conflict                     9 the environment: LC_ALL, GIT_*, TMPDIR, and
 #    GIT_CEILING_DIRECTORIES
@@ -36,7 +38,9 @@
 # 14 an empty merge-base tree
 # 15 bg and wait: a run in the background (15a), a keys error with a stale .exit (15b), the
 #    deadline (15c), wait's window (15d), no run (15e), TERM to bg (15f), wrong arguments
-#    (15g), the deadline during a blocked git step (15h), KILL to bg (15i)
+#    (15g), the deadline during a blocked git step (15h), KILL to bg (15i); on Windows, a
+#    native program's own child at the deadline (15j) and when bg is KILLed (15k), and the
+#    same two stops with a PowerShell that fails (15l, 15m)
 # 16 a partial clone is refused without fetching   17 a tab path is not used
 # 18 forkdone, from the script's own text: bash's `child setpgid` line is dropped and any
 #    other fork-time line kept (18a); a job started outside its own group fails the start
@@ -71,6 +75,11 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 # of the time. The `sleep 60` fixtures stay: the watchdog ends them.
 REVERT_TESTS_TICK=0.1
 export REVERT_TESTS_TICK
+# On Windows the script ends a command's group by id and sends it no TERM.
+win_t=
+case $(uname -s 2> /dev/null) in
+MINGW* | MSYS* | CYGWIN*) win_t=1 ;;
+esac
 
 # Every temporary path lives under one root, removed as one quoted path. On Windows (Git
 # Bash) it is in C:/ form, as the orchestrator's paths are.
@@ -375,8 +384,14 @@ verdicts '- `tests/test_bg.sh`: passes at head and without the change
 - `tests/test_child.sh`: does not pass at head (timed out)
 '
 status tests/test_child.sh > "$tmp/st"
-grep -qx -- '- Exit status: timed out after [0-9]* seconds (exit status 143)' "$tmp/st" ||
-	mismatch "$case_id: status [$(cat "$tmp/st")]"
+# On Windows the shell that led the group was ended by id, and Windows reports 0 for it.
+if [ -n "$win_t" ]; then
+	grep -qx -- '- Exit status: timed out after [0-9]* seconds (exit status 0)' "$tmp/st" ||
+		mismatch "$case_id: status [$(cat "$tmp/st")]"
+else
+	grep -qx -- '- Exit status: timed out after [0-9]* seconds (exit status 143)' "$tmp/st" ||
+		mismatch "$case_id: status [$(cat "$tmp/st")]"
+fi
 
 # 5b. A command that ignores TERM itself, so its group ends only on the KILL 10 seconds
 # after the deadline. REVERT_TESTS_TICK is unset for this run alone, so the grace is the
@@ -394,8 +409,14 @@ export REVERT_TESTS_TICK
 ok
 verdicts '- `tests/test_stubborn.sh`: does not pass at head (timed out)\n'
 status tests/test_stubborn.sh > "$tmp/st"
-grep -qx -- '- Exit status: timed out after 1[2-9] seconds (exit status 137)' "$tmp/st" ||
-	mismatch "$case_id: status [$(cat "$tmp/st")]"
+# On Windows the group has no TERM and no grace: it is ended by id at the deadline.
+if [ -n "$win_t" ]; then
+	grep -qx -- '- Exit status: timed out after [2-9] seconds (exit status 0)' "$tmp/st" ||
+		mismatch "$case_id: status [$(cat "$tmp/st")]"
+else
+	grep -qx -- '- Exit status: timed out after 1[2-9] seconds (exit status 137)' "$tmp/st" ||
+		mismatch "$case_id: status [$(cat "$tmp/st")]"
+fi
 
 # 5d. 5b's repo with the low tick: the KILL comes ten ticks, 1 second, after the deadline,
 # a duration the default can never give, so the grace is ten ticks.
@@ -404,8 +425,13 @@ run "$R" 'command\ttrap "" TERM; sh\nrun\ttests/test_*.sh\ntimeout\t2\n'
 ok
 verdicts '- `tests/test_stubborn.sh`: does not pass at head (timed out)\n'
 status tests/test_stubborn.sh > "$tmp/st"
-grep -qx -- '- Exit status: timed out after [2-9] seconds (exit status 137)' "$tmp/st" ||
-	mismatch "$case_id: status [$(cat "$tmp/st")]"
+if [ -n "$win_t" ]; then
+	grep -qx -- '- Exit status: timed out after [2-9] seconds (exit status 0)' "$tmp/st" ||
+		mismatch "$case_id: status [$(cat "$tmp/st")]"
+else
+	grep -qx -- '- Exit status: timed out after [2-9] seconds (exit status 137)' "$tmp/st" ||
+		mismatch "$case_id: status [$(cat "$tmp/st")]"
+fi
 
 # 5e. The watchdog under the low tick, taken from the script's own text with its slack.
 # bash's SECONDS counts whole seconds of the wall clock, so a deadline of 1 started just
@@ -452,6 +478,93 @@ if command -v setsid > /dev/null 2>&1; then
 	verdicts '- `tests/test_bg.sh`: passes at head and without the change
 - `tests/test_child.sh`: does not pass at head (timed out)
 '
+fi
+
+# 5f to 5h. Windows only: a native program's own child is not in the process group. The test
+# file runs a batch file, so cmd is the program, and its child is a node that writes the time
+# to the end of $RT_BEAT every 100 ms and ends itself after 30 seconds. beats: that child
+# wrote, and writes no more.
+beats() {
+	[ -s "$RT_BEAT" ] || mismatch "$case_id: the program's child wrote nothing"
+	b_1=$(cat "$RT_BEAT" 2> /dev/null)
+	sleep 1
+	b_2=$(cat "$RT_BEAT" 2> /dev/null)
+	if [ "$b_1" != "$b_2" ]; then
+		mismatch "$case_id: the program's child is still running"
+		# It holds the work dir until it ends itself.
+		sleep 30
+	fi
+}
+if [ -n "$win_t" ]; then
+	mkrepo c5f
+	put 100644 README 'x\n'
+	commit main
+	put 100644 tests/beat.js 'const fs = require("node:fs");\nconst end = Date.now() + 30000;\nsetInterval(() => {\n  if (Date.now() > end) process.exit(0);\n  fs.appendFileSync(process.argv[2], Date.now() + " ");\n}, 100);\n'
+	put 100644 tests/tree.cmd '@node tests/beat.js "%RT_BEAT%"\r\n'
+	put 100644 tests/test_stray.sh 'rm -f "$RT_BEAT"\n./tests/tree.cmd &\nwhile [ ! -s "$RT_BEAT" ]; do sleep 0.1; done\n'
+	put 100644 tests/test_tree.sh './tests/tree.cmd\n'
+	# The batch file's parent exits, so the runtime lists the program under no process.
+	put 100644 tests/test_orphan.sh 'rm -f "$RT_BEAT"\nsh -c "./tests/tree.cmd &"\nwhile [ ! -s "$RT_BEAT" ]; do sleep 0.1; done\nsleep 60\n'
+	commit feature main
+
+	# 5f. The file leaves the program running and passes.
+	case_id="case 5f"
+	RT_BEAT=$root/beat-5f
+	export RT_BEAT
+	run_only "$R" 'command\tsh\nrun\ttests/test_stray.sh\ntimeout\t10\n'
+	beats
+	checkleft
+	ok
+	verdicts '- `tests/test_stray.sh`: passes at head and without the change\n'
+
+	# 5g. An interrupt while the program runs, as in case 10.
+	case_id="case 5g"
+	RT_BEAT=$root/beat-5g
+	printf '%b' 'command\tsh\nrun\ttests/test_tree.sh\n' > "$tmp/keys"
+	rm -f "$tmp/res"
+	wd=$root/rw
+	"$sh_bin" "$rt" run "$R" main feature "$tmp/keys" "$wd" "$tmp/res" > "$tmp/out" 2> "$tmp/err" &
+	sp=$!
+	n=0
+	while [ ! -s "$RT_BEAT" ] && [ "$n" -lt 100 ]; do
+		sleep 0.2
+		n=$((n + 1))
+	done
+	kill -TERM "$sp"
+	wait "$sp"
+	rc=$?
+	[ "$rc" = 2 ] || mismatch "$case_id: exit $rc, expected 2"
+	[ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
+	beats
+	checkleft
+
+	# 5h. The timeout while the program runs.
+	case_id="case 5h"
+	RT_BEAT=$root/beat-5h
+	run_only "$R" 'command\tsh\nrun\ttests/test_tree.sh\ntimeout\t5\n'
+	beats
+	checkleft
+	ok
+	verdicts '- `tests/test_tree.sh`: does not pass at head (timed out)\n'
+fi
+
+# 5i. A child that traps TERM gets the group's TERM at the deadline and writes its mark. On
+# Windows the group gets no TERM, so the mark is not written.
+case_id="case 5i"
+mkrepo c5i
+put 100644 README 'x\n'
+commit main
+put 100644 tests/test_trap.sh 'trap '"'"'echo got > "$RT_MARK"; exit 0'"'"' TERM\necho $$ > "$RT_PIDS/trap"\nsleep 60 &\nwait\n'
+commit feature main
+RT_MARK=$root/mark-5i
+export RT_MARK
+run "$R" 'command\tsh\nrun\ttests/test_*.sh\ntimeout\t2\n'
+ok
+verdicts '- `tests/test_trap.sh`: does not pass at head (timed out)\n'
+if [ -n "$win_t" ]; then
+	[ ! -e "$RT_MARK" ] || mismatch "$case_id: the child got a TERM"
+else
+	[ "$(cat "$RT_MARK" 2> /dev/null)" = got ] || mismatch "$case_id: the child got no TERM"
 fi
 
 # 6. The time cap: the first file uses the bundle's 3 seconds, and the second is not run.
@@ -781,11 +894,14 @@ nosides
 
 # 15h. The deadline while a git step blocks in the foreground: a git on PATH that sleeps in
 # rev-parse. TERM reaches the step through the child's group, so wait answers well before
-# the step's 60 seconds.
+# the step's 60 seconds, and the step writes its mark. On Windows the group is ended by id
+# and gets no TERM, so the mark is not written.
 case_id="case 15h"
 mkdir "$root/fakebin"
 real_git=$(command -v git)
-printf '#!/bin/sh\ncase " $* " in *" rev-parse "*) echo $$ > "$RT_PIDS/git"; sleep 60 ;; esac\nexec "%s" "$@"\n' \
+RT_MARK=$root/mark-15h
+export RT_MARK
+printf '#!/bin/sh\ncase " $* " in *" rev-parse "*) echo $$ > "$RT_PIDS/git"; trap '"'"'echo got > "$RT_MARK"; exit 1'"'"' TERM; sleep 60 & wait ;; esac\nexec "%s" "$@"\n' \
 	"$real_git" > "$root/fakebin/git"
 chmod +x "$root/fakebin/git"
 fakebin=$root/fakebin
@@ -804,6 +920,11 @@ t1=$(date +%s)
 bgdone 0
 [ $((t1 - t0)) -lt 30 ] || mismatch "$case_id: wait took $((t1 - t0)) seconds"
 [ -s "$RT_PIDS/git" ] || mismatch "$case_id: the git step did not start"
+if [ -n "$win_t" ]; then
+	[ ! -e "$RT_MARK" ] || mismatch "$case_id: the git step got a TERM"
+else
+	[ "$(cat "$RT_MARK" 2> /dev/null)" = got ] || mismatch "$case_id: the git step got no TERM"
+fi
 checkleft
 fails 'revert-tests: stopped at the deadline of 5 seconds'
 nosides
@@ -820,6 +941,79 @@ checkleft
 [ ! -e "$tmp/res.exit" ] || mismatch "$case_id: .exit was written"
 [ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
 rm -f "$tmp/res.err"
+
+# 15j and 15k. Windows only, with 5f's batch file and the node under it, started by a shell
+# that exits while the test file sleeps on: the deadline, and bg KILLed. Neither leaves the
+# node running or the work dir behind.
+if [ -n "$win_t" ]; then
+	case_id="case 15j"
+	RT_BEAT=$root/beat-15j
+	REVERT_TESTS_DEADLINE=15
+	export REVERT_TESTS_DEADLINE
+	bgstart "$root/c5f" 'command\tsh\nrun\ttests/test_orphan.sh\ntimeout\t60\n'
+	unset REVERT_TESTS_DEADLINE
+	waitrun
+	bgdone 0
+	beats
+	checkleft
+	fails 'revert-tests: stopped at the deadline of 15 seconds'
+	nosides
+
+	case_id="case 15k"
+	RT_BEAT=$root/beat-15k
+	bgstart "$root/c5f" 'command\tsh\nrun\ttests/test_orphan.sh\ntimeout\t60\n'
+	n=0
+	while [ ! -s "$RT_BEAT" ] && [ "$n" -lt 100 ]; do
+		sleep 0.2
+		n=$((n + 1))
+	done
+	kill -KILL "$bp"
+	wait "$bp" 2> /dev/null
+	wdgone
+	beats
+	checkleft
+	[ ! -e "$tmp/res.exit" ] || mismatch "$case_id: .exit was written"
+	[ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
+	rm -f "$tmp/res.err"
+
+	# 15l and 15m. Windows only: a stand-in for PowerShell that fails, first on PATH, so no
+	# process is ended by id. The run alone gets the TERM and ends its command itself, at the
+	# deadline and when bg is KILLed.
+	mkdir "$root/fakeps"
+	printf '#!/bin/sh\nexit 1\n' > "$root/fakeps/powershell.exe"
+	chmod +x "$root/fakeps/powershell.exe"
+	real_path=$PATH
+	PATH=$(cygpath -u "$root/fakeps"):$PATH
+
+	case_id="case 15l"
+	REVERT_TESTS_DEADLINE=4
+	export REVERT_TESTS_DEADLINE
+	bgstart "$root/c15" 'command\tsh\nrun\ttests/test_slow.sh\ntimeout\t60\n'
+	unset REVERT_TESTS_DEADLINE
+	waitrun
+	wait "$bp"
+	b_rc=$?
+	[ "$b_rc" = 0 ] || mismatch "$case_id: bg exit $b_rc, expected 0"
+	printf 'revert-tests: cannot end a process tree by id; the run gets TERM\n' > "$tmp/exp"
+	cmp -s "$tmp/exp" "$tmp/bgout" || mismatch "$case_id: bg printed [$(tr '\n' '|' < "$tmp/bgout")]"
+	checkleft
+	fails 'revert-tests: stopped at the deadline of 4 seconds'
+	nosides
+
+	case_id="case 15m"
+	bgstart "$root/c15" 'command\tsh\nrun\ttests/test_slow.sh\ntimeout\t60\n'
+	started slow
+	kill -KILL "$bp"
+	wait "$bp" 2> /dev/null
+	wdgone
+	checkleft
+	[ ! -e "$tmp/res.exit" ] || mismatch "$case_id: .exit was written"
+	[ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
+	printf 'revert-tests: cannot end a process tree by id; the run gets TERM\n' > "$tmp/exp"
+	cmp -s "$tmp/exp" "$tmp/res.err" || mismatch "$case_id: .err is [$(tr '\n' '|' < "$tmp/res.err")]"
+	rm -f "$tmp/res.err"
+	PATH=$real_path
+fi
 
 # 12. The patterns fixture: both files pass at the head only, and the reverted run of
 # tests/test_users.sh shows P18's test passing before the migration test fails.

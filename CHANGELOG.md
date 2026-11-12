@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.26 - 2026-11-12
+
+- On Windows the script that runs a bundle's tests ends a command's processes by id before the KILL to its group, in one call of Windows PowerShell, and sends the group no TERM. A TERM that the runtime of Git for Windows delivers to a native program ends processes by the parent ids Windows records, which outlive their parents, so it could end a process the audit never started. A child's TERM trap no longer runs at a timeout on Windows, and a command that timed out there records the status Windows reports for the process that leads it, 0 for a shell and 137 for a native program. When the call fails, a line on stderr says so and the KILL goes alone.
+- A native program's own children end with their command on Windows. After the KILL alone they kept running at the end of a test file that passed and at an interrupt, and held the work dir, so a run that otherwise succeeded named the work dir as left. A native child whose parent had already exited stays out of reach.
+- `bg` on Windows ends its run by id at its deadline, on a signal and when it is lost, and then removes the work dir itself. It sent the run's group a TERM before, and that group can hold a git step. When the call fails, the TERM goes to the run alone.
+
 ## audit 0.1.25 - 2026-11-11
 
 - A script writes the registry of runs. `registry.sh add` and `registry.sh set` each update `runs.json` in one run of the script, under a lock it takes and releases itself. The session typed the lock steps before, no test covered them, and the two updates took four turns of a low-tier run.

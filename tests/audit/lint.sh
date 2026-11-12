@@ -65,12 +65,7 @@
 #   skills/audit/stages/7-converge.md, and the two blocks are the same after leading
 #   blanks and CRs are removed. The merger reads only its own file and its prompt, so
 #   the shape the stage 7 check needs must be in merger.md.
-# - agents/merger.md has the tools Read, Grep and Write and no other, in any order, and
-#   names its paging rule ("Read pages of at most 600 lines", "A page the tool refuses
-#   is read again"), the anchored Grep pattern `^## <id>$`, the gap check ("with no
-#   gap") and `status: failed at <file>:<line>`, which skills/audit/common.md also
-#   names, and the fence rule for a section of a "duplicate checks only" ledger ("never
-#   starts or ends a section", "is no block", "an odd number of those lines above it").
+# - agents/merger.md has the tools Read, Grep and Write and no other, in any order.
 #   skills/audit/stages/7-converge.md names
 #   awk 'END { print NR }', and steps 6, 7.3 and 7.4, the three merger prompts, each
 #   say "line count".
@@ -81,52 +76,26 @@
 #   ends the file inside an open fence ends with a closing fence line while its
 #   existence check still exits 0. Output and exit status are compared with literal
 #   text.
-# - skills/audit/stages/6-second-opinion.md, read as one line, moves the mandatory set
-#   only on exit 0.
 # - The command list in hard rule 2 of skills/audit/common.md, read as one line, names
 #   `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with `-t`, `-s` or
 #   `-p`, `git branch --list`, `cut`, `uniq` and `cat` of an exported file, and bars
 #   `sort -o`, `--output` or `--compress-program` and `uniq` with an output file operand.
-# - The default rank in skills/audit/stages/1-orient.md lists `AGENTS.md`, `CLAUDE.md`,
-#   `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and `REVIEW.md` in that
-#   order, and says `REVIEW.md` is read at the pinned base with `git show <base>:<path>`;
-#   skills/audit/stages/9-act.md names the two directories and `REVIEW.md` at the base
-#   among the sources of the required checks; it and skills/audit/audit-evidence.md name
-#   the rules in `.claude/rules/` that apply to a file, the skills in `.claude/skills/` and
-#   the `REVIEW.md` copies the brief records at the base among the instruction files
-#   read before a change; each file is read as one line.
-# - skills/audit/common.md says every agent reports and labels a finding as if
-#   `REVIEW.md`'s severity calibration and do-not-report rules were absent, since the
-#   report applies them and counts what each skips.
 # - skills/audit/SKILL.md allowed-tools pre-approves `git ls-tree`, `git cat-file` and
 #   `git branch --list`; the bare `git cat-file` only with `-t`, `-s` or `-p`, since
 #   `--textconv` and `--filters` run configured programs; and no `git -C *` form, since
 #   its first `*` admits a `-c` option that runs a program.
-# - skills/audit/stages/1-orient.md, read as one line, spreads a claim that names no
-#   file across the bundle's groups in turn, caps a group at 80 such claims, and has
-#   the brief's Claims section record each scope's claim count and each move.
-# - skills/audit/resume.md keeps a finished pass1/ or pass2/ file when stage 4 or 5 is
-#   the first rerun stage because its entry is missing or running, and stages 4 and 5
-#   launch no agent for a scope whose file resume kept; each file is read as one line.
 # - Each of the five agents has a `## Hard rules, restated` section before `## Steps`
 #   that names no advisor or second-opinion tool, its scratch folder and
 #   `status: complete`, and, but for the merger, `mkdir -p`, a heredoc and a command
 #   that waits on input; skills/audit/common.md hard rule 2 allows `mkdir -p` of the
-#   agent's own scratch folder and bars an inline program or a heredoc; SKILL.md says a
-#   late completion notification, or one for an agent this session did not launch, changes
-#   nothing.
-# - skills/audit/stages/9-act.md shows an item's defect before the edit, logs it as
-#   `demonstrate`, lists that action, and carries the before and after results into the
-#   commit body; step 7 reruns each `demonstrate` command after the change and logs its
-#   result as `demonstrate`; the file is read as one line.
-# - skills/audit/stages/9-act.md's commit step types no attribution trailer and keeps
-#   the host's (requirement 11), and its opening paragraph, hard rule 3 of
-#   skills/audit/common.md and rule 3 of skills/audit/SKILL.md keep it too; each file is
-#   read as one line.
-# - The roles table in skills/audit/SKILL.md carries the swap rung off the top tier and
-#   the second opinion row defaults to opus; the README's second opinion row carries the
-#   same ladder; no stage 2 to 7 file says
-#   "on `fable`" or "model: fable".
+#   agent's own scratch folder and bars an inline program or a heredoc.
+# - Hard rule 3 of skills/audit/common.md keeps the trailer the host's attribution
+#   setting adds (requirement 11); the file is read as one line.
+# - No stage 2 to 7 file says "on `fable`" or "model: fable".
+#
+# Beyond the literals above, which a script reads or whose loss would let a run do harm,
+# what a sentence of the text says is not checked here: tests/audit/structure.test.mjs
+# holds the files to each other and to the scripts, and a run shows the rest.
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
 
@@ -512,20 +481,7 @@ if [ -s "$tmp/item-merger.md" ] && [ -s "$tmp/item-7-converge.md" ]; then
 		fail "agents/merger.md: the converged item block differs from skills/audit/stages/7-converge.md"
 fi
 
-# The merger reads every file it reads whole to its last line, and each merger prompt
-# gives the line counts.
-if [ -f agents/merger.md ]; then
-	tr -d '\r' < agents/merger.md > "$tmp/merger"
-	for s in 'Read pages of at most 600 lines' 'A page the tool refuses is read again' \
-		'`^## <id>$`' 'with no gap' 'status: failed at <file>:<line>' \
-		'never starts or ends a section' 'is no block' 'an odd number of those lines above it'; do
-		grep -qF "$s" "$tmp/merger" || fail "agents/merger.md: does not name '$s'"
-	done
-fi
-if [ -f skills/audit/common.md ]; then
-	tr -d '\r' < skills/audit/common.md | grep -qF 'status: failed at <file>:<line>' ||
-		fail "skills/audit/common.md: the output contract does not name 'status: failed at <file>:<line>'"
-fi
+# Each merger prompt gives the line counts.
 # step <file> <regex>: print the numbered step whose first line matches the regex, up
 # to the next numbered line.
 step() {
@@ -678,123 +634,6 @@ if [ -f "$f" ]; then
 	done
 fi
 
-# The default rank, the required checks and the instruction files read before a change
-# name the rules and skills directories and REVIEW.md at the base; each file is read as
-# one line.
-f=skills/audit/stages/1-orient.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF '(`AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/`, `REVIEW.md`)' "$tmp/list" ||
-		fail "$f: the default rank does not list .claude/rules/, .claude/skills/ and REVIEW.md after docs/"
-	grep -qF 'read at the pinned base with `git show <base>:<path>`, never from the head or the working tree' "$tmp/list" ||
-		fail "$f: the default rank does not say REVIEW.md is read at the base with git show <base>:<path>"
-fi
-f=skills/audit/stages/9-act.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF '`README.md`, `.claude/rules/`, `.claude/skills/`, `REVIEW.md` at the base, CI configuration' "$tmp/list" ||
-		fail "$f: the required checks do not name .claude/rules/, .claude/skills/ and REVIEW.md at the base"
-fi
-# The report alone applies REVIEW.md's severity and do-not-report rules, so every agent
-# reports as if they were absent; the file is read as one line.
-f=skills/audit/common.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF 'every agent reports and labels a finding as if those rules were absent' "$tmp/list" ||
-		fail "$f: does not say every agent reports as if REVIEW.md's severity and do-not-report rules were absent"
-fi
-for f in skills/audit/stages/9-act.md skills/audit/audit-evidence.md; do
-	[ -f "$f" ] || continue
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF 'the rules in `.claude/rules/` that apply to it (one with no `paths`, or one whose `paths` match it)' "$tmp/list" &&
-		grep -qF 'the skills in `.claude/skills/`' "$tmp/list" ||
-		fail "$f: the instruction files read before a change do not name the rules and skills that apply"
-	grep -qF 'the `REVIEW.md` copies `audit-brief.md` records at the base' "$tmp/list" ||
-		fail "$f: the instruction files read before a change do not name the REVIEW.md copies at the base"
-done
-# A claim that names no file spreads across the bundle's groups and no group holds
-# more than 80 of them; the file is read as one line.
-f=skills/audit/stages/1-orient.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF "else across the bundle's groups that hold a file, in claim order, one claim per group in turn, starting again at the first" "$tmp/list" ||
-		fail "$f: step 9 does not spread a claim that names no file across the bundle's groups"
-	grep -qF 'a group holding more than 80 claims that name no file keeps the 80 with the lowest numbers' "$tmp/list" ||
-		fail "$f: step 9 does not cap a group at 80 claims that name no file"
-	grep -qF "each scope's claim count and each move of step 9 rule 5" "$tmp/list" ||
-		fail "$f: the brief's Claims section does not record each scope's claim count and each move"
-	# A `file:` ticket's name in file names is its export's id, else the file's base name,
-	# slugged, so no name runs to the length of a path.
-	grep -qF "except for a \`file:\` ticket, whose \`<ticket>\` is the export's \`id\` slugged, else the file's base name without its extension slugged; the normalized id \`file:<path>\` stays the ticket's identity everywhere else" "$tmp/list" ||
-		fail "$f: 0d does not name the export's id or the base name as a file ticket's <ticket>"
-	grep -qF 'For example, `file:./exports/APP-1.md` with `id: APP-1` gives `app-1`.' "$tmp/list" ||
-		fail "$f: 0d does not give the file ticket slug example"
-fi
-# The run id's slug is the first bundle's repository name and then its pull request number
-# or its branch, with one worked example of each; the file is read as one line.
-for f in skills/audit/stages/1-orient.md; do
-	[ -f "$f" ] || continue
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF "the slug is the first bundle's repository name, then its pull request number (an export's \`id\`) for a pull request bundle, or its branch for a branch bundle, joined with \`-\`, the whole slugged and cut at 40 characters" "$tmp/list" ||
-		fail "$f: the run id slug is not the repository name and then the pull request number or the branch"
-	grep -qF 'a pull request bundle of repository `app` and pull request 123 gives `<YYYY-MM-DD-HHMM>-app-123`' "$tmp/list" ||
-		fail "$f: the run id slug has no pull request bundle example"
-	grep -qF 'a branch bundle of repository `app` and branch `feat/export` gives `<YYYY-MM-DD-HHMM>-app-feat-export`' "$tmp/list" ||
-		fail "$f: the run id slug has no branch bundle example"
-done
-# A resume whose first rerun stage is 4 or 5 because its entry is missing or running
-# keeps each finished scope output, and the stage launches no agent for it; each file is
-# read as one line.
-f=skills/audit/resume.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF 'whose last line is `status: complete` and whose `consumed:` hashes each equal the hash of that file now is kept where it is' "$tmp/list" ||
-		fail "$f: step 7 does not keep a finished pass1 or pass2 file when stage 4 or 5 never closed"
-fi
-for f in skills/audit/stages/4-pass-one.md:'Launch no auditor for a scope whose `pass1/<scope>.md` resume kept' \
-	skills/audit/stages/5-pass-two.md:'Launch no adversary for a scope whose `pass2/<scope>.md` resume kept'; do
-	s=${f#*:}
-	f=${f%%:*}
-	[ -f "$f" ] || continue
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF "$s" "$tmp/list" || fail "$f: launches an agent for a scope whose output resume kept"
-done
-# The adversary never reads the auditor body, so the bar on a lead sits in audit-evidence.md.
-for f in skills/audit/audit-evidence.md:'becomes a finding only when it names the regression the test would miss' \
-	agents/adversary.md:'`### Leads a finding must clear`' \
-	skills/audit/audit-evidence.md:'is flagged only with a quoted grant or role definition, labeled as `## Evidence` in `common.md` says' \
-	skills/audit/audit-evidence.md:'A change on the base is not a deleted feature' \
-	skills/audit/audit-evidence.md:'Journal keys that differ, shown by quoted runner lines, clear it' \
-	skills/audit/stages/4-pass-one.md:'with any rows it names written out in full' \
-	skills/audit/audit-evidence.md:'not on a shared step that takes the role as a parameter' \
-	agents/auditor.md:'`### Leads a finding must clear`' \
-	agents/auditor.md:'A specialist or `combined` scope applies the checklist rows' \
-	skills/audit/audit-evidence.md:'the head leaves the producer as it is, and the base' \
-	skills/audit/audit-evidence.md:'states the forge fact' \
-	skills/audit/audit-evidence.md:'asks which pull request merges first' \
-	skills/audit/audit-evidence.md:'names the account, where its rights come from' \
-	skills/audit/audit-evidence.md:'a demonstrated grant giving `verified fact`' \
-	skills/audit/audit-evidence.md:'never commits picked by author date' \
-	skills/audit/audit-evidence.md:'"Evidence" alone is the section in `common.md`' \
-	agents/adversary.md:'open the records it cites, redo its three dimensions' \
-	skills/audit/SKILL.md:'except in second opinion, where it is an input copy'; do
-	s=${f#*:}
-	f=${f%%:*}
-	[ -f "$f" ] || continue
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF "$s" "$tmp/list" || fail "$f: the bar on a lead or a named row is gone"
-done
-# A pass report without its claims heading is a failed output, which report.sh skips; the
-# stages and resume take the rule from common.md.
-for f in skills/audit/common.md:'A missing file, or one whose last line is not `status: complete`, is a failed output, whatever the agent returned, and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
-	skills/audit/audit-evidence.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
-	agents/auditor.md:'with no claim assigned, the heading and the one line `none`'; do
-	s=${f#*:}
-	f=${f%%:*}
-	[ -f "$f" ] || continue
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF "$s" "$tmp/list" || fail "$f: a pass report without its claims heading is not a failed output"
-done
 # Each agent restates hard rules 2 and 4 in a section before its steps: no second-opinion
 # tool, the Bash rules (the merger has no Bash), redirects inside its scratch folder, and
 # an output that is final at `status: complete`. Each section is read as one line.
@@ -825,36 +664,7 @@ if [ -f "$f" ]; then
 	grep -qF 'no interpreter run with an inline program or a heredoc' "$tmp/list" ||
 		fail "$f: hard rule 2 does not bar an inline program or a heredoc"
 fi
-f=skills/audit/SKILL.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF 'A completion notification for an agent whose stage entry is already `complete` or `failed` changes nothing' "$tmp/list" ||
-		fail "$f: does not say a late completion notification changes nothing"
-	grep -qF 'for an agent this session did not launch, such as one an earlier session launched, also changes nothing' "$tmp/list" ||
-		fail "$f: does not say a completion notification for an unlisted agent changes nothing"
-fi
-# Stage 6 moves the mandatory set into ledger/ only on exit 0; the file is read as one line.
-f=skills/audit/stages/6-second-opinion.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF 'only on exit 0' "$tmp/list" || fail "$f: does not move the mandatory set only on exit 0"
-fi
-# The roles table carries the swap rung off the top tier and the second opinion row
-# defaults to opus; no stage file names the top tier as a default or a fallback.
-f=skills/audit/SKILL.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF 'relaunch on opus, or on sonnet for a role already on opus, a swap; the scope fails' "$tmp/list" ||
-		fail "$f: the roles table does not carry the swap rung off the top tier"
-	grep -qF '| opus | per batch: relaunch on sonnet, or on opus for a second opinion already on sonnet, a swap; then stage 6 fails |' "$tmp/list" ||
-		fail "$f: the second opinion row does not default to opus with the sonnet relaunch"
-fi
-f=README.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF '| second opinion | 6 | opus, a fresh adversary; then sonnet, or opus when it already ran on sonnet |' "$tmp/list" ||
-		fail "$f: the second opinion row does not follow the roles table's ladder"
-fi
+# No stage file names the top tier as a default or a fallback.
 for f in skills/audit/stages/2-digest.md skills/audit/stages/3-domain.md skills/audit/stages/4-pass-one.md skills/audit/stages/5-pass-two.md skills/audit/stages/6-second-opinion.md skills/audit/stages/7-converge.md; do
 	[ -f "$f" ] || continue
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
@@ -863,74 +673,13 @@ for f in skills/audit/stages/2-digest.md skills/audit/stages/3-domain.md skills/
 	grep -qF 'model: fable' "$tmp/list" &&
 		fail "$f: names the top tier as a default or a fallback"
 done
-# Act shows an item's defect at baseline before it edits, logs it as `demonstrate`, and
-# carries the before and after results into the commit body; the file is read as one line.
-f=skills/audit/stages/9-act.md
-if [ -f "$f" ]; then
-	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	grep -qF '**Show the defect first.**' "$tmp/list" ||
-		fail "$f: step 7 has no Show the defect first sub-step"
-	grep -qF 'Log the command and its result as `demonstrate`' "$tmp/list" ||
-		fail "$f: step 7 does not log the demonstration as demonstrate"
-	grep -qF '`baseline`, `demonstrate`, `stage`' "$tmp/list" ||
-		fail "$f: the act/log.md actions do not list demonstrate"
-	grep -qF 'the demonstration result before the change and the same command' "$tmp/list" ||
-		fail "$f: the commit body does not carry the before and after results"
-	grep -qF 'rerun each `demonstrate` command of the group and log its result as `demonstrate`' "$tmp/list" ||
-		fail "$f: step 7 does not rerun the demonstration after the change"
-	grep -qF "Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool." "$tmp/list" ||
-		fail "$f: the commit step does not keep the host's attribution trailer"
-	grep -qF 'with no trailer that does' "$tmp/list" &&
-		fail "$f: the commit step still drops a trailer that names a model"
-fi
-# The rule that nothing external names a model, agent or tool keeps the host's trailer
-# wherever it is stated; each file is read as one line.
-for f in skills/audit/stages/9-act.md skills/audit/common.md skills/audit/SKILL.md; do
+# Hard rule 3 of common.md, which the other files point at, keeps the trailer the host's
+# attribution setting adds; the file is read as one line.
+for f in skills/audit/common.md; do
 	[ -f "$f" ] || continue
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "trailer the host's attribution setting adds to a commit stays, even where it names a model or tool" "$tmp/list" ||
 		fail "$f: the rule on model, agent and tool names does not keep the host's attribution trailer"
-done
-
-# Coverage lists stages 1 to 7 with the checks each accepted, and stage 8's line is one
-# fixed sentence, since stage 8's own check runs after the report is hashed; the file is
-# read as one line.
-for f in skills/audit/report.md; do
-	if [ -f "$f" ]; then
-		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-		grep -qF 'Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.' "$tmp/list" ||
-			fail "$f: Coverage has no fixed stage 8 line"
-	fi
-done
-
-# A `--live` resume takes live results after a plugin update: the version difference does
-# not invalidate stage 1, and the recorded and the current version are named in the first
-# rerun stage's entry and in Coverage.
-for f in skills/audit/resume.md skills/audit/live.md; do
-	if [ -f "$f" ]; then
-		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-		grep -qF 'With `--live`, a recorded `plugin_version` other than the current one does not invalidate stage 1 when every other input of stage 1 is unchanged.' "$tmp/list" ||
-			fail "$f: no --live exception for a plugin version difference"
-	fi
-done
-for f in skills/audit/resume.md skills/audit/report.md; do
-	if [ -f "$f" ]; then
-		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-		grep -qF 'the recorded and the current plugin version' "$tmp/list" ||
-			fail "$f: does not record or name both plugin versions of a --live resume"
-	fi
-done
-
-# Section 3 names its cut by tier: every item in full at low tier; at medium and high tier
-# the challenged items in full and the others as a cut first line with the pass-one path.
-for f in skills/audit/report.md; do
-	if [ -f "$f" ]; then
-		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-		grep -qF 'every Verified OK item shows in full.' "$tmp/list" ||
-			fail "$f: section 3 does not show every item in full at low tier"
-		grep -qF 'At medium and high tier an item marked `challenged` shows in full, and an item marked `not challenged` shows as its first line cut at 150 characters, then its pass-one file path, grouped by scope with the scope'"'"'s count.' "$tmp/list" ||
-			fail "$f: section 3 does not name the cut of the items not challenged"
-	fi
 done
 
 if [ "$fails" -gt 0 ]; then

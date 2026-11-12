@@ -5,6 +5,8 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 
 const DIR = new URL('../../plugins/primer/skills/primer/', import.meta.url);
 const SKILL = readFileSync(new URL('SKILL.md', DIR), 'utf8');
+const INIT = readFileSync(new URL('init.md', DIR), 'utf8');
+const ADOPT = readFileSync(new URL('adopt.md', DIR), 'utf8');
 const SHAPES = readFileSync(new URL('shapes.md', DIR), 'utf8');
 const PLACEMENT = readFileSync(new URL('placement.md', DIR), 'utf8');
 
@@ -14,8 +16,8 @@ function lineCount(text) {
   return newlines + (text.endsWith('\n') ? 0 : 1);
 }
 
-test('R237: the skill directory holds SKILL.md, placement.md and shapes.md only', () => {
-  assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'placement.md', 'shapes.md']);
+test('R237: the skill directory holds SKILL.md, adopt.md, init.md, placement.md and shapes.md only', () => {
+  assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'adopt.md', 'init.md', 'placement.md', 'shapes.md']);
 });
 
 test('R245: the frontmatter names the skill, the four phrases first, and read-only tools', () => {
@@ -65,20 +67,20 @@ test('R246 and R247: the write boundary and the commit rules', () => {
 });
 
 test('R248 and R247: init reads the repository, writes the hub uncommitted, proposes, and names /init', () => {
-  assert.ok(SKILL.includes('2. Read `README.md`, package manifests and build files (their scripts and targets), CI workflows, the test layout, the top-level directories, `CONTRIBUTING.md`, and the files under `docs/` with their line counts.'));
-  assert.ok(SKILL.includes('Leave it uncommitted and unstaged.'));
-  assert.ok(SKILL.includes('Ask once which to write, by number. Write none without a yes; on a yes, write the ones named, uncommitted.'));
-  assert.ok(SKILL.includes('`/init` is the host\'s unopinionated alternative: it writes a `CLAUDE.md` from its own reading of the repository, without the marker or these shapes.'));
+  assert.ok(INIT.includes('2. Read `README.md`, package manifests and build files (their scripts and targets), CI workflows, the test layout, the top-level directories, `CONTRIBUTING.md`, and the files under `docs/` with their line counts.'));
+  assert.ok(INIT.includes('Leave it uncommitted and unstaged.'));
+  assert.ok(INIT.includes('Ask once which to write, by number. Write none without a yes; on a yes, write the ones named, uncommitted.'));
+  assert.ok(INIT.includes('`/init` is the host\'s unopinionated alternative: it writes a `CLAUDE.md` from its own reading of the repository, without the marker or these shapes.'));
   assert.ok(!SKILL.includes('primer: init is not in this prerelease'));
 });
 
 test('R249: adopt inventories, keeps pinned files, converts an index, moves before rewrites, and asks once', () => {
-  assert.ok(SKILL.includes('3. Refactor a file only when it is over its cap, holds content for two scopes, or duplicates another. Every other file stays as it is.'));
-  assert.ok(SKILL.includes('A link from a documentation file does not pin.'));
-  assert.ok(SKILL.includes('a pointer whose condition is a file pattern becomes a path-scoped rule with that pattern in `paths`; one whose condition is a task becomes a skill; one whose condition is a directory becomes a nested `CLAUDE.md` in it.'));
-  assert.ok(SKILL.includes('A procedure in `CONTRIBUTING.md` is proposed as a skill, and `CONTRIBUTING.md` stays as it is.'));
-  assert.ok(SKILL.includes('Correct an untrue statement in the rewrite that holds it.'));
-  assert.ok(SKILL.includes('8. On the yes, make the move commit first: the `git mv` of each move and the path edits of documentation links to the moved files, index lines included, and nothing else, so no commit leaves a broken link.'));
+  assert.ok(ADOPT.includes('3. Refactor a file only when it is over its cap, holds content for two scopes, or duplicates another. Every other file stays as it is.'));
+  assert.ok(ADOPT.includes('A link from a documentation file does not pin.'));
+  assert.ok(ADOPT.includes('a pointer whose condition is a file pattern becomes a path-scoped rule with that pattern in `paths`; one whose condition is a task becomes a skill; one whose condition is a directory becomes a nested `CLAUDE.md` in it.'));
+  assert.ok(ADOPT.includes('A procedure in `CONTRIBUTING.md` is proposed as a skill, and `CONTRIBUTING.md` stays as it is.'));
+  assert.ok(ADOPT.includes('Correct an untrue statement in the rewrite that holds it.'));
+  assert.ok(SKILL.includes('On the yes, make the move commit first: the `git mv` of each move and the path edits of documentation links to the moved files, index lines included, and nothing else, so no commit leaves a broken link.'));
   assert.ok(!SKILL.includes('primer: adopt is not in this prerelease'));
 });
 
@@ -130,7 +132,7 @@ test('R237: every skill file SKILL.md names exists', () => {
   for (const m of SKILL.matchAll(/`([^`\n]+)`/g)) {
     if (/^[A-Za-z0-9_.-]+\.md$/.test(m[1]) && !host.has(m[1])) named.add(m[1]);
   }
-  assert.deepEqual([...named].sort(), ['placement.md', 'shapes.md']);
+  assert.deepEqual([...named].sort(), ['adopt.md', 'init.md', 'placement.md', 'shapes.md']);
   for (const name of named) assert.ok(existsSync(new URL(name, DIR)), `${name} exists`);
   assert.ok(SKILL.includes('read `shapes.md` and `placement.md` in this skill\'s directory.'));
 });

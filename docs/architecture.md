@@ -419,7 +419,9 @@ The gate posts nothing to a pull request or a ticket (requirement 350, decision 
 plugins/primer/
   .claude-plugin/plugin.json
   LICENSE  README.md
-  skills/primer/SKILL.md           /primer; modes init, adopt, maintain; the proposal format
+  skills/primer/SKILL.md           /primer; the mode choice, the rules of every mode, the proposal and plan forms, maintain
+  skills/primer/init.md            the init steps, read in an init run
+  skills/primer/adopt.md           the adopt steps, read in an adopt run
   skills/primer/placement.md       the eleven placement items and the tasks test
   skills/primer/shapes.md          hub, nested file, rule and skill templates with their caps
   skills/fold/SKILL.md             /primer:fold; disable-model-invocation: true; reads the docs live, writes nothing

@@ -392,7 +392,7 @@ Project instructions in the forms the host loads: a short hub, rules, nested ins
 
 ### Shape
 
-237. **Two skills, two hooks.** `plugins/primer/` holds the manifest, `LICENSE`, `README.md`, `skills/primer/SKILL.md`, `skills/primer/placement.md`, `skills/primer/shapes.md`, `skills/fold/SKILL.md`, `hooks/hooks.json`, `hooks/drift.sh` and `hooks/notice.sh`, and nothing else. The skill named `primer` answers to `/primer` and `/primer:primer`; `fold` answers to `/primer:fold` (requirement 326, decision 166). Check: lint; review; test.
+237. **Two skills, two hooks.** `plugins/primer/` holds the manifest, `LICENSE`, `README.md`, `skills/primer/SKILL.md`, `skills/primer/init.md`, `skills/primer/adopt.md`, `skills/primer/placement.md`, `skills/primer/shapes.md`, `skills/fold/SKILL.md`, `hooks/hooks.json`, `hooks/drift.sh` and `hooks/notice.sh`, and nothing else. The skill named `primer` answers to `/primer` and `/primer:primer`; `fold` answers to `/primer:fold` (requirement 326, decision 166). Check: lint; review; test.
 
 ### Instruction files
 

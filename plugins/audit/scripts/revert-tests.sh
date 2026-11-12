@@ -561,7 +561,11 @@ cleanup() {
 	fi
 }
 trap cleanup EXIT
-trap 'trap "" HUP INT TERM; exit 2' HUP INT TERM
+# While runone starts a command, a signal waits until the run has recorded the command and
+# its watchdog, so cleanup ends them.
+hold=
+held=
+trap 'if [ -n "$hold" ]; then held=1; else trap "" HUP INT TERM; exit 2; fi' HUP INT TERM
 # On Windows the watchdog wakes the wait for a command with USR1.
 [ -z "$winos" ] || trap : USR1
 
@@ -892,6 +896,7 @@ runone() {
 	mkdir -p "$ro_tmp" "$ro_cache" || die "cannot create a directory in $work"
 	rm -f "$w/timedout"
 	true 2> /dev/null > "$w/fork" || die "cannot write $w/fork"
+	hold=1
 	set -m
 	{ (
 		cd "$1" || exit 125
@@ -921,6 +926,11 @@ runone() {
 	live=$ro_pg
 	watchdog "$ro_pg" "$ro_dl" &
 	wdog=$!
+	hold=
+	if [ -n "$held" ]; then
+		trap '' HUP INT TERM
+		exit 2
+	fi
 	# Under job control bash reports a job killed by a signal on stderr; the result file
 	# records the status instead.
 	while :; do

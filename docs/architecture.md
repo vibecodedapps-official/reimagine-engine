@@ -316,6 +316,7 @@ plugins/audit/
   skills/audit/second-opinion-request.md
   skills/audit/handoff.md  live.md  report.md  work-items.md  fault-injection.md  resume.md
   skills/audit/stages/1-orient.md ... 9-act.md
+  skills/audit/stages/7-converge-split.md        stage 7's split mode, read only when the ledgers reach the threshold
   agents/digester.md  mapper.md  auditor.md  adversary.md  merger.md
   scripts/readonly.sh  handoff.sh  ledger.sh  working-tree.sh  revert-tests.sh  live.sh  memory.sh  work-items.sh  collisions.sh  run-copies.sh  report.sh  registry.sh
 ```

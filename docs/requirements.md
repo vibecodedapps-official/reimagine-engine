@@ -33,7 +33,7 @@ Amended 2026-10-25: house-rule edit fourteen (decision 117) amends requirement 2
 
 Amended 2026-10-25: the `gate` plugin (decisions 118 to 134) adds requirements 287 to 320 in their own section after the audit's, and the loop's one-pass step 5 (decision 128) adds 285 under Final review and 286 under Handoff format, amends 1, 6, 62, 63, 65, 66, 72, 106, 109, 110, 111, 113, 120, 127, 134, 135, 145, 219, 224, 272, 273 and 277, each keeping its number, and retires 70. Requirement 1 describes the state after the gate's scaffold milestone.
 
-Amended 2026-10-26: the gate's comment (decision 135) amends requirement 314.
+Amended 2026-10-26: the gate's comment amends requirement 314.
 
 Amended 2026-10-27: house-rule edit fifteen and Concise Plain 4.8 (decision 141) add requirement 321 among the edits, amend 11, 43 and 118, and move requirement 43 to version 4.8.
 
@@ -107,7 +107,7 @@ Amended 2026-11-09: the loop's record name and question (decision 228) amend req
 
 ## Suite
 
-1. **One repository, one marketplace.** The marketplace is named `reimagine-engine` and lists exactly six plugins: `rules`, `loop`, `audit`, `primer`, `gate` and `guard`, each at `plugins/<name>/`. Before a release a prerelease catalog may list a plugin that is built at a prerelease version (requirement 14), so a second machine can install it from `main` before its release, and may list `repo-docs` until requirement 268 retires it. Until the gate's scaffold milestone the catalog, lint's name list, the README and the repository's hub say four plugins, and that milestone moves all of them to five in one commit (decision 132). Amended 2026-11-04: six with `guard`, all moved in one commit of M73 (decision 181). Check: lint.
+1. **One repository, one marketplace.** The marketplace is named `reimagine-engine` and lists exactly six plugins: `rules`, `loop`, `audit`, `primer`, `gate` and `guard`, each at `plugins/<name>/`. Before a release a prerelease catalog may list a plugin that is built at a prerelease version (requirement 14), so a second machine can install it from `main` before its release, and may list `repo-docs` until requirement 268 retires it. Until the gate's scaffold milestone the catalog, lint's name list, the README and the repository's hub say four plugins, and that milestone moves all of them to five in one commit. Amended 2026-11-04: six with `guard`, all moved in one commit of M73 (decision 181). Check: lint.
 2. **Plugin directories hold only what a user installs.** Under `plugins/<name>/` there are the manifest, the skills, commands, agents, hooks, scripts, output styles and reference files the plugin uses at run time, plus `README.md` and `LICENSE`. No tests, no design documents, no fixtures. Check: lint.
 3. **ASCII.** Every shipped file under `plugins/` is ASCII. Check: lint.
 4. **License per plugin.** The root `LICENSE` and each `plugins/<name>/LICENSE` is the Apache License 2.0 text with the holder line `Copyright 2026 vibecodedapps.net`. Check: lint.

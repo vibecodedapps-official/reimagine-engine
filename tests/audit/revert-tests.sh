@@ -548,8 +548,11 @@ if [ -n "$win_t" ]; then
 	verdicts '- `tests/test_tree.sh`: does not pass at head (timed out)\n'
 fi
 
-# 5i. A child that traps TERM gets the group's TERM at the deadline and writes its mark. On
-# Windows the group gets no TERM, so the mark is not written.
+# 5i. A child that traps TERM gets the group's TERM at the deadline and writes its mark. The
+# command replaces its shell with the test file's, so the run waits for the shell that holds
+# the trap: a shell that led the group and died of the TERM would end the command, and the
+# KILL that follows could come before the mark. On Windows the group gets no TERM, so the
+# mark is not written.
 case_id="case 5i"
 mkrepo c5i
 put 100644 README 'x\n'
@@ -558,7 +561,7 @@ put 100644 tests/test_trap.sh 'trap '"'"'echo got > "$RT_MARK"; exit 0'"'"' TERM
 commit feature main
 RT_MARK=$root/mark-5i
 export RT_MARK
-run "$R" 'command\tsh\nrun\ttests/test_*.sh\ntimeout\t2\n'
+run "$R" 'command\texec sh\nrun\ttests/test_*.sh\ntimeout\t2\n'
 ok
 verdicts '- `tests/test_trap.sh`: does not pass at head (timed out)\n'
 if [ -n "$win_t" ]; then

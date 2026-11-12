@@ -44,6 +44,29 @@
 # Every git call only reads: rev-parse, merge-base, diff-tree, ls-tree, and cat-file.
 # GIT_DIR, GIT_WORK_TREE, and GIT_INDEX_FILE from the caller are unset first.
 #
+# Windows: a signal that the runtime of Git for Windows delivers to a native program ends
+# that program's tree by the parent ids Windows records, and Windows hands a freed id to a
+# new process, so the signal can reach a process this run never started. There no group
+# gets a TERM. Where another system sends one, and before the KILL at a command's end, the
+# script ends the group's processes by id, in one call of Windows PowerShell: the processes
+# the runtime lists in the group, those it lists under them or in a group one of them
+# leads, and every Windows process under one of those that started no earlier than its
+# parent. A listed process counts only if it started before the list was taken, and each
+# is ended only while its id still names the process that was listed. Each query and each
+# end is given 30 seconds. The KILL then goes to a group with no native program left. A
+# child's TERM trap does not run, and a command ended this way has the status Windows
+# reports for the process that leads it: 0 for a shell, 137 for a native program. `bg`
+# stops its child's group the same way: it ends the group by id, then removes what the run
+# it ended could not, the work dir (unless it was there before the run) and the result's
+# `.tmp`, and at the deadline it records status 2. A lost `bg`'s leader does the same for
+# the run and all under it. When the call fails, one line on stderr says so, once per
+# process: a command's group then gets the KILL alone, and from `bg` or its leader the run
+# alone gets the TERM, when the call left it, which it answers once any git step in the
+# foreground returns. The KILL 60 seconds later goes alone. Beyond reach: a native child
+# whose parent had already exited; the children of a native program that started while
+# the list was taken, which the KILL ends alone; and for `bg` and its leader, any process
+# that started then and a group whose own leader is gone.
+#
 # Keys file: one line per value, `<key><TAB><value>`. `command` (required), `setup`, and
 # `timeout` (whole seconds, 1 or more, default 300) at most once; `run` (one or more) and
 # `path` (none or more) once per pattern. No `path` line means the default test_paths:
@@ -86,8 +109,8 @@
 #    job under `set -m`, in its own process group. At the deadline the group gets TERM,
 #    then KILL ten ticks later. Whether the command ends or times out, the group then
 #    gets KILL, and the script waits until no process in it is left. A process that
-#    leaves the group (setsid, a daemon) is beyond reach; on Windows, a native program's
-#    own children are outside the group.
+#    leaves the group (setsid, a daemon) is beyond reach. On Windows a native program's
+#    own children are outside the group, and the deadline has no TERM (see Windows).
 # 5. Verdicts per file:
 #    passes at head and without the change   exit 0 in both copies
 #    passes at head only                     exit 0 at the head, another status reverted
@@ -105,7 +128,8 @@
 #      did not start in its own process group, or a process group was still live 10
 #      seconds after KILL (one line on stderr; no result file)
 #   0  the result file is written, whatever the verdicts; it can carry the one stderr line
-#      that names a work dir left behind (see Work dir)
+#      that names a work dir left behind (see Work dir), or the one that says a process
+#      tree was not ended by id (see Windows)
 # `bg` exits 0 once `.exit` is written, else 2. `wait` exits as `run` did (0, or 2 with
 # its stderr) and forwards the last line of `.err` on 0 too; it exits 2 for no run
 # started or an unreadable `.exit`, and 3 while still running.
@@ -133,6 +157,11 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 tab=$(printf '\t')
 cr=$(printf '\r')
 soh=$(printf '\001')
+winos=
+case $(uname -s 2> /dev/null) in
+MINGW* | MSYS* | CYGWIN*) winos=1 ;;
+esac
+wt_said=
 
 die() {
 	printf '%s\n' "revert-tests: $*" >&2
@@ -173,6 +202,140 @@ forkdone() {
 	fi
 }
 
+# wintree -g <pgid> | -p <pid>: on Windows, end by id the processes the runtime lists in the
+# group, or the one process, those it lists under them or in a group one of them leads,
+# and every Windows process under one of those (see Windows). Fails unless PowerShell
+# reports each of them gone.
+wintree() {
+	# A listed process counts only if it started before this moment, so an id that Windows
+	# hands to a new process after the listing names nothing here.
+	wt_at=$(date +%s%3N)
+	wt_roots=$(ps 2> /dev/null | awk -v m="$1" -v id="$2" '
+		NR > 1 {
+			# A row can start with a status letter.
+			o = ($1 ~ /^[0-9]+$/) ? 0 : 1
+			n++
+			pid[n] = $(1 + o)
+			ppid[n] = $(2 + o)
+			pgid[n] = $(3 + o)
+			winpid[n] = $(4 + o)
+			if ((m == "-g" && pgid[n] == id) || (m == "-p" && pid[n] == id)) {
+				first[pid[n]] = 1
+			}
+		}
+		# take <row>: add the row, in the order its process is to end.
+		function take(i) {
+			tree[pid[i]] = 1
+			out = out sep winpid[i]
+			sep = ","
+		}
+		END {
+			# A parent before its children, so a shell ends before the programs it would
+			# start next: a row joins once its parent has, or at once when its parent is
+			# not among those asked for. Then, one at a time, a row whose parent has
+			# exited and whose group a row leads, with what is under it.
+			do {
+				do {
+					added = 0
+					for (i = 1; i <= n; i++) {
+						if (pid[i] in tree) {
+							continue
+						}
+						if ((ppid[i] in tree) || ((pid[i] in first) && !(ppid[i] in first))) {
+							take(i)
+							added = 1
+						}
+					}
+				} while (added)
+				more = 0
+				for (i = 1; i <= n && !more; i++) {
+					if (!(pid[i] in tree) && (pgid[i] in tree)) {
+						take(i)
+						more = 1
+					}
+				}
+			} while (more)
+			print out
+		}')
+	[ -n "$wt_roots" ] || return 0
+	# The text reaches PowerShell on stdin, so no execution policy applies to it.
+	RT_ROOTS=$wt_roots RT_AT=$wt_at powershell.exe -NoProfile -NonInteractive -Command \
+		'& ([scriptblock]::Create([Console]::In.ReadToEnd()))' 2>&1 << 'PS1' | {
+$ErrorActionPreference = 'Stop'
+$roots = @($env:RT_ROOTS -split ',' | Where-Object { $_ -match '^[0-9]+$' } | ForEach-Object { [int]$_ })
+$at = [DateTime]::new(1970, 1, 1, 0, 0, 0, [DateTimeKind]::Utc).AddMilliseconds([double]$env:RT_AT)
+$byId = @{}
+$kids = @{}
+foreach ($p in @(Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, CreationDate -OperationTimeoutSec 30)) {
+	$byId[[int]$p.ProcessId] = $p
+	$k = [int]$p.ParentProcessId
+	if (-not $kids.ContainsKey($k)) { $kids[$k] = @() }
+	$kids[$k] += $p
+}
+$seen = @{}
+$seen[[int]$PID] = $true
+function Get-Tree($p) {
+	$id = [int]$p.ProcessId
+	if ($seen.ContainsKey($id)) { return }
+	$seen[$id] = $true
+	$p
+	foreach ($c in @($kids[$id])) {
+		if ($c -and $c.CreationDate -and $p.CreationDate -and $c.CreationDate -ge $p.CreationDate) { Get-Tree $c }
+	}
+}
+function Test-Same($p) {
+	$now = Get-CimInstance Win32_Process -Filter "ProcessId=$($p.ProcessId)" -Property ProcessId, CreationDate -OperationTimeoutSec 30
+	if ($now -and $now.CreationDate -eq $p.CreationDate) { $now }
+}
+$tree = @(foreach ($r in $roots) {
+	$p = $byId[$r]
+	if ($r -gt 4 -and $p -and $p.CreationDate -and $p.CreationDate.ToUniversalTime() -le $at) { Get-Tree $p }
+})
+foreach ($p in $tree) {
+	$now = Test-Same $p
+	if ($now) {
+		try { [void](Invoke-CimMethod -InputObject $now -MethodName Terminate -Arguments @{ Reason = [uint32]137 } -OperationTimeoutSec 30) } catch { }
+	}
+}
+$left = $tree
+for ($i = 0; $i -lt 20 -and $left.Count -gt 0; $i++) {
+	if ($i -gt 0) { Start-Sleep -Milliseconds 100 }
+	$left = @($left | Where-Object { Test-Same $_ })
+}
+"tree $($tree.Count) left $($left.Count)"
+PS1
+		wt_ok=1
+		while IFS= read -r wt_line; do
+			case ${wt_line%"$cr"} in
+			'tree '*' left 0') wt_ok=0 ;;
+			esac
+		done
+		exit "$wt_ok"
+	}
+}
+
+# endgroup <pgid>: KILL the group. On Windows its processes are ended by id first.
+endgroup() {
+	if [ -n "$winos" ] && kill -0 -"$1" 2> /dev/null && ! wintree -g "$1" && [ -z "$wt_said" ]; then
+		wt_said=1
+		echo "revert-tests: cannot end a process tree by id; its group gets KILL alone" >&2
+	fi
+	kill -KILL -"$1" 2> /dev/null
+}
+
+# rmwork: remove the work dir, again each tick for up to 10 seconds while it is still
+# there. Sets cl_err to what the last removal printed.
+rmwork() {
+	chmod -R u+w "$work" 2> /dev/null
+	cl_err=$(rm -rf "$work" 2>&1)
+	cl_start=$SECONDS
+	while [ -e "$work" ] && [ $((SECONDS - cl_start)) -lt $((10 + slack)) ]; do
+		sleep "$tick"
+		chmod -R u+w "$work" 2> /dev/null
+		cl_err=$(rm -rf "$work" 2>&1)
+	done
+}
+
 # The tick (see Tick): digits with at most one inner `.`, not all zeros.
 tick=${REVERT_TESTS_TICK:-1}
 case $tick in
@@ -203,7 +366,41 @@ if [ "${1:-}" = bg ]; then
 	true 2> /dev/null > "$out.fork" || die "cannot write $out.fork"
 	true 2> /dev/null > "$out.err" || die "cannot write $out.err"
 	child=
-	trap 'if [ -n "$child" ]; then kill -TERM -"$child" 2> /dev/null; fi; exit 2' HUP INT TERM
+	work=$5
+	had=
+	if [ -e "$work" ] || [ -L "$work" ]; then
+		had=1
+	fi
+	# unmade: what a run ended by id could not remove: the work dir, unless it was there
+	# before the run, and the result's `.tmp`.
+	unmade() {
+		[ -n "$had" ] || rmwork
+		rm -f "$out.tmp"
+	}
+	# stoprun: TERM to the child's group, which the run answers by ending its command and
+	# removing the work dir. On Windows the group is ended by id instead, which sets byid;
+	# when that fails and the leader is still there, the TERM goes to the leader alone,
+	# which passes it to the run (see Windows).
+	byid=
+	stoprun() {
+		if [ -z "$winos" ]; then
+			kill -TERM -"$child" 2> /dev/null
+			return
+		fi
+		kill -0 -"$child" 2> /dev/null || return 0
+		if ! wintree -g "$child"; then
+			if kill -0 "$child" 2> /dev/null; then
+				echo "revert-tests: cannot end a process tree by id; the run gets TERM" >&2
+				kill -TERM "$child" 2> /dev/null
+				return
+			fi
+			echo "revert-tests: cannot end a process tree by id; its group gets KILL alone" >&2
+		fi
+		kill -KILL -"$child" 2> /dev/null
+		unmade
+		byid=1
+	}
+	trap 'if [ -n "$child" ]; then stoprun; fi; exit 2' HUP INT TERM
 	# Its own process group, so TERM also reaches a foreground git step, which would
 	# otherwise hold off `run`'s trap until it returns. The group's leader outlives a KILL
 	# of `bg` (an agent's harness ends a session's shells so), so it ends the run itself.
@@ -211,7 +408,9 @@ if [ "${1:-}" = bg ]; then
 	set -m
 	{ (
 		termed=
-		trap 'termed=1' TERM
+		r=
+		# On Windows a TERM comes to the leader alone, for the run (see stoprun).
+		trap 'termed=1; if [ -n "$winos" ] && [ -n "$r" ]; then kill -TERM "$r" 2> /dev/null; fi' TERM
 		bash "$0" run "$@" &
 		r=$!
 		lost=
@@ -219,7 +418,19 @@ if [ "${1:-}" = bg ]; then
 			if ! kill -0 "$bgpid" 2> /dev/null; then
 				if [ -z "$lost" ]; then
 					lost=$SECONDS
-					[ -n "$termed" ] || kill -TERM 0 2> /dev/null
+					if [ -n "$winos" ]; then
+						if wintree -p "$r"; then
+							unmade
+						elif kill -0 "$r" 2> /dev/null; then
+							echo "revert-tests: cannot end a process tree by id; the run gets TERM" >&2
+							kill -TERM "$r" 2> /dev/null
+						else
+							echo "revert-tests: cannot end a process tree by id; some of it may be left" >&2
+							unmade
+						fi
+					elif [ -z "$termed" ]; then
+						kill -TERM 0 2> /dev/null
+					fi
 				elif [ $((SECONDS - lost)) -ge $((60 + slack)) ]; then
 					kill -KILL 0 2> /dev/null
 				fi
@@ -238,7 +449,7 @@ if [ "${1:-}" = bg ]; then
 		while kill -0 "$child" 2> /dev/null; do
 			n=$((SECONDS - dl_start))
 			if [ -z "$fired" ] && [ "$n" -ge $((deadline + slack)) ]; then
-				kill -TERM -"$child" 2> /dev/null
+				stoprun
 				fired=1
 			elif [ -n "$fired" ] && [ "$n" -ge $((deadline + 60 + slack)) ]; then
 				kill -KILL -"$child" 2> /dev/null
@@ -246,14 +457,19 @@ if [ "${1:-}" = bg ]; then
 			fi
 			sleep "$tick"
 		done
-		[ -z "$fired" ] || exit 3
+		[ -n "$fired" ] || exit 0
+		[ -z "$byid" ] || exit 4
+		exit 3
 	) &
 	dog=$!
 	wait "$child"
 	st=$?
 	wait "$dog"
-	if [ $? -eq 3 ]; then
+	dg=$?
+	if [ "$dg" -eq 3 ] || [ "$dg" -eq 4 ]; then
 		echo "revert-tests: stopped at the deadline of $deadline seconds" >> "$out.err"
+		# A shell ended by id reports 0, where a run that got the TERM exits 2.
+		[ "$dg" -ne 4 ] || st=2
 	fi
 	rm -f "$out.fork"
 	if ! { printf '%s\n' "$st" > "$out.exit.tmp" && mv -f "$out.exit.tmp" "$out.exit"; }; then
@@ -335,21 +551,14 @@ cleanup() {
 		stopdog
 	fi
 	if [ -n "$live" ]; then
-		kill -KILL -"$live" 2> /dev/null
+		endgroup "$live"
 		cn_start=$SECONDS
 		while kill -0 -"$live" 2> /dev/null && [ $((SECONDS - cn_start)) -lt $((10 + slack)) ]; do
 			sleep "$tick"
 		done
 	fi
 	if [ -n "$made" ]; then
-		chmod -R u+w "$work" 2> /dev/null
-		cl_err=$(rm -rf "$work" 2>&1)
-		cl_start=$SECONDS
-		while [ -e "$work" ] && [ $((SECONDS - cl_start)) -lt $((10 + slack)) ]; do
-			sleep "$tick"
-			chmod -R u+w "$work" 2> /dev/null
-			cl_err=$(rm -rf "$work" 2>&1)
-		done
+		rmwork
 		# On a failed run the failure's own line stays the last one, which `wait` reports.
 		if [ -e "$work" ] && [ "$cl_st" -eq 0 ]; then
 			if [ -n "$cl_err" ]; then
@@ -366,6 +575,8 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'trap "" HUP INT TERM; exit 2' HUP INT TERM
+# On Windows the watchdog wakes the wait for a command with USR1.
+[ -z "$winos" ] || trap : USR1
 
 mkdir -p "$work" || die "cannot create the work dir: $work"
 made=1
@@ -638,7 +849,7 @@ export_list() {
 }
 
 # watchdog <pgid> <deadline>: at the deadline, TERM the group, then KILL it ten ticks
-# later.
+# later. On Windows it sends the group nothing: it wakes the run, which ends the group.
 watchdog() {
 	# bash's own clock: a `date` child here can die of a broken pipe when the job ends
 	# at once and the watchdog is killed before its first read.
@@ -648,6 +859,13 @@ watchdog() {
 		[ $((SECONDS - wd_start)) -lt $(($2 + slack)) ] || break
 	done
 	: > "$w/timedout"
+	if [ -n "$winos" ]; then
+		# Until the run stops this watchdog, or is gone.
+		while kill -USR1 "$$" 2> /dev/null; do
+			sleep "$tick"
+		done
+		return
+	fi
 	kill -TERM -"$1" 2> /dev/null
 	sleep "$tick10"
 	kill -KILL -"$1" 2> /dev/null
@@ -658,7 +876,7 @@ gone() {
 	gn_start=$SECONDS
 	while kill -0 -"$1" 2> /dev/null; do
 		[ $((SECONDS - gn_start)) -lt $((10 + slack)) ] || return 1
-		kill -KILL -"$1" 2> /dev/null
+		endgroup "$1"
 		sleep "$tick"
 	done
 }
@@ -718,14 +936,24 @@ runone() {
 	wdog=$!
 	# Under job control bash reports a job killed by a signal on stderr; the result file
 	# records the status instead.
-	{
-		wait "$ro_pg"
-		rc=$?
-	} 2> /dev/null
+	while :; do
+		{
+			wait "$ro_pg"
+			rc=$?
+		} 2> /dev/null
+		[ -n "$winos" ] && [ "$rc" -gt 128 ] && kill -0 "$ro_pg" 2> /dev/null || break
+		# The job is still there: on Windows the watchdog woke the wait at the deadline.
+		if [ -f "$w/timedout" ]; then
+			# Reaped here, so bash's notice of the KILL goes nowhere.
+			stopdog
+			wait "$wdog" 2> /dev/null
+			endgroup "$ro_pg"
+		fi
+	done
 	stopdog
 	wait "$wdog" 2> /dev/null
 	wdog=
-	kill -KILL -"$ro_pg" 2> /dev/null
+	endgroup "$ro_pg"
 	gone "$ro_pg" || die "process group $ro_pg still live 10 seconds after KILL"
 	live=
 	secs=$(($(date +%s) - ro_now))

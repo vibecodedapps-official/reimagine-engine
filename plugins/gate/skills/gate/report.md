@@ -43,7 +43,6 @@ The report may name models, agents and tools, because it stays in the record. It
 - Run budget gives the minutes and their source as the reading block did. Elapsed is from the run's `started` to its `ended`, with the waits for an answer left out.
 - Passes gives each pass of the run in order. The rule is the `rule` of the pass's own `next`, with `, capped <cap>` after it when the `next` is capped. A pass with no `next` shows its `status` instead.
 - Engine gives the stand-in's reason from the record: a saved review result of this run that says the `code-review` skill is not available, else that `claude` is not on the PATH.
-- Review level is copied as it is.
 - Audit names the manifest Step 4 wrote or updated. With no record it reads `not suggested (no record written)`.
 
 ## Sections

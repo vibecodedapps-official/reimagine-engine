@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.25 - 2026-11-11
+
+- A script writes the registry of runs. `registry.sh add` and `registry.sh set` each update `runs.json` in one run of the script, under a lock it takes and releases itself. The session typed the lock steps before, no test covered them, and the two updates took four turns of a low-tier run.
+- A repeated registry command changes nothing, so a session that cannot tell whether an update ran runs it again. When a run has no entry at its end, the session adds one and then sets its state, before it falls back to printing an entry to add by hand.
+- A registry lock older than a minute is removed without a question in every session. An interactive run asked first whether another audit was running; the script holds the lock only while it rewrites the file, so among its runs an old lock is from one that died.
+
 ## audit 0.1.24 - 2026-11-11
 
 - After a compaction the audit reads `SKILL.md` again before it goes on, and then the files of the stage it is in. The host keeps only the first part of a skill's text across a compaction and the recovery section did not name the file, so the rest of a long run went on without the rules that come after that part.

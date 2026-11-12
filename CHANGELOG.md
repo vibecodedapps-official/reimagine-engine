@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.18 - 2026-11-12
+
+- The skill states each cap, the stop and the stand-in's mechanics once, in the step that acts on it, and no file opens by saying when it is read. The skill restated them, so a run read each rule twice and the copies could drift. No rule is dropped: each cut sentence stands in a file a run reads before the action it guards.
+
 ## rules 0.1.30 - 2026-11-12
 
 - The chat block's "Editing my text" item puts the line on what changed above the returned text, as its item on a revised draft does. It put the line after the text, so the block gave one line two places.

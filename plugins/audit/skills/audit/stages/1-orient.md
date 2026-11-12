@@ -289,7 +289,7 @@ branch to it in the manifest."
       section's cases.
 
    n. **Completion record.** Write `stages.json` through `stages.json.tmp` and
-      `mv -f`, with `plugin_version` `0.1.24`, empty `approvals`, and a stage 1 entry
+      `mv -f`, with `plugin_version` `0.1.25`, empty `approvals`, and a stage 1 entry
       with status `running` whose inputs are the `git hash-object --no-filters` hashes
       of `manifest.json`, each claims file, the questions file and each `file:` export,
       and `plugin_version`. Record the stage's start time for the budget.

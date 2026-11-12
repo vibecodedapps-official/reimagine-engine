@@ -92,9 +92,8 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
    - an input is unacknowledged: for each line of `tmp/sentinels.txt`, `grep -qF --
      "<line>" <output file>` must succeed, and `grep -n '^ *not read:' <output file>` must
      print nothing. Write the unacknowledged lines to `tmp/unack-<k>.txt` by a shell loop
-     and count them with `wc -l`. When `_test.drop_ack` names an input by its
-     run-relative path, treat its acknowledgment as missing for the first `times` checks,
-     counted across batches and relaunches, whatever the answer says;
+     and count them with `wc -l`. When `_test.drop_ack` names an input, treat
+     its acknowledgment as missing, as `fault-injection.md` says;
    - a mandatory id of its batch has no position: run
      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" missing <run dir> > <run dir>/tmp/missing.txt`
      (a nonzero exit fails stage 6). The script scans every `second-opinion/response*.md`,
@@ -102,9 +101,8 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
      run `LC_ALL=C comm -12 <run dir>/second-opinion/batch-<k>.txt
      <run dir>/tmp/missing.txt > <run dir>/tmp/missing-<k>.txt` and count that with
      `wc -l`. Never read either list into the conversation;
-   - a `_test.fail` entry with role `adversary` or `second-opinion` and scope `any`,
-     `second-opinion` (which matches every `second-opinion-<k>`) or this batch's scope
-     marks the completion failed, as `fault-injection.md` says.
+   - a `_test.fail` entry with role `adversary` or `second-opinion` that reaches this
+     batch's scope marks the completion failed, as `fault-injection.md` says.
 
    The ladder (SKILL.md, Roles) applies to each batch on its own. The relaunch takes the
    same prompt, scope, scratch folder and output file, and first moves the failed file

@@ -79,18 +79,16 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
    `pass1/<scope>.md` resume kept (`resume.md`, step 7); list that file among the stage's
    outputs.
 
-5. **Hold.** When `_test` `hold` names stage 4, the jobs of step 4 wait until the stage it
-   waits on has ended its initial agents. When `hold` waits on stage 4, the held stage's
-   jobs wait until every auditor launched in step 4 has ended; top-ups do not count, so
-   the barrier's top-up path runs. Record the hold in the entry.
+5. **Hold.** A `_test` `hold` that names stage 4 holds the jobs of step 4, and one that
+   waits on stage 4 waits for the auditors of step 4, as `fault-injection.md` says.
+   Record the hold in the entry.
 
 6. **On each completion** of a pass-one auditor:
    1. Record the end time, the notification's `subagent_tokens` and `duration_ms`, labeled
       as SKILL.md, Usage, says, in the entry and in `usage.md`.
    2. The agent failed as SKILL.md, Roles, says; the `## Claims` heading is in every
       report, with `none` when no claim is assigned. A `_test` `fail` entry with role
-      `auditor` and this scope or `any` turns the scope's first `times` completions into
-      failures.
+      `auditor` and this scope or `any` applies.
    3. On a failure, follow the ladder (SKILL.md, Roles); its relaunch on the same model
       takes the same prompt. A relaunch overwrites the output file. A failed scope counts
       as done for the barrier and for the stage, and gets no pass two.

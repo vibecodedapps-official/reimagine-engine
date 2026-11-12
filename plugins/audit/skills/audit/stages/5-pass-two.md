@@ -68,9 +68,9 @@ restate the finding schema or the output contract.
 4. **On each completion.** Record tokens and duration, labeled as SKILL.md, Usage, says.
    The adversary failed as SKILL.md, Roles, says, or when step 3 found a missing verdict
    or claims line. A `_test` `fail` entry with role `adversary` and this scope or `any`
-   turns the scope's first `times` completions into failures. Ladder (SKILL.md, Roles); a
-   failed scope's findings have no pass-two verdict. Check the budget before every launch
-   (SKILL.md, Soft budget); once it has expired, record each scope not run.
+   applies. Ladder (SKILL.md, Roles); a failed scope's findings have no pass-two verdict.
+   Check the budget before every launch (SKILL.md, Soft budget); once it has expired,
+   record each scope not run.
 
 5. **Map corrections.** Once every adversary has finished or failed:
    1. Collect every `## Map corrections` entry and open its source quote at the pinned

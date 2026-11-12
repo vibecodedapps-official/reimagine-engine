@@ -26,9 +26,9 @@ per code base.
    `groups.md` whose files it concerns and the claim numbers it covers. A ticket with no
    question for this source is listed with `none`.
 4. **Launch.** Queue one `audit:mapper` per code base (SKILL.md, Queue and Agent launch
-   rules); maps follow the digests and come before pass one. When `_test` `hold` names
-   stage 3, queue them and launch none until the stage it waits on has ended its initial
-   agents. The scope id is `<source>`. The prompt names, by absolute path,
+   rules); maps follow the digests and come before pass one. A `_test` `hold` that
+   names stage 3 holds them, as `fault-injection.md` says. The scope id is `<source>`.
+   The prompt names, by absolute path,
    `audit-brief.md`, `common.md`, the scope file `domain/<source>-questions.md`, the output
    file `domain/<source>-map.md` and the scratch folder `tmp/agents/domain-<source>/`,
    and gives the source's read path and sha from the brief and those of every other code
@@ -36,10 +36,8 @@ per code base.
 5. **On each completion.** Apply `_test` `fail` for role `mapper` at scope `<source>` or
    `any`. Read the output; on a failure, follow the ladder (SKILL.md, Roles). Record each
    agent in the entry. On success:
-   1. When `_test` `plant_map_error` names this source, change one quoted answer's
-      conclusion in `domain/<source>-map.md` to its opposite, keep its quote, and record
-      the line number and the original line in the entry as `test_planted`. Do this
-      before hashing.
+   1. When `_test` `plant_map_error` names this source, plant the error as
+      `fault-injection.md` says. Do this before hashing.
    2. Run `git hash-object --no-filters domain/<source>-map.md` and record the hash in the
       entry's `output_hashes` map. These are the final map hashes that the barrier of
       stage 4 compares with each pass-one report's `consumed:` list.

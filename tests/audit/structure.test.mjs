@@ -103,7 +103,7 @@ test('each stage section of SKILL.md names its stage file and holds no list or t
   const sections = [...TEXT['skills/audit/SKILL.md'].matchAll(/^## Stage (\d): [^\n]+\n([^]*?)(?=^## )/gm)];
   assert.deepEqual(sections.map((m) => m[1]), ['1', '2', '3', '4', '5', '6', '7', '8', '9']);
   for (const [, n, body] of sections) {
-    assert.ok(new RegExp(`skills/audit/stages/${n}-[a-z-]+\.md`).test(body), `the stage ${n} section names no stage file`);
+    assert.ok(new RegExp(`skills/audit/stages/${n}-[a-z-]+\\.md`).test(body), `the stage ${n} section names no stage file`);
     assert.ok(!/^(?:\d+\. |- |\|)/m.test(body), `the stage ${n} section holds a list or a table; its steps belong in the stage file`);
   }
 });

@@ -73,21 +73,14 @@ to `Q4` or a custom list.
      `REVIEW.md` row never turns a lead into a finding.
 6. Write `## Verified OK`: each item checked and found sound, with its evidence. In a group
    or `combined` scope, then write `## Outward trace` as `audit-evidence.md` says, in every
-   tree the brief maps, with the commands of Boundaries item 2 only. The trace adds to the
-   matcher and run-once checks; it does not replace them. A sibling or decision finding it
-   yields takes the shape of step 5, and the entry names its id. A specialist scope and a
-   top-up write no trace.
+   tree the brief maps, with the commands of `common.md` hard rule 2 only. The trace adds
+   to the matcher and run-once checks; it does not replace them. A sibling or decision
+   finding it yields takes the shape of step 5, and the entry names its id. A specialist
+   scope and a top-up write no trace.
 7. Write `## Claims`: every claim assigned to your scope, `true`, `false` or
-   `not verified`, with the finding id or the evidence, in the line shapes of
-   `## Claims list`; with no claim assigned, the heading and the one line `none`.
-   - A `verification` claim is `true, reproduced` only when you reproduced the stated
-     result yourself, by a run, or by a quote when the result is a fact of the code at the
-     pinned sha. A quote of other text saying it was checked reproduces nothing.
-   - An env claim (its check part starts `env: <name>;`, as `## Claim kinds` says) is
-     always `not verified, not reproduced; needs a live check: env <name>`, since a run
-     here is another environment.
-   - When you cannot run the check (not run, no access, needs a live check, budget
-     expired, an exported tree), write `not verified, not reproduced` with the reason.
+   `not verified`, with the finding id or the evidence, in the line shapes and by the
+   rules of `audit-evidence.md`, "Claims list", an env claim as `common.md`, "Env claims",
+   says; with no claim assigned, the heading and the one line `none`.
    - A run under a different setup than the check needs is not counter-evidence: write
      `not verified, not reproduced` and name what differs. `false, contradicted` needs
      counter-evidence under the stated setup.
@@ -120,31 +113,20 @@ A group or `combined` scope runs these on its files in every tree mode, with `gi
 1. Matchers. For each literal string or data shape the change adds or alters a match on (a
    pattern, a prefix, a key, a field), find its producer with `git grep` and read it with
    `git -C <repo> show <sha>:<path>` at the head sha and at the base sha the brief records.
-   `git log <merge-base>..<base> -- <producer path>` gives leads, never commits picked by
-   author date. A finding needs evidence
-   that an incompatible producer survives integration: the head leaves the producer as it
-   is, and the base's version produces a form the change does not match. Quote both reads.
-   Skip a matcher the change leaves alone. When the brief says the base was not fetched
-   ("base: local ref, refresh declined"), say in the finding that the base read may be
-   stale. The question is whether the changed code still matches what the merged result
-   produces; a base change is still not a deleted feature (see Traps).
+   `git log <merge-base>..<base> -- <producer path>` gives the leads. Skip a matcher the
+   change leaves alone. The question is whether the changed code still matches what the
+   merged result produces; `audit-evidence.md`, "Leads a finding must clear", says what a
+   finding needs.
 2. Run-once scripts. The brief's run-once list names, per bundle, the changed files that
    match the manifest's run-once patterns, with their change status and whether they exist
    at the merge-base. Judge each such file of your scope as
    `### Rerun of a run-once script` says, status `M` included.
 3. Open pull request candidates. The run-once list may give `candidate:` lines: another
    open pull request adds a file, or moves one, into the same directory under the same file
-   name or the same leading version token. A candidate is a lead. Find how the runner turns
-   a script into its journal key, as `### Rerun of a run-once script` says, and compare the
-   keys of both names whatever the line's kind. Keys that differ, shown by quoted runner
-   lines, clear the candidate; say so with the quote. Keys that match, or no runner found,
-   make a finding on the new script: first the forge fact (the other pull request's URL and
-   path, and that the brief read the list at stage 1), then its effect (where both merge,
-   the runner applies one script and skips the other, or fails). Label it
-   `unverified assumption`, at most `medium`, with a `live check` on which pull request
-   merges first and, when no runner was found, how the runner keys its journal. A `cut`
-   line, a `cut-list` line, or `open PRs not read` is a gap in what could be checked,
-   never a finding.
+   name or the same leading version token. Find how the runner turns a script into its
+   journal key, as `### Rerun of a run-once script` says, and compare the keys of both
+   names whatever the line's kind. `audit-evidence.md`, "Leads a finding must clear", says
+   what the keys make of the candidate; where they clear it, say so with the quote.
 
 ## Top-up mode
 
@@ -172,23 +154,8 @@ A top-up prompt names a digest or map and the group.
 
 1. You write your output file and, in your scratch folder, raw command output, nothing
    else, as `## Output contract` allows. Rewriting means writing the whole file again.
-2. Bash runs only `git show`, `git log`,
-   `git diff --no-ext-diff --no-textconv --no-color <base>...<head>`, `git grep`,
-   `git ls-files`, `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with
-   `-t`, `-s` or `-p`, `git branch --list`, `rg`, `ls`, their `git -C <repo>` forms,
-   `git hash-object --no-filters <file>` for the `consumed:` list, and the read-only forms
-   of `sed -n`, `awk`, `diff`, `wc`, `sort`, `head`, `tail`, `cut`, `uniq` and `grep`, as
-   commands or pipe stages over an exported file under the run directory or over
-   `git show` output, and `cat` of an exported file. Barred: `sed -i` or any other
-   in-place change, `awk -i inplace`, a
-   sed `w`, `W` or `e` command or `w` or `e` flag, `sort -o`, `--output` or
-   `--compress-program`, `uniq` with an output file operand, and inside an awk program
-   `system()`, output redirection, `getline` from a command or a pipe to a command; no
-   output is ever written into an audited tree.
-   When a question needs a run, the repository's own test or lint commands run only in a
-   directly read working tree, never in an export under `trees/`; there the question is
-   `not run`. A diff always names two commits; a two-dot diff is never used; `git status`
-   is not run.
+2. The repository's own test or lint commands run only in a directly read working tree,
+   never in an export under `trees/`; there the question is `not run`.
 3. The Grep and Glob tools run only in an export or in the run directory.
 4. You never ask for or use a live system or a credential. The check goes in the finding's
    `live check` field.

@@ -2,10 +2,7 @@
 
 `/audit:resume <run-id> [--from <stage>] [--live <file>]` reruns an audit from a stage,
 reusing only the outputs whose inputs have not changed: it never reuses a stale stage and
-never throws away a finished one. The first stage to rerun is the earliest of the
-`--from` stage; the first stage whose entry is missing, not complete, or lists a missing
-output; stage 5 when `ledger/inventory.txt` is missing; the first stage whose inputs
-changed; and stage 1 when a direct tree or a working-tree bundle changed. With `--live`,
+never throws away a finished one. Step 6 picks the first stage to rerun. With `--live`,
 resume first imports the user's live check results, and a result reruns the stages that
 review it (`${CLAUDE_PLUGIN_ROOT}/skills/audit/live.md`). The orchestrator reads this file
 when the invocation block says `command: resume`; the rules of
@@ -153,7 +150,7 @@ when the invocation block says `command: resume`; the rules of
    - The pinned sha of every reference and source of truth, resolved again as stage 1
      did through the brief's ref mapping lines; a change invalidates stage 1.
    - Upstream stage outputs, by `git hash-object --no-filters <file>`.
-   - `plugin_version`, compared with the literal `"0.1.23"`; any other recorded value
+   - `plugin_version`, compared with the literal `"0.1.24"`; any other recorded value
      invalidates stage 1. With `--live`, a recorded `plugin_version` other than the
      current one does not invalidate stage 1 when every other input of stage 1 is
      unchanged. The final entry of the first rerun stage then records the recorded and
@@ -222,8 +219,9 @@ when the invocation block says `command: resume`; the rules of
      `pass1/<scope>.md` (stage 4) or `pass2/<scope>.md` (stage 5) whose last line is
      `status: complete` and whose `consumed:` hashes each equal the hash of that file now
      is kept where it is, from `git hash-object --no-filters <file>`: it is not moved and
-     gets no record in the `superseded` list. A file that fails either test, or has no
-     `## Claims` (stage 4) or `## Claims challenged` (stage 5) heading, moves as above. The rerun stage launches only the scopes with no kept file and lists the kept
+     gets no record in the `superseded` list. A file that fails either test, or is a
+     failed output (`common.md`, "Output contract"), moves as above, and so does every
+     `pass2/<scope>-topup.md`. The rerun stage launches only the scopes with no kept file and lists the kept
      files among its outputs.
    - When the first rerun stage is 1 and its entry is missing or `running`, supersede the
      stage 1 outputs that exist the same way.

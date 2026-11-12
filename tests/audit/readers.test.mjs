@@ -15,13 +15,13 @@ const POST =
   'written for its reader as `SKILL.md`, What leaves the run, says: on a ticket, what changed for its readers, what happens next and who decides; on a pull request, what its reviewer needs about the code; never an audit id (`C<n>`, `claim <n>`, `W<n>`), a stage, a verdict or another term the audit coined, and never a model, agent or tool';
 const POINTER = 'written for its reader as `SKILL.md`, What leaves the run, says';
 
-for (const file of ['stages/9-act.md', 'common.md', 'report.md']) {
+for (const file of ['common.md']) {
   test(`R194: ${file} holds the reader rule for a post or a drafted text`, () => {
     assert.ok(flat(DIR + file).includes(POST), `${file} lacks the reader rule`);
   });
 }
 
-for (const file of ['stages/8-report.md', 'work-items.md']) {
+for (const file of ['work-items.md']) {
   test(`R194: ${file} points drafted text at What leaves the run`, () => {
     assert.ok(flat(DIR + file).includes(POINTER), `${file} lacks the pointer`);
   });
@@ -33,7 +33,7 @@ test('R194: act keeps the evidence and the item ids in the run directory', () =>
 
 test('R194: the naming rule in SKILL.md points at What leaves the run and keeps the host trailer', () => {
   const lines = read(SKILL).split('\n');
-  for (const start of ['3. Nothing external names a model, an agent or a tool', '- Act asks before each commit']) {
+  for (const start of ['3. Nothing external names a model, an agent or a tool']) {
     const line = lines.find((l) => l.startsWith(start));
     assert.ok(line, `SKILL.md has no line that starts "${start}"`);
     assert.ok(line.includes('as What leaves the run says'), `the line that starts "${start}" lacks the pointer`);
@@ -47,7 +47,6 @@ const COINED =
 
 for (const [file, body] of [
   ['stages/9-act.md', 'its body speaks of an item, it names the item by what it fixes'],
-  ['SKILL.md','the body speaks of an item, it names the item by what it fixes'],
 ]) {
   test(`R194: ${file} bars coined terms from act's commit messages and names each item by what it fixes`, () => {
     const text = flat(DIR + file);

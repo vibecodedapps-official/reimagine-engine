@@ -65,16 +65,12 @@ restate the finding schema or the output contract.
    and never enter `ledger/5.md`; a new finding from a broken entry is a finding like any
    other.
 
-4. **On each completion.** Record tokens and duration labeled "task notification,
-   subagent_tokens; scope not documented". The adversary failed when it returned an error,
-   its file is missing, its last line is not `status: complete`, it has no
-   `## Claims challenged` heading, or step 3 found a missing verdict or claims line. A `_test` `fail` entry with role `adversary` and this scope or
-   `any` turns the scope's first `times` completions into failures. Ladder (SKILL.md,
-   Roles): relaunch on the same model; then on `opus`, or on `sonnet` for a role already on
-   `opus`, recorded as a swap; then the scope fails and its findings have no pass-two
-   verdict. Check the budget before every launch
-   (SKILL.md, Soft budget); once it has expired, launch nothing and record each scope not
-   run.
+4. **On each completion.** Record tokens and duration, labeled as SKILL.md, Usage, says.
+   The adversary failed as SKILL.md, Roles, says, or when step 3 found a missing verdict
+   or claims line. A `_test` `fail` entry with role `adversary` and this scope or `any`
+   turns the scope's first `times` completions into failures. Ladder (SKILL.md, Roles); a
+   failed scope's findings have no pass-two verdict. Check the budget before every launch
+   (SKILL.md, Soft budget); once it has expired, record each scope not run.
 
 5. **Map corrections.** Once every adversary has finished or failed:
    1. Collect every `## Map corrections` entry and open its source quote at the pinned
@@ -177,8 +173,7 @@ restate the finding schema or the output contract.
    through step 6 with the same temporary file and move, so stage 8 can use them.
 
 8. **Read-only check.** Run the check of SKILL.md (Read-only check), which writes
-   `baseline/5-check.md`. An ignored-file difference from an adversary or top-up with
-   Bash is pending until its `runs:` heading settles it.
+   `baseline/5-check.md`.
 
 9. **Entry last.** Once the check has passed, write the stage 5 entry (SKILL.md, State
    files): status; inputs; outputs, every `pass2/` file, each `.r2.md`,

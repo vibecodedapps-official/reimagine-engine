@@ -81,16 +81,12 @@ and the scope's questions.
 
 1. You write your output file and, in your scratch folder, raw command output, nothing
    else, as `## Output contract` allows. Rewriting means writing the whole file again.
-2. Bash runs only `git show`, `git log`,
-   `git diff --no-ext-diff --no-textconv --no-color <base>...<head>`, `git grep`,
-   `git ls-files`, `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with
-   `-t`, `-s` or `-p`, `git branch --list`, `rg`, `ls`, their `git -C <repo>` forms, and
-   `git hash-object --no-filters <file>` for the `consumed:` list. For a byte range you may
-   also pipe `git show` output, or `cat` of the one file under the export path, through
-   `tail -c +<n>` and `head -c <n>` with at most 24,000 bytes, measure with `sed '$d'` and
-   `wc -c`, and number lines with the one `awk` program of step 4. No other pipe stage, no
-   other `sed` or `awk` use, and no test or lint run. A diff always names two commits; a
-   two-dot diff is never used; `git status` is not run.
+2. Of the commands of `common.md` hard rule 2, Bash runs only the git commands, `rg` and
+   `ls`. For a byte range you may also pipe `git show` output, or `cat` of the one file
+   under the export path, through `tail -c +<n>` and `head -c <n>` with at most 24,000
+   bytes, measure with `sed '$d'` and `wc -c`, and number lines with the one `awk`
+   program of step 4. No other pipe stage, no other `sed` or `awk` use, and no test or
+   lint run.
 3. The Grep and Glob tools run only in an export or in the run directory.
 4. You never ask for or use a live system or a credential. A rule that only a live system
    could settle is marked `needs a live check`.

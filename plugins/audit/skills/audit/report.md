@@ -8,10 +8,7 @@ are those of the ledger files and `converged.md`.
 `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/8-report.md` says where each part comes from
 and how the counts and the verdict are computed; this file fixes the layout.
 
-The items come from `converged.md` when its check passed (the stage 7 entry records
-`"converged_check": "pass"`), else from the ledger files with every gate recomputed by
-`ledger.sh gate`, else from the pass-one and pass-two files with every item
-`provisional`. Beside the report, stage 8 writes `work-items.jsonl` (format in
+Beside the report, stage 8 writes `work-items.jsonl` (format in
 `${CLAUDE_PLUGIN_ROOT}/skills/audit/work-items.md`), validated by `work-items.sh check`
 and never applied, and `claims-verdicts.md`, the verdicts returned to the build session
 (format in `stages/8-report.md`).
@@ -48,9 +45,7 @@ with one empty line. `08-decisions.md` and `10-claims.md` are written by
 `scripts/report.sh parts`, and so is `claims-verdicts.body.md`, which is no part of the
 body: it holds the entries of `claims-verdicts.md`, in which a claim whose evidence
 names report items has `finding:` and `evidence:` both set to those items, `C1, C2`
-when it names two. The script reads only pass files that end `status: complete`, skips
-blank list lines, and stops on a repeated claim number or a pass file missing its claims
-heading. The other parts are written by hand.
+when it names two. The other parts are written by hand.
 
 Section 8 is `08-decisions.md`, then `08-other.md` under `### Other decisions`. Each
 pass-one entry line is copied as written, followed by its pass-two line, or
@@ -101,11 +96,11 @@ Other sentences, counted and not listed: <n>
 ## Partial and blocked runs
 
 - When a stage failed or the budget expired, the report is still written from what is
-  on disk, by the item sources above. Every finding that has not passed the review gate
-  is marked `provisional`. The verdict is `audit incomplete`, with the counts so far,
-  never `ready to merge`, and the terminal state is `partial`.
-- When no report can be written, or a read-only check failed, the run is `blocked`: this
-  template is not used, and the reason is printed.
+  on disk, by the item sources of `stages/8-report.md`, step 2. Every finding that has
+  not passed the review gate is marked `provisional`. The verdict is `audit incomplete`,
+  with the counts so far, never `ready to merge`, and the terminal state is `partial`.
+- When no report can be written, or a read-only check before stage 8 failed, the run is
+  `blocked`: this template is not used, and the reason is printed.
 
 ## Body
 
@@ -132,38 +127,27 @@ only the head holds, or changes, is named as not applied.
 
 ### 1. Verdict
 
-`not ready` when a counted item is `blocker` or `high`; else `merge after fixes` when a
-counted item is `medium`; else `ready to merge`. A `partial` run says `audit incomplete`.
 The counts come first, then the verdict, then the rule that decided it, so a reader can
-check it.
+check it. `stages/8-report.md`, steps 4 and 5, count the items and decide the verdict.
 
 Counts table: for each severity (blocker, high, medium, low, note), the number of items
 by gate (`counts`, `provisional`) and by disposition (`agreed`, `contested`,
-`dismissed`). A contested item counts at the severity the counting rule gives: equal
-severities at that severity; with one `dropped` position only when the keeping position
-is `verified fact`; otherwise the higher severity when its position is `verified fact`,
-else the lower. `provisional` and `dismissed` items never count. Severities are those
-after a `REVIEW.md` calibration, an item a `REVIEW.md` rule holds is `provisional`, and an
-item one skips is in no count (`stages/8-report.md`, step 2).
+`dismissed`).
 
 The verdict line reads:
 
 `verdict: <verdict> | counted: <n> blocker, <n> high, <n> medium, <n> low, <n> note | provisional: <n> | contested: <n> | dismissed: <n>`
 
 After the verdict line, a plain line `next:` heads the closing lines that stage 8 prints
-at its end, the same lines here and there: `act first:`, the ordered plan of section 5
-(two to five numbered steps, each with a reason clause), the `/audit:act <run-id> <ids>`
-line, the `recommended: /audit:act` line with its `reason:` lines only when its ids
-differ, `your decision:`, and the `/audit:resume <run-id> --live <file>` line when the
-run is eligible for one. The plan names the contested and decision items it takes and
-why; contested items keep their status and the user chooses. Decision entries stay off
-both act lines. Each labeled line starts with its label; each plan step is one plain line
-starting `1. `, `2. ` and so on, with no heading or nested item block. No line of the
-block starts with `#### C`, `- claim ` or `#### live `, which `work-items.sh`,
-`memory.sh` and `live.sh` parse, and the block adds no `###` or `####` heading. It is
-part of the body the revision hashes, written from the report's own content and the
-stage entries. When the run has no entry in `runs.json`, the closing says that the
-`/audit:act` and `--live` lines need the entry added first.
+at its end (`stages/8-report.md`, step 14), the same lines here and there: `act first:`,
+the plan, the `/audit:act` line, the `recommended:` line with its `reason:` lines,
+`your decision:`, and the `--live` line when the run is eligible for one. Each labeled
+line starts with its label; each plan step is one plain line starting `1. `, `2. ` and so
+on, with no heading or nested item block. No line of the block starts with `#### C`,
+`- claim ` or `#### live `, which `work-items.sh`, `memory.sh` and `live.sh` parse, and
+the block adds no `###` or `####` heading. It is part of the body the revision hashes.
+When the run has no entry in `runs.json`, the closing says that the `/audit:act` and
+`--live` lines need the entry added first.
 
 ### 2. Findings by ticket
 
@@ -199,9 +183,8 @@ and the severity the counting rule counted it at. No side is picked.
 
 ### 5. Recommended next steps
 
-Ordered: what to fix before merge, what to check live, what to record for later work.
-The two to five numbered steps with their reasons, the same as in `next:` and the
-closing, naming the contested or decision items the plan takes and why.
+The ordered plan of `stages/8-report.md`, step 14, the same as in `next:` and the
+closing.
 
 ### 6. Code fixes
 
@@ -210,11 +193,7 @@ By repository, then file: each change, with the item ids it resolves.
 ### 7. Work-item fixes
 
 Per ticket: the ticket text to change, drafted, with the item ids beside it, never in it.
-Drafted text is written for its reader as `SKILL.md`, What leaves the run, says: on a
-ticket, what changed for its readers, what happens next and who decides; on a pull
-request, what its reviewer needs about the code; never an audit id (`C<n>`, `claim <n>`,
-`W<n>`), a stage, a verdict or another term the audit coined, and never a model, agent
-or tool.
+Drafted text is written for its reader as `common.md` hard rule 3 says.
 
 Then each operation of `work-items.jsonl`, one line each: its `W<n>` id, the op, the
 target, the item ids it covers and its reason. These are drafts for a person or an
@@ -225,11 +204,11 @@ adapter; act applies none of them.
 Three parts.
 
 - Decision ledger: each `decision` claim with its class (`stale deferral`,
-  `needs <owner>`, `default taken` or `evidenced`), resolution, authority, whether
-  alternatives were weighed, reversibility class, the recommendation and the owner. The
-  auditor's position and the adversary's follow, or `not challenged` when pass two wrote
-  no line for the entry; when they differ both are kept and no side is picked. A claim
-  that is `not assessed` is listed with that mark only.
+  `needs <owner>`, `default taken` or `evidenced`), resolution, authority, evidence,
+  whether alternatives were weighed, reversibility class, the recommendation and the
+  owner. The auditor's position and the adversary's follow, or `not challenged` when
+  pass two wrote no line for the entry; when they differ both are kept and no side is
+  picked. A claim that is `not assessed` is listed with that mark only.
 - Raised tickets: each `scope` claim with whether the bundle introduced it, whether the
   fix lies inside the bundle's repositories, cost, the recommendation (`include` or
   `defer`) and its reason, the handoff's ranking, and whether the facts and the
@@ -243,7 +222,8 @@ Three parts.
   decision to its ticket as a drafted comment only when the user says so for that item.
 
 Decision and scope entries are report entries, not findings: they get no item id, never
-enter a ledger and never change the counts.
+enter a ledger and never change the counts; a finding an entry names in its `finding:`
+field is in section 2 like any other.
 
 ### 9. Live checks
 
@@ -279,10 +259,11 @@ result itself, `false, contradicted` only with counter-evidence, and otherwise
 `not verified, not reproduced` with the reason. An environment claim always needs a live
 check: without a result it is `not verified, not reproduced`, reason
 `needs a live check: env <name>`. A claim with a live result takes its derived verdict,
-`contested` when the late review overturned it, or `not verified, not reproduced` when
-the late review gave no line. One line says that reproducing a stated result does not
-show that the build session ran its stated check. Where the auditor's and the
-adversary's verdicts differ, both are shown and the claim is `contested`.
+`contested` when the late review overturned it, or `not verified, not reproduced`, reason
+`live result not challenged`, when the late review gave no line. One line says that
+reproducing a stated result does not show that the build session ran its stated check.
+Where the auditor's and the adversary's verdicts differ, both are shown and the claim is
+`contested`.
 
 `claims-verdicts.md`, beside this report, carries these verdicts back to the build
 session, where `/audit:handoff --verdicts` applies the ones whose file hash and claim
@@ -292,8 +273,8 @@ text still match.
 
 A run record.
 
-- Handoffs: each handoff claims file, its hash, and whether `handoff.sh check`
-  validated it.
+- Handoffs: each handoff claims file, its path, its hash, and whether
+  `handoff.sh check` validated it.
 - Work items: the `work-items.sh check` result for `work-items.jsonl`: `work-items: ok`;
   or the error lines and that the file is not ready for an adapter; or that it was not
   validated, and why.
@@ -340,8 +321,8 @@ A run record.
   chunk id (`digest-N`) that covered it, with that chunk's status.
 - Unanswered questions, and questions marked "not run".
 - Map corrections not applied, from `ledger/5.md`.
-- Departures from the stage plan, such as the low tier's single auditor covering the
-  ticket, the tests and work-item hygiene.
+- At low tier, that one auditor covered the ticket, the tests and work-item hygiene; and
+  any other departure from the stage plan.
 - Read-only check: each `baseline/<stage>-check.md` result for stages 1 to 7, and every
   ignored file accepted, with the run that wrote it. What the check does not detect: an ignored file
   replaced at the same size with a restored modification time; changes inside `.git/`

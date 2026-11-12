@@ -36,13 +36,11 @@ branch to it in the manifest."
       on.
 
    b. **Read the request and the manifest.** The invocation block's `request:` line
-      gives the effort hint (`effort low|medium|high`, or a tier word standing as its own
-      phrase), the budget (`budget <n> minutes`), and model overrides
-      (`<role> on <model>`, the role one of digester, mapper, auditor, adversary, merger,
-      second opinion, the model one of opus, sonnet, haiku, fable). The manifest gives
-      `questions`, `claims`, `budget`, `max_agents` and `models`. A value from the
-      request wins over the manifest's for the same key or the same role; nothing else
-      is read from the request. Read the manifest when `manifest:` is not `none`.
+      gives the effort hint, the budget and model overrides (SKILL.md, Invocation
+      block). The manifest gives `questions`, `claims`, `budget`, `max_agents` and
+      `models`. A value from the request wins over the manifest's for the same key or the
+      same role; nothing else is read from the request. Read the manifest when
+      `manifest:` is not `none`.
       Relative paths in it are relative to its own directory; relative paths in the
       inputs are relative to the session's directory. Under `/audit:resume`, ignore
       `manifest: none` and `inputs:` and rebuild both from the `source` key of the run's
@@ -294,7 +292,7 @@ branch to it in the manifest."
       cases.
 
    n. **Completion record.** Write `stages.json` through `stages.json.tmp` and
-      `mv -f`, with `plugin_version` `0.1.23`, empty `approvals`, and a stage 1 entry
+      `mv -f`, with `plugin_version` `0.1.24`, empty `approvals`, and a stage 1 entry
       with status `running` whose inputs are the `git hash-object --no-filters` hashes
       of `manifest.json`, each claims file, the questions file and each `file:` export,
       and `plugin_version`. Record the stage's start time for the budget.
@@ -362,11 +360,9 @@ branch to it in the manifest."
 
    b. **Baseline.** Create `baseline/` in the run directory. For each audited repository
       `<name>`, once even when it has several roles, run
-      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`.
-      It writes `baseline/<name>.marker`, `.status`, `.refs`, `.stash`, `.config`,
-      `.hashes` and `.ignored`, and refuses a partial clone in the repository or nested in
-      it, a checked-out submodule included. A non-zero exit ends the run `blocked` with
-      the script's message, since the boundary cannot be checked.
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/readonly.sh" snapshot <repo> <run dir> <run dir>/baseline/<name>`
+      (SKILL.md, Read-only check). A non-zero exit ends the run `blocked` with the
+      script's message, since the boundary cannot be checked.
 
    c. **Working-tree head.** For each bundle with `head: working-tree`, run
       `sh "${CLAUDE_PLUGIN_ROOT}/scripts/working-tree.sh" build <repo>`. It builds a commit
@@ -530,10 +526,8 @@ branch to it in the manifest."
          `sh "${CLAUDE_PLUGIN_ROOT}/scripts/revert-tests.sh" wait <run dir>/revert/<bundle>.md`
          in the foreground with the Bash tool's `timeout` at 600000. It returns within
          nine minutes; while it exits 3 (still running), run it again, at most eight
-         times in all. Never end the turn while the run is in the background: in a
-         headless session the end of the turn ends the session. A completion notice for
-         the background call changes nothing; `wait` decides, and answers at once when
-         the run is done.
+         times in all, without ending the turn (SKILL.md, Terminal states). A completion notice for the background
+         call changes nothing; `wait` decides, and answers at once when the run is done.
       3. `wait` exit 0: the result file is written, whatever its verdicts. Exit 2: stop
          the run with its stderr line. After the eighth exit 3, stop the run with
          `revert-tests: no result after 72 minutes` and the background call's output
@@ -588,14 +582,9 @@ branch to it in the manifest."
    manifest's name (0g). The handoff's other lines are not listed. A prose file is
    split into sentences in file order; headings, list items and table cells count as
    sentences, a sentence across lines takes its first line, and nothing is dropped.
-   Each checkable statement about the work gets the first kind that applies:
-   1. `verification`: something was checked, tested, verified, confirmed, reproduced,
-      or passes;
-   2. `decision`: a choice made or rejected, a deferral, or who decided;
-   3. `scope`: what belongs in or out of the bundle, or a ticket's rank for inclusion;
-   4. `status`: a work item's type, state, iteration, owner or links;
-   5. `code`: any other checkable statement about code, data or behavior.
-   Anything else is `other`. Tag each line with its bundle and ticket, or `none`.
+   Each checkable statement about the work gets the first kind that applies
+   (`common.md`, "Claim kinds"). Anything else is `other`. Tag each line with its bundle
+   and ticket, or `none`.
    `<ticket>` is the manifest's normalized id when the handoff id maps to one. Step 9
    appends the target.
 
@@ -775,8 +764,9 @@ branch to it in the manifest."
        empty map when it read none); `agents`, `swaps` and
        `superseded` empty unless resume recorded moves.
 
-    g. **Boundary.** Print the stage boundary line (SKILL.md, Soft budget). With a budget
-       of 0, or `_test` `expire_budget_after_stage: 1`, the budget has now expired.
+    g. **Boundary.** Print the stage boundary line (SKILL.md, Stage order and control
+       flow). With a budget of 0, or `_test` `expire_budget_after_stage: 1`, the budget
+       has now expired.
 
 With the budget expired, record stages 2 to 7 as SKILL.md, Soft budget, says and read
 `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/8-report.md` next. Otherwise stages 2, 3 and 4

@@ -81,15 +81,12 @@
 #   ends the file inside an open fence ends with a closing fence line while its
 #   existence check still exits 0. Output and exit status are compared with literal
 #   text.
-# - The stage 6 section of skills/audit/SKILL.md writes the mandatory set into
-#   `tmp/mandatory.txt`, moves it only on exit 0, and names `## Additions` for the first
-#   batch's `### X<n>:` additions.
-# - The command list in hard rule 2 of skills/audit/common.md and in Boundaries item 2
-#   of agents/auditor.md, adversary.md, mapper.md and digester.md, read as one line,
-#   names `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with `-t`,
-#   `-s` or `-p`, and `git branch --list`; all but the digester's also name `cut`,
-#   `uniq` and `cat` of an exported file, and bar `sort -o`, `--output` or
-#   `--compress-program` and `uniq` with an output file operand.
+# - skills/audit/stages/6-second-opinion.md, read as one line, moves the mandatory set
+#   only on exit 0.
+# - The command list in hard rule 2 of skills/audit/common.md, read as one line, names
+#   `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with `-t`, `-s` or
+#   `-p`, `git branch --list`, `cut`, `uniq` and `cat` of an exported file, and bars
+#   `sort -o`, `--output` or `--compress-program` and `uniq` with an output file operand.
 # - The default rank in skills/audit/stages/1-orient.md lists `AGENTS.md`, `CLAUDE.md`,
 #   `README.md`, `docs/`, `.claude/rules/`, `.claude/skills/` and `REVIEW.md` in that
 #   order, and says `REVIEW.md` is read at the pinned base with `git show <base>:<path>`;
@@ -127,8 +124,8 @@
 #   skills/audit/common.md and rule 3 of skills/audit/SKILL.md keep it too; each file is
 #   read as one line.
 # - The roles table in skills/audit/SKILL.md carries the swap rung off the top tier and
-#   the second opinion row defaults to opus; the stage 6 summary line in that file and
-#   the README's second opinion row carry the same ladder; no stage 2 to 7 file says
+#   the second opinion row defaults to opus; the README's second opinion row carries the
+#   same ladder; no stage 2 to 7 file says
 #   "on `fable`" or "model: fable".
 #
 # Exit 0 when every check passes. Otherwise print one line per failure and exit 1.
@@ -666,28 +663,20 @@ code
 exit 0'
 fi
 
-# The command list of hard rule 2 and of each Bash agent's Boundaries item 2 holds the
-# read-only git commands agents use; all but the digester's also hold the pipe stages
-# cut and uniq and cat of an exported file, and bar the sort and uniq forms that write
-# a file.
-for f in skills/audit/common.md agents/auditor.md agents/adversary.md agents/mapper.md agents/digester.md; do
-	[ -f "$f" ] || continue
-	case $f in
-	skills/*) s='^2[.] [*][*]Prevention and detection' ;;
-	*) s='^2[.] Bash runs only' ;;
-	esac
+# The command list of hard rule 2, which every agent definition points at, holds the
+# read-only git commands agents use and the pipe stages cut and uniq and cat of an
+# exported file, and bars the sort and uniq forms that write a file.
+f=skills/audit/common.md
+if [ -f "$f" ]; then
+	s='^2[.] [*][*]Prevention and detection'
 	step "$f" "$s" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	[ -s "$tmp/list" ] || fail "$f: no command list matching $s"
-	set -- '`git rev-parse`' '`git merge-base`' '`git ls-tree`' \
-		'`git cat-file` with `-t`, `-s` or `-p`' '`git branch --list`'
-	case $f in
-	agents/digester.md) ;;
-	*) set -- "$@" '`cut`' '`uniq`' '`cat` of an exported file' '`sort -o`, `--output` or `--compress-program`' '`uniq` with an output file operand' ;;
-	esac
-	for c in "$@"; do
+	for c in '`git rev-parse`' '`git merge-base`' '`git ls-tree`' \
+		'`git cat-file` with `-t`, `-s` or `-p`' '`git branch --list`' \
+		'`cut`' '`uniq`' '`cat` of an exported file' '`sort -o`, `--output` or `--compress-program`' '`uniq` with an output file operand'; do
 		grep -qF "$c" "$tmp/list" || fail "$f: the command list lacks $c"
 	done
-done
+fi
 
 # The default rank, the required checks and the instruction files read before a change
 # name the rules and skills directories and REVIEW.md at the base; each file is read as
@@ -742,8 +731,8 @@ if [ -f "$f" ]; then
 		fail "$f: 0d does not give the file ticket slug example"
 fi
 # The run id's slug is the first bundle's repository name and then its pull request number
-# or its branch, with one worked example of each; each file is read as one line.
-for f in skills/audit/stages/1-orient.md skills/audit/SKILL.md; do
+# or its branch, with one worked example of each; the file is read as one line.
+for f in skills/audit/stages/1-orient.md; do
 	[ -f "$f" ] || continue
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "the slug is the first bundle's repository name, then its pull request number (an export's \`id\`) for a pull request bundle, or its branch for a branch bundle, joined with \`-\`, the whole slugged and cut at 40 characters" "$tmp/list" ||
@@ -795,12 +784,9 @@ for f in skills/audit/audit-evidence.md:'becomes a finding only when it names th
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF "$s" "$tmp/list" || fail "$f: the bar on a lead or a named row is gone"
 done
-# A pass report without its claims heading is a failed output, which report.sh skips: the
-# stage fails it and resume does not keep it.
-for f in skills/audit/stages/4-pass-one.md:'when its last line is not `status: complete`, or when it has no `## Claims` heading' \
-	skills/audit/stages/5-pass-two.md:'its last line is not `status: complete`, it has no `## Claims challenged` heading' \
-	skills/audit/resume.md:'or has no `## Claims` (stage 4) or `## Claims challenged` (stage 5) heading, moves as above' \
-	skills/audit/common.md:'and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
+# A pass report without its claims heading is a failed output, which report.sh skips; the
+# stages and resume take the rule from common.md.
+for f in skills/audit/common.md:'A missing file, or one whose last line is not `status: complete`, is a failed output, whatever the agent returned, and so is a pass-one file without `## Claims` or a pass-two file other than a map-correction `-topup.md` without `## Claims challenged`' \
 	skills/audit/audit-evidence.md:'A scope with no claim assigned writes the heading and the one line `none`.' \
 	agents/auditor.md:'with no claim assigned, the heading and the one line `none`'; do
 	s=${f#*:}
@@ -846,13 +832,12 @@ if [ -f "$f" ]; then
 		fail "$f: does not say a late completion notification changes nothing"
 	grep -qF 'for an agent this session did not launch, such as one an earlier session launched, also changes nothing' "$tmp/list" ||
 		fail "$f: does not say a completion notification for an unlisted agent changes nothing"
-	# Stage 6 builds the mandatory set in tmp/ and moves it on exit 0, and files the
-	# first batch's additions under ## Additions in ledger/6.md.
-	tr -d '\r' < "$f" | awk '/^## Stage 6: second opinion$/ { on = 1; next } /^## / { if (on) exit } on' |
-		tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
-	for s in 'into `tmp/mandatory.txt`' 'only on exit 0' '`## Additions`: the `### X<n>:` additions'; do
-		grep -qF "$s" "$tmp/list" || fail "$f: the stage 6 section does not name '$s'"
-	done
+fi
+# Stage 6 moves the mandatory set into ledger/ only on exit 0; the file is read as one line.
+f=skills/audit/stages/6-second-opinion.md
+if [ -f "$f" ]; then
+	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
+	grep -qF 'only on exit 0' "$tmp/list" || fail "$f: does not move the mandatory set only on exit 0"
 fi
 # The roles table carries the swap rung off the top tier and the second opinion row
 # defaults to opus; no stage file names the top tier as a default or a fallback.
@@ -863,8 +848,6 @@ if [ -f "$f" ]; then
 		fail "$f: the roles table does not carry the swap rung off the top tier"
 	grep -qF '| opus | per batch: relaunch on sonnet, or on opus for a second opinion already on sonnet, a swap; then stage 6 fails |' "$tmp/list" ||
 		fail "$f: the second opinion row does not default to opus with the sonnet relaunch"
-	grep -qF 'follows the ladder: relaunch on sonnet, or on opus for a second opinion already on sonnet, then stage 6 fails.' "$tmp/list" ||
-		fail "$f: the stage 6 summary does not follow the roles table's second opinion ladder"
 fi
 f=README.md
 if [ -f "$f" ]; then
@@ -910,9 +893,9 @@ for f in skills/audit/stages/9-act.md skills/audit/common.md skills/audit/SKILL.
 done
 
 # Coverage lists stages 1 to 7 with the checks each accepted, and stage 8's line is one
-# fixed sentence, since stage 8's own check runs after the report is hashed; the files
-# are read as one line.
-for f in skills/audit/report.md skills/audit/stages/8-report.md; do
+# fixed sentence, since stage 8's own check runs after the report is hashed; the file is
+# read as one line.
+for f in skills/audit/report.md; do
 	if [ -f "$f" ]; then
 		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 		grep -qF 'Stage 8: its read-only check runs after this report is hashed; its result is in `baseline/8-check.md`.' "$tmp/list" ||
@@ -940,7 +923,7 @@ done
 
 # Section 3 names its cut by tier: every item in full at low tier; at medium and high tier
 # the challenged items in full and the others as a cut first line with the pass-one path.
-for f in skills/audit/report.md skills/audit/stages/8-report.md; do
+for f in skills/audit/report.md; do
 	if [ -f "$f" ]; then
 		tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 		grep -qF 'every Verified OK item shows in full.' "$tmp/list" ||

@@ -68,8 +68,9 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    `<run dir>/tmp/agents/<stage>-<scope>[-<n>]/`, which its prompt names, and keeps it
    raw. The digester keeps its narrower byte-range rule.
 
-   A diff always names two commits. A `git diff` against the working tree refreshes the
-   index even with `--no-optional-locks`, so it never runs. In a bundle with
+   A diff always names two commits, and a two-dot diff is never used. A `git diff` against
+   the working tree refreshes the index even with `--no-optional-locks`, so it never runs,
+   and an agent never runs `git status`. In a bundle with
    `head: working-tree`, `git grep` always names the head sha, since a plain `git grep`,
    or `rg` over `git ls-files`, misses the untracked files that belong to the head.
 
@@ -306,9 +307,9 @@ section it opened, with the path and the reason, one per line. It is not a `runs
 entry: the merger has no shell, and `runs:` holds only commands, directories and exit
 statuses, or `none`.
 
-A file whose last line is not `status: complete` is a failed output, whatever the agent
-returned, and so is a pass-one file without `## Claims` or a pass-two file other than a
-map-correction `-topup.md` without `## Claims challenged`.
+A missing file, or one whose last line is not `status: complete`, is a failed output,
+whatever the agent returned, and so is a pass-one file without `## Claims` or a pass-two
+file other than a map-correction `-topup.md` without `## Claims challenged`.
 
 ```
 runs:

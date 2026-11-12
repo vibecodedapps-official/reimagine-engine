@@ -17,12 +17,10 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
 
 ## Steps
 
-1. **Budget and entry.** When the budget has expired, stage 7 does not start: write its
-   entry `failed` with the reason "not run: budget expired" (`SKILL.md`, "Soft budget")
-   and go to stage 8. Otherwise write the stage 7 entry as `running` with its input
-   hashes. Before every launch in this stage check the budget again; once it has
-   expired, launch nothing more, let the running agents finish, and go to stage 8
-   (`SKILL.md`, "Soft budget").
+1. **Budget and entry.** When the budget has expired, stage 7 does not start
+   (`SKILL.md`, "Soft budget"). Otherwise write the stage 7 entry as `running` with its
+   input hashes. Before every launch in this stage check the budget again (`SKILL.md`,
+   "Soft budget").
 
 2. **The late adversary.** It runs at medium and high, and at low only when
    `live/findings.md` or `live/claims.md` exists; at low it challenges only the live ids
@@ -84,9 +82,8 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
    5. Failure: an error, a nonzero exit or any line from `late-check`, a missing
       `status: complete`, or a live true claim without its line. A `_test.fail` entry
       with `role: adversary` and scope `late` or `any` applies (`SKILL.md`, "Fault
-      injection"). Ladder: relaunch on the same model; then on `opus`, or on `sonnet` for a
-      role already on `opus`, recorded as a swap; then the late scope fails. A failed scope
-      is recorded with its coverage loss, every id the list holds; the late additions stay
+      injection"). Follow the ladder (`SKILL.md`, "Roles"). A failed scope is recorded
+      with its coverage loss, every id the list holds; the late additions stay
       provisional, and the merger still runs. The outcome for the steps below is `complete`
       or `failed`.
 
@@ -363,7 +360,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
 12. **Write the stage 7 entry last,** once the read-only check has passed, as
     `SKILL.md`, "State files", says: status; inputs with hashes, the live inputs by hash
     or `absent`; outputs; agents with requested model, scope, times, result and tokens
-    labeled "task notification, subagent_tokens; scope not documented"; swaps; the mode
+    labeled as `SKILL.md`, "Usage", says; swaps; the mode
     with the byte total, the largest slice and the threshold, and each part marked
     `over threshold`;
     `converged_check`, absent when no merge was attempted; failed scopes with their

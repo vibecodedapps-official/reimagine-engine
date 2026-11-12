@@ -161,13 +161,14 @@ Whichever agent files it:
   producer survives integration: the head leaves the producer as it is, and the base's
   version produces a form the change does not match. The leads are the merge-base-to-base
   commit range, never commits picked by author date. When the brief says the base was not
-  fetched, the finding says the base read may be stale. A change on the base is not a
-  deleted feature.
+  fetched ("base: local ref, refresh declined"), the finding says the base read may be
+  stale. A change on the base is not a deleted feature.
 - An open pull request candidate is a lead. Journal keys that differ, shown by quoted
   runner lines, clear it; keys that match, or no runner found, give a finding on the new
   script, labeled `unverified assumption`, at most `medium`. The finding states the forge
-  fact, the other pull request's URL and path, apart from its effect, that where both
-  merge the runner applies one script and skips the other, or fails. Its `live check`
+  fact, the other pull request's URL and path and that the brief read the list at stage 1,
+  first and apart from its effect, that where both merge the runner applies one script and
+  skips the other, or fails. Its `live check`
   asks which pull request merges first and, when no runner was found, how the runner keys
   its journal. A `cut` row, a `cut-list` row or `open PRs not read` is a gap in what could
   be checked, never a finding.

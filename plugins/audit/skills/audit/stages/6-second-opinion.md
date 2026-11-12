@@ -19,9 +19,8 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
 ## Steps
 
 1. **Check the budget, then write the entry.** Stage 6 always runs unless the budget has
-   expired; then nothing launches, the stage 6 entry is written `failed` with "not run:
-   budget expired", and the run goes to stage 8. Otherwise write the stage 6 entry as
-   `running` with its input hashes (`git hash-object --no-filters <file>`): `ledger/5.md`
+   expired; then it does not start (SKILL.md, Soft budget). Otherwise write the stage 6 entry as `running` with
+   its input hashes (`git hash-object --no-filters <file>`): `ledger/5.md`
    and each run-directory input above, and each live input by its hash or `absent` when
    it does not exist. The result copies are not hashed, as `live.md` says. A live input
    that goes from absent to present, or back, is a change that reruns the stage on
@@ -82,8 +81,9 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
    answer the request as it asks, write the answer to the output file itself, and end
    that file with `status: complete`. Launch every batch at once, within the queue cap
    (`max_agents`); a batch that does not fit waits for a free slot, and a relaunch goes
-   first. The headless rule holds: never end the turn while a batch runs, since the
-   turn's end ends the session; wait for each completion notification.
+   first. Wait for each completion notification without ending the turn (SKILL.md, Terminal
+   states). There is no
+   timeout cap and no inline form.
 
 4. **Check each completion.** The answer file is the agent's own: it is never retyped,
    copied over or edited, and nothing is appended to it. A batch's attempt fails when:
@@ -106,15 +106,12 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
      `second-opinion` (which matches every `second-opinion-<k>`) or this batch's scope
      marks the completion failed, as `fault-injection.md` says.
 
-   The ladder applies to each batch on its own. On the first failed attempt, relaunch
-   that batch with `model: sonnet`, or `model: opus` when the batch already ran on
-   `sonnet`, and the same prompt, scope, scratch folder and output file; the relaunch
-   first moves the failed file aside with `mv -f <output file>
-   <run dir>/tmp/agents/<folder>/failed-response.md`. This is a swap: record in the
-   entry's `swaps` the role second opinion, the scope, from the requested model to the
-   relaunch model, and the reason (the error, no `status: complete`, the unacknowledged
-   inputs, the count of missing positions, or `_test.fail`). A second failed attempt fails stage
-   6 for that batch; its answer, when it exists, stays where it is. The other batches
+   The ladder (SKILL.md, Roles) applies to each batch on its own. The relaunch takes the
+   same prompt, scope, scratch folder and output file, and first moves the failed file
+   aside with `mv -f <output file> <run dir>/tmp/agents/<folder>/failed-response.md`.
+   The swap's role is second opinion, and its reason the error, no `status: complete`,
+   the unacknowledged inputs, the count of missing positions, or `_test.fail`. A second
+   failed attempt fails stage 6 for that batch; its answer, when it exists, stays where it is. The other batches
    still run to the end and are checked as above.
 
 5. **Write `ledger/6.md` once,** when every batch has finished, from the answer files.
@@ -160,9 +157,10 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
    The file is complete then and is not rewritten. Step 6 may only append to
    `## Stage failure`.
 
-6. **Check the ledger.** When no batch failed, run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh"
-   check <run dir> --through 6 --stage6 complete > <run dir>/tmp/check6.txt` and read only
-   its line count (`wc -l`) and its first 50 lines (`head -n 50`). It checks one position
+6. **Check the ledger.** Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh"
+   check <run dir> --through 6 --stage6 complete > <run dir>/tmp/check6.txt`, with
+   `--stage6 failed` when a batch failed, and read only its line count (`wc -l`) and its
+   first 50 lines (`head -n 50`). It checks one position
    per id, each position's provenance line in the answer files, the mandatory set, the
    `## Seen, no position` list and the `X<n>` additions. A nonzero exit fails stage 6:
    append `## Stage failure` with the review-gate line when it is not there yet, then the
@@ -180,9 +178,9 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
 
 9. **Write the stage 6 entry last,** once the check has passed, through a temporary file
    and `mv -f`: status, inputs, outputs, `agents` (one per launch and relaunch: type
-   `audit:adversary`, requested model, scope, start, end, tokens labeled "task
-   notification, subagent_tokens; scope not documented", duration, result), `swaps` with
-   reasons, each `_test` fault applied, and these keys:
+   `audit:adversary`, requested model, scope, start, end, tokens labeled as SKILL.md,
+   Usage, says, duration, result), `swaps` with reasons, each `_test` fault applied, and
+   these keys:
 
    ```json
    "sentinels": { "ledger/5.md": "<token>", "claims.md": "<token>" },

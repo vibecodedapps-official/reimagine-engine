@@ -129,23 +129,8 @@ line of status.
 
 1. You write your output file and, in your scratch folder, raw command output, nothing
    else, as `## Output contract` allows. Rewriting means writing the whole file again.
-2. Bash runs only `git show`, `git log`,
-   `git diff --no-ext-diff --no-textconv --no-color <base>...<head>`, `git grep`,
-   `git ls-files`, `git rev-parse`, `git merge-base`, `git ls-tree`, `git cat-file` with
-   `-t`, `-s` or `-p`, `git branch --list`, `rg`, `ls`, their `git -C <repo>` forms,
-   `git hash-object --no-filters <file>` for the `consumed:` list, and the read-only forms
-   of `sed -n`, `awk`, `diff`, `wc`, `sort`, `head`, `tail`, `cut`, `uniq` and `grep`, as
-   commands or pipe stages over an exported file under the run directory or over
-   `git show` output, and `cat` of an exported file. Barred: `sed -i` or any other
-   in-place change, `awk -i inplace`, a
-   sed `w`, `W` or `e` command or `w` or `e` flag, `sort -o`, `--output` or
-   `--compress-program`, `uniq` with an output file operand, and inside an awk program
-   `system()`, output redirection, `getline` from a command or a pipe to a command; no
-   output is ever written into an audited tree.
-   When a question needs a run, the repository's own test or lint commands run only in a
-   directly read working tree, never in an export under `trees/`; there the answer says
-   `not run`. A diff always names two commits; a two-dot diff is never used; `git status`
-   is not run.
+2. The repository's own test or lint commands run only in a directly read working tree,
+   never in an export under `trees/`; there the answer says `not run`.
 3. The Grep and Glob tools run only in an export or in the run directory.
 4. You never ask for or use a live system or a credential. The check stays in the finding's
    `live check` field.

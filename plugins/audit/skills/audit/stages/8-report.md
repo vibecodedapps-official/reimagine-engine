@@ -264,9 +264,8 @@ result's text, approver and time; a `result_file` result's text is its copy
     `["report.md", "claims-verdicts.md", "work-items.jsonl", "report/parts/"]`.
 
 13. **Update `${CLAUDE_PLUGIN_DATA}/runs.json`:** set this run's `state` to the terminal
-    state under the lock, as `SKILL.md`, "State files", says. On a refusal or a failure,
-    go on by that section's cases: a missing entry, a stale state, or a correct registry
-    with a leftover lock.
+    state with `registry.sh set`, as `SKILL.md`, "State files", says. On a refusal or a
+    failure, go on by that section's cases: a missing entry or a stale state.
 
 14. **Print and stop,** in plain words: the verdict as a sentence, the absolute path of
     `report.md`, and the terminal state. For `partial`, say that

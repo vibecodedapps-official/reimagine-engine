@@ -34,8 +34,7 @@
 #   a note). The catalog that lists the plugin is checked by tools/lint.mjs.
 # - No file under .claude-plugin/, commands/, skills/, agents/, or README.md names a
 #   design document of the repository (docs/requirements.md, architecture.md,
-#   build-plan.md, decisions.md, acceptance.md): a plugin directory holds only what a
-#   user installs.
+#   decisions.md, acceptance.md): a plugin directory holds only what a user installs.
 # - No file under agents/, skills/, commands/ mentions `advisor`, except a line that
 #   forbids it: one matching (no|never|not)( use)?( the)? `?advisor, any case, such as
 #   "no advisor", "never the `advisor`", or "do not use the advisor".
@@ -131,7 +130,7 @@ else
 fi
 
 # The repository's design documents, which no plugin file names.
-doc_names='docs/(requirements|architecture|build-plan|decisions|acceptance)\.md'
+doc_names='docs/(requirements|architecture|decisions|acceptance)\.md'
 
 # frontmatter <file>: print the lines between the opening and closing --- lines.
 frontmatter() {

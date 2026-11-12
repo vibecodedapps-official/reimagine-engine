@@ -9,7 +9,7 @@ A suite of six Claude Code plugins, built on three ideas: achieve more with less
 - `primer`: project instructions in the forms Claude Code loads, a short `CLAUDE.md`, path-scoped rules, nested instructions and skills, with a hook that checks every commit.
 - `guard`: auto mode trust for the repositories you list, the classifier's entries in your user settings file, written by a script when you run `/guard`, each change shown before it is made.
 
-Status: all six plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`. The build order is in `docs/build-plan.md`.
+Status: all six plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`.
 
 ## Requirements
 
@@ -86,7 +86,7 @@ Node 22 or later, no dependencies. `npm test` runs the suites under `tests/`; `n
 
 The repository keeps its own `CLAUDE.md` as a primer hub, and `.claude/settings.json` declares this catalog and enables `primer` for sessions here, so the drift hook checks every commit. A session in a trusted folder fetches the catalog and the plugin; run `claude plugin install primer@reimagine-engine --scope project` once in the repository so every session, headless ones included, loads it. To leave it off on your machine, set `"primer@reimagine-engine": false` under `enabledPlugins` in `.claude/settings.local.json`.
 
-Design documents, in reading order: `docs/requirements.md`, `docs/architecture.md`, `docs/build-plan.md`, `docs/decisions.md`, `docs/acceptance.md`.
+Design documents, in reading order: `docs/requirements.md`, `docs/architecture.md`, `docs/decisions.md`, `docs/acceptance.md`.
 
 Releases are per plugin, in this order: `node tools/release.mjs <plugin> <version>`, then a heading `## <plugin> <version> - <date>` in `CHANGELOG.md`, then `npm run eval` with its scores recorded in `docs/acceptance.md`, then `claude plugin tag --push plugins/<plugin>`, which creates `<plugin>--v<version>`. Lint requires the heading only once the tag exists.
 

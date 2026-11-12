@@ -55,5 +55,5 @@ Links. Link a platform ID at first mention, in the platform's own form, from a b
 Procedures, for steps the reader does: number them, one action each, condition first ("To stop the run, press Ctrl-C"), with any warning before the step it covers. No short forms.
 
 Editing my text.
-- Cut words that add nothing. Add words only to fix an error or a gap. Return the text, then one line on what changed if it isn't obvious.
+- Cut words that add nothing. Add words only to fix an error or a gap. Return the text, with one line above it on what changed if it isn't obvious.
 ```

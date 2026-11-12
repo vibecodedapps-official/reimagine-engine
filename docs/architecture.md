@@ -37,7 +37,7 @@ reimagine-engine/
 |---|---|---|---|---|---|
 | rules | house rules block, output style, a rule-driven refactor review, a handoff prompt skill | `/rules`, `/rules:refactor`, `/rules:handoff-prompt`, prose "handoff prompt" | `scripts/rules.mjs` | SessionStart `startup` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
-| audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | eleven sh scripts | none | own |
+| audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | twelve sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/resume.mjs`, `scripts/split.mjs` | none | own |
 | primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
 | guard | the auto mode classifier's entries for listed repositories | `/guard` | `scripts/guard.mjs` | PermissionDenied; SessionStart `startup` | own |
@@ -310,14 +310,14 @@ plugins/audit/
   .claude-plugin/plugin.json
   LICENSE  README.md
   commands/run.md  resume.md  act.md  handoff.md
-  skills/audit/SKILL.md            orchestrator: roles, queue, budget, stages.json, registry lock, read-only boundary
+  skills/audit/SKILL.md            orchestrator: roles, queue, budget, stages.json, registry, read-only boundary
   skills/audit/common.md           the eight hard rules, evidence kinds, ids, output contract
   skills/audit/audit-evidence.md   auditor and adversary rules, the finding schema among them
   skills/audit/second-opinion-request.md
   skills/audit/handoff.md  live.md  report.md  work-items.md  fault-injection.md  resume.md
   skills/audit/stages/1-orient.md ... 9-act.md
   agents/digester.md  mapper.md  auditor.md  adversary.md  merger.md
-  scripts/readonly.sh  handoff.sh  ledger.sh  working-tree.sh  revert-tests.sh  live.sh  memory.sh  work-items.sh  collisions.sh  run-copies.sh  report.sh
+  scripts/readonly.sh  handoff.sh  ledger.sh  working-tree.sh  revert-tests.sh  live.sh  memory.sh  work-items.sh  collisions.sh  run-copies.sh  report.sh  registry.sh
 ```
 
 The skill description names "reimagine audit". The four commands forward to the skill: `run` with inputs or a manifest, `resume <run-id> [--from n] [--live file]`, `act <run-id> <item-id...> [--per-item]`, `handoff [--out] [--verdicts] [--memory]`. `run` takes no flags; prose may give effort, budget and model overrides, and the manifest holds everything else.
@@ -334,15 +334,17 @@ Stages 4 to 6 run on the prompt path. Decision 94 defines a second engine, a dyn
 
 ### Run directory
 
-`<scratch>/audit/<run-id>/`, where scratch resolves to the manifest key, else an existing ignored `scratch/`, `tmp/` or `.scratch/`, else `.reimagine/` when it is already ignored, else `${CLAUDE_PLUGIN_DATA}/runs/`. The audit never writes under `.git/` apart from the two writes the read-only boundary discloses, an approved fetch's remote-tracking refs and the loose objects of a working-tree head; the loop is the component that adds `.reimagine/` to `.git/info/exclude`, so on a repository where the loop has run the audit lands in `.reimagine/audit/`. The registry is `${CLAUDE_PLUGIN_DATA}/runs.json` under the `mkdir` lock protocol.
+`<scratch>/audit/<run-id>/`, where scratch resolves to the manifest key, else an existing ignored `scratch/`, `tmp/` or `.scratch/`, else `.reimagine/` when it is already ignored, else `${CLAUDE_PLUGIN_DATA}/runs/`. The audit never writes under `.git/` apart from the two writes the read-only boundary discloses, an approved fetch's remote-tracking refs and the loose objects of a working-tree head; the loop is the component that adds `.reimagine/` to `.git/info/exclude`, so on a repository where the loop has run the audit lands in `.reimagine/audit/`. The registry is `${CLAUDE_PLUGIN_DATA}/runs.json`, which `registry.sh` alone writes.
 
 ### Scripts and their literals
 
-The eleven scripts and their suites embed these strings: `reimagine-handoff: 1`; `reimagine-live: 1`; `# audit report: `; `audit:auditor` and `audit:adversary` in ledger output; identity `audit`, `audit@example.invalid`, `audit: working tree` in `working-tree.sh`; the `second-opinion/` directory and `origin: second-opinion`. Every literal sha and hash in the suites that depends on one of those strings is produced by running the fixture builder once and pasting the observed value; the build plan has that as a work item.
+The scripts and their suites embed these strings: `reimagine-handoff: 1`; `reimagine-live: 1`; `# audit report: `; `audit:auditor` and `audit:adversary` in ledger output; identity `audit`, `audit@example.invalid`, `audit: working tree` in `working-tree.sh`; the `second-opinion/` directory and `origin: second-opinion`. Every literal sha and hash in the suites that depends on one of those strings is produced by running the fixture builder once and pasting the observed value; the build plan has that as a work item.
 
 `jq` is needed by `live.sh`, `work-items.sh` and `collisions.sh`; stage 1 warns when it is missing and names what will not run.
 
 `run-copies.sh` writes the run's `common.md`, header filled, and `audit-evidence.md` from the skill's copies, found from its own path, so neither passes through the model (requirement 283).
+
+`registry.sh` writes the registry: `add` appends a run and `set` gives a run its state, each in one run of the script, under a lock directory that the script takes with `mkdir`, holds only while it rewrites the file, and removes when it is older than a minute (requirement 177).
 
 `report.sh` builds the report's copied sections from the run directory's files: `parts` writes section 8's decision ledger and raised tickets, section 10 and the body of `claims-verdicts.md` under `report/parts/`, `assemble` joins every part file in name order into `report.body.tmp`, and `claims-verdicts` writes the verdicts file with the revision, so no copy passes through the model (requirement 322).
 

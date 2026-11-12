@@ -230,3 +230,26 @@ test('the README and the skill give each role the same default model', () => {
   assert.deepEqual(defaults(TEXT['skills/audit/SKILL.md']), { orchestrator: 'none', ...expected });
   assert.deepEqual(defaults(readFileSync(new URL('README.md', ROOT), 'utf8').replace(/\r/g, '')), expected);
 });
+
+test('the registry commands of the audit files are the ones registry.sh takes', () => {
+  const sh = script('registry.sh');
+  // Each word the script takes, with the count of arguments it asks for, the word included.
+  const ops = Object.fromEntries([...sh.matchAll(/^(\w+)\) \[ \$# -eq (\d+) \] \|\| usage ;;$/gm)].map((m) => [m[1], Number(m[2])]));
+  assert.deepEqual(Object.keys(ops), ['add', 'set']);
+  const states = sh.match(/^\t(\w+(?: \| \w+)+)\) ;;$/m)?.[1].split(' | ');
+  assert.deepEqual(states, ['running', 'reported', 'partial', 'blocked']);
+  const section = TEXT['skills/audit/SKILL.md'].match(/^### State files\n([^]*?)(?=^#)/m)[1];
+  for (const [op, count] of Object.entries(ops)) {
+    const values = section.match(new RegExp(`/scripts/registry\\.sh" ${op} ((?:<[^>]+> ?)+)\``))?.[1].match(/<[^>]+>/g) ?? [];
+    assert.equal(values.length, count - 1, `State files gives "${op}" ${values.length} values and the script takes ${count - 1}`);
+  }
+  for (const state of states) assert.ok(section.includes('`' + state + '`'), `State files does not name the state ${state}`);
+  let named = 0;
+  for (const file of FILES) {
+    for (const [, op] of TEXT[file].matchAll(/registry\.sh"? (\w+)/g)) {
+      named++;
+      assert.ok(op in ops, `${file} names "registry.sh ${op}", which the script does not take`);
+    }
+  }
+  assert.ok(named >= 5, `only ${named} registry commands found`);
+});

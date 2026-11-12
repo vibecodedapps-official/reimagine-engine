@@ -281,18 +281,15 @@ branch to it in the manifest."
    l. **Manifest.** Show the merged, normalized manifest to the user as one fenced JSON
       block and save it as `manifest.json` in the run directory.
 
-   m. **Registry.** Add `{run_id, path, primary_repo, created, state: "running"}` to
-      `${CLAUDE_PLUGIN_DATA}/runs.json` under the `runs.json.lock/<owner>` protocol
-      (SKILL.md, State files), `path` being the run directory of 0j. When, under the
-      lock after the fresh read, an entry already has this id, or a stale lock's owner
-      directory has this run's own owner name, add nothing: release only a lock this
-      run holds, remove the run directory this run created in 0j, and stop with one
-      line naming the id and saying another audit took it in the same minute, so run
-      the command again. Any other refused or failed update follows that section's
-      cases.
+   m. **Registry.** Add the run with `registry.sh add` (SKILL.md, State files): the run
+      directory of 0j and the primary repository's path. When it exits 3, another audit has this id with
+      another run directory: remove the run directory this run created in 0j, and stop
+      with one line naming the id and saying another audit took it in the same minute,
+      so run the command again. Any other refused or failed update follows that
+      section's cases.
 
    n. **Completion record.** Write `stages.json` through `stages.json.tmp` and
-      `mv -f`, with `plugin_version` `0.1.24`, empty `approvals`, and a stage 1 entry
+      `mv -f`, with `plugin_version` `0.1.25`, empty `approvals`, and a stage 1 entry
       with status `running` whose inputs are the `git hash-object --no-filters` hashes
       of `manifest.json`, each claims file, the questions file and each `file:` export,
       and `plugin_version`. Record the stage's start time for the budget.

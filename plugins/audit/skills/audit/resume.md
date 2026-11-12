@@ -150,7 +150,7 @@ when the invocation block says `command: resume`; the rules of
    - The pinned sha of every reference and source of truth, resolved again as stage 1
      did through the brief's ref mapping lines; a change invalidates stage 1.
    - Upstream stage outputs, by `git hash-object --no-filters <file>`.
-   - `plugin_version`, compared with the literal `"0.1.24"`; any other recorded value
+   - `plugin_version`, compared with the literal `"0.1.25"`; any other recorded value
      invalidates stage 1. With `--live`, a recorded `plugin_version` other than the
      current one does not invalidate stage 1 when every other input of stage 1 is
      unchanged. The final entry of the first rerun stage then records the recorded and
@@ -248,9 +248,9 @@ when the invocation block says `command: resume`; the rules of
    all sit in one recorded list are not asked again; otherwise ask once, listing the new
    commands, and record a new approval entry.
 
-9. **Mark the run running.** Set the run's `state` in `runs.json` to `running` under the
-   lock (`SKILL.md`, "State files"). On a refusal or failure, go on as that section
-   says, recording the limitation in `usage.md` and in the final entry of the first
+9. **Mark the run running.** Set the run's `state` in `runs.json` to `running` with
+   `registry.sh set` (`SKILL.md`, "State files"). On a refusal or failure, go on as that
+   section says, recording the limitation in `usage.md` and in the final entry of the first
    rerun stage. A resumed run has no budget: a soft budget binds only the invocation
    that gave it.
 

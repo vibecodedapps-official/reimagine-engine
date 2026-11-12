@@ -139,7 +139,7 @@ You alone talk to the user, run `git fetch`, export pinned trees, build the seco
 
 ### Compaction recovery
 
-After a compaction, or whenever you cannot account for your state, stop. Before any other action re-read `${CLAUDE_PLUGIN_ROOT}/skills/audit/SKILL.md`, since the host keeps only the first part of this file across a compaction; then, in the run directory, the last block in `invocations.md`, `audit-brief.md`, `common.md` and `stages.json`; then the files Supporting files gives for the current stage. In the same session, a stage marked `running` waits for its agents' notifications and relaunches nothing. Under `resume`, `running` counts as incomplete and is rerun. Approvals recorded in `stages.json` are never asked again.
+After a compaction, or whenever you cannot account for your state, stop. Before any other action re-read `${CLAUDE_PLUGIN_ROOT}/skills/audit/SKILL.md`, since the host keeps only the first part of this file across a compaction; then, in the run directory, the last block in `invocations.md`, `audit-brief.md`, `common.md` and `stages.json`; then the files the current command's and stage's sections and Supporting files name. In the same session, a stage marked `running` waits for its agents' notifications and relaunches nothing. Under `resume`, `running` counts as incomplete and is rerun. Approvals recorded in `stages.json` are never asked again.
 
 ### Roles
 
@@ -323,7 +323,7 @@ At each stage boundary write `usage.md` from `stages.json`: per stage, each agen
 
 ## Stage 1: orient
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it. It resolves the scratch directory and creates the run directory, the `runs.json` entry and `stages.json`, and appends the invocation block. It refuses partial clones, asks once for the fetch, takes the read-only baseline before any other work on the repositories, pins every repository, reads forge data into files, writes the diffs, exports trees, prepares revert keys, splits claims, builds groups, sets the tier, and writes `audit-brief.md`. It copies `common.md` and `audit-evidence.md` into the run directory and warns when `jq` is missing, naming what will not run. Then run the read-only check and start stages 2, 3 and 4 together.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/audit/stages/1-orient.md` after the reading block and follow it.
 
 ## Stage 2: digest
 
@@ -367,21 +367,10 @@ For `command: handoff`, read `${CLAUDE_PLUGIN_ROOT}/skills/audit/handoff.md` and
 
 ## Supporting files
 
-Read each file at its point and not before. A sentence that only says where a rule lives is not a read.
+Read each file at its point and not before. A sentence that only says where a rule lives is not a read. The section for each command and stage names its files, Hard rules and Compaction recovery name `common.md` and this file, and Fault injection names `fault-injection.md`. Besides those:
 
-- `SKILL.md`: again after a compaction.
-- `common.md`: before stage 1, resume or act, for the hard rules; again after a compaction.
-- `stages/1-orient.md`: after the reading block, for `run`.
-- `stages/2-digest.md`, `stages/3-domain.md`, `stages/4-pass-one.md`: when stage 1 completes.
-- `stages/5-pass-two.md`: when the first group clears its barrier.
-- `stages/6-second-opinion.md` and `second-opinion-request.md`: when stage 5 is complete or failed.
-- `stages/7-converge.md`: when stage 6 is complete or failed.
-- `stages/8-report.md`, `report.md` and `work-items.md`: when stage 8 starts.
-- `stages/9-act.md`: for `act`.
-- `resume.md`: for `resume`.
+- `report.md` and `work-items.md`: when stage 8 starts.
 - `live.md`: for `resume` with `live`, and when a stage reads live files. It is a skill document, not a run file: the run's live inputs are under `live/`, and the Live checks blocks are in `report.md`.
-- `fault-injection.md`: only when the manifest has `_test`.
-- `handoff.md`: for `handoff`.
 - `audit-evidence.md`: never read by you; stage 1 copies it and auditor and adversary prompts name it, except in second opinion, where it is an input copy.
 
 All are under `${CLAUDE_PLUGIN_ROOT}/skills/audit/`. In the run directory: `invocations.md`, `audit-brief.md` and `stages.json`, after a compaction and at resume and act.

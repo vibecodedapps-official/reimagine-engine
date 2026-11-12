@@ -84,8 +84,10 @@ report: sha256:<hex>
 - `run` is the report's run id, from its heading `# audit report: <run-id>`, and
   `report` is its revision, `sha256:<hex>` from the first line, so a result answers one
   report.
-- Every value is one line with no tab, of any length. Lines end in LF or CRLF; a
-  leading byte order mark is ignored.
+- The frontmatter opens on line 1 and closes with `---`, and holds its three keys once
+  each. Beyond the lines shown and blank lines, no key or line is accepted.
+- Every value is one line with no tab, of any length and not empty. Lines end in LF or
+  CRLF; a leading byte order mark is ignored.
 - At least one entry, each id once. An entry's keys appear once each, in the order
   shown. `env` is required on a claim entry and refused on a finding entry.
 - `query` is the check as it ran. `where` is free text naming the place. For a claim the
@@ -108,40 +110,14 @@ exits 0, or prints one line per error, `live <file>:<line>: <message>`, in line 
 stdout and exits 1. It exits 2 with one line `live: <what failed>` on stderr on a usage
 error, an unreadable file or report, no `sha256sum` and no `shasum`, or a report without
 its first line `revision: sha256:<hex>` or its heading `# audit report: <run-id>`. It
-checks:
-
-- The report: the SHA-256 of every byte after its first line (`tail -n +2`, as stage 8
-  computes it) equals the revision. When it does not, the one line
-  `live <report>:1: the revision line does not match the SHA-256 of the report body` is
-  printed and nothing else is judged, since an edited body cannot pass under its
-  revision.
-- The frontmatter: version 1 (`unsupported live version`); `run` equals the report's
-  run id (`run '<x>' is not the report's run '<id>'`); `report` equals its revision
-  (`report '<x>' is not the report's revision 'sha256:<hex>'`). Also
-  `missing frontmatter: the first line must be ---`, `frontmatter is not closed` (at
-  the first entry heading when the closing `---` is missing),
-  `missing frontmatter key '<key>'`, `duplicate frontmatter key '<key>'`,
-  `unknown frontmatter key '<key>'`, and `frontmatter key '<key>' has an empty value`.
-- Each heading names a `#### live <id>` block of the report:
-  `'<id>' is not a live check of the report`. Also `duplicate id '<id>'` and
-  `heading has no id`.
-- The entry's `query` equals the block's `query` exactly, trailing spaces removed, since
-  the result of another query settles nothing:
-  `query does not match the report's query for '<id>'`.
-- A claim entry's `env` equals the block's `env` exactly:
-  `env '<x>' does not match the report's env '<y>'`.
-- Keys: `missing key '<key>'` (at the entry's heading; for the result,
-  `missing key 'result' or 'result_file'`), `unknown key '<key>'`,
-  `duplicate key '<key>'`, `key '<key>' is out of order`,
-  `keys 'result' and 'result_file' are both given`,
-  `key 'env' is not allowed on a finding entry`, `key '<key>' has an empty value`, and
-  `approved_at must start with YYYY-MM-DD`.
-- Lines: `tab in line`, `unrecognized line`, and `no entries` (at the last line).
-- A `result_file` path that is absolute, has a drive letter or has a `..` component:
-  `result_file '<path>' is not a relative path under the live file's directory`.
-- Each `result_file`, only when nothing above found an error, so the lines stay in line
-  order: `result_file '<path>' is not a readable file` (missing, unreadable or not a
-  regular file) and `result_file '<path>' is empty`, at the `result_file` line.
+checks that the SHA-256 of every byte after the report's first line (`tail -n +2`, as
+stage 8 computes it) equals the revision, and judges nothing else when it does not, since
+an edited body cannot pass under its revision; that the frontmatter and each entry follow
+"The --live file"; that each heading names a `#### live <id>` block of the report; that
+the entry's `query` equals the block's `query` exactly, trailing spaces removed, since the
+result of another query settles nothing; and that a claim entry's `env` equals the block's
+`env` exactly. It opens a `result_file` only when nothing else is wrong, so the lines stay
+in line order.
 
 ## Imports and their state
 
@@ -254,12 +230,9 @@ anything; running resume again completes the work.
   - `winner<TAB><id><TAB><source><TAB><earlier><TAB><kept|new|changed>` for each id in
     winner order, `<earlier>` being the lower-`<k>` sources, `, `-separated, or `none`.
   A malformed `live/retired.md` or derived file is exit 1. So is a result copy that
-  does not hold up, for each active import with a `result_file` entry, in `<k>` order:
-  `live: live/results-<k>/SHA256SUMS is missing`,
-  `live: live/results-<k>/SHA256SUMS does not list the result files of live/results-<k>.md`
-  (it lists exactly `<line>.txt` for each such entry, in line order),
-  `live: live/results-<k>/<line>.txt is missing`, or
-  `live: live/results-<k>/<line>.txt does not match live/results-<k>/SHA256SUMS`.
+  does not hold up, for each active import with a `result_file` entry: a missing
+  `SHA256SUMS`, one that does not list exactly `<line>.txt` for each such entry in line
+  order, or a copy that is missing or does not match it.
   `assemble` and `import` run the same checks first, so a retried `--live` never commits
   another import over broken state. A retired import is not checked. The way out is a
   resume with `--from 5` or lower, which retires the imports, then importing the results
@@ -272,23 +245,15 @@ anything; running resume again completes the work.
   spaces and tabs starts with three backticks opening or closing one, as the ledger reads
   it. A block that reaches the end of the file inside an open fence is no block, as the
   ledger leaves it out. The command writes the block to
-  `live/carried/<id>.md`, creating `live/carried/`. Exit 1, writing nothing:
-  `live: live/carried/<id>.md exists`, or `live: no block for <id> in ledger/<n>.md`
-  (also when the block reaches the end of the file inside an open fence).
+  `live/carried/<id>.md`, creating `live/carried/`. Exit 1, writing nothing, when that
+  file exists or the ledger holds no such block.
 - `assemble <run dir> <entries dir>`. Reads the orchestrator's new and changed entries,
   one `*.md` file each (a missing directory holds none). An entry is LF only: a first
   line `## <id>`, then one or more lines, none empty or starting `## `, `- source:` or
   `- earlier:`; a missing final LF is added when it is written. It exits 1 and writes
-  nothing with these lines, the entry files in byte order of name and each file's errors
-  in line order, then the winner errors in winner order (`<f>` is the entry file's name):
-  - `live: <f>:1: first line must be '## <id>'`
-  - `live: <f>:<line>: carriage return`, `empty line`, `line starts with '## '`,
-    `line starts with '- source:'`, `line starts with '- earlier:'`
-  - `live: <f>: no derivation lines`
-  - `live: <f>: '<id>' is not a new or changed winner`
-  - `live: <f>: '<id>' is also in <other f>`
-  - `live: no entry for '<id>'` (a `new` or `changed` winner)
-  - `live: live/carried/<id>.md is missing` (an `X<n>` or `L<n>` winner)
+  nothing when an entry breaks that form, names an id that is not a new or changed
+  winner or that another entry names too, or when a new or changed winner has no entry
+  or an `X<n>` or `L<n>` winner has no carried file.
   Otherwise it builds `live/findings.md` and `live/claims.md`, each in winner order: a
   `kept` id's section copied byte for byte from the current file; a new or changed id's
   written as `## <id>`, the winner's `- source:` and `- earlier:` lines, then the entry's

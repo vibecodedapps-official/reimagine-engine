@@ -98,21 +98,11 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/work-items.sh" check <file> <report body> <cla
 
 The report body is the report without its revision line, as stage 8 holds it in
 `report.body.tmp` before hashing. With `jq`, the script reads every line first, then
-checks that:
-
-- every line parses as one JSON object, and none is blank;
-- the common keys and the operation's fields are present with the right types, and no
-  other key is (an unknown operation reports only `unknown op`);
-- ids run `W1` upward with no gap;
-- every placeholder rule above holds, the forge-id-only targets included;
-- `fields` of `set_fields` is a non-empty object with no null value;
-- every mentions rule above holds;
-- `run` equals the run id in the body's first `# ` heading, `# audit report: <run-id>`;
-- every `C<n>` in `items` is an item heading `#### C<n>: ` in the body;
-- every `claim <n>` in `items` is a numbered claim line of `claims.md`, one starting
-  `<n>. [claim:`;
-- every `W<n>` in `items` names another operation in the file;
-- every operation reaches a `C<n>` or a claim, directly or through the `W<n>` it names.
+checks the layout, the operations' fields, and the placeholder and mentions rules above;
+that `run` names the body's heading; that each `C<n>` in `items` is an item heading
+`#### C<n>: ` of the body, each `claim <n>` a numbered claim line of `claims.md`, one
+starting `<n>. [claim:`, and each `W<n>` another operation; and that every operation
+reaches a `C<n>` or a claim.
 
 It prints `work-items: ok` and exits 0, or prints one line per error,
 `work-items <file>:<line>: <message>`, and exits 1. A body without the heading gives the

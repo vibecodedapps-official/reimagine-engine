@@ -109,15 +109,3 @@ batch number filled in, and the stage replaces `IDS-BATCH-<k>` by shell with the
 ids; no id is ever typed into a request. In ask 4, `<first free number>` is 1, or the
 number after the highest `X<n>` under `live/carried/`, since a carried id is reserved for
 its finding.
-
-## Acknowledgment rule
-
-This rule is the stage's, not part of the request text. After each batch's answer, the
-stage compares every input's sentinel line with the answer: a sentinel not quoted
-exactly, or an input listed as `not read:`, means access to that input is not
-confirmed, and the attempt fails. The ladder then relaunches the batch once, on
-`sonnet`, or on `opus` when the batch already ran on `sonnet`; a second failure fails
-stage 6, and no finding passes the review gate on its account. The stage also requires
-a position for every mandatory id of the batch, and an id missing one fails the attempt
-the same way. With `_test.drop_ack` naming an input, its acknowledgment counts as
-missing for the first `times` checks, whatever the answer says.

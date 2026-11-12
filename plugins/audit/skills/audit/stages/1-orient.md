@@ -1,16 +1,10 @@
 # Stage 1: orient
 
 The orchestrator runs this stage alone, first, for `command: run`, and for
-`/audit:resume` when stage 1 is the first stage to rerun. It reads the invocation block,
-the manifest when one is named, the claims files, the `file:` exports, the audited
-repositories and their forge data. It writes the run directory and everything in it that
-the later stages read: `invocations.md`, `manifest.json`, `stages.json`, the read-only
-baseline, `forge/`, `diffs/`, `trees/`, `revert/`, `claims.md`, `groups.md`,
-`audit-brief.md`, and the run's copies of `common.md` and `audit-evidence.md`, plus the
-`runs.json` entry. Step 0 runs before the baseline and writes only what it names; a stop
-in step 0 ends the command with one message. Step 1b takes the baseline before any other
-work on the repositories, so everything after it is covered by the stage's read-only
-check.
+`/audit:resume` when stage 1 is the first stage to rerun. Step 0 runs before the
+baseline and writes only what it names; a stop in step 0 ends the command with one
+message. Step 1b takes the baseline before any other work on the repositories, so
+everything after it is covered by the stage's read-only check.
 
 Scripts are `${CLAUDE_PLUGIN_ROOT}/scripts/<name>.sh`, run as
 `sh "<resolved absolute path>" ...`. Every `gh api` call passes `--hostname <host>`, names one endpoint,
@@ -203,14 +197,10 @@ branch to it in the manifest."
 
    h. **Reading block.** For `command: run` the reading block and the sentence on
       background fetch were printed before this stage (SKILL.md, Reading the request);
-      do not print them again. Under `/audit:resume` print the block here: the
-      bundles with repository, pull request or branch and base, and tickets; the
-      references; the sources of truth; the claims files; the effort hint; the budget,
-      `none` for a resumed run, and the model overrides; and how each ticket resolved
-      (`gh`, `file`, `mcp:<tool>` or `text`, the last printed as
-      `text, body not read`). Then tell the user to pause background fetch for these
-      repositories until the run ends, for example VS Code's `git.autofetch`, since a
-      fetch during the run moves remote-tracking refs.
+      do not print them again. Under `/audit:resume` print the block here, as SKILL.md,
+      Reading the request, gives it, with Budget `none`. Then tell the user to pause
+      background fetch for these repositories until the run ends, for example VS Code's
+      `git.autofetch`, since a fetch during the run moves remote-tracking refs.
 
    i. **Primary repository and scratch.** The primary repository is the session's
       repository when it is a bundle, else the first bundle. `<scratch>` is the first of:
@@ -601,12 +591,10 @@ branch to it in the manifest."
       for an `ado:` or `sf:` id. A pattern is a literal
       template, never a regex. A token matches only when the characters just before and
       after it, when present, are neither a letter nor a digit, and the one before a
-      GitHub token is also not `-`, `_`, `.` or `/`. So `#12` does not match `#123`,
-      `APP-1` does not match `APP-10` or `XAPP-1` but matches in `feature/APP-1`, and
-      with `#{n}` the commit `fix(#4567 #4568)` belongs to both tickets while `AB#4567`
-      belongs to neither. In a bundle with one ticket, every commit is that ticket's. A
-      handoff's commits, from `sh "${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh" commits <file>`
-      (bundle, sha, ticket, line), are matched by prefix among
+      GitHub token is also not `-`, `_`, `.` or `/`. In a bundle with one ticket, every
+      commit is that ticket's. A handoff's commits, from
+      `sh "${CLAUDE_PLUGIN_ROOT}/scripts/handoff.sh" commits <file>` (bundle, sha,
+      ticket, line), are matched by prefix among
       `git -C <repo> log --format=%H <merge-base>..<head>` and join the ticket's
       commits; a sha that matches none or several, or a commit whose message names
       another ticket than the handoff gives, is noted in the brief's Handoff section.

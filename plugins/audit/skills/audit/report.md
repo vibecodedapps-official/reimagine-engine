@@ -138,16 +138,12 @@ The verdict line reads:
 
 `verdict: <verdict> | counted: <n> blocker, <n> high, <n> medium, <n> low, <n> note | provisional: <n> | contested: <n> | dismissed: <n>`
 
-After the verdict line, a plain line `next:` heads the closing lines that stage 8 prints
-at its end (`stages/8-report.md`, step 14), the same lines here and there: `act first:`,
-the plan, the `/audit:act` line, the `recommended:` line with its `reason:` lines,
-`your decision:`, and the `--live` line when the run is eligible for one. Each labeled
-line starts with its label; each plan step is one plain line starting `1. `, `2. ` and so
-on, with no heading or nested item block. No line of the block starts with `#### C`,
-`- claim ` or `#### live `, which `work-items.sh`, `memory.sh` and `live.sh` parse, and
-the block adds no `###` or `####` heading. It is part of the body the revision hashes.
-When the run has no entry in `runs.json`, the closing says that the `/audit:act` and
-`--live` lines need the entry added first.
+After the verdict line, a plain line `next:` heads the closing lines of
+`stages/8-report.md`, step 14, the same lines here and there. Each labeled line starts
+with its label; each plan step is one plain line starting `1. `, `2. ` and so on, with no
+heading or nested item block. No line of the block starts with `#### C`, `- claim ` or
+`#### live `, which `work-items.sh`, `memory.sh` and `live.sh` parse, and the block adds
+no `###` or `####` heading. It is part of the body the revision hashes.
 
 ### 2. Findings by ticket
 
@@ -201,20 +197,8 @@ adapter; act applies none of them.
 
 ### 8. Decisions
 
-Three parts.
+The Decision ledger and Raised tickets take the shapes of Parts. Then:
 
-- Decision ledger: each `decision` claim with its class (`stale deferral`,
-  `needs <owner>`, `default taken` or `evidenced`), resolution, authority, evidence,
-  whether alternatives were weighed, reversibility class, the recommendation and the
-  owner. The auditor's position and the adversary's follow, or `not challenged` when
-  pass two wrote no line for the entry; when they differ both are kept and no side is
-  picked. A claim that is `not assessed` is listed with that mark only.
-- Raised tickets: each `scope` claim with whether the bundle introduced it, whether the
-  fix lies inside the bundle's repositories, cost, the recommendation (`include` or
-  `defer`) and its reason, the handoff's ranking, and whether the facts and the
-  recommendation differ from the handoff, each stated on its own. The adversary's
-  position follows, or `not challenged`. A `scope` claim that is `not assessed` is
-  listed with that mark only.
 - Other decisions: each decision the change made or needs that is not a `decision`
   claim, with the recommendation, the reason and a reversibility class (`reversible`,
   `hard to reverse` or `contract change`). A named owner, from the tickets only, for
@@ -249,21 +233,9 @@ is an environment claim.
 
 ### 10. Claims
 
-Every numbered claim of `claims.md` with its kind (`code`, `decision`, `verification`,
-`scope` or `status`), then `true`, `false` or `not verified`, and the item id or the
-evidence. `other` sentences are counted, not listed. A `decision` or `scope` claim with
-no pass-one entry is `not verified`, reason `not assessed`.
-
-A `verification` claim is `true, reproduced` only when the audit reproduced the stated
-result itself, `false, contradicted` only with counter-evidence, and otherwise
-`not verified, not reproduced` with the reason. An environment claim always needs a live
-check: without a result it is `not verified, not reproduced`, reason
-`needs a live check: env <name>`. A claim with a live result takes its derived verdict,
+Each line takes the shape of Parts. A claim with a live result takes its derived verdict,
 `contested` when the late review overturned it, or `not verified, not reproduced`, reason
-`live result not challenged`, when the late review gave no line. One line says that
-reproducing a stated result does not show that the build session ran its stated check.
-Where the auditor's and the adversary's verdicts differ, both are shown and the claim is
-`contested`.
+`live result not challenged`, when the late review gave no line.
 
 `claims-verdicts.md`, beside this report, carries these verdicts back to the build
 session, where `/audit:handoff --verdicts` applies the ones whose file hash and claim

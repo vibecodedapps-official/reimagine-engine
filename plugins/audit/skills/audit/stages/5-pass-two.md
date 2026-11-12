@@ -87,9 +87,7 @@ restate the finding schema or the output contract.
       `audit-evidence.md`, the scope file `scope/<scope>.md`, the corrected map, the
       output file `pass2/<scope>-topup.md` and the scratch folder
       `tmp/agents/pass2-<scope>-<n>/`, `<n>` counting the scope's top-ups from 1, and
-      gives the corrected lines. The agent applies the corrected answers to the scope's
-      files and tags each finding `origin: topup` with an id `<scope>-T<n>`; the
-      `pass1/` files do not change.
+      gives the corrected lines. The `pass1/` files do not change.
    4. A top-up failure follows the auditor ladder with scope id `<scope>-maptopup`; a
       `_test` `fail` entry with role `auditor` and that id or `any` applies. A failed
       top-up is coverage loss and makes stage 5 `failed`.

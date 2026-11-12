@@ -1,6 +1,6 @@
 # Placement
 
-Every piece of project information goes to the one destination that loads for the tasks that need it. Read this file before placing, moving or proposing anything.
+Every piece of project information goes to the one destination that loads for the tasks that need it.
 
 ## The rule
 
@@ -14,9 +14,7 @@ Example: "never commit generated files" governs every commit, so it is a hub con
 
 The reverse also holds. "Money values are integers in cents" mentions no path, but only tasks that touch `src/billing/` obey it. A path-scoped rule for that area loads for those tasks and for no others. A hub line would cost every task for a fact that few need.
 
-When the tasks test fails, take the next item that fits. Do not widen or narrow a destination to make a piece fit. Move to the next item instead.
-
-Place each piece once. A piece that two destinations both hold is duplicated, and item 11 deletes the extra copy.
+When the tasks test fails, take the next item that fits; never widen or narrow a destination to make a piece fit.
 
 ## Where each destination loads
 
@@ -25,8 +23,6 @@ Place each piece once. A piece that two destinations both hold is duplicated, an
 - A nested `CLAUDE.md` loads when a file under its directory is read or edited.
 - A skill's description is listed at launch unless the skill sets `disable-model-invocation: true`; then only the user invokes it. Its body loads when the skill is invoked or judged relevant. A skill with `paths` stays hidden until a matching file is touched.
 - A `docs/` page loads only when something names it and a task reads it.
-
-A destination that loads too widely costs every task that did not need the piece. A destination that loads too narrowly lets a task miss a piece it must obey.
 
 ## Items
 
@@ -44,8 +40,6 @@ Each entry gives the destination and one example of a piece that lands there.
 10. A personal preference or a note about one machine is reported and left for the user. The report says where it belongs: `CLAUDE.local.md`, the user's own `CLAUDE.md`, or the house rules block the `rules` plugin owns. Example: "use tabs, I find them easier".
 11. A piece that is derivable from the code, duplicated elsewhere, true of every project, or stale is deleted. The plan gives the line and the reason. Example: "the test runner is in package.json" is derivable.
 
-Items 1 and 2 never end a placement. A piece that fits item 1 or 2 is also placed by item 3 or later, so the rule still loads while the proposal is open.
-
 ## Personal content
 
 A personal preference in the hub or a rule is first person, a path on one machine, or a taste. List each one in the plan or the report under item 10, in this form:
@@ -54,17 +48,14 @@ A personal preference in the hub or a rule is first person, a path on one machin
 - <file>:<line>: <text>: belongs in <CLAUDE.local.md | your own CLAUDE.md | the rules plugin's house rules block>
 ```
 
-Leave the line in place. Primer never moves or deletes personal content. The user decides.
-
-Do not rewrite the text of the line in the report. Quote it as found, so the user can search for it.
+Leave the line in place, and quote its text in the report as found, so the user can search for it.
 
 ## Skill or rule
 
 A skill is for steps done in order with checks. A rule is for a fact.
 
-- A procedure inside a rule or a hub section that has become numbered steps moves to a skill (item 3).
 - A single command is a hub command (item 4), not a skill.
 - A fact stays a rule even when a skill uses it. The skill reads the rule and does not copy it.
 - A failure seen only when the skill runs, and its fix, goes into the step that fails. Only that skill's runs need it, so the tasks test puts it there.
 - A checklist with no order, such as a list of things to avoid, is a set of facts. Place each fact by the items above.
-- A procedure that only one area uses still goes to a skill. Give the skill `paths` for that area, so it stays hidden until a matching file is touched.
+- A procedure that only one area uses still goes to a skill, with `paths` for that area.

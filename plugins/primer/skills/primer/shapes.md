@@ -1,6 +1,6 @@
 # Shapes
 
-This file gives the shape of each instruction file primer writes or checks, with its cap. Read it before you write or check any of them.
+This file gives the shape of each instruction file primer writes or checks, with its cap.
 
 ## Counting and caps
 
@@ -31,7 +31,7 @@ The hub is the root `CLAUDE.md`, or the root `AGENTS.md` under the AGENTS.md sec
 - Line 1 is exactly the marker. The host strips it before the text reaches the session. It opts the repository in to the drift hook.
 - The reading sentence appears only for a long document that no rule or skill covers. Write one sentence per document, naming the file and the condition.
 - List a command only when a manifest, build file, script or workflow holds it. List a constraint only when the repository states or enforces it.
-- Nothing for people goes in the hub. No `@path` import appears in it, except the one-line `@AGENTS.md` file of the AGENTS.md section.
+- Nothing for people goes in the hub. No `@path` import appears in it, since an import there loads at launch, except the one-line `@AGENTS.md` file of the AGENTS.md section.
 
 The drift hook checks the opening paragraph, which runs from the `# ` heading to the first `## ` line. Every backticked token there that holds a `/` or ends in `.md`, and holds no space, `<`, `>`, `*`, `{` or `?`, must name a path that exists, spelled exactly as written, case included. A token is not checked when it starts with `~`, `/` or a drive letter, when it is a URL, or when it does not end in `.md` and its first segment is no top-level entry of the repository, as with the branch `origin/main`. So:
 
@@ -81,7 +81,6 @@ paths:
 - Write `paths` as a YAML block list of quoted globs. The host also reads a comma-separated string, such as `paths: "src/**/*.ts, *.sql"`; keep that form where a file has it. Any other value is one the host cannot read.
 - A glob without a `/` matches at every depth. Brace groups such as `src/**/*.{ts,tsx}` are allowed.
 - Every glob must match a tracked file when the rule is committed. Scope follows the tasks the rule governs, not the paths it mentions.
-- A rule never holds an `@path` import. To send the reader to a `docs/` file, name it in words and say when to read it.
 
 ## Skills
 
@@ -113,12 +112,12 @@ Done when <one sentence>.
 - Add `disable-model-invocation: true` when the procedure publishes, deploys, pushes or touches a live system.
 - Add `paths`, in the form a rule uses, when the skill belongs to one area. The skill stays hidden until a matching file is touched.
 - Add `allowed-tools` only for read-only commands the skill runs in the turn that invokes it. The grant clears at the user's next message, so it does not cover a command run after a reply; a grant that lasts the session is a permission allow rule in the user's settings, which primer never writes. An entry's `*` admits any option, so the list names no command with an option that writes a file or runs a program, such as `git diff`, `git log`, `git show` or `git grep`, and no entry has a `*` before its end.
-- Name a fact that the hub or a rule holds by its file. Do not repeat it. A skill never imports.
+- Name a fact that the hub or a rule holds by its file. Do not repeat it.
 - Move a reference longer than a screen into a supporting file beside `SKILL.md`. Name it from the body and say when to read it.
 
-## docs pages
+## README.md
 
-A `docs/` page holds long-form material for people and for the hub's reading sentences. It has no cap. The hub names it with its condition, or the skill that needs it reads it. `README.md` is for people only. Agent content in it moves out. A long one splits into `docs/` pages it links.
+`README.md` is for people only. Agent content in it moves out, and a long one splits into `docs/` pages it links.
 
 ## AGENTS.md
 
@@ -131,12 +130,7 @@ A `docs/` page holds long-form material for people and for the hub's reading sen
 
 ## Imports, prose and history
 
-- The hub holds no `@path` import, because an import there loads at launch. The one exception is `@AGENTS.md`.
-- A rule or skill never imports, because the host does not expand `@path` inside `.claude/rules/`.
+- A rule or skill never imports, because the host does not expand `@path` inside `.claude/rules/`. To send the reader to a `docs/` file, name it in words and say when to read it.
 - Report an import of a file git does not track, or of a file outside the repository, and leave it alone.
 - Every instruction file is declarative prose. Never reword a dated or historical entry; append a correction.
 - Delete no real constraint to shorten a file. Repair inbound links in the same change as a move.
-
-## The person's own files
-
-`CLAUDE.local.md`, the user's own `CLAUDE.md` and `rules/` in their configuration directory, and auto memory belong to the person. Read them to avoid duplication. Never write them. The one exception is a memory note the user approves for deletion, which the promote pass handles.

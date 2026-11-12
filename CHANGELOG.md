@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.11 - 2026-11-12
+
+- The skill, `placement.md` and `shapes.md` each state a rule once. Init and Adopt restated the two reference files, and the reference files repeated one another and the skill, so a run read a rule two or three times and the copies could drift. No rule is dropped: each cut sentence stands in a file a run reads before it writes.
+- The description's second sentence is shorter. The four phrases that invoke the skill are unchanged.
+
 ## gate 0.1.18 - 2026-11-12
 
 - The skill states each cap, the stop and the stand-in's mechanics once, in the step that acts on it, and no file opens by saying when it is read. The skill restated them, so a run read each rule twice and the copies could drift. No rule is dropped: each cut sentence stands in a file a run reads before the action it guards.

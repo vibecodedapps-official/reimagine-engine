@@ -1,6 +1,6 @@
 # The report
 
-Read this file at every terminal state. Fill every section from the record, `passes.json`, `findings.json` and the saved reviews, never from memory. A run's passes are those whose `run` is its number. Every section is present, and an empty one says `none`.
+Fill every section from the record, `passes.json`, `findings.json` and the saved reviews, never from memory. A run's passes are those whose `run` is its number. Every section is present, and an empty one says `none`.
 
 With a record, write the report to `report.md` in it, as `record.md`, Write discipline, says, and print the same text. A run that ended before the record existed prints the report only, naming the preflight item that failed and its fix. A headless caller sees only the last message, so the header alone must let a reader find the record.
 

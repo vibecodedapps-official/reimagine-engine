@@ -1,6 +1,6 @@
 # The record
 
-Read this file when a step writes a record file. Nothing under `.reimagine/` is ever staged, and no commit contains a record file. Times in every file are copied from the output of `date -u +%Y-%m-%dT%H:%M:%SZ`.
+Nothing under `.reimagine/` is ever staged, and no commit contains a record file. Times in every file are copied from the output of `date -u +%Y-%m-%dT%H:%M:%SZ`.
 
 ## Files
 

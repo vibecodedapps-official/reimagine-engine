@@ -1,7 +1,5 @@
 # Step 3: The next level
 
-Read this file after a fix round, after a triage with nothing to fix or in "no fixes" mode, and from Step 0 for the section Resume when the record already holds passes.
-
 ## Decide
 
 1. Take `date -u +%Y-%m-%dT%H:%M:%SZ`.

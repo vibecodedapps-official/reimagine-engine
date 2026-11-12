@@ -1,6 +1,6 @@
 # Step 2: The fix round
 
-Read this file after a triage that leaves something to fix, outside "no fixes". Take `date -u +%Y-%m-%dT%H:%M:%SZ` before and after each implementer call or parallel batch and each check, for the report's Log. A file named here without a directory is in the record.
+Take `date -u +%Y-%m-%dT%H:%M:%SZ` before and after each implementer call or parallel batch and each check, for the report's Log. A file named here without a directory is in the record.
 
 Every `blocked` ending below records the pass `failed` with its `ended`, the `changes` and `checks` known so far and, once the commit exists, its sha as `commit`, with `next` left null. A commit recorded so and not pushed is a kept commit, which the next run on the branch pushes first (`steps/3-next.md`, Resume).
 

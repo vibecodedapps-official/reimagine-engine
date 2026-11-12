@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.30 - 2026-11-12
+
+- The chat block's "Editing my text" item puts the line on what changed above the returned text, as its item on a revised draft does. It put the line after the text, so the block gave one line two places.
+
 ## audit 0.1.27 - 2026-11-12
 
 - On Windows the script that runs a bundle's tests ends a command's processes by id before the KILL to its group, in one call of Windows PowerShell, and sends the group no TERM. A TERM that the runtime of Git for Windows delivers to a native program ends processes by the parent ids Windows records, which outlive their parents, so it could end a process the audit never started. A child's TERM trap no longer runs at a timeout on Windows, and a command that timed out there records the status Windows reports for the process that leads it, 0 for a shell and 137 for a native program. When the call fails, a line on stderr says so and the KILL goes alone.

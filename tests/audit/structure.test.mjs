@@ -270,3 +270,13 @@ test('a failed output leaves its path before a relaunch, by one rule, and no age
     "common.md does not keep an agent out of another agent's scratch folder",
   );
 });
+
+// A watch on an agent's output file ends before the agent does, and the agent may still rewrite the file.
+test('the queue takes only an agent\'s own notification as its completion', () => {
+  const queue = paragraphs('skills/audit/SKILL.md').find((part) => part.startsWith('Keep one queue of agent jobs')) ?? '';
+  const rule = queue.match(/Each completion notification drives the next launch\. ([^.]*\.)/)?.[1] ?? '';
+  assert.ok(rule.startsWith("Only the agent's own notification counts"), 'SKILL.md, Queue, does not say which notification counts');
+  for (const not of ['a status line at the end of its output file', 'the end of a watch you set on that file']) {
+    assert.ok(rule.includes(not), `SKILL.md, Queue, does not rule out ${not}`);
+  }
+});

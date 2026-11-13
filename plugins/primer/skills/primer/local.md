@@ -19,7 +19,7 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
 ## Writes
 
 - Write a layer, a document under the store's `docs/` or `machine.md` with the Write or Edit tool, and only on a yes that names the file.
-- `map.json` and `config.json` change only through the same script's `map` verb: show the exact command and the change it makes, run it on a yes, and never edit either file by hand. `map --set --group <name>` puts sibling repositories in one group; `map --add --root <dir>` lists a directory whose repositories the user expects to be mapped, so an unmapped one there gets a warning at start; `map --set --store <path>` names a store kept elsewhere, by an absolute or `~/` path.
+- `map.json` and `config.json` change only through the same script's `map` verb: show the exact command and the change it makes, run it on a yes, and never edit either file by hand. `map --set --group <name>` puts sibling repositories in one group; `map --add --root <dir>` lists a directory whose repositories the user expects to be mapped, so an unmapped one there gets a warning at start; `map --set --store <path>`, given alone, names a store kept elsewhere, by an absolute or `~/` path.
 - The review stamp of Maintain step 3 is written as before.
 
 ## Once per repository

@@ -18,7 +18,7 @@ const GROUP = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const AGENT_NAMES = new Set(['claude.md', 'claude.local.md', 'agents.md', '.reimagine.json', '.mcp.json']);
 const AGENT_DIRS = new Set(['.claude', '.reimagine']);
 const FORMS = 'map takes --add with --profile shared|local [--own true|false] [--group <name>] or --root <dir>, --set with any of '
-  + '--profile, --own, --group, --root or --store <path>, or --drop [--root <dir>]; nothing else is accepted';
+  + '--profile, --own, --group and --root or with --store <path> alone, or --drop [--root <dir>]; nothing else is accepted';
 
 export class Refusal extends Error {}
 class Unknown extends Error {}
@@ -181,7 +181,7 @@ function mapVerb(c, [op, ...args]) {
     else refuse(FORMS);
   }
   const fields = ['profile', 'own', 'group'].some((k) => k in o);
-  if (op === '--add' ? (!fields && !o.roots.length) || (fields && !o.profile) : op === '--set' && !fields && !o.roots.length && !o.store) refuse(FORMS);
+  if (op === '--add' ? (!fields && !o.roots.length) || (fields && !o.profile) : op === '--set' && (o.store ? fields || o.roots.length : !fields && !o.roots.length)) refuse(FORMS);
   if (op === '--add' && o.profile === 'shared' && o.own === undefined) refuse('--add --profile shared takes --own true or --own false');
   const out = [];
   if (fields || (op === '--drop' && !o.roots.length)) {
@@ -210,13 +210,14 @@ function mapVerb(c, [op, ...args]) {
 }
 
 // The simple commands of a shell text, each a list of words { w, bad, git }, with ( and ) kept: bad marks an expansion the
-// script cannot resolve, git a command substitution that runs git. Null for a quote left open or a process substitution outside
-// quotes. A here-document ends the list, which then carries lost, so the calls before it keep their directories.
+// script cannot resolve, a brace expansion among them, git a command substitution that stages or commits with git. Null for a quote
+// left open or a process substitution outside quotes. A here-document ends the list, which then carries lost, and hidden when the
+// text from there on names a git add, stage or commit, so the calls before it keep their directories.
 function commands(s, ps) {
   const out = [];
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = false;
   const end = () => {
-    if (inw && !skip) words.push({ w: cur, bad, git: sub && /(?:\$\(|`|[;&|])\s*git\b/.test(cur) });
+    if (inw && !skip) words.push({ w: cur, bad, git: sub && /(?:\$\(|`|[;&|])\s*git\b[^)`]*\b(add|stage|commit)\b/.test(cur) });
     [skip, cur, inw, bad, sub] = [skip && !inw, '', false, false, false];
   };
   const cut = () => { end(); if (words.length) out.push(words); words = []; };
@@ -241,16 +242,16 @@ function commands(s, ps) {
     } else if (ch === '#' && !inw) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (ch === '<' || ch === '>') {
       if (nx === '(') return null;
-      if (ch === '<' && nx === '<') { cut(); out.lost = true; return out; }
+      if (ch === '<' && nx === '<') { cut(); [out.lost, out.hidden] = [true, /\bgit(\.exe)?\b[^\n]*\b(add|stage|commit)\b/i.test(s.slice(i))]; return out; }
       if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
       end();
       while ('>&|'.includes(s[i + 1] ?? 'x')) i++;
       skip = true;
-    } else if (' \t\r\n;&|(){}'.includes(ch)) {
+    } else if (' \t\r\n;&|()'.includes(ch) || ('{}'.includes(ch) && (ps || (!inw && (ch === '}' || nx === undefined || ' \t\r\n'.includes(nx)))))) {
       end();
       if (!' \t\r'.includes(ch)) { cut(); if (ch === '(' || ch === ')') out.push(ch); }
     } else {
-      if (ch === '$' || (!ps && ch === '`')) { bad = true; sub ||= ch === '`'; }
+      if (ch === '$' || (!ps && (ch === '`' || ch === '{'))) { bad = true; sub ||= ch === '`'; }
       cur += ch; inw = true;
     }
   }
@@ -265,16 +266,19 @@ const CDS = new Set(['cd', 'chdir', 'pushd', 'popd', 'set-location', 'sl', 'push
 
 // Collects each git add and git commit of a shell text with the directory it runs in, by the drift hook's grammar, following a
 // cd to a plain directory; sets lost for a change of directory or a word it cannot follow, and for a work tree or a git
-// directory named apart from the working directory, whose repository it still names.
+// directory named apart from the working directory, whose repository it still names. far says a directory is unknown, and
+// hidden that the text may run an add or a commit the script does not see.
 function scan(s, ps, st) {
   const list = commands(s, ps), dirs = [];
   if (!list || list.lost) st.lost = true;
+  if (!list || list.hidden) st.hidden = true;
   for (const item of list ?? []) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st);
 }
 
 function analyze(words, st) {
-  if (words.some((x) => x.git || /\bGIT_(DIR|WORK_TREE|INDEX_FILE)\b/.test(x.w))) st.lost = true;
-  const at = (dir, x) => { if (!x || x.bad) { st.lost = true; return dir; } return resolve(dir, tilde(x.w, st.home)); };
+  if (words.some((x) => x.git)) st.lost = st.hidden = true;
+  if (words.some((x) => /\bGIT_(DIR|WORK_TREE|INDEX_FILE)\b/.test(x.w))) st.lost = true;
+  const at = (dir, x) => { if (!x || x.bad) { st.lost = st.far = true; return dir; } return resolve(dir, tilde(st.msys ? x.w.replace(/^\/([A-Za-z])(?=\/|$)/, '$1:/') : x.w, st.home)); };
   let i = 0, dir = st.dir;
   for (; i < words.length; i++) {
     const w = words[i].w, b = base(w);
@@ -296,10 +300,10 @@ function analyze(words, st) {
     let j = 0;
     for (; j < rest.length && /^[-+]/.test(rest[j].w); j++) if (rest[j].w === '-o' || rest[j].w === '+o') j++;
     if (rest.slice(0, j).some((x) => /^-[A-Za-z]*c[A-Za-z]*$/.test(x.w)) && rest[j]) {
-      if (rest[j].bad) st.lost = true; else { const keep = st.dir; st.dir = dir; scan(rest[j].w, false, st); st.dir = keep; }
+      if (rest[j].bad) st.lost = st.hidden = true; else { const keep = st.dir; st.dir = dir; scan(rest[j].w, false, st); st.dir = keep; }
     }
   } else if (CDS.has(b)) {
-    if (b.startsWith('pop') || rest.length !== 1 || rest[0].w.startsWith('-')) st.lost = true; else st.dir = at(st.dir, rest[0]);
+    if (b.startsWith('pop') || rest.length !== 1 || rest[0].w.startsWith('-')) st.lost = st.far = true; else st.dir = at(st.dir, rest[0]);
   } else if (b === 'git' || b === 'git.exe') {
     let j = 0;
     for (; j < rest.length && rest[j].w.startsWith('-'); j++) {
@@ -313,7 +317,7 @@ function analyze(words, st) {
     }
     const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1);
     if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) st.calls.push({ sub, dir, args });
-  } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = true;
+  } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = st.hidden = true;
 }
 
 const COMMIT_VALUE = new Set(['message', 'file', 'reuse-message', 'reedit-message', 'fixup', 'squash', 'author', 'date', 'template', 'cleanup', 'trailer']);
@@ -384,14 +388,14 @@ function upstream(c, repo) {
 }
 
 // The deny reason for a call in a local repository, or null when it adds no agent file the upstream lacks. Without a plan the call
-// counts as staging every file git does not ignore.
-function verdict(c, repo, plan) {
+// counts as staging every file git does not ignore, and what each plan of parts holds, since a forced add stages a file git ignores.
+function verdict(c, repo, plan, parts = []) {
   let all = plan;
   if (!all) {
     const r = git(c, repo.top, ['status', '--porcelain=v1', '-z', '-uall']);
     if (r.status !== 0) throw new Error(`git status exited ${r.status}`);
     const paths = records(r.stdout).filter((x) => x.xy[0] !== 'D' && x.xy !== ' D').map((x) => x.path);
-    all = { paths, ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: `${readText(join(repo.top, f))}\n${blob(c, repo.top, `:${f}`)}`, was: blob(c, repo.top, `HEAD:${f}`) })) };
+    all = { paths: [...paths, ...parts.flatMap((p) => p.paths)], ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: `${readText(join(repo.top, f))}\n${blob(c, repo.top, `:${f}`)}`, was: blob(c, repo.top, `HEAD:${f}`) })) };
   }
   const agents = [...new Set(all.paths.filter(isAgent))].sort();
   const lines = all.ignores.flatMap((g) => {
@@ -413,14 +417,19 @@ function staged(c, input) {
   if (!existsSync(own)) return [];
   const map = loadMap(places(c, own).map), command = input.tool_input?.command;
   if (typeof command !== 'string' || !map.repos.some((e) => e.profile === 'local')) return [];
-  const cwd = isDir(input.cwd) ? input.cwd : c.cwd, st = { dir: cwd, home: c.home, calls: [], lost: false };
-  scan(command, input.tool_name === 'PowerShell', st);
-  if (!st.calls.length && !st.lost) return [];
-  const one = st.calls.length === 1 && !st.lost ? st.calls[0] : null;
-  for (const dir of new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd])) {
+  const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;
+  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false };
+  scan(command, ps, st);
+  if (!st.calls.length && !st.hidden) return [];
+  if (st.calls.some((x) => !isDir(x.dir))) st.lost = st.far = true;
+  const one = st.calls.length === 1 && !st.lost ? st.calls[0] : null, dirs = new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd]);
+  // Where a directory is unknown the call may run in any local repository, so each one the map holds is checked too.
+  if (st.far) for (const e of [{ path: cwd }, ...map.repos.filter((x) => x.profile === 'local')]) dirs.add(e.path);
+  for (const dir of dirs) {
     const repo = isDir(dir) && repoOf(c, dir);
     if (!repo || match(map, repo, c.platform)?.profile !== 'local') continue;
-    const reason = verdict(c, repo, one && planOf(c, one, repo.top));
+    const reason = one ? verdict(c, repo, planOf(c, one, repo.top))
+      : verdict(c, repo, null, st.calls.filter((x) => st.far || x.dir === dir).map((x) => planOf(c, { ...x, dir }, repo.top)).filter(Boolean));
     if (reason) return [deny(reason)];
   }
   return [];

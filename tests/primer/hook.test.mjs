@@ -5,7 +5,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -148,7 +148,7 @@ const stage = async (dir, path, content) => {
 };
 
 before(async () => {
-  base = mkdtempSync(join(tmpdir(), 'primer-hook-'));
+  base = realpathSync.native(mkdtempSync(join(tmpdir(), 'primer-hook-')));
   const emptyConfig = join(base, 'empty.gitconfig');
   writeFileSync(emptyConfig, '');
   env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: emptyConfig, GIT_CEILING_DIRECTORIES: base, CLAUDE_CONFIG_DIR: join(base, 'no-config'), XDG_CONFIG_HOME: join(base, 'xdg') };
@@ -782,6 +782,42 @@ describe('primer drift hook', () => {
       for (const command of [`GIT_DIR=${slash(dir)}/.git GIT_WORK_TREE=${slash(dir)} git add CLAUDE.md`, `git --git-dir=${slash(dir)}/.git --work-tree=${slash(dir)} add CLAUDE.md`]) {
         assert.equal(await check(command, base), deny(lead(dir) + unresolved + 'the call would add ' + both), command);
       }
+    });
+    test('a forced add of an agent file git ignores is counted beside a commit in the same command', async () => {
+      const dir = await clone();
+      write(dir, '.git/info/exclude', 'CLAUDE.md\nCLAUDE.local.md\nAGENTS.md\n.claude/\n.reimagine/\n.reimagine.json\n.mcp.json\n');
+      assert.equal(await check('git add -f CLAUDE.md && git commit -m x', dir),
+        deny(lead(dir) + unresolved + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+    });
+    test('a brace expansion among the paths of an add leaves it unresolved, and a brace that stands alone groups commands', async () => {
+      const dir = await clone();
+      assert.equal(await check('git add -f {CLAUDE,AGENTS}.md', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
+      assert.equal(await check('{ git add src/a.ts; }', dir), '');
+    });
+    test('a Git Bash drive path is followed on Windows', { skip: process.platform !== 'win32' }, async () => {
+      const dir = await clone();
+      const msys = `/${dir[0].toLowerCase()}${slash(dir).slice(2)}`;
+      const reason = deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
+      assert.equal(await check(`cd ${msys} && git add CLAUDE.md`, base), reason);
+      assert.equal(await check(`git -C ${msys} add CLAUDE.md`, base), reason);
+    });
+    test('a directory the script cannot follow has every local repository of the map checked', async () => {
+      const dir = await clone();
+      const far = join(base, 'far-config');
+      write(far, 'reimagine-primer/store/map.json', JSON.stringify({ version: 1, repos: [{ remotes: [], path: slash(dir), group: 'app', profile: 'local', own: null }], roots: [] }));
+      const reason = deny(lead(dir) + unresolved + 'the call would add ' + both);
+      assert.equal(await check('cd "$APP" && git add CLAUDE.md', fixture, { env: { CLAUDE_CONFIG_DIR: far } }), reason);
+      assert.equal(await check(`cd ${slash(join(base, 'no-such-directory'))} && git add src/a.ts`, fixture, { env: { CLAUDE_CONFIG_DIR: far } }), reason);
+    });
+    test('a command that stages and commits nothing passes, whatever in it cannot be resolved', async () => {
+      const dir = await clone();
+      for (const command of ["gh pr create --body-file - <<'EOF'\nthis commit fixes the hook\nEOF", 'cd "$D" && npm test # before the commit', 'echo "$(git log -1)" # last commit']) {
+        assert.equal(await check(command, dir), '', command);
+      }
+    });
+    test('git named in capitals still reaches the check', async () => {
+      const dir = await clone();
+      assert.equal(await check('GIT add CLAUDE.md', dir), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
     });
     test('a commit that only takes an agent file out of the index passes', async () => {
       const dir = await clone();

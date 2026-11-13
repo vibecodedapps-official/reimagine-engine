@@ -60,7 +60,7 @@ before(() => {
   env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: empty, GIT_CEILING_DIRECTORIES: base, CLAUDE_CONFIG_DIR: join(base, 'no-config'), HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(base, 'xdg') };
   for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'CLAUDE_CODE_SESSION_ATTENDED']) delete env[k];
 });
-after(() => rmSync(base, { recursive: true, force: true }));
+after(() => rmSync(base, { recursive: true, force: true, maxRetries: 15, retryDelay: 100 }));
 
 describe('session-start', () => {
   test('without primer\'s own directory it prints nothing', () => {
@@ -270,11 +270,12 @@ describe('map', () => {
     const dir = repo('map-refused', 'https://example.invalid/team/app.git');
     const m = (...args) => { const r = run(['map', ...args], { cwd: dir }); return [r.status, r.stdout]; };
     const forms = 'primer: map takes --add with --profile shared|local [--own true|false] [--group <name>] or --root <dir>, --set with any of '
-      + '--profile, --own, --group, --root or --store <path>, or --drop [--root <dir>]; nothing else is accepted\n';
+      + '--profile, --own, --group and --root or with --store <path> alone, or --drop [--root <dir>]; nothing else is accepted\n';
     assert.deepEqual(m('--add'), [1, forms]);
     assert.deepEqual(m('--move'), [1, forms]);
     assert.deepEqual(m('--drop', '--group', 'x'), [1, forms]);
     assert.deepEqual(m('--add', '--own', 'true'), [1, forms]);
+    assert.deepEqual(m('--set', '--store', join(base, 'other-store'), '--group', 'web'), [1, forms]);
     assert.deepEqual(m('--add', '--profile', 'team'), [1, 'primer: --profile takes shared or local, not team\n']);
     assert.deepEqual(m('--add', '--profile', 'local', '--group', '../x'), [1, 'primer: --group takes letters, digits, ., _ and -, starting with a letter or digit, not ../x\n']);
     assert.deepEqual(m('--set', '--store', 'relative'), [1, 'primer: --store takes an absolute or ~/ path, not relative\n']);

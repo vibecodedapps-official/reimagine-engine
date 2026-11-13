@@ -20,7 +20,7 @@ while IFS= read -r in_line || [ -n "$in_line" ]; do
 	json=$json$in_line
 done
 case $json in
-*commit* | *git*add* | *git*stage*) ;;
+*commit* | *[Gg][Ii][Tt]*add* | *[Gg][Ii][Tt]*stage*) ;;
 *) exit 0 ;;
 esac
 

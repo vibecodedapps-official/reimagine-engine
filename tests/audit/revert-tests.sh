@@ -31,7 +31,9 @@
 #  6 the time cap                        7 the file cap, with 21 files
 #  8 a path conflict                     9 the environment: LC_ALL, GIT_*, TMPDIR, and
 #    GIT_CEILING_DIRECTORIES
-# 10 an interrupt mid-run: exit 2, no process, no work dir, no result file
+# 10 an interrupt mid-run: exit 2, no process, no work dir, no result file; 10b the same
+#    between a command's start and the run's record of it, in a copy of the script that
+#    sleeps there
 # 11 argument and keys errors: exit 2 with one line; an existing work dir is left alone;
 #    REVERT_TESTS_TICK of 0 (11g) and of .5 (11h)
 # 12 the patterns fixture               13 the ground-truth fixture
@@ -681,6 +683,32 @@ rc=$?
 [ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
 checkleft
 
+# 10b. The same interrupt between a command's start and the run's record of it. Those are
+# a few lines of shell, so the case runs a copy of the script that sleeps there for 3
+# seconds; the copy must differ from the script by that line alone.
+case_id="case 10b"
+gap=$root/rt-gap.sh
+awk '$0 == "\tlive=$ro_pg" { print "\tsleep 3" } { print }' "$rt" > "$gap"
+if cmp -s "$gap" "$rt" ||
+	! awk '$0 == "\tsleep 3" && !n { n = 1; next } { print }' "$gap" | cmp -s - "$rt"; then
+	mismatch "$case_id: the copy does not differ from the script by one sleep line before live=\$ro_pg"
+fi
+rm -f "$tmp/res"
+"$sh_bin" "$gap" run "$R" main feature "$tmp/keys" "$wd" "$tmp/res" > "$tmp/out" 2> "$tmp/err" &
+sp=$!
+n=0
+while [ ! -s "$RT_PIDS/wait" ] && [ "$n" -lt 100 ]; do
+	sleep 0.2
+	n=$((n + 1))
+done
+[ -s "$RT_PIDS/wait" ] || mismatch "$case_id: the test file did not start"
+kill -TERM "$sp"
+wait "$sp"
+rc=$?
+[ "$rc" = 2 ] || mismatch "$case_id: exit $rc, expected 2"
+[ ! -e "$tmp/res" ] || mismatch "$case_id: a result file was written"
+checkleft
+
 # 11. Argument and keys errors.
 case_id="case 11a"
 mkdir "$root/rw"
@@ -1151,7 +1179,7 @@ rmdir "$tmp/res.fork"
 # The race cannot be forced: the case stops 200 watchdogs at once, which catches a TERM in
 # nearly every run, not in every run.
 case_id="case 19"
-sed -n '/^watchdog() {/,/^}/p; /^stopdog() {/,/^}/p; /^trap .trap "" HUP INT TERM; exit 2. HUP INT TERM$/p' \
+sed -n '/^watchdog() {/,/^}/p; /^stopdog() {/,/^}/p; /^trap .if \[ -n "\$hold" \]; then held=1; else trap "" HUP INT TERM; exit 2; fi. HUP INT TERM$/p' \
 	"$rt" > "$tmp/sd.sh"
 [ "$(grep -cE '^(watchdog\(\) \{|stopdog\(\) \{|trap )' "$tmp/sd.sh")" = 3 ] ||
 	mismatch "$case_id: the watchdog, stopdog, or the trap line is not in the script"

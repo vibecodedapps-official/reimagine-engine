@@ -8,6 +8,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 - Compaction recovery names the current command's section beside the stage's, and "The --live file" states three rules that only the validator's list had held: the frontmatter opens on line 1 and closes, no other key or line is accepted, and no value is empty.
 - Split mode of stage 7 is in `stages/7-converge-split.md`, which stage 7 reads only once the ledgers reach the split threshold. Every run loaded its slice commands and steps, about 1,000 words, and a run under the threshold used none of them.
 - `fault-injection.md` holds every rule of the `_test` fields, and each stage keeps one sentence where a fault acts. The stage files held the top-up scope ids, what a planted map error records and how dropped acknowledgments are counted, which that file lacked while saying it held them all.
+- A stop that reaches a run of `revert-tests.sh` between a test command's start and the run's record of it waits for the record, so the run ends the command and its watchdog. The run exited without ending them, and the command ran on with no deadline in a work dir the run then removed.
 
 ## primer 0.1.11 - 2026-11-12
 

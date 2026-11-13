@@ -165,11 +165,14 @@ before(async () => {
 after(() => rmSync(base, { recursive: true, force: true }));
 
 describe('primer drift hook', () => {
-  test('hooks.json registers one PreToolUse hook for Bash and PowerShell, one SessionStart hook for startup and the loader on every source', () => {
+  test('hooks.json registers PreToolUse hooks for Bash and PowerShell and for file edits, one SessionStart hook for startup and the loader on every source', () => {
     const json = JSON.parse(readFileSync(join(root, 'plugins/primer/hooks/hooks.json'), 'utf8'));
     assert.deepEqual(json, {
       hooks: {
-        PreToolUse: [{ matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] }],
+        PreToolUse: [
+          { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] },
+          { matcher: 'Edit|Write|NotebookEdit', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'reach', '${CLAUDE_PLUGIN_DATA}'], timeout: 10, onFailure: 'continue' }] },
+        ],
         SessionStart: [
           { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
           { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },

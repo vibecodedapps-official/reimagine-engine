@@ -11,7 +11,7 @@ Keeps a repository's project instructions in the forms Claude Code loads: a shor
 
 ## Requirements
 
-Git. On Windows, Git for Windows: the hooks run under its `sh`. Node 22 or later: the loader's SessionStart entry starts `scripts/primer.mjs` in every session, whatever the profile, and the `local` profile's staging check runs on it. No `jq`.
+Git. On Windows, Git for Windows: the hooks run under its `sh`. Node 22 or later: the loader's SessionStart entry starts `scripts/primer.mjs` in every session, whatever the profile, and the `local` profile's staging check, the reach hook and the ledger of `scripts/ledger.mjs` run on it. No `jq`.
 
 ## Use
 
@@ -71,6 +71,18 @@ primer: auto memory has 2 notes since the last review; run /primer
 
 `/primer` in `maintain` mode reviews them and records the review, after which the line goes until new notes arrive. Without the marker the notice says nothing. It never writes a file.
 
+The notice also counts the feedback logs that the house rules have each session write under `~/.claude/feedback/` (under `$CLAUDE_CONFIG_DIR` when set) and that changed since the last fold-back review, in every repository, since the logs belong to none:
+
+```
+primer: auto memory has 2 notes and 1 feedback logs since the last review; run /primer
+```
+
+The fold-back review in `maintain` checks each logged item's evidence, then its worth and placement, and asks once about what it would fold, hold or reject. `scripts/ledger.mjs` keeps one line per item in `ledger.jsonl` in the store, with its status and how often it was seen, so a held item that comes up again returns with its count, and a later item that matches a folded rule counts as that rule's failure.
+
+## Reach hook
+
+Before Claude Code edits a file in a repository other than the one the session started in, the hook tells it, once per repository and session, what it has not loaded there: the layers of a `local` repository, or the paths of the root instruction files and unscoped rules of any other. It records each repository in a file per session under the plugin's data directory. An edit in the session's own repository costs one Node start and no `git` call. It never blocks an edit, and where `node` is missing the edit goes through.
+
 ## Local profile
 
 On its first run in a repository whose hub has no `<!-- primer -->` marker, `/primer` asks once which profile applies, with no default, and records the answer:
@@ -78,7 +90,7 @@ On its first run in a repository whose hub has no `<!-- primer -->` marker, `/pr
 - `shared`: everything above. Instruction files live in the work tree and are committed.
 - `local`: nothing is written or committed in the work tree. The repository's context lives in a store outside it and reaches each session through a SessionStart hook.
 
-The store is `~/.claude/reimagine-primer/store/` (under `$CLAUDE_CONFIG_DIR` when set), or the directory the `store` key of `reimagine-primer/config.json` names, such as one you keep under version control. It holds `map.json`, which records each repository's profile and group, `shared.md` for every mapped repository and `groups/<group>.md` for one group of sibling repositories. `reimagine-primer/machine.md` holds what belongs to this machine alone. `/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 5-second limit each show a warning at session start.
+The store is `~/.claude/reimagine-primer/store/` (under `$CLAUDE_CONFIG_DIR` when set), or the directory the `store` key of `reimagine-primer/config.json` names, such as one you keep under version control. It holds `map.json`, which records each repository's profile and group, `shared.md` for every mapped repository and `groups/<group>.md` for one group of sibling repositories. `reimagine-primer/machine.md` holds what belongs to this machine alone. `/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 5-second limit each show a warning at session start. In a `local` repository the loader also gives the notice above. `scripts/primer.mjs measure` prints each mapped repository's context string as emitted against the cap, and `measure --with <file> <layer>` the size before and after a proposed layer, which `/primer` shows before it proposes an addition.
 
 In a `local` repository, the drift hook hands each `git add` and `git commit` to a staging check, which denies one that would stage or commit `CLAUDE.md`, `CLAUDE.local.md` or `AGENTS.md` at any depth, anything under `.claude/` or `.reimagine/`, `.reimagine.json`, `.mcp.json`, or a `.gitignore` line that names one of them, unless the upstream's default branch already tracks it. A command it cannot resolve counts as staging every file git does not ignore; the `info/exclude` lines `/primer` offers keep the agent files out of that. The check reads `git add`, `git stage` and `git commit` as a session ordinarily writes them, and it guards against a slip rather than closing every way in: a git alias, an `eval`, a script, and a subcommand held in a variable are not read. Where it cannot tell which repository a command runs in, it checks every `local` repository of the map, so a deny may name a repository other than the one you are in. Where `node` or `sh` is missing, the check cannot run and the call goes through.
 

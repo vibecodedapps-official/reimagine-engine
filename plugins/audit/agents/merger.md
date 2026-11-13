@@ -29,7 +29,7 @@ the ledger files for duplicate checks only.
 - Your output file is final once its last line is `status: complete` or
   `status: failed at <file>:<line>`. If you wake after that, end without writing.
 - On the line before your status line, list each read or call you were refused, as
-  `refused: <tool> <path or command>; ...`, or write `none refused`.
+  `refused: <tool> <path or first line of the command>; ...`, or write `none refused`.
 
 ## Steps
 
@@ -73,6 +73,8 @@ the ledger files for duplicate checks only.
      its line count with no gap. When you cannot read a file to its end, or the tool
      refuses a single line, the merge fails: write no items, write the reason, and end
      the file with `status: failed at <file>:<line>`, `<line>` the first line not read.
+     An instruction source your prompt names is not one of these files: read what the tool
+     gives of it, and a refused read of it goes on your refused line and fails nothing.
    - You have no shell and log no run; Grep is a search tool, not a shell. Each ledger
      section you open goes under an `opened:` heading, path and reason, as
      `## Output contract` allows, never under `runs:`. You change none of the files you

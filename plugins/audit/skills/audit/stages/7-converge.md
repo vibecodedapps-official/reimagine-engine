@@ -62,7 +62,7 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
       itself is written in the `audit-evidence.md` schema as `### L<n>: <title>` with
       `origin: late`, numbered after the highest carried `L<n>` (a carried id is
       reserved); such a finding never counts on this run, since no review follows it.
-      The file ends with `runs:` and `status: complete`.
+      The file ends with `runs:`, the refused line and `status: complete`.
 
    4. Check the file by script, then read only the size and the head of the output:
 

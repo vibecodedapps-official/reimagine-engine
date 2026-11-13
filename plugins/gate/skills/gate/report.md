@@ -49,7 +49,7 @@ The report may name models, agents and tools, because it stays in the record. It
 
 Findings. Per pass of the run, each finding by bucket with its file, summary and triage reason.
 
-- One defect is one finding that lists every location its reviews gave for it, whether in a finding's text or as findings whose summaries match apart from the file; never a sample or a word such as "several". Open findings are grouped the same way.
+- One defect is one finding that lists every location its reviews gave for it, whether in a finding's text or as findings whose summaries match apart from the file; never a sample or a word such as "several". Open findings are grouped the same way. A location whose bucket or state differs from the others' is given with its own.
 
 - A fixed finding is marked `fixed`. When the last pass's `next` has the rule `fix-of-fix`, its fixed findings are marked `fixed, no review after`, and one line names the checks that passed on them.
 - A finding carried, regressed or matched to an earlier one says so, with the match's reason.

@@ -123,12 +123,16 @@ result's text, approver and time; a `result_file` result's text is its copy
 6. **Fill the body** in the order of `report.md`, the header as `report.md`, "Body",
    lays it out, with the `REVIEW.md:` line from the brief. Before the report is written,
    read the head of each pull request again by stage 1's read (`stages/1-orient.md`,
-   Pull requests), its output redirected to `tmp/head-<bundle>.json`, never to a file
-   under `forge/`, and compare its `headRefOid` with the head stage 1 pinned; a read
-   that fails stops nothing and gives `not read again`. When a
-   head moved, the header's `heads:` line says so, and every text drafted for a ticket
-   or a pull request, in sections 7 and 8 and in `work-items.jsonl`, names the commit its
-   evidence was checked at, never the newer one. The twelve sections:
+   Pull requests) with `headRefOid` as its only `--json` field, its output redirected to
+   `tmp/head-<bundle>.json`, never to a file under `forge/`, and compare its
+   `headRefOid` with the `headRefOid` of `forge/<bundle>/pr.json`, the head stage 1 read,
+   which for a `working-tree` bundle is not the commit step 1c built; a read that fails
+   stops nothing and gives `not read again`. When a head moved, the header's `heads:`
+   line says so, and every text the orchestrator drafts for a ticket or a pull request,
+   in section 7, in the part of section 8 it writes and in `work-items.jsonl`, names the
+   commit its evidence was checked at, never the newer one; `08-decisions.md` is copied
+   by `report.sh parts` as its entries were written, and the `heads:` line stands for
+   it. The twelve sections:
    1. **Verdict**, from steps 4 and 5, then the `next:` block of step 14.
    2. **Findings by ticket**, as `report.md`, "2. Findings by ticket", says. A
       `provisional` item's missing review comes from its `gate.md` reason, or from the
@@ -276,7 +280,8 @@ result's text, approver and time; a `result_file` result's text is its copy
     state with `registry.sh set`, as `SKILL.md`, "State files", says. On a refusal or a
     failure, go on by that section's cases: a missing entry or a stale state.
 
-14. **Print and stop,** in plain words: the verdict as a sentence, the absolute path of
+14. **Print and stop,** in plain words: the verdict as a sentence, each head that moved
+    after stage 1 as the header's `heads:` line gives it, the absolute path of
     `report.md`, and the terminal state. For `partial`, say that
     `/audit:resume <run-id>` finishes the missing work and print it, when the run's
     entry is in `runs.json`. When the entry is absent, whatever the state, print the

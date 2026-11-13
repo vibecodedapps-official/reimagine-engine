@@ -107,7 +107,8 @@ Also consider the coverage gaps the pass-two files list.
 - At most 3,000 words in total, and at most two quoted lines per citation.
 - End with the merge verdicts of ask 6 when this request has it, else with your last
   position, then one line listing each read or call you were refused, as "refused:
-  <tool> <path or command>; ...", or "none refused", then a last line "status: complete".
+  <tool> <path or first line of the command>; ...", or "none refused", then a last line
+  "status: complete".
 ```
 
 The `<id slot>` at the end of asks 1 and 2 is one line. With one batch it reads `for

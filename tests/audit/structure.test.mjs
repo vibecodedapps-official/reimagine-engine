@@ -188,7 +188,7 @@ test('the ending of a merger that could not read an input is one literal where i
 });
 
 test('each agent definition ends its report with the calls it was refused', () => {
-  const line = '- On the line before your status line, list each read or call you were refused, as `refused: <tool> <path or command>; ...`, or write `none refused`.';
+  const line = '- On the line before your status line, list each read or call you were refused, as `refused: <tool> <path or first line of the command>; ...`, or write `none refused`.';
   const agents = list('agents/');
   assert.deepEqual(agents, ['agents/adversary.md', 'agents/auditor.md', 'agents/digester.md', 'agents/mapper.md', 'agents/merger.md']);
   for (const file of agents) {

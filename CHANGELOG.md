@@ -12,7 +12,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 ## gate 0.1.19 - 2026-11-13
 
 - The report lists every location its reviews gave for one defect under one finding, where it gave a sample.
-- Every brief, a reader's, an implementer's and the stand-in's request, names the instruction sources by path and quotes each convention held from no file, since an agent knows only its brief and what the host loads for it.
+- Every brief, a reader's, an implementer's and the stand-in's request, names the instruction sources by path and quotes each convention held from no file, since an agent knows only its brief and what the host loads for it. A convention the main session held was in none of the briefs of a run on someone else's pull request.
 - The skill counts four scripts, `resume.mjs` among them, where it said three.
 
 ## loop 0.1.29 - 2026-11-13

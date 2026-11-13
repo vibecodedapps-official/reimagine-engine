@@ -35,7 +35,7 @@ and your scratch folder.
 - Your output file is final once its last line is `status: complete`. If you wake after
   that, end without writing.
 - On the line before your status line, list each read or call you were refused, as
-  `refused: <tool> <path or command>; ...`, or write `none refused`.
+  `refused: <tool> <path or first line of the command>; ...`, or write `none refused`.
 
 ## Steps (pass two)
 
@@ -47,7 +47,8 @@ and your scratch folder.
    `### Leads a finding must clear`, `## Outward trace` and `## Outward trace challenged`
    sections.
 2. Read `audit-brief.md`, then only the trees it maps for you and the run-directory files it
-   names. Read the pass-one report you were given, every `## Top-up` section included.
+   names. Read each instruction source your prompt names at its path as well. Read the
+   pass-one report you were given, every `## Top-up` section included.
 3. For each finding, open every citation at the sha it names and confirm that the quoted
    lines are there and say what the finding says. Look for counter-evidence: callers,
    guards, tests, configuration, the three-dot diff, the ticket and pull request text, and

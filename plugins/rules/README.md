@@ -1,6 +1,6 @@
 # rules
 
-House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style, a refactor review against them and a handoff prompt skill.
+House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style, a refactor review against them, a handoff prompt skill and a check on drafts written for other people.
 
 ## What it installs
 
@@ -9,6 +9,7 @@ House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept curren
 - A chat block, in `chat/instructions.md` inside the plugin. It is for pasting into a chat product's custom instructions. Nothing installs it.
 - The skill `/rules:refactor`, which you invoke yourself. It reviews a repository against the house rules and the repository's own instruction files and, on your yes, writes one ticket file per bundle to the repository's ignored scratch directory, else to the plugin's data directory.
 - The skill `/rules:handoff-prompt`, which also answers a plain request for a handoff prompt. It writes a prompt that carries this session's work to a later one, from a summary of a discussion or a single idea, for you to paste. It writes no file.
+- The skill `/rules:draft`, which a session reaches on its own when it writes a message for someone else. It checks the finished draft before you first see it: it strikes detail no reader acts on, verifies what the draft states, and keeps its notes for you outside the draft.
 
 The plugin never edits `settings.json`.
 
@@ -39,6 +40,14 @@ Any other argument is refused, and nothing runs.
 Run `/rules:refactor` in a repository for a read-only review of the whole tree against the house rules and the repository's own instruction files, with findings grouped into bundles; on your yes it writes one ticket file per bundle and prints the `reimagine loop` line to ship each one.
 
 Ask for a handoff prompt, or run `/rules:handoff-prompt`, for a prompt that carries this session's work to a later session, from a summary or a single idea, in one block for you to paste; it states what was settled and what is open as you left it, suggests nothing, and writes no file.
+
+A draft for someone else, such as a reply, a ticket comment or an email, is checked by `/rules:draft` before it is shown. An email draft is one HTML file in the scratch directory the house rules name, ready to open in a browser and paste, and the reply shows its text.
+
+## Feedback log
+
+The house rules have every session log what it learned about its rules and context: a rule or fact that was missing, a rule that was loaded and missed, and a rule that visibly worked. Each entry goes in a file named for the date in `feedback/` under `$CLAUDE_CONFIG_DIR`, else under `~/.claude`, and ends with a `Recommended` section. The session changes no rule to fix what it logged unless you ask.
+
+That directory is outside every repository, so a session in the default permission mode asks before its first write there. The permission rule that allows the write is yours to add. The plugin ships no reader of the logs: they are yours to read.
 
 ## What the block looks like
 

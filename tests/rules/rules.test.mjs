@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = '9e2f0a14f55b7912';
+const SHIPPED_CORE_DIGEST = 'b59d929cf1f10dc0';
 
 // The shipped version, read from the manifest here so a release moves no literal in this file.
 const SHIPPED_VERSION = JSON.parse(readFileSync(new URL('../../plugins/rules/.claude-plugin/plugin.json', import.meta.url), 'utf8')).version;
@@ -42,8 +42,8 @@ test('R25: the block version is the version in the manifest of the plugin root',
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, '9e2f0a14f55b7912');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '08f36a5dc0cc48b4');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, 'b59d929cf1f10dc0');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'e2948cdd29f65d6d');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -937,12 +937,12 @@ test('R35, R34: the plan names what each import holds, and the units of a file a
   put(s.claude, '# Mine\n\n@toolkit/a.md\n@b.md\n@half.md\n@missing.md\n');
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 10), [`target: ${s.claude}`, 'state: absent', 'options: core',
-    'note: line 3: @toolkit/a.md imports a file that holds 33 of 33 rules; it is left as it is',
+    'note: line 3: @toolkit/a.md imports a file that holds 34 of 34 rules; it is left as it is',
     'note: line 4: @b.md imports a file that holds none of the rules; it is left as it is',
-    'note: line 5: @half.md imports a file that holds at least 2 of 33 rules; 1 import could not be read; it is left as it is',
+    'note: line 5: @half.md imports a file that holds at least 2 of 34 rules; 1 import could not be read; it is left as it is',
     'note: line 6: @missing.md imports a file that cannot be read; it is left as it is',
     'change: ready', 'recommend: decline',
-    'note: 33 of 33 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
+    'note: 34 of 34 rules come from imports; applying duplicates them; declining leaves this file unchanged']);
   assert.equal(out.some((l) => l.includes('already present outside the block')), false);
   assert.deepEqual(s.run('status').filter((l) => l.includes('note')), []);
 }));
@@ -952,7 +952,7 @@ test('R34: the overlap note and the recommendation for a hand copy, and adopt th
   put(s.claude, copy);
   const out = s.run('plan', ['--options', 'core']);
   assert.deepEqual(out.slice(0, 7), [`target: ${s.claude}`, 'state: absent', 'options: core',
-    'note: 33 of 33 rules already present outside the block; applying duplicates them', 'change: ready', 'recommend: adopt',
+    'note: 34 of 34 rules already present outside the block; applying duplicates them', 'change: ready', 'recommend: adopt',
     'note: /rules --adopt moves those lines into the block']);
   const adopted = s.run('plan', ['--adopt', '--options', 'core']);
   assert.deepEqual(adopted.slice(0, 5), [`target: ${s.claude}`, 'state: absent', 'options: core', 'change: ready', 'recommend: apply']);
@@ -1050,8 +1050,8 @@ test('R35: a house-rules marker line is a hard boundary for units, so a managed 
   const [row] = scan(s, '@managed.md\n');
   assert.equal(row.missed, 0);
   const p = plan('mine\n', { texts: SHIPPED, imported: [{ ref: '1: @managed.md', units: new Set(row.units), missed: 0, unreadable: false }] });
-  assert.equal(p.overlap.k, 33);
-  assert.equal(p.overlap.total, 33);
+  assert.equal(p.overlap.k, 34);
+  assert.equal(p.overlap.total, 34);
   assert.deepEqual(kinds(`- user\n${END}\n- next\n`), ['item:user', 'item:next']);
   assert.deepEqual(kinds(`- user\n${begin('core', 'none', 'cb477dddc15de845')}\nafter\n`), ['item:user', 'para:after']);
 }));
@@ -1094,7 +1094,7 @@ test('R33: only a plain shape may match a rule, so indented code, tabs, and deep
     assert.equal(p.after, plan(text, { texts: only }).after, name);
   }
   assert.equal(plan(`- ${rule}\n`, { texts: only, adopt: true }).after, `${begin('core', 'none', '6f5144b9eecde4b6', '9.9.9')}\n- ${rule}\n${END}\n`);
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 33);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 34);
 });
 
 test('R33: adopt keeps text that only looks like a rule because the parser flattened a construct around it', () => {
@@ -1189,7 +1189,7 @@ test('R33: indented text is never a rule, since it may belong to a container', (
   for (const [name, text] of Object.entries(cases)) {
     assert.equal(plan(text, { texts: only, adopt: true }).after, plan(text, { texts: only }).after, name);
   }
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 33);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 34);
   assert.equal(plan(`mine\n\n${SHIPPED['core.md'].replace(/^/gm, '  ')}`, { texts: SHIPPED }).overlap.n, 0);
 });
 
@@ -1211,8 +1211,8 @@ test('R33: a unit followed by anything but a blank line, the end, a heading, or 
   }
   // The shipped texts still match in full, alone and with the Windows paragraph.
   const all = render(['windows', 'core'], SHIPPED);
-  assert.equal(plan(`mine\n\n${all}`, { texts: SHIPPED, platform: 'win32', options: ['core', 'windows'] }).overlap.n, 34);
-  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 33);
+  assert.equal(plan(`mine\n\n${all}`, { texts: SHIPPED, platform: 'win32', options: ['core', 'windows'] }).overlap.n, 35);
+  assert.equal(plan(`mine\n\n${SHIPPED['core.md']}`, { texts: SHIPPED }).overlap.n, 34);
 });
 
 test('R33: a file that holds Markdown adopt does not handle is left alone, and plan recommends decline for it', () => {
@@ -1324,12 +1324,12 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n${ruleLines(1)}\n\nUse a | b\n`);
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
-    'note: 1 of 33 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 111 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: 1 of 34 rules are also present outside the block, duplicating it',
+    'note: adopt leaves this file alone because line 118 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
-    'note: 1 of 33 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 111 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: 1 of 34 rules are also present outside the block, duplicating it',
+    'note: adopt leaves this file alone because line 118 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1348,7 +1348,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 107: @shared.md imports a file that holds 33 of 33 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 114: @shared.md imports a file that holds 34 of 34 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));
@@ -1367,7 +1367,7 @@ test('R34: decline only when the rules already present cover every rule, else ap
   put(join(s.claudeDir, 'shared.md'), core);
   const all = s.run('plan');
   assert.ok(all.includes('recommend: decline'));
-  assert.ok(all.includes('note: 33 of 33 rules come from imports; applying duplicates them; declining leaves this file unchanged'));
+  assert.ok(all.includes('note: 34 of 34 rules come from imports; applying duplicates them; declining leaves this file unchanged'));
 }));
 
 test('R35: a backslash escapes only an opening backtick; a closing run pairs and spans hide what they hold', () => {
@@ -1452,10 +1452,10 @@ test('R34: with nothing to change, a copy beside the block is called a duplicate
   const installed = readFileSync(s.claude, 'latin1');
   put(s.claude, `${installed}\n${SHIPPED['core.md']}`);
   const keep = (out) => out.filter((l) => /^(state|note|change)/.test(l));
-  assert.deepEqual(keep(s.run('plan')), ['state: current', 'note: 33 of 33 rules are also present outside the block, duplicating it',
+  assert.deepEqual(keep(s.run('plan')), ['state: current', 'note: 34 of 34 rules are also present outside the block, duplicating it',
     'note: /rules --adopt moves those lines into the block', 'change: none']);
   put(s.claude, `${installed}\n${SHIPPED['core.md']}\nUse a | b\n`);
-  assert.deepEqual(keep(s.run('plan')).slice(0, 2), ['state: current', 'note: 33 of 33 rules are also present outside the block, duplicating it']);
+  assert.deepEqual(keep(s.run('plan')).slice(0, 2), ['state: current', 'note: 34 of 34 rules are also present outside the block, duplicating it']);
   assert.equal(keep(s.run('plan')).some((l) => l.includes('--adopt moves')), false);
 }));
 

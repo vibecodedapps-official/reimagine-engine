@@ -39,6 +39,7 @@ Each plugin works alone. After installing `rules`, run `/rules` (also reachable 
 
 - Rules refactor: run `/rules:refactor` in a repository for a read-only review of the whole tree against the house rules, grouped into bundles; on your yes it writes one ticket file per bundle and prints the `reimagine loop` line for each.
 - Handoff prompt: ask for a handoff prompt, or run `/rules:handoff-prompt`, to get a prompt that carries this session's work to a later one, from a summary or a single idea, for you to paste.
+- Draft check: a session that writes a message for someone else runs `/rules:draft` on the finished text before it shows it; the skill strikes detail no reader acts on and verifies what the draft states.
 - Loop: say `reimagine loop #12 and #15` or `run the loop on AB#4567, plan only`, or type `/loop:run` followed by the same words. There are no flags; the skill prints how it read your request before it does anything. The bare `/loop` is Claude Code's own interval skill, not this one.
 - Audit: say `reimagine audit PR 123 and 124 in app, tickets AB#4567 and AB#4580`, or pass the manifest a loop run wrote.
 - Gate: say `reimagine gate PR 73`, `gate this branch` or `gate the manifest <path>`, or type `/gate` followed by the same words. There are no flags.

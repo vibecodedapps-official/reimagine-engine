@@ -66,9 +66,10 @@
 #   the shape the stage 7 check needs must be in merger.md.
 # - agents/merger.md has the tools Read, Grep and Write and no other, in any order.
 #   skills/audit/stages/7-converge.md names
-#   awk 'END { print NR }', and steps 6, 7.3 and 7.4, the three merger prompts, each
-#   say "line count".
-# - The awk commands of step 7.1 in skills/audit/stages/7-converge.md that cut a section
+#   awk 'END { print NR }', and its step 6 and steps 3 and 4 of
+#   skills/audit/stages/7-converge-split.md, the three merger prompts, each say
+#   "line count".
+# - The awk commands of step 1 in skills/audit/stages/7-converge-split.md that cut a section
 #   of ledger/5.md, ledger/6.md or ledger/7.md, found in the indented block by their
 #   content, are filled in and run on temp ledgers: a line inside a code fence never
 #   starts or ends a section, fence lines print with the section, and a copy that
@@ -486,15 +487,24 @@ fi
 step() {
 	tr -d '\r' < "$1" | awk -v s="$2" 'p && /^[ \t]*[0-9]+\. / { exit } $0 ~ s { p = 1 } p'
 }
+# prompt_step <file> <regex>: the merger prompt of that step gives a line count.
+prompt_step() {
+	step "$1" "$2" > "$tmp/step"
+	[ -s "$tmp/step" ] || fail "$1: no step matching $2"
+	grep -q 'line count' "$tmp/step" || fail "$1: the merger prompt of step $2 gives no line count"
+}
 converge=skills/audit/stages/7-converge.md
+split=skills/audit/stages/7-converge-split.md
 if [ -f "$converge" ]; then
 	grep -qF "awk 'END { print NR }'" "$converge" ||
 		fail "$converge: does not count lines with awk 'END { print NR }'"
-	for s in '^6[.] [*][*]Normal mode' '^   3[.] Launch one merger per group' '^   4[.] Launch the final merger'; do
-		step "$converge" "$s" > "$tmp/step"
-		[ -s "$tmp/step" ] || fail "$converge: no step matching $s"
-		grep -q 'line count' "$tmp/step" || fail "$converge: the merger prompt of step $s gives no line count"
-	done
+	prompt_step "$converge" '^6[.] [*][*]Normal mode'
+fi
+if [ -f "$split" ]; then
+	prompt_step "$split" '^3[.] Launch one merger per group'
+	prompt_step "$split" '^4[.] Launch the final merger'
+else
+	fail "missing: $split"
 fi
 
 # The slice commands of stage 7 for ledger/5.md, ledger/6.md and ledger/7.md start and end
@@ -502,7 +512,7 @@ fi
 # block by its content, filled in, run on a temp ledger, and its output and exit status
 # compared with the expected text.
 slice_cmd() {
-	tr -d '\r' < "$converge" | sed 's/^[[:space:]]*//; s/ &&$//; s/ >> <slice>$//' |
+	tr -d '\r' < "$split" | sed 's/^[[:space:]]*//; s/ &&$//; s/ >> <slice>$//' |
 		grep '^awk -v id=<id> ' | grep -F " <run dir>/$1" > "$tmp/slice-cmds"
 	if [ "$2" = check ]; then grep -F 'exit !' "$tmp/slice-cmds"; else grep -vF 'exit !' "$tmp/slice-cmds"; fi
 }
@@ -512,7 +522,7 @@ slice_run() {
 	case $sr_cmd in
 	'' | *'
 '*)
-		fail "$converge: not exactly one $3 command for $1"
+		fail "$split: not exactly one $3 command for $1"
 		return
 		;;
 	esac
@@ -521,9 +531,9 @@ slice_run() {
 	sr_cmd=$(printf '%s\n' "$sr_cmd" | sed "s|<id>|$4|g; s|<run dir>|$tmp/run|g; s|<n>|$sr_n|g")
 	sr_got=$(sh -c "$sr_cmd" 2>&1; echo "exit $?")
 	[ "$sr_got" = "$5" ] ||
-		fail "$converge: the $3 command for $1 on $2, id $4, gave: $(printf '%s' "$sr_got" | tr '\n' '|')"
+		fail "$split: the $3 command for $1 on $2, id $4, gave: $(printf '%s' "$sr_got" | tr '\n' '|')"
 }
-if [ -f "$converge" ]; then
+if [ -f "$split" ]; then
 	mkdir -p "$tmp/run/ledger"
 	cat > "$tmp/run/ledger/5.md" <<'LEDGER'
 ## Role
@@ -664,7 +674,7 @@ if [ -f "$f" ]; then
 		fail "$f: hard rule 2 does not bar an inline program or a heredoc"
 fi
 # No stage file names the top tier as a default or a fallback.
-for f in skills/audit/stages/2-digest.md skills/audit/stages/3-domain.md skills/audit/stages/4-pass-one.md skills/audit/stages/5-pass-two.md skills/audit/stages/6-second-opinion.md skills/audit/stages/7-converge.md; do
+for f in skills/audit/stages/2-digest.md skills/audit/stages/3-domain.md skills/audit/stages/4-pass-one.md skills/audit/stages/5-pass-two.md skills/audit/stages/6-second-opinion.md skills/audit/stages/7-converge.md skills/audit/stages/7-converge-split.md; do
 	[ -f "$f" ] || continue
 	tr -d '\r' < "$f" | tr '\n\t' '  ' | tr -s ' ' > "$tmp/list"
 	grep -qF 'on `fable`' "$tmp/list" &&

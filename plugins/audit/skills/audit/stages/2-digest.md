@@ -51,8 +51,8 @@ document at its sha, never the digest. Agents: one `audit:digester` per chunk.
    6. The chunk's scope id is `digest-N`. Keep, for the entry, each file split by range
       with its ranges and their chunk numbers.
 4. **Launch.** Queue one `audit:digester` per chunk (SKILL.md, Queue and Agent launch
-   rules); digests are the first jobs of the queue. When `_test` `hold` names stage 2,
-   queue them and launch none until the stage it waits on has ended its initial agents.
+   rules); digests are the first jobs of the queue. A `_test` `hold` that names
+   stage 2 holds them, as `fault-injection.md` says.
    The prompt names, by absolute path, `audit-brief.md`, `common.md`, `claims.md`,
    `groups.md`, every `diffs/<bundle>.stat`, the scope file `guidelines/chunk-N.md`, the
    output file `guidelines/digest-N.md` and the scratch folder `tmp/agents/digest-N/`.

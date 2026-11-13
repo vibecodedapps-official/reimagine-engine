@@ -316,6 +316,7 @@ plugins/audit/
   skills/audit/second-opinion-request.md
   skills/audit/handoff.md  live.md  report.md  work-items.md  fault-injection.md  resume.md
   skills/audit/stages/1-orient.md ... 9-act.md
+  skills/audit/stages/7-converge-split.md        stage 7's split mode, read only when the ledgers reach the threshold
   agents/digester.md  mapper.md  auditor.md  adversary.md  merger.md
   scripts/readonly.sh  handoff.sh  ledger.sh  working-tree.sh  revert-tests.sh  live.sh  memory.sh  work-items.sh  collisions.sh  run-copies.sh  report.sh  registry.sh
 ```
@@ -419,7 +420,9 @@ The gate posts nothing to a pull request or a ticket (requirement 350, decision 
 plugins/primer/
   .claude-plugin/plugin.json
   LICENSE  README.md
-  skills/primer/SKILL.md           /primer; modes init, adopt, maintain; the proposal format
+  skills/primer/SKILL.md           /primer; the mode choice, the rules of every mode, the proposal and plan forms, maintain
+  skills/primer/init.md            the init steps, read in an init run
+  skills/primer/adopt.md           the adopt steps, read in an adopt run
   skills/primer/placement.md       the eleven placement items and the tasks test
   skills/primer/shapes.md          hub, nested file, rule and skill templates with their caps
   skills/fold/SKILL.md             /primer:fold; disable-model-invocation: true; reads the docs live, writes nothing

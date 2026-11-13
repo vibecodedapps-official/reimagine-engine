@@ -105,8 +105,7 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
      batch's scope marks the completion failed, as `fault-injection.md` says.
 
    The ladder (SKILL.md, Roles) applies to each batch on its own. The relaunch takes the
-   same prompt, scope, scratch folder and output file, and first moves the failed file
-   aside with `mv -f <output file> <run dir>/tmp/agents/<folder>/failed-response.md`.
+   same prompt, scope and output file.
    The swap's role is second opinion, and its reason the error, no `status: complete`,
    the unacknowledged inputs, the count of missing positions, or `_test.fail`. A second
    failed attempt fails stage 6 for that batch; its answer, when it exists, stays where it is. The other batches

@@ -253,3 +253,20 @@ test('the registry commands of the audit files are the ones registry.sh takes', 
   }
   assert.ok(named >= 5, `only ${named} registry commands found`);
 });
+
+// An agent leaves a complete file at its output path as final, so a relaunch on that path writes nothing while the file is there.
+test('a failed output leaves its path before a relaunch, by one rule, and no agent reads it', () => {
+  const roles = paragraphs('skills/audit/SKILL.md').find((part) => part.startsWith('An agent fails when')) ?? '';
+  assert.ok(
+    /Before the ladder relaunches an agent, move the output file [^.]*`failed-output\.md`/.test(roles),
+    'SKILL.md, Roles, does not move a failed output off its path before a relaunch',
+  );
+  for (const file of TARGETS) {
+    assert.ok(!/relaunch overwrites/i.test(TEXT[file]), `${file} says a relaunch overwrites a file`);
+    if (file !== 'skills/audit/SKILL.md') assert.ok(!/mv -f[^\n]*failed-/.test(TEXT[file]), `${file} moves a failed output by a rule of its own`);
+  }
+  assert.ok(
+    TEXT['skills/audit/common.md'].replace(/\s+/g, ' ').includes("It reads nothing in another agent's scratch folder."),
+    "common.md does not keep an agent out of another agent's scratch folder",
+  );
+});

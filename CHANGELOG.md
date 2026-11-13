@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.29 - 2026-11-12
+
+- Before the failure ladder relaunches an agent, the run moves the output file the failed attempt left into that attempt's scratch folder as `failed-output.md`, and no agent reads another agent's scratch folder. A relaunch takes the same output path and an agent leaves a complete file there as final, so after a failure that left a complete file the relaunch wrote nothing; the run then moved the file aside on its own and the next attempt read it.
+
 ## loop 0.1.28 - 2026-11-12
 
 - The skill has a Compaction recovery section: after a compaction a run reads `SKILL.md` again, then the record, which gives its current step, then that step's files. The host keeps only the first part of a skill's text across a compaction and the loop's skill is longer than that part, so a run went on without the end of the skill and nothing told it.

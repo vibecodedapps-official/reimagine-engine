@@ -8,7 +8,9 @@ Start from what was asked and the reviewer's role: what the request of the earli
 
 ## The new head
 
-The workspace's setup has fetched the head and the base again and moved the worktree to the head. Write `<round>/change.patch` from the earlier round's head to this one with `git <c> diff --no-ext-diff --no-textconv`. Where the author rebased, so the merge-base moved between the rounds, that diff also holds what the base brought: write the patch with `git <c> range-diff --no-ext-diff --no-textconv <earlier merge-base>..<earlier head> <merge-base>..<head sha>` instead, the earlier two as the earlier round's `reading.md` gives its base and head, and say so in `reading.md`.
+The workspace's setup has fetched the head and the base again and moved the worktree to the head. `<earlier head>` and `<earlier merge-base>` are the head and the merge-base the earlier round's `reading.md` gives, the merge-base being that of its base and head where it names none. Write `<round>/change.patch` from the earlier round's head to this one with `git <c> diff --no-ext-diff --no-textconv <earlier head> <head sha>`. Where the author rebased, so the merge-base moved between the rounds, that diff also holds what the base brought: write the patch with `git <c> range-diff --no-ext-diff --no-textconv <earlier merge-base>..<earlier head> <merge-base>..<head sha>` instead, and say so in `reading.md`.
+
+An earlier head the clone does not hold, `git <c> cat-file -e "<earlier head>^{commit}"` failing, is fetched by its full sha into no ref: `git <c> fetch <remote> <earlier head>`. Where the forge no longer gives it, or the earlier round has no record, the patch is the whole change, `git <c> diff --no-ext-diff --no-textconv <merge-base> <head sha>`; `reading.md` says so, each earlier item is judged by a read at the new head, and the merge commits of item 4 are those after the merge-base.
 
 1. Each earlier item is reported as `landed` or `open`, from a read or a run at the new head, with its basis.
 2. The author's reply is a claim: follow it to the place it names, and report what is there.

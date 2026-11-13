@@ -9,6 +9,7 @@ const INIT = readFileSync(new URL('init.md', DIR), 'utf8');
 const ADOPT = readFileSync(new URL('adopt.md', DIR), 'utf8');
 const SHAPES = readFileSync(new URL('shapes.md', DIR), 'utf8');
 const PLACEMENT = readFileSync(new URL('placement.md', DIR), 'utf8');
+const LOCAL = readFileSync(new URL('local.md', DIR), 'utf8');
 
 function lineCount(text) {
   if (text === '') return 0;
@@ -16,8 +17,8 @@ function lineCount(text) {
   return newlines + (text.endsWith('\n') ? 0 : 1);
 }
 
-test('R237: the skill directory holds SKILL.md, adopt.md, init.md, placement.md and shapes.md only', () => {
-  assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'adopt.md', 'init.md', 'placement.md', 'shapes.md']);
+test('R237: the skill directory holds SKILL.md, adopt.md, init.md, local.md, placement.md and shapes.md only', () => {
+  assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'adopt.md', 'init.md', 'local.md', 'placement.md', 'shapes.md']);
 });
 
 test('R245: the frontmatter names the skill, the four phrases first, and read-only tools', () => {
@@ -46,11 +47,12 @@ test('R245: the frontmatter names the skill, the four phrases first, and read-on
     'Bash(git rev-parse *)',
     'Bash(git ls-files *)',
     'Bash(git check-ignore *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status *)',
   ]);
 });
 
 test('R245: the mode is the first line, chosen from the files on disk', () => {
-  assert.ok(SKILL.includes('- The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain> (<one-line reason>)`, with no text before it.'));
+  assert.ok(SKILL.includes('- The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain> (<one-line reason>)`, with no text before it but the profile question, and the second is `primer: profile <shared|local>`.'));
   assert.ok(SKILL.includes('The mode is chosen from the files on disk, ignored ones included.'));
   assert.ok(SKILL.includes('- A mode named after the command (`/primer adopt`) forces it. A forced `init` never writes over an existing `CLAUDE.md` or `AGENTS.md`: say so and stop.'));
   assert.ok(SKILL.includes('- Otherwise find the hub: the root `CLAUDE.md`; the root `AGENTS.md` when the root `CLAUDE.md` is exactly `@AGENTS.md` plus at most one newline; the root `AGENTS.md` when there is no root `CLAUDE.md`. Read these files from disk, never from the copy loaded at session start, which drops HTML comments, the marker included. Then, in order: the hub\'s line 1 is exactly `<!-- primer -->` and no line of it is exactly `## Spokes`: `maintain`. Else any `CLAUDE.md` or `AGENTS.md` exists at any depth, `.claude/CLAUDE.md` included: `adopt`. Else: `init`.'));
@@ -118,6 +120,26 @@ test('R253 to R255: propose reads four sources in order, never proposes the neve
   assert.ok(!SKILL.includes('not in this prerelease'));
 });
 
+test('R385 and R396: the profile is asked once with no default, recorded by the script, and sets the fallback commit subject', () => {
+  assert.ok(SKILL.includes('- The profile: a hub whose line 1 is the marker is `shared`; else the `profile:` line of `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status` names it. With none, the reply is only one question, with no default:'));
+  assert.ok(SKILL.includes('for `shared`, also whether the repository is the user\'s own. The question names the run that records the answer, `map --add --profile <shared|local>` with `--own <true|false>` for `shared`, by the same script; run it on the answer. Without an answer write nothing.'));
+  assert.ok(SKILL.includes('- A `local` run reads `local.md` in this skill\'s directory before the mode line and follows it where it differs from this file.'));
+  assert.ok(SKILL.includes('- In a `shared` run, when the root `CLAUDE.md` or root `AGENTS.md` is ignored by git, say so after the profile line and stop with nothing written.'));
+  assert.ok(SKILL.includes('Where `status` shows `own false`, the fallback is `docs: <subject>`.'));
+});
+
+test('R385, R386 and R390: local.md keeps the work tree untouched, writes the store on a named yes and the map through the script', () => {
+  assert.ok(LOCAL.includes('A `local` run writes nothing in the repository\'s work tree, makes no commit or stash, and changes neither the index nor a `.gitignore`.'));
+  assert.ok(LOCAL.includes('- `init` while the store holds no layer for the repository\'s group, `maintain` after; `adopt` does not run.'));
+  assert.ok(LOCAL.includes('- Instruction files the upstream tracks are the repository\'s own: read them, never rewrite them. A root instruction file git ignores is the user\'s own and does not stop the run.'));
+  assert.ok(LOCAL.includes('- Write a layer, a document under the store\'s `docs/` or `machine.md` with the Write or Edit tool, and only on a yes that names the file.'));
+  assert.ok(LOCAL.includes('`map.json` and `config.json` change only through the same script\'s `map` verb: show the exact command and the change it makes, run it on a yes, and never edit either file by hand.'));
+  assert.ok(LOCAL.includes('- As its own question, offer the lines below for `info/exclude` under the repository\'s common directory (`git rev-parse --git-common-dir`), which git never shares. On a yes, append them; where the host refuses that write, show them for the user to add; a no leaves it.'));
+  assert.ok(LOCAL.replace(/\r\n/g, '\n').includes('  ```\n  CLAUDE.md\n  CLAUDE.local.md\n  AGENTS.md\n  .claude/\n  .reimagine/\n  .reimagine.json\n  .mcp.json\n  ```\n'));
+  assert.ok(LOCAL.includes('- The plan proposes the host\'s `attribution` setting with empty `commit` and `pr` values, by placement item 2,'));
+  assert.ok(LOCAL.includes('- A layer is factual statements, never commands addressed to the session,'));
+});
+
 test('R240: SKILL.md is within its cap of 150 lines, counted as the file has them', () => {
   assert.equal(lineCount('a\nb\nc'), 3);
   assert.equal(lineCount('a\nb\nc\n'), 3);
@@ -132,7 +154,7 @@ test('R237: every skill file SKILL.md names exists', () => {
   for (const m of SKILL.matchAll(/`([^`\n]+)`/g)) {
     if (/^[A-Za-z0-9_.-]+\.md$/.test(m[1]) && !host.has(m[1])) named.add(m[1]);
   }
-  assert.deepEqual([...named].sort(), ['adopt.md', 'init.md', 'placement.md', 'shapes.md']);
+  assert.deepEqual([...named].sort(), ['adopt.md', 'init.md', 'local.md', 'placement.md', 'shapes.md']);
   for (const name of named) assert.ok(existsSync(new URL(name, DIR)), `${name} exists`);
   assert.ok(SKILL.includes('read `shapes.md` and `placement.md` in this skill\'s directory.'));
 });

@@ -11,7 +11,7 @@ Keeps a repository's project instructions in the forms Claude Code loads: a shor
 
 ## Requirements
 
-Git. On Windows, Git for Windows: the hooks run under its `sh`. Nothing else; no Node, no `jq`.
+Git. On Windows, Git for Windows: the hooks run under its `sh`. Node 22 or later for the `local` profile's loader and staging check, which `scripts/primer.mjs` runs. No `jq`.
 
 ## Use
 
@@ -59,7 +59,7 @@ It blocks the commit, with the reason, when:
 
 When the commit touches files that a path-scoped rule, a skill's `paths` or a nested `CLAUDE.md` covers, and that file is not part of the commit, it lets the commit run and tells Claude which files to recheck.
 
-Without the marker it does nothing. It never writes a file. It is not a git hook: commits made outside Claude Code are not checked.
+Without the marker it does nothing but the staging check of the `local` profile, below. It never writes a file. It is not a git hook: commits made outside Claude Code are not checked.
 
 ## Memory notice
 
@@ -70,6 +70,17 @@ primer: auto memory has 2 notes since the last review; run /primer
 ```
 
 `/primer` in `maintain` mode reviews them and records the review, after which the line goes until new notes arrive. Without the marker the notice says nothing. It never writes a file.
+
+## Local profile
+
+On its first run in a repository whose hub has no `<!-- primer -->` marker, `/primer` asks once which profile applies, with no default, and records the answer:
+
+- `shared`: everything above. Instruction files live in the work tree and are committed.
+- `local`: nothing is written or committed in the work tree. The repository's context lives in a store outside it and reaches each session through a SessionStart hook.
+
+The store is `~/.claude/reimagine-primer/store/` (under `$CLAUDE_CONFIG_DIR` when set), or the directory the `store` key of `reimagine-primer/config.json` names, such as one you keep under version control. It holds `map.json`, which records each repository's profile and group, `shared.md` for every mapped repository and `groups/<group>.md` for one group of sibling repositories. `reimagine-primer/machine.md` holds what belongs to this machine alone. `/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 5-second limit each show a warning at session start.
+
+In a `local` repository, the drift hook hands each `git add` and `git commit` to a staging check, which denies one that would stage or commit `CLAUDE.md`, `CLAUDE.local.md` or `AGENTS.md` at any depth, anything under `.claude/` or `.reimagine/`, `.reimagine.json`, `.mcp.json`, or a `.gitignore` line that names one of them, unless the upstream's default branch already tracks it. A command it cannot resolve counts as staging every file git does not ignore; the `info/exclude` lines `/primer` offers keep the agent files out of that. Where `node` or `sh` is missing, the check cannot run and the call goes through.
 
 ## Uninstall
 

@@ -21,6 +21,16 @@
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs", "session-start", "all", "${CLAUDE_PLUGIN_DATA}"],
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

@@ -1,4 +1,4 @@
-// Runs the primer drift hook (plugins/primer/hooks/drift.sh) against throwaway repositories, one test per rule.
+// Runs the primer drift hook (plugins/primer/hooks/drift.sh) against throwaway repositories, one test per rule, and its hand-off to\n// the staging check of plugins/primer/scripts/primer.mjs.
 // The hook needs sh, git, awk and sed on PATH. Every repository lives under one temporary base that is removed at the end.
 // The groups whose cases each build their own repository run their cases concurrently.
 import { describe, test, before, after } from 'node:test';
@@ -150,7 +150,8 @@ before(async () => {
   base = mkdtempSync(join(tmpdir(), 'primer-hook-'));
   const emptyConfig = join(base, 'empty.gitconfig');
   writeFileSync(emptyConfig, '');
-  env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: emptyConfig, GIT_CEILING_DIRECTORIES: base };
+  env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: emptyConfig, GIT_CEILING_DIRECTORIES: base, CLAUDE_CONFIG_DIR: join(base, 'no-config'), XDG_CONFIG_HOME: join(base, 'xdg') };
+  delete env.CLAUDE_PLUGIN_ROOT;
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   delete env.GIT_INDEX_FILE;
@@ -163,12 +164,15 @@ before(async () => {
 after(() => rmSync(base, { recursive: true, force: true }));
 
 describe('primer drift hook', () => {
-  test('hooks.json registers one PreToolUse hook for Bash and PowerShell and one SessionStart hook for startup', () => {
+  test('hooks.json registers one PreToolUse hook for Bash and PowerShell, one SessionStart hook for startup and the loader on every source', () => {
     const json = JSON.parse(readFileSync(join(root, 'plugins/primer/hooks/hooks.json'), 'utf8'));
     assert.deepEqual(json, {
       hooks: {
         PreToolUse: [{ matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] }],
-        SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] }],
+        SessionStart: [
+          { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
+          { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
+        ],
       },
     });
   });
@@ -634,6 +638,137 @@ describe('primer drift hook', () => {
         assert.equal(await unchanged(fixture, 'git commit -m x'), advise('.claude/rules/code.md, src/api/CLAUDE.md'));
       } finally {
         await clean(fixture);
+      }
+    });
+  });
+
+  // Acceptance item 101 against throwaway repositories: a clone whose upstream tracks AGENTS.md, with an untracked CLAUDE.md,
+  // an untracked .claude/settings.local.json and a modified source file, mapped local in a configuration directory of its own.
+  describe('staging check', { concurrency }, () => {
+    const remote = 'https://example.invalid/team/app.git';
+    let up, seqs = 0, config, broken;
+    const slash = (p) => p.replaceAll('\\', '/');
+    before(async () => {
+      up = await repo('upstream', { 'AGENTS.md': '# Agents\n', 'src/a.ts': 'export const a = 1;\n', '.gitignore': 'node_modules/\n' });
+      config = join(base, 'staging-config');
+      write(config, 'reimagine-primer/store/map.json', JSON.stringify({
+        version: 1,
+        repos: [
+          { remotes: ['example.invalid/team/app'], path: 'unused', group: 'app', profile: 'local', own: null },
+          { remotes: ['example.invalid/team/site'], path: 'unused', group: 'site', profile: 'shared', own: true },
+        ],
+        roots: [],
+      }));
+      broken = join(base, 'broken-plugin');
+      write(broken, 'scripts/primer.mjs', "throw new Error('broken');\n");
+    });
+    const clone = async (url = remote) => {
+      const dir = join(base, `clone-${++seqs}`);
+      await git(base, 'clone', '-q', up, dir);
+      await git(dir, 'remote', 'set-url', 'origin', url);
+      write(dir, 'CLAUDE.md', '# Mine\n');
+      write(dir, '.claude/settings.local.json', '{}\n');
+      write(dir, 'src/a.ts', 'export const a = 2;\n');
+      return dir;
+    };
+    const check = (command, cwd, extra = {}) => run(command, cwd, { ...extra, env: { CLAUDE_CONFIG_DIR: config, ...extra.env } });
+    const lead = (dir) => `${slash(dir)} has the local profile, which keeps agent files out of its history; `;
+    const unresolved = 'the command cannot be resolved, so it counts as staging every file git does not ignore; ';
+    const both = '.claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold';
+
+    test('staging and committing everything in one command is denied, as a command that cannot be resolved', async () => {
+      const dir = await clone();
+      assert.equal(await check('git add -A && git commit -m x', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
+    });
+    test('staging CLAUDE.md by name is denied', async () => {
+      const dir = await clone();
+      assert.equal(await check('git add CLAUDE.md', dir), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+    });
+    test('staging CLAUDE.md through the PowerShell tool is denied', async () => {
+      const dir = await clone();
+      assert.equal(await check('git add CLAUDE.md', dir, { tool: 'PowerShell' }), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+    });
+    test('staging CLAUDE.md with git -C from a directory outside the repository is denied', async () => {
+      const dir = await clone();
+      assert.equal(await check(`git -C ${slash(dir)} add CLAUDE.md`, base), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+    });
+    test('a change to AGENTS.md, which the upstream tracks, passes staged and committed', async () => {
+      const dir = await clone();
+      write(dir, 'AGENTS.md', '# Agents\n\nMore.\n');
+      assert.equal(await check('git add AGENTS.md', dir), '');
+      assert.equal(await check('git commit AGENTS.md -m x', dir), '');
+      await git(dir, 'add', 'AGENTS.md');
+      assert.equal(await check('git commit -m x', dir), '');
+    });
+    test('a .gitignore line that names CLAUDE.md is denied staged and committed', async () => {
+      const dir = await clone();
+      write(dir, '.gitignore', 'node_modules/\nCLAUDE.md\n');
+      const reason = lead(dir) + 'the call would add the line CLAUDE.md in .gitignore, which names an agent file';
+      assert.equal(await check('git add .gitignore', dir), deny(reason));
+      assert.equal(await check('git commit -a -m x', dir), deny(reason));
+      await git(dir, 'add', '.gitignore');
+      assert.equal(await check('git commit -m x', dir), deny(reason));
+    });
+    test('the source file alone passes staged and committed', async () => {
+      const dir = await clone();
+      assert.equal(await check('git add src/a.ts', dir), '');
+      assert.equal(await check('git commit src/a.ts -m x', dir), '');
+      assert.equal(await check('git commit -am x', dir), '');
+    });
+    test('with the agent files in info/exclude, staging and committing everything in one command passes', async () => {
+      const dir = await clone();
+      write(dir, '.git/info/exclude', 'CLAUDE.md\nCLAUDE.local.md\nAGENTS.md\n.claude/\n.reimagine/\n.reimagine.json\n.mcp.json\n');
+      assert.equal(await check('git add -A && git commit -m x', dir), '');
+    });
+    test('an add whose options the script cannot resolve is taken to stage every file git does not ignore', async () => {
+      const dir = await clone();
+      for (const command of ['git add -p src/a.ts', 'git add -e src/a.ts', 'git add --pathspec-from-file=list', 'git add "$FILES"', 'cd "$DIR" && git add src/a.ts', 'git add nomatch']) {
+        assert.equal(await check(command, dir), deny(lead(dir) + unresolved + 'the call would add ' + both), command);
+      }
+    });
+    test('an upstream tree that cannot be read denies an agent file and says the tree is unknown', async () => {
+      const dir = await clone();
+      await git(dir, 'remote', 'set-head', 'origin', '-d');
+      assert.equal(await check('git add CLAUDE.md', dir),
+        deny(lead(dir) + "the call would add CLAUDE.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read)"));
+      assert.equal(await check('git add src/a.ts', dir), '');
+    });
+    test('a repository the map gives the shared profile, or none, passes', async () => {
+      assert.equal(await check('git add CLAUDE.md', await clone('https://example.invalid/team/site.git')), '');
+      assert.equal(await check('git add CLAUDE.md', await clone('https://example.invalid/team/other.git')), '');
+    });
+    test('the configuration directory is found from the transcript path first', async () => {
+      const dir = await clone();
+      const input = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git add CLAUDE.md' }, cwd: dir, transcript_path: join(config, 'projects', 'key', 'session.jsonl') });
+      assert.equal(await hook(input), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+    });
+    test('a staging check that fails denies the call', async () => {
+      const dir = await clone();
+      assert.equal(await check('git add -A && git commit -m x', dir, { env: { CLAUDE_PLUGIN_ROOT: broken } }),
+        deny('the staging check failed with exit status 1, so the call is denied'));
+    });
+    test('without primer\'s own directory the staging check does not run', async () => {
+      const dir = await clone();
+      assert.equal(await check('git add CLAUDE.md', dir, { env: { CLAUDE_CONFIG_DIR: join(base, 'no-config'), CLAUDE_PLUGIN_ROOT: broken } }), '');
+    });
+    test('a repository whose hub has the marker gets the drift check and not the staging check', async () => {
+      assert.equal(await check('git add -A && git commit -m x', fixture, { env: { CLAUDE_PLUGIN_ROOT: broken } }), '');
+      assert.equal(await check('git add -A && git commit -m x', brokenPath, { env: { CLAUDE_PLUGIN_ROOT: broken } }), deny(brokenFinding));
+    });
+    test('the check leaves the index and the work tree byte for byte as they were', async () => {
+      const dir = await clone();
+      write(dir, '.gitignore', 'node_modules/\nCLAUDE.md\n');
+      await git(dir, 'add', 'src/a.ts');
+      write(dir, 'src/a.ts', 'export const a = 3;\n');
+      const snapshot = async () => ({
+        index: readFileSync(join(dir, '.git/index')).toString('base64'),
+        status: await git(dir, '--no-optional-locks', 'status', '--porcelain=v1', '--ignored', '-uall'),
+        files: ['CLAUDE.md', '.claude/settings.local.json', 'src/a.ts', '.gitignore', 'AGENTS.md'].map((f) => readFileSync(join(dir, f), 'utf8')),
+      });
+      const prior = await snapshot();
+      for (const command of ['git commit -m x', 'git commit -a -m x', 'git commit src/a.ts -m x', 'git commit -i src/a.ts -m x', 'git commit --amend -a -m x', 'git add -A', 'git add -u', 'git add -p', 'git add -A && git commit -m x']) {
+        await check(command, dir);
+        assert.deepEqual(await snapshot(), prior, command);
       }
     });
   });

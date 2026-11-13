@@ -11,13 +11,16 @@
 #   advise:  additionalContext names rules, skills and nested files that cover changed
 #            paths and are not changed
 #   nothing: not a commit, no opted-in hub, or no finding
+# Where the repository of a `git add` or `git commit` has no opted-in hub and <config>/reimagine-primer exists, it hands
+# stdin to `node scripts/primer.mjs staged` first and prints what that prints; on any other exit status but a missing node
+# it denies.
 
 json=
 while IFS= read -r in_line || [ -n "$in_line" ]; do
 	json=$json$in_line
 done
 case $json in
-*commit*) ;;
+*commit* | *git*add*) ;;
 *) exit 0 ;;
 esac
 
@@ -34,8 +37,8 @@ case $json in
 *'"tool_name":"PowerShell"'* | *'"tool_name": "PowerShell"'*) ps=1 ;;
 esac
 
-# One line "D<dir>" per distinct directory where the command runs git commit, then one line "A"
-# when the command runs git add anywhere.
+# One line "D<dir>" per distinct directory where the command runs git commit, one line "E<dir>" per
+# distinct directory where it runs git add, then one line "A" when it runs git add anywhere.
 dirs=$(printf '%s\n' "$raw" | awk -v ps="$ps" '
 BEGIN { SEP = "\001" }
 
@@ -126,7 +129,10 @@ function analyze(str, nw,    a, i, j, k, w, t, cmd, base, dir, edir, hasc) {
 			else if (t == "-c" || t == "--git-dir" || t == "--namespace" || t == "--config-env") j += 2
 			else j++
 		}
-		if (j <= nw && a[j] == "add") adds = 1
+		if (j <= nw && a[j] == "add") {
+			adds = 1
+			if (!(dir in aseen)) { aseen[dir] = 1; print "E" dir }
+		}
 		if (j <= nw && a[j] == "commit") {
 			for (k = j + 1; k <= nw; k++)
 				if (a[k] == "--dry-run" || a[k] == "--help" || a[k] == "-h") return
@@ -446,21 +452,29 @@ EOF
 	fi
 }
 
-check_root() {
-	root=$1
-	if [ -f "$root/CLAUDE.md" ]; then
+# marked <root>: true when the root's hub opens with the marker; sets hub.
+marked() {
+	if [ -f "$1/CLAUDE.md" ]; then
 		hub=CLAUDE.md
-		if awk '{ sub(/\r$/, ""); if (NR == 1) l = $0 } END { exit (NR == 1 && l == "@AGENTS.md") ? 0 : 1 }' "$root/CLAUDE.md" 2>/dev/null; then
+		if awk '{ sub(/\r$/, ""); if (NR == 1) l = $0 } END { exit (NR == 1 && l == "@AGENTS.md") ? 0 : 1 }' "$1/CLAUDE.md" 2>/dev/null; then
 			hub=AGENTS.md
-			[ -f "$root/AGENTS.md" ] || return 0
+			[ -f "$1/AGENTS.md" ] || return 1
 		fi
-	elif [ -f "$root/AGENTS.md" ]; then
+	elif [ -f "$1/AGENTS.md" ]; then
 		hub=AGENTS.md
 	else
+		return 1
+	fi
+	mark=$(awk 'NR == 1 { sub(/\r$/, ""); print; exit }' "$1/$hub" 2>/dev/null)
+	[ "$mark" = "<!-- primer -->" ]
+}
+
+check_root() {
+	root=$1
+	if ! marked "$root"; then
+		unmarked=1
 		return 0
 	fi
-	mark=$(awk 'NR == 1 { sub(/\r$/, ""); print; exit }' "$root/$hub" 2>/dev/null)
-	[ "$mark" = "<!-- primer -->" ] || return 0
 
 	cov=
 	ncov=
@@ -567,12 +581,13 @@ EOF
 }
 
 roots=$NL
+unmarked=
 while IFS= read -r line; do
 	case $line in
-	D*) ;;
+	D* | E*) ;;
 	*) continue ;;
 	esac
-	dir=${line#D}
+	dir=${line#?}
 	case $dir in
 	"~") dir=$HOME ;;
 	"~/"*) dir=$HOME/${dir#"~/"} ;;
@@ -582,6 +597,12 @@ while IFS= read -r line; do
 		root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || root=
 	fi
 	[ -n "$root" ] || continue
+	case $line in
+	E*)
+		marked "$root" || unmarked=1
+		continue
+		;;
+	esac
 	case $roots in
 	*"$NL$root$NL"*) continue ;;
 	esac
@@ -590,6 +611,31 @@ while IFS= read -r line; do
 done <<EOF
 $dirs
 EOF
+
+# The staging check: <config> is three levels above the transcript, else the configuration directory variable, else
+# ~/.claude, as primer.mjs finds it. A missing node lets the call through, as the entry's onFailure does for a missing sh.
+if [ -n "$unmarked" ]; then
+	config=$(printf '%s\n' "$json" | LC_ALL=C sed -n -E 's/^.*"transcript_path"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*$/\1/p' | LC_ALL=C sed -e 's/\\\\/\//g' -e 's/\\"/"/g')
+	if [ -n "$config" ]; then
+		config=${config%/*}
+		config=${config%/*}
+		config=${config%/*}
+	else
+		config=${CLAUDE_CONFIG_DIR:-${USERPROFILE:-$HOME}/.claude}
+	fi
+	if [ -d "$config/reimagine-primer" ] && command -v node >/dev/null 2>&1; then
+		staged=$(printf '%s\n' "$json" | node "${CLAUDE_PLUGIN_ROOT:-${0%/*}/..}/scripts/primer.mjs" staged 2>/dev/null)
+		st=$?
+		if [ "$st" -ne 0 ]; then
+			printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"primer: the staging check failed with exit status %s, so the call is denied"}}\n' "$st"
+			exit 0
+		fi
+		if [ -n "$staged" ]; then
+			printf '%s\n' "$staged"
+			exit 0
+		fi
+	fi
+fi
 
 if [ -n "$findings" ]; then
 	msg=$(printf '%s' "$findings" | jesc '; ')

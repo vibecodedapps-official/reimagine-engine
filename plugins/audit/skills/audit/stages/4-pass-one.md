@@ -90,8 +90,8 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
       report, with `none` when no claim is assigned. A `_test` `fail` entry with role
       `auditor` and this scope or `any` applies.
    3. On a failure, follow the ladder (SKILL.md, Roles); its relaunch on the same model
-      takes the same prompt. A relaunch overwrites the output file. A failed scope counts
-      as done for the barrier and for the stage, and gets no pass two.
+      takes the same prompt. A failed scope counts as done for the barrier and for the
+      stage, and gets no pass two.
    4. On success, check that the report has a `runs:` heading and a `consumed:` heading;
       either may say none. `consumed:` names each digest and map read, with its hash.
       Then check coverage. The report's `## Decisions` must name every `decision` claim of

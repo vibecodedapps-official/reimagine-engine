@@ -153,7 +153,7 @@ After a compaction, or whenever you cannot account for your state, stop. Before 
 | second opinion (stage 6) | a fresh `audit:adversary` in second-opinion mode | opus | per batch: relaunch on sonnet, or on opus for a second opinion already on sonnet, a swap; then stage 6 fails |
 | merger (stage 7) | `audit:merger` | sonnet | you merge, a swap; a second failure fails stage 7 |
 
-An agent fails when it returns an error, when its output file is a failed output (`common.md`, "Output contract"), or when `_test` marks it failed. A swap changes who fills a role and never removes a stage. Record each swap in the stage entry's `swaps` list with role, scope, from, to and reason, and name it in the report. A stage fails when any of its scopes failed. A failed stage counts as satisfied for every stage that waits on it; the run goes on, records the coverage loss, and ends `partial`.
+An agent fails when it returns an error, when its output file is a failed output (`common.md`, "Output contract"), or when `_test` marks it failed. Before the ladder relaunches an agent, move the output file the failed attempt left, if any, into that attempt's scratch folder as `failed-output.md` with `mv -f`, so the relaunch finds no file at its path. A top-up that appends to a pass-one report is the exception: its stage restores the report from the saved copy, and the relaunch appends to that. A swap changes who fills a role and never removes a stage. Record each swap in the stage entry's `swaps` list with role, scope, from, to and reason, and name it in the report. A stage fails when any of its scopes failed. A failed stage counts as satisfied for every stage that waits on it; the run goes on, records the coverage loss, and ends `partial`.
 
 ### Agent launch rules
 

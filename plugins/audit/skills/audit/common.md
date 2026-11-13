@@ -65,7 +65,8 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    commands stay allowed as the list above says. No output goes into an audited tree. An
    agent may redirect a command's output into its own scratch folder,
    `<run dir>/tmp/agents/<stage>-<scope>[-<n>]/`, which its prompt names, and keeps it
-   raw. The digester keeps its narrower byte-range rule.
+   raw. It reads nothing in another agent's scratch folder. The digester keeps its
+   narrower byte-range rule.
 
    A diff always names two commits, and a two-dot diff is never used. A `git diff` against
    the working tree refreshes the index even with `--no-optional-locks`, so it never runs,

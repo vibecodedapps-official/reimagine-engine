@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## review 0.1.0 - 2026-11-13
+
+- A seventh plugin, `review`, for a pull request someone else wrote: `/review:run`, or the prose "reimagine review", ends in drafted comments for the author and a short summary for the person who gates the merge. Run on someone else's pull request, the gate ended `unconverged` because it found something, a failure state for the outcome a review exists for, and the audit's act stage and ticket edits take the branch and the tickets to be the user's.
+- Before any draft the skill searches the siblings of each lead by the shared name alone, reads one hop out from the diff, reads every cited location again at the head, labels every finding and fix `read`, `run` or `not run`, and gives each point a disposition. A list of sites built from one spelling of a name held 15 of 20, the consumers of a changed output sat outside the diff, and the first fix proposed for a blocking finding was wrong until a run showed it. A follow-up reports each earlier item as landed or open and decides conflicts by a trial merge, since a branch the forge showed as free of conflicts had three conflicting files.
+- The record, the drafts and the scratch worktree live under the plugin's data directory, since an ignore entry or a record in someone else's repository is a change to their tree. The head is untrusted: no hook of the repository runs on a `git` command in the worktree, code from the head runs only after a yes by name, and the conventions are read at the base commit.
+- Nothing is posted before the posting step, where every comment, the vote, each thread resolution, each ticket edit and a merge is approved by name. `scripts/posts.mjs` compares the drafts with the forge's threads, so a step run twice posts nothing twice, and checks each draft for a path, user name, host name or model name of the reviewer's machine.
+- The first reading is an agent of the session, given a patch of the change and the worktree's path. A child session that loads nothing from the head has not been observed, so none is started.
+
 ## audit 0.1.31 - 2026-11-13
 
 - A finding, a merged item and the report list every site of a defect with the search that found them, or say the list is partial and how far the search went. One report said "several" and one gave half the sites as all of them.

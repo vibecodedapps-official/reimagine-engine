@@ -120,22 +120,38 @@ describe('compare', () => {
     ]), 0, ['posted 01-a.md 11', 'twice 02-b.md 21,22']);
   });
 
-  test('R379: a value the record\'s scan replaced in a saved comment equals the draft\'s text in its place, on that line only', () => {
+  test('R379: a value the record\'s scan replaced in a saved comment, under a key in any case, equals the draft\'s text in its place, on that line only', () => {
     expect(compareCase({
       '01-auth.md': comment('src/auth.js', 4, '`token: string` is logged here (blocks)\n\nBasis: read'),
       '02-env.md': comment('src/env.js', 9, 'Drop `api_key=abc` from the sample\nand rotate it'),
       '03-key.md': comment('src/key.js', 1, 'Remove the key below\n\n-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----', '77'),
       '04-other.md': comment('src/auth.js', 8, '`token: string` is logged twice here'),
+      '05-upper.md': comment('src/env.js', 12, 'Unset `API_KEY=abc` here'),
     }, [
       { id: 'T1', path: 'src/auth.js', line: 4, status: 'open', comments: [{ id: '10', body: '`token: <redacted: token>` is logged here (blocks)\n\nBasis: read' }] },
       { id: 'T2', path: 'src/env.js', line: 9, status: 'open', comments: [{ id: '11', body: 'Drop `api_key=<redacted: api_key>\nand rotate it now' }] },
       { id: 'T3', path: 'src/key.js', line: 2, status: 'open', comments: [{ id: '77', body: 'Remove the key below\n\n<redacted: pem_key>' }] },
       { id: 'T4', path: 'src/auth.js', line: 8, status: 'open', comments: [{ id: '12', body: '`token: <redacted: token>` is logged here' }] },
+      { id: 'T5', path: 'src/env.js', line: 12, status: 'open', comments: [{ id: '13', body: 'Unset `API_KEY=<redacted: API_KEY>` here' }] },
     ]), 0, [
       'posted 01-auth.md 10',
       'missing 02-env.md',
       'posted 03-key.md 77',
       'missing 04-other.md',
+      'posted 05-upper.md 13',
+    ]);
+  });
+
+  test('R379: a posted id is looked for among the threads of the draft\'s kind only', () => {
+    expect(compareCase({
+      '01-summary.md': summary(SUMMARY, '555'),
+      '02-retry.md': comment('src/retry.js', 42, RETRY, '777'),
+    }, [
+      { id: 'T1', path: 'src/names.js', line: 3, status: 'open', comments: [{ id: '555', body: 'Rename the export too' }] },
+      { id: 'T2', path: null, line: null, status: 'open', comments: [{ id: '777', body: 'Thanks' }] },
+    ]), 0, [
+      'missing 01-summary.md',
+      'missing 02-retry.md',
     ]);
   });
 

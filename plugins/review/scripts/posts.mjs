@@ -26,11 +26,13 @@
 //   missing <draft>                      no comment equal to it
 // Equal means the same text once each line's trailing white space and the text's trailing blank lines are dropped and
 // CRLF or CR is read as LF; leading and inner white space count. A comment draft is compared with the threads at its path
-// and line, a summary with the threads that have no path, and the comment its posted id names wherever it is now, since a
-// line moves when the author pushes. Without a posted id a draft has no thread of its own, so another person's comment at
+// and line, a summary with the threads that have no path, and the comment its posted id names wherever it is now among
+// the threads of its kind, since a line moves when the author pushes and a forge numbers the two kinds apart. Without a
+// posted id a draft has no thread of its own, so another person's comment at
 // the same line leaves it missing. A comment with no id prints as -.
-// A saved comment may hold <redacted: key> where the record's credential scan replaced a value: it equals a draft that
-// holds any text in that place on the same line, and <redacted: pem_key> any text from there to the draft's end.
+// A saved comment may hold <redacted: key>, the key in any case, where the record's credential scan replaced a value: it
+// equals a draft that holds any text in that place on the same line, and <redacted: pem_key> any text from there to the
+// draft's end.
 //
 // leak takes the strings to look for as arguments, so nothing is written to disk and a path with spaces passes whole in
 // double quotes. Kinds: home, user, host, record, worktree, model, plugin; each may be given more than once. A string is
@@ -135,21 +137,21 @@ export function parseThreads(text) {
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // True when a saved comment equals a draft's text, a value the credential scan replaced standing for any text there.
-const MARK = /<redacted: ([a-z_]+)>/;
+const MARK = /<redacted: ([A-Za-z_]+)>/;
 export function same(saved, draft) {
   if (saved === draft) return true;
   if (!MARK.test(saved)) return false;
-  const source = saved.split(MARK).map((part, i) => (i % 2 === 0 ? escape(part) : part === 'pem_key' ? '[\\s\\S]*' : '[^\\n]*')).join('');
+  const source = saved.split(MARK).map((part, i) => (i % 2 === 0 ? escape(part) : part.toLowerCase() === 'pem_key' ? '[\\s\\S]*' : '[^\\n]*')).join('');
   return new RegExp(`^${source}$`).test(draft);
 }
 
 export function compare(drafts, threads) {
-  const all = threads.flatMap((t) => t.comments);
   return drafts.map((d) => {
     const body = normalize(d.body);
-    const scope = threads.filter((t) => (d.kind === 'summary' ? t.path === null : t.path === d.path && t.line === d.line));
+    const kind = threads.filter((t) => (t.path === null) === (d.kind === 'summary'));
+    const scope = d.kind === 'summary' ? kind : kind.filter((t) => t.path === d.path && t.line === d.line);
     const equal = scope.flatMap((t) => t.comments).filter((c) => same(c.body, body));
-    const own = d.posted === null ? null : all.find((c) => c.id === d.posted) ?? null;
+    const own = d.posted === null ? null : kind.flatMap((t) => t.comments).find((c) => c.id === d.posted) ?? null;
     if (own && same(own.body, body) && !equal.includes(own)) equal.unshift(own);
     const ids = (list) => list.map((c) => c.id ?? '-').join(',');
     if (equal.length > 1) return `twice ${d.name} ${ids(equal)}`;

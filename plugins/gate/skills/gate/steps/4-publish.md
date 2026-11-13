@@ -1,6 +1,6 @@
 # Step 4: End the run
 
-Read this file when a target ends in one of the five terminal states. After `blocked` nothing more is pushed.
+After `blocked` nothing more is pushed.
 
 ## The run entry
 

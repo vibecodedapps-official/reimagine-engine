@@ -1,6 +1,6 @@
 # Step 0: Preflight
 
-Read this file after the reading block, and take the targets in the order of its Targets line. Each target goes through Steps 0 to 3 and its terminal state before the next one starts. `<scripts>` in the step files is the path on the block's Scripts line, and `<r>` is the target's remote: the one whose fetch URL matches the `url` of `gh repo view --json nameWithOwner,url`, else `origin`.
+Take the targets in the order of the reading block's Targets line. Each target goes through Steps 0 to 3 and its terminal state before the next one starts. `<scripts>` in the step files is the path on the block's Scripts line, and `<r>` is the target's remote: the one whose fetch URL matches the `url` of `gh repo view --json nameWithOwner,url`, else `origin`.
 
 - Take `date -u +%Y-%m-%dT%H:%M:%SZ` now and keep the output as the run's start; take it again at the start of each later target.
 - Run read-only commands one at a time, and retry a dropped read once.

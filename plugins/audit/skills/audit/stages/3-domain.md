@@ -32,10 +32,7 @@ per code base.
    `audit-brief.md`, `common.md`, the scope file `domain/<source>-questions.md`, the output
    file `domain/<source>-map.md` and the scratch folder `tmp/agents/domain-<source>/`,
    and gives the source's read path and sha from the brief and those of every other code
-   base. It adds the stage's duties in a few lines: answer every question against this
-   source with quotes, `repo@sha:path:line`; write `not found` with the search used where
-   the source holds no answer; and note each place where this source and another code base
-   disagree, with a quote from each. The agent definition holds the rest.
+   base. The agent definition holds the duties.
 5. **On each completion.** Apply `_test` `fail` for role `mapper` at scope `<source>` or
    `any`. Read the output; on a failure, follow the ladder (SKILL.md, Roles). Record each
    agent in the entry. On success:

@@ -1,6 +1,6 @@
 # Step 1: A pass
 
-Read this file at the start of every pass, for its entry, its reviews, its findings and the triage. `<record>` is the record directory, `<merge-base>` the full sha in `passes.json` and `<n>` the pass number. Nothing is edited while a review runs.
+`<record>` is the record directory, `<merge-base>` the full sha in `passes.json` and `<n>` the pass number. Nothing is edited while a review runs.
 
 ## The pass entry
 

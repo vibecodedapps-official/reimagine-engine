@@ -122,11 +122,7 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
       `audit-evidence.md`, the scope file `scope/<scope>.md`, the output file
       `pass1/<scope>.md` and the scratch folder `tmp/agents/pass1-<scope>-<n>/`, `<n>`
       counting the scope's top-ups from 1, and gives each missed digest and map path with
-      its hash and the scope's questions. The agent definition holds the top-up duties:
-      apply every rule and answer of the missed files, cite the original at its sha, keep
-      every line of the report but its last `status: complete`, and append a `## Top-up`
-      section whose findings continue the scope's `F<n>` numbering, with `runs:`,
-      `consumed:` and a last line `status: complete`.
+      its hash and the scope's questions. The agent definition holds the top-up duties.
    5. A top-up succeeded when the file ends with `status: complete`, holds a top-up
       section, and keeps the saved report: strip CR from every line, take the saved copy
       less its last `status: complete` line and trailing empty lines, and compare it line
@@ -151,8 +147,7 @@ barrier miss. SKILL.md and `common.md` apply throughout and are not restated her
    not wait for this step.
 
 10. **Read-only check.** Run the check of SKILL.md (Read-only check), which writes
-    `baseline/4-check.md`. A difference in tracked files, untracked files that are not
-    ignored, refs, the index, the stash or config ends the run `blocked`.
+    `baseline/4-check.md`.
 
 11. **Entry last.** Once the check has passed, write the stage 4 entry (SKILL.md, State
     files): status; inputs, each consumed digest and map hash included; outputs, every

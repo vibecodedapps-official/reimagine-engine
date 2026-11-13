@@ -2,6 +2,20 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.28 - 2026-11-12
+
+- The skill, the report template, `live.md`, `work-items.md` and stages 1 to 5 drop copies of rules that another file the same reader holds states: the summary of stage 1, most of the Supporting files list, the report's copies of stage 8's closing lines and of its own Parts shapes, the validators' message lists, and what an agent's definition has the agent do. A run read each rule twice and the copies could drift. No rule is dropped.
+- Compaction recovery names the current command's section beside the stage's, and "The --live file" states three rules that only the validator's list had held: the frontmatter opens on line 1 and closes, no other key or line is accepted, and no value is empty.
+
+## primer 0.1.11 - 2026-11-12
+
+- The skill, `placement.md` and `shapes.md` each state a rule once. Init and Adopt restated the two reference files, and the reference files repeated one another and the skill, so a run read a rule two or three times and the copies could drift. No rule is dropped: each cut sentence stands in a file a run reads before it writes.
+- The description's second sentence is shorter. The four phrases that invoke the skill are unchanged.
+
+## gate 0.1.18 - 2026-11-12
+
+- The skill states each cap, the stop and the stand-in's mechanics once, in the step that acts on it, and no file opens by saying when it is read. The skill restated them, so a run read each rule twice and the copies could drift. No rule is dropped: each cut sentence stands in a file a run reads before the action it guards.
+
 ## rules 0.1.30 - 2026-11-12
 
 - The chat block's "Editing my text" item puts the line on what changed above the returned text, as its item on a revised draft does. It put the line after the text, so the block gave one line two places.

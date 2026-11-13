@@ -56,12 +56,7 @@ document at its sha, never the digest. Agents: one `audit:digester` per chunk.
    The prompt names, by absolute path, `audit-brief.md`, `common.md`, `claims.md`,
    `groups.md`, every `diffs/<bundle>.stat`, the scope file `guidelines/chunk-N.md`, the
    output file `guidelines/digest-N.md` and the scratch folder `tmp/agents/digest-N/`.
-   It adds the stage's duties in a few lines: read every file of the chunk in full, or for
-   a byte-range chunk the named range in slices of at most 24,000 bytes; end
-   `status: failed at byte <offset>`, never `complete`, when the range was not read to
-   its end; list each rule with its text, its strength (`MUST`, `SHOULD` or `MAY`) and
-   `repo@sha:path:line`; and add a `potential finding:` line naming the group wherever a
-   rule collides with a claim or the diff stat. The agent definition holds the rest.
+   The agent definition holds the duties.
 5. **On each completion.** Apply `_test` `fail` for role `digester` at scope `digest-N`
    or `any`. Read the output; on a failure, follow the ladder (SKILL.md, Roles).
    Record each agent in the entry. On success,

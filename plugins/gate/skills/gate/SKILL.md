@@ -1,6 +1,6 @@
 ---
 name: gate
-description: 'Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict when a pass finds nothing left to fix. Use when the user says "reimagine gate", "gate this branch", "gate PR [n]" or "gate the manifest [path]".'
+description: 'Run code-review passes over a pull request, several, or a loop manifest, fix what each pass finds, and stop at a verdict. Use when the user says "reimagine gate", "gate this branch", "gate PR [n]" or "gate the manifest [path]".'
 allowed-tools:
   - Bash(date)
   - Bash(date *)
@@ -29,8 +29,6 @@ allowed-tools:
 ---
 
 # gate
-
-The gate runs after the loop and before the audit: the loop ships a reviewed pull request, the gate reviews the whole change in depth, fixes what holds and verifies the fixes, and the audit challenges the result.
 
 You orchestrate one run over one pull request, several, or a loop manifest. A pass is one `code-review` of the whole change from the merge-base, a triage of what it found, a fix round by implementers and a decision on what comes next. Three scripts decide what must be exact: `split.mjs` the reviews of a pass, `findings.mjs` the identity of a finding across passes, `next.mjs` the next level or the stop. The allowed-tools list pre-approves only date, sleep and read-only git and gh in their plain forms; every write, push, script and child session stays under the session's permission mode. In a command the skill shows, a placeholder for a path, such as `<root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.
 
@@ -93,7 +91,7 @@ The gate posts nothing to a forge. Its findings, deferred list, checks, commits 
 | Role | Who | When it fails |
 |---|---|---|
 | orchestrator, triage | the session model | the run stops |
-| reviewer | a child session per review, `claude -p "/code-review <level> <range>"`, at `models.reviewer` | the stand-in: an Agent at `models.fallback-reviewer` over a saved patch, for the rest of the run, when `claude` is not on the PATH or the child reports the `code-review` skill missing |
+| reviewer | a child session per review, `claude -p "/code-review <level> <range>"`, at `models.reviewer` | the stand-in, when `claude` is not on the PATH or the child reports the `code-review` skill missing (`steps/1-pass.md`, The stand-in) |
 | reader | read-only Agents at `models.reader`, when a pass has more than 30 findings to sort | retried once, then the orchestrator reads that batch |
 | implementer | an Agent at `models.implementer` per group of files | the tree is restored from its snapshot and the run ends `blocked` |
 
@@ -103,11 +101,8 @@ The gate never calls `code-review` through the Skill tool, and a level typed in 
 
 The first pass of a sequence runs at `xhigh`. After each pass you do not choose what follows: `next.mjs` reads the record and returns the next level or the stop, with the rule that produced it (`steps/3-next.md`). A run stops when a pass finds nothing to fix, or finds only a few corrections to the fix round before it, which are made and pass the checks. Only `xhigh`, `high` and `medium` are ever typed.
 
-- `max-passes` bounds the passes of one run. A later run on the same branch continues from the level the capped run was given.
 - The run budget is "budget <n> minutes" in the request, else `gate.budget`, else a session instruction, else the default. Waits for an answer are outside it.
-- Each review has the review budget, and the reviews of a split pass together have it once for each `parallel` reviews or part of them. Each implementer call has the subagent budget and each check the check budget.
 - A cap on passes, the run budget or a review past its budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends it `blocked`. What the pass saved is kept, and a pushed commit stays.
-- A cap that ends a run is named in the report. A run never passes silently.
 
 With "no fixes" the run makes pass 1 only: the review and the triage run, nothing is edited, committed or pushed, and the report names what a fix run would do.
 

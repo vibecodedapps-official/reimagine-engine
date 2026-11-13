@@ -10,7 +10,8 @@ file says where each part comes from and how the verdict is decided. Inputs:
 `pass2/` files, `claims.md`, `audit-brief.md`, `manifest.json`, `stages.json`,
 `usage.md`, `baseline/*-check.md`, `late/adversary.md`, and the live files
 `live/findings.md`, `live/claims.md` and each `live/carried/<id>.md`, whichever exist,
-and the refused lines of every other agent output file.
+and the refused lines of every other agent output file, found by a search for the lines
+that start `refused: ` or read `none refused`, never by reading those files whole.
 The results files `live/results-<k>.md` that the derived files cite are read for each
 result's text, approver and time; a `result_file` result's text is its copy
 `live/results-<k>/<line>.txt`, hashed in `live/results-<k>/SHA256SUMS`. Outputs:

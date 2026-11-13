@@ -303,7 +303,8 @@ Every agent:
    `consumed: none`.
 4. Lists, on the line before its status line, each read or call it was refused, as
    `refused: <tool> <path or first line of the command>; ...`, or writes `none refused`.
-   A refused read is something the agent did not see.
+   A refused read is something the agent did not see. A read that a retry then made in full,
+   such as a smaller page of the same file, is not listed.
 5. Ends the file with the line `status: complete`, as its last line. A merger that cannot
    read an input to its end ends it instead with `status: failed at <file>:<line>`. The
    file is final then: the agent writes nothing to it afterwards, even when it wakes

@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.28 - 2026-11-12
+
+- The skill has a Compaction recovery section: after a compaction a run reads `SKILL.md` again, then the record, which gives its current step, then that step's files. The host keeps only the first part of a skill's text across a compaction and the loop's skill is longer than that part, so a run went on without the end of the skill and nothing told it.
+
 ## audit 0.1.28 - 2026-11-12
 
 - The skill, the report template, `live.md`, `work-items.md` and stages 1 to 5 drop copies of rules that another file the same reader holds states: the summary of stage 1, most of the Supporting files list, the report's copies of stage 8's closing lines and of its own Parts shapes, the validators' message lists, and what an agent's definition has the agent do. A run read each rule twice and the copies could drift. No rule is dropped.

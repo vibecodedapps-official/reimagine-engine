@@ -101,6 +101,10 @@ Invoking this skill by name approves, for this run only: creating a branch, comm
 
 Invoking by name is the user's opt-in to parallel Agent calls.
 
+## Compaction recovery
+
+After a compaction, or whenever you cannot account for your state, stop. Before any other action read `SKILL.md` again, since the host keeps only the first part of it across a compaction. Then read `record.md`, and in the record `steps.json` and this run's section of `run.md`: the current step is the one whose entry reads `running`, else the step after the last `complete` one. Then read each file that Supporting files names for that step. Before Step 0.5 there is no record, so read `steps/0-preflight.md` again.
+
 ## What leaves the run
 
 Step 7 applies this to the pull request, the comments and the tickets (`pr-body.md`, `tickets.md`).

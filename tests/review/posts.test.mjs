@@ -191,6 +191,13 @@ describe('compare', () => {
   refusal('refuses a thread line that is not a whole number', ok, [{ path: 'a.js', line: '1', comments: [] }], 'posts: thread 1 has a line that is not a whole number');
   refusal('refuses a comment with no body', ok, [{ path: 'a.js', line: 1, comments: [{ id: '1' }] }], 'posts: thread 1 comment 1 has no string "body"');
 
+  test('R379: a byte order mark at the start of a draft or of the threads file is dropped', () => {
+    const dir = caseDir();
+    writeFileSync(join(dir, 'drafts', '01-summary.md'), `\uFEFF${summary(SUMMARY)}`);
+    writeFileSync(join(dir, 'threads.json'), `\uFEFF${JSON.stringify({ threads: [{ id: 'T1', path: null, line: null, status: 'open', comments: [{ id: '200', body: SUMMARY }] }] })}`);
+    expect(run('compare', join(dir, 'drafts'), join(dir, 'threads.json')), 0, ['posted 01-summary.md 200']);
+  });
+
   test('refuses a drafts directory with no draft, one that does not exist and a threads file that does not exist', () => {
     const dir = caseDir();
     writeFileSync(join(dir, 'threads.json'), '{"threads": []}');

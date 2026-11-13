@@ -1,6 +1,6 @@
 # A follow-up review
 
-`<record>`, `<round>`, `<worktree>` and `git <c>` are those of `SKILL.md`, Record and workspace; the round is one more than the highest round made, as `SKILL.md` says a round is made, and an earlier round with no record, the request having said follow-up, is read from the forge's threads alone.
+`<record>`, `<round>`, `<worktree>` and `git <c>` are those of `SKILL.md`, Record and workspace; the round is one more than the highest round made, as `SKILL.md` says a round is made, and an earlier round with no record, the request having said follow-up, is read from the forge's threads alone. Set up the workspace there first, the fetch of the head and of the base included, since the trial merge below needs the base branch as it is now, not as an earlier round fetched it.
 
 ## The ask and the role
 
@@ -8,7 +8,7 @@ Start from what was asked and the reviewer's role: what the request of the earli
 
 ## The new head
 
-Fetch the head again into the run's ref, as in `SKILL.md`, and move the worktree to it with `git <c> -C "<worktree>" checkout --detach <head sha>`. Write `<round>/change.patch` from the earlier round's head to this one with `git <c> diff --no-ext-diff --no-textconv`.
+The workspace's setup has fetched the head and the base again and moved the worktree to the head. Write `<round>/change.patch` from the earlier round's head to this one with `git <c> diff --no-ext-diff --no-textconv`. Where the author rebased, so the merge-base moved between the rounds, that diff also holds what the base brought: write the patch with `git <c> range-diff --no-ext-diff --no-textconv <earlier merge-base>..<earlier head> <merge-base>..<head sha>` instead, the earlier two as the earlier round's `reading.md` gives its base and head, and say so in `reading.md`.
 
 1. Each earlier item is reported as `landed` or `open`, from a read or a run at the new head, with its basis.
 2. The author's reply is a claim: follow it to the place it names, and report what is there.

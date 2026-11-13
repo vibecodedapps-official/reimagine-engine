@@ -37,7 +37,7 @@ Phrases it reads beside the target: `follow-up`, `level <word>` (else `xhigh`), 
 
 ## What invoking approves
 
-Reads of the repository and the forge, a fetch of the head, a scratch worktree under the record, and a reviewing agent. Running any code from the pull request's head, its checks included, is asked for by name first, since that code is the author's. Every comment, the vote, each thread resolution, each ticket edit and a merge is approved by name in the posting step. No command that reaches a package registry runs; packages you installed are reached only when the head changes no dependency manifest or lockfile.
+Reads of the repository and the forge, a fetch of the head and of the base branch, a scratch worktree under the record, and a reviewing agent. Running any code from the pull request's head, its checks included, is asked for by name first, since that code is the author's. Every comment, the vote, each thread resolution, each ticket edit and a merge is approved by name in the posting step. No command that reaches a package registry runs; packages you installed are reached only when the head changes no dependency manifest or lockfile.
 
 ## Posting
 

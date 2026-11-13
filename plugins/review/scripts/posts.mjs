@@ -17,7 +17,8 @@
 //
 // The threads file is JSON: an object whose "threads" array holds the pull request's threads, as a forge export holds them:
 //   {"threads": [{"id": "T1", "path": "src/retry.js", "line": 42, "status": "open", "comments": [{"id": "1234567", "body": "..."}]}]}
-// A thread on the pull request itself has "path" and "line" null or absent. Other keys are ignored.
+// A thread on the pull request itself has "path" and "line" null or absent. Other keys are ignored. A byte order mark at
+// the start of a draft or of the threads file is dropped.
 //
 // compare prints one line per draft, in name order, and exits 0:
 //   posted <draft> <comment id>          one comment equal to the draft
@@ -60,7 +61,7 @@ export const normalize = (text) => lf(text).split('\n').map((l) => l.replace(/[ 
 
 function readText(path, what) {
   try {
-    return readFileSync(path, 'utf8');
+    return readFileSync(path, 'utf8').replace(/^\uFEFF/, '');
   } catch {
     return refuse(`cannot read ${what} ${path}`);
   }

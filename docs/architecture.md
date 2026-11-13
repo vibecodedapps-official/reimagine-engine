@@ -469,8 +469,9 @@ plugins/primer/
                                    PreToolUse Edit|Write|NotebookEdit -> node primer.mjs reach, timeout 10, onFailure continue
   hooks/drift.sh                   the commit check; hands a `git add` or `git commit` in a `local` repository to primer.mjs staged
   hooks/notice.sh                  one line when auto memory or the feedback logs have unreviewed entries
-  scripts/primer.mjs               session-start <layer> | staged | reach | status | measure | map | copies | transcripts
+  scripts/primer.mjs               session-start <layer> | staged | reach | status | measure | map | copies
   scripts/ledger.mjs               the fold-back ledger in the store: list | --add | --seen | --worked | --set
+  scripts/transcripts.mjs          the user's own messages from the session files, for a repository and a span of days
 ```
 
 Manifest:
@@ -486,7 +487,7 @@ Manifest:
 }
 ```
 
-The skill's description names "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files" (verified: a description's phrases invoked a skill in 2 of 2 runs, decision 84). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, and `ledger.mjs`, which keeps the fold-back ledger.
+The skill's description names "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files" (verified: a description's phrases invoked a skill in 2 of 2 runs, decision 84). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, `ledger.mjs`, which keeps the fold-back ledger, and `transcripts.mjs`, which reads the session files.
 
 ### Shapes and caps
 
@@ -565,7 +566,7 @@ Size is measured by `primer.mjs measure` on what the loader would emit, for ever
 
 Sessions log and never edit: the house rules have each one write what it learned to a dated file under `<config>/feedback/` (requirement 362). The maintain pass reads those logs beside auto memory. It searches every layer and the governed repository's own instructions before proposing anything, runs two passes before the user sees a list, the first on evidence and the second on worth, placement and wording, and ends in a pick (requirements 394 and 398). `ledger.jsonl` holds each item's status and how often it was seen, so a held item that comes up again returns with its count and a later item that matches a folded rule is recorded as that rule's failure (requirement 399, decision 296).
 
-A declared copy of context text is checked against a snapshot of its source by `primer.mjs copies` (requirement 400). `primer.mjs transcripts` lists the user's own messages from the session files with no model call, skipping what it cannot read, since the host documents the transcript format as internal. The detection that counts what the user had to repeat is built only after a pilot (requirement 401, decision 297).
+A declared copy of context text is checked against a snapshot of its source by `primer.mjs copies` (requirement 400). `transcripts.mjs` lists the user's own messages from the session files with no model call, skipping what it cannot read, since the host documents the transcript format as internal. The detection that counts what the user had to repeat is built only after a pilot (requirement 401, decision 297).
 
 ### Migration from repo-docs
 

@@ -130,9 +130,9 @@ the ledger files for duplicate checks only.
    - The disposition is the word alone: `agreed`, `contested` or `dismissed`.
    Keep every line the shape names; you may add lines after them, such as ledger section
    pointers. A group merger in split mode writes `converged/<group>.md` with each item's
-   sources, each position's severity and label, disposition, gate, absorbed ids and ledger
-   section pointer, and no `C<n>` ids; the final merger assigns the ids and keeps the
-   `- absorbs:` and `- gate:` forms.
+   sources, each position's severity and label, disposition, gate, absorbed ids, every site
+   those ids give for the defect and ledger section pointer, and no `C<n>` ids; the final
+   merger assigns the ids and keeps the `- absorbs:` and `- gate:` forms.
 9. Close the file as `## Output contract` says: `runs: none`, since you have no shell; the
    `opened:` heading of step 2 when you opened any ledger section; `consumed: none`, since
    you read no digest or map; the refused line of your hard rules; and

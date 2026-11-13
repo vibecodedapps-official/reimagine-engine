@@ -6,13 +6,13 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 - A finding, a merged item and the report list every site of a defect with the search that found them, or say the list is partial and how far the search went. One report said "several" and one gave half the sites as all of them.
 - Each agent ends its output with the reads and calls it was refused, and Coverage sums them. An agent's reads were refused and its report had no line saying so.
-- Every prompt names by path the instruction sources that bear on its question and quotes each convention held from no file. A ticket state was flagged that the team's own table makes correct: the main session held the table and no brief did.
+- Every prompt names by path the instruction sources that bear on its question and quotes each convention held from no file. A ticket state was flagged that a table of conventions makes correct: the main session held the table and no brief did.
 - Before the report is written the audit reads each pull request's head again and says when it moved, and drafted text names the commit its evidence was checked at. Evidence comments named a commit older than the head, with nothing saying the head had moved.
 
 ## gate 0.1.19 - 2026-11-13
 
 - The report lists every location its reviews gave for one defect under one finding, where it gave a sample.
-- Every brief, a reader's, an implementer's and the stand-in's request, names the instruction sources by path and quotes each convention held from no file, since an agent knows only its brief and what the host loads for it. A convention the main session held was in none of the briefs of a run on someone else's pull request.
+- Every brief, a reader's, an implementer's and the stand-in's request, names the instruction sources by path and quotes each convention held from no file, since an agent knows only its brief and what the host loads for it. A convention the main session held was in none of the briefs.
 - The skill counts four scripts, `resume.mjs` among them, where it said three.
 
 ## loop 0.1.29 - 2026-11-13

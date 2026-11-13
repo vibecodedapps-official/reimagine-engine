@@ -88,7 +88,8 @@ and your scratch folder.
 1. Read `common.md`, `audit-evidence.md`, `audit-brief.md`, `ledger/5.md` and `ledger/6.md`,
    and, when your prompt names them, `live/findings.md`, `live/claims.md`, the files under
    `live/carried/`, and in full each result copy `live/results-<k>/<line>.txt`: a result
-   kept as a file is the result itself.
+   kept as a file is the result itself. Read each instruction source your prompt names at
+   its path as well.
 2. Your ids are in the file your prompt names (`tmp/late-ids.txt`, one per line). Challenge
    every one and no other: the late additions (`- origin: pass2`, `- origin: topup`,
    `- origin: second-opinion`), the findings the second opinion asked to restore, and the

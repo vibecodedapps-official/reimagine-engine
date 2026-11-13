@@ -133,7 +133,8 @@ A group or `combined` scope runs these on its files in every tree mode, with `gi
 
 ## Top-up mode
 
-A top-up prompt names a digest or map and the group.
+A top-up prompt names a digest or map and the group. Read each instruction source it
+names at its path as well.
 
 1. Apply every rule of the digest, or every answer of the map, to the group's files, not
    only its `potential finding:` lines. Cite the original document or source at its sha.

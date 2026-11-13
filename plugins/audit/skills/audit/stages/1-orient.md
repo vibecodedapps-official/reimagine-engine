@@ -719,7 +719,8 @@ branch to it in the manifest."
          bears on the audit's questions: the user's and the repository's instruction
          files, and each file a context loader names as its source; then each convention
          the session holds from no file, such as a table the user gave in the request,
-         quoted.
+         quoted. A rerun of stage 1 reads the sources again and keeps each convention the
+         superseded brief quoted, since the session that reruns it may not hold them.
        - Corrections: empty, filled in stage 5.
 
     d. **Run copies.** Write the run's question list to `questions.md` in the run

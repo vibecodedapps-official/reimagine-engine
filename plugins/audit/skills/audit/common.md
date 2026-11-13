@@ -84,10 +84,10 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    request, what its reviewer needs about the code; never an audit id (`C<n>`,
    `claim <n>`, `W<n>`), a stage, a verdict or another term the audit coined, and never
    a model, agent or tool. When a head moved after stage 1 pinned it, a drafted text
-   names the commit its evidence was checked at, never the newer one
-   (`stages/8-report.md`, step 6). The trailer the host's attribution setting adds
-   to a commit stays, even where it names a model or tool. The report and the run records
-   stay in the run directory and may name them.
+   names the commit its evidence was checked at, never the newer one, and that is the one
+   commit id that leaves the run (`stages/8-report.md`, step 6). The trailer the host's
+   attribution setting adds to a commit stays, even where it names a model or tool. The
+   report and the run records stay in the run directory and may name them.
 4. **No advisor tool**, in the orchestrator or in any agent.
 5. **Live data only from a `--live` file.** Credentials and live systems (databases,
    dashboards, production APIs) serve only a question the code cannot answer, and only

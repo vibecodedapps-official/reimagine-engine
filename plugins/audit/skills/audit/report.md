@@ -123,8 +123,8 @@ shown, as in a headless session: the run id, the run directory, the manifest pat
 terminal state and the resume command. For a `head: working-tree` bundle, `<head sha>` is
 followed by `(working tree on <parent sha>)`, the built commit and the `HEAD` it sits on.
 The `heads:` line gives each bundle's head as stage 8 read it again
-(`stages/8-report.md`, step 6); a bundle that is not a pull request, or whose read
-failed, is `not read again`, never `unchanged`.
+(`stages/8-report.md`, step 6); a bundle that is not a pull request, a `file:` pull
+request, or one whose read failed, is `not read again`, never `unchanged`.
 The `REVIEW.md:` line names each copy applied, read at the bundle's base, or says none
 applied there, or `not read` when `sources_of_truth` replaced the default rank; a copy
 only the head holds, or changes, is named as not applied.
@@ -273,9 +273,9 @@ A run record.
 - Brief errata: each line of the stage 5 entry's `brief_errata`, as the adversaries
   wrote it.
 - Refused calls: the number of calls on the refused lines of every agent output file, a
-  top-up's included (`common.md`, "Output contract"), then each distinct call with the
-  agents it was refused to; or `none refused`. An output with no refused line is named.
-  A refused read is something that agent did not see.
+  top-up's included and a `.pre-topup.md` copy left out (`common.md`, "Output contract"),
+  then each distinct call with the agents it was refused to; or `none refused`. An output
+  with no refused line is named. A refused read is something that agent did not see.
 - Outward trace, from the pass files and stage entries, so it shows even when pass two
   failed or never ran: each scope whose trace is `not assessed`; each `not traced:`
   symbol; each entry with result `incomplete`; each entry cut to `(<k> of <n> checked)`,

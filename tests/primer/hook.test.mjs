@@ -1,4 +1,5 @@
-// Runs the primer drift hook (plugins/primer/hooks/drift.sh) against throwaway repositories, one test per rule, and its hand-off to\n// the staging check of plugins/primer/scripts/primer.mjs.
+// Runs the primer drift hook (plugins/primer/hooks/drift.sh) against throwaway repositories, one test per rule, and its hand-off to
+// the staging check of plugins/primer/scripts/primer.mjs.
 // The hook needs sh, git, awk and sed on PATH. Every repository lives under one temporary base that is removed at the end.
 // The groups whose cases each build their own repository run their cases concurrently.
 import { describe, test, before, after } from 'node:test';
@@ -751,9 +752,62 @@ describe('primer drift hook', () => {
       const dir = await clone();
       assert.equal(await check('git add CLAUDE.md', dir, { env: { CLAUDE_CONFIG_DIR: join(base, 'no-config'), CLAUDE_PLUGIN_ROOT: broken } }), '');
     });
-    test('a repository whose hub has the marker gets the drift check and not the staging check', async () => {
-      assert.equal(await check('git add -A && git commit -m x', fixture, { env: { CLAUDE_PLUGIN_ROOT: broken } }), '');
-      assert.equal(await check('git add -A && git commit -m x', brokenPath, { env: { CLAUDE_PLUGIN_ROOT: broken } }), deny(brokenFinding));
+    test('a repository whose hub has the marker and that the map does not give the local profile gets the drift check alone', async () => {
+      assert.equal(await check('git add -A && git commit -m x', fixture), '');
+      assert.equal(await check('git add -A && git commit -m x', brokenPath), deny(brokenFinding));
+    });
+    test('a local repository whose hub carries the marker still gets the staging check', async () => {
+      const dir = await clone();
+      write(dir, 'CLAUDE.md', '<!-- primer -->\n# Mine\n');
+      assert.equal(await check('git add CLAUDE.md', dir), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+    });
+    test('a cd into a local repository is followed from outside any repository and from a repository whose hub has the marker', async () => {
+      const dir = await clone();
+      const reason = deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
+      assert.equal(await check(`cd ${slash(dir)} && git add CLAUDE.md`, base), reason);
+      assert.equal(await check(`cd ${slash(dir)} && git add CLAUDE.md`, fixture), reason);
+    });
+    test('git stage, env -C before a shell and Push-Location are read as the add they run', async () => {
+      const dir = await clone();
+      const reason = deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
+      assert.equal(await check('git stage CLAUDE.md', dir), reason);
+      assert.equal(await check(`env -C ${slash(dir)} sh -c 'git add CLAUDE.md'`, base), reason);
+      assert.equal(await check(`Push-Location ${slash(dir)}; git add CLAUDE.md`, base, { tool: 'PowerShell' }), reason);
+    });
+    test('a form that hides what is staged or where counts as staging every file git does not ignore', async () => {
+      const dir = await clone();
+      for (const command of ['git ls-files -o | xargs git add', 'GIT_DIR=.git git add src/a.ts', "git commit -a -F - <<'EOF'\nmsg\nEOF"]) {
+        assert.equal(await check(command, dir), deny(lead(dir) + unresolved + 'the call would add ' + both), command);
+      }
+      for (const command of [`GIT_DIR=${slash(dir)}/.git GIT_WORK_TREE=${slash(dir)} git add CLAUDE.md`, `git --git-dir=${slash(dir)}/.git --work-tree=${slash(dir)} add CLAUDE.md`]) {
+        assert.equal(await check(command, base), deny(lead(dir) + unresolved + 'the call would add ' + both), command);
+      }
+    });
+    test('a commit that only takes an agent file out of the index passes', async () => {
+      const dir = await clone();
+      await git(dir, 'add', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'add');
+      await git(dir, 'rm', '-q', '--cached', 'CLAUDE.md');
+      assert.equal(await check('git commit -m x', dir), '');
+    });
+    test('a commit message that names git inside a here-document leaves the command resolved', async () => {
+      const dir = await clone();
+      await git(dir, 'add', 'src/a.ts');
+      assert.equal(await check('git commit -m "$(cat <<\'EOF\'\nfix the git hook path\nEOF\n)"', dir), '');
+    });
+    test('an agent file staged and then deleted from the work tree still counts', async () => {
+      const dir = await clone();
+      await git(dir, 'add', '.claude/settings.local.json');
+      rmSync(join(dir, '.claude/settings.local.json'));
+      assert.equal(await check('git add src && git commit -m x', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
+    });
+    test('a map that cannot be read denies in the script\'s own words', async () => {
+      const dir = await clone();
+      const bad = join(base, 'bad-map-config');
+      write(bad, 'reimagine-primer/store/map.json', '{');
+      const reason = `primer: the staging check failed, so the call is denied: ${join(bad, 'reimagine-primer', 'store', 'map.json')} is not a primer map`;
+      assert.equal(await check('git commit -m x', dir, { env: { CLAUDE_CONFIG_DIR: bad } }),
+        `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`);
     });
     test('the check leaves the index and the work tree byte for byte as they were', async () => {
       const dir = await clone();

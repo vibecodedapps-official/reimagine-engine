@@ -3,7 +3,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -257,6 +257,15 @@ describe('map', () => {
     assert.equal(r.stdout, `primer: wrote ${join(cfgDir, 'reimagine-primer', 'store', 'map.json')}\nrepo: + group map-no-remote, profile local, own unset, path ${slash(dir)}\n`);
   });
 
+  test('a root given through a link is recorded as the directory it leads to', () => {
+    const target = join(base, 'root-target'), link = join(base, 'root-link');
+    mkdirSync(target);
+    symlinkSync(target, link, 'junction');
+    const cfgDir = join(base, `map-config-${++seq}`);
+    const r = run(['map', '--add', '--root', link], { extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } });
+    assert.equal(r.stdout, `primer: wrote ${join(cfgDir, 'reimagine-primer', 'store', 'map.json')}\nroot: + ${slash(target)}\n`);
+  });
+
   test('each form the map does not take is refused with one line', () => {
     const dir = repo('map-refused', 'https://example.invalid/team/app.git');
     const m = (...args) => { const r = run(['map', ...args], { cwd: dir }); return [r.status, r.stdout]; };
@@ -283,9 +292,24 @@ describe('staged', () => {
     assert.deepEqual([r.status, r.stdout], [0, '']);
   });
 
-  test('an error of its own prints nothing on stdout and exits 2', () => {
+  test('an error of its own prints a deny that gives the error and exits 2', () => {
     const cfg = config({ version: 1, repos: 'none' });
     const r = run(['staged'], { input: input('git add CLAUDE.md', base), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
-    assert.deepEqual([r.status, r.stdout, r.stderr], [2, '', `primer: ${join(cfg.store, 'map.json')} is not a primer map\n`]);
+    const reason = `primer: the staging check failed, so the call is denied: ${join(cfg.store, 'map.json')} is not a primer map`;
+    assert.deepEqual([r.status, r.stdout, r.stderr],
+      [2, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`, '']);
+  });
+
+  test('an entry recorded while the repository had no remote still matches after one is added', () => {
+    const dir = repo('staged-remote-later');
+    const cfgDir = join(base, `map-config-${++seq}`);
+    run(['map', '--add', '--profile', 'local'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } });
+    git(dir, 'remote', 'add', 'origin', 'https://example.invalid/team/later.git');
+    write(dir, 'CLAUDE.md', '# x\n');
+    const r = run(['staged'], { input: input('git add CLAUDE.md', dir), extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } });
+    const reason = `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; `
+      + "the call would add CLAUDE.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read)";
+    assert.deepEqual([r.status, r.stdout],
+      [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
   });
 });

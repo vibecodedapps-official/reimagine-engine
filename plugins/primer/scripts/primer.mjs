@@ -29,6 +29,7 @@ const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 
 const isDir = (p) => typeof p === 'string' && p !== '' && !!statSync(p, { throwIfNoEntry: false })?.isDirectory();
 const tilde = (p, home) => (p === '~' ? home : /^~[\\/]/.test(p) ? join(home, p.slice(2)) : p);
 const readText = (path) => { try { return readFileSync(path, 'utf8'); } catch { return ''; } };
+const real = (p) => { try { return realpathSync.native(p); } catch { return p; } };
 
 // A remote as host/path, or null for a local path; the rule guard writes remotes by.
 export function normalizeRemote(url) {
@@ -90,8 +91,8 @@ function loadMap(path) {
   return ok ? v : refuse(`${path} is not a primer map`);
 }
 
-const match = (map, repo, platform) => map.repos.find((e) => (repo.remotes.length
-  ? e.remotes.some((r) => repo.remotes.includes(r)) : keyOf(e.path, platform) === keyOf(repo.root, platform)));
+const match = (map, repo, platform) => map.repos.find((e) => e.remotes.some((r) => repo.remotes.includes(r))
+  || ((!repo.remotes.length || !e.remotes.length) && keyOf(e.path, platform) === keyOf(repo.root, platform)));
 const under = (map, root, platform) => map.roots.find((d) => `${keyOf(root, platform)}/`.startsWith(`${keyOf(d, platform)}/`));
 const shown = (e) => `group ${e.group}, profile ${e.profile}, own ${e.own ?? 'unset'}, ${e.remotes.length ? `remotes ${e.remotes.join(', ')}` : `path ${e.path}`}`;
 
@@ -175,7 +176,7 @@ function mapVerb(c, [op, ...args]) {
     if (a === '--profile') o.profile = PROFILES.includes(v) ? v : refuse(`--profile takes shared or local, not ${v}`);
     else if (a === '--own') o.own = v === 'true' ? true : v === 'false' ? false : refuse(`--own takes true or false, not ${v}`);
     else if (a === '--group') o.group = GROUP.test(v) ? v : refuse(`--group takes letters, digits, ., _ and -, starting with a letter or digit, not ${v}`);
-    else if (a === '--root') o.roots.push(slash(resolve(c.cwd, tilde(v, c.home))));
+    else if (a === '--root') o.roots.push(slash(real(resolve(c.cwd, tilde(v, c.home)))));
     else if (a === '--store' && op === '--set') o.store = isAbsolute(v) || /^~[\\/]/.test(v) ? v : refuse(`--store takes an absolute or ~/ path, not ${v}`);
     else refuse(FORMS);
   }
@@ -209,13 +210,13 @@ function mapVerb(c, [op, ...args]) {
 }
 
 // The simple commands of a shell text, each a list of words { w, bad, git }, with ( and ) kept: bad marks an expansion the
-// script cannot resolve, git a command substitution that names git. Null for a quote left open, a here-document or a process
-// substitution outside quotes.
+// script cannot resolve, git a command substitution that runs git. Null for a quote left open or a process substitution outside
+// quotes. A here-document ends the list, which then carries lost, so the calls before it keep their directories.
 function commands(s, ps) {
   const out = [];
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = false;
   const end = () => {
-    if (inw && !skip) words.push({ w: cur, bad, git: sub && /\bgit\b/.test(cur) });
+    if (inw && !skip) words.push({ w: cur, bad, git: sub && /(?:\$\(|`|[;&|])\s*git\b/.test(cur) });
     [skip, cur, inw, bad, sub] = [skip && !inw, '', false, false, false];
   };
   const cut = () => { end(); if (words.length) out.push(words); words = []; };
@@ -239,7 +240,8 @@ function commands(s, ps) {
       i++;
     } else if (ch === '#' && !inw) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (ch === '<' || ch === '>') {
-      if (nx === '(' || (ch === '<' && nx === '<')) return null;
+      if (nx === '(') return null;
+      if (ch === '<' && nx === '<') { cut(); out.lost = true; return out; }
       if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
       end();
       while ('>&|'.includes(s[i + 1] ?? 'x')) i++;
@@ -259,22 +261,25 @@ function commands(s, ps) {
 const base = (w) => w.replace(/^.*[\\/]/, '').toLowerCase();
 const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'do', 'while', 'until', '!', 'time', 'command', 'exec', 'nohup']);
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'sh.exe', 'bash.exe']);
-const CDS = new Set(['cd', 'chdir', 'pushd', 'popd', 'set-location', 'sl']);
+const CDS = new Set(['cd', 'chdir', 'pushd', 'popd', 'set-location', 'sl', 'push-location', 'pop-location']);
 
 // Collects each git add and git commit of a shell text with the directory it runs in, by the drift hook's grammar, following a
-// cd to a plain directory; sets lost for a change of directory or a word it cannot follow.
+// cd to a plain directory; sets lost for a change of directory or a word it cannot follow, and for a work tree or a git
+// directory named apart from the working directory, whose repository it still names.
 function scan(s, ps, st) {
   const list = commands(s, ps), dirs = [];
-  if (!list) st.lost = true;
+  if (!list || list.lost) st.lost = true;
   for (const item of list ?? []) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st);
 }
 
 function analyze(words, st) {
-  if (words.some((x) => x.git)) st.lost = true;
+  if (words.some((x) => x.git || /\bGIT_(DIR|WORK_TREE|INDEX_FILE)\b/.test(x.w))) st.lost = true;
   const at = (dir, x) => { if (!x || x.bad) { st.lost = true; return dir; } return resolve(dir, tilde(x.w, st.home)); };
   let i = 0, dir = st.dir;
   for (; i < words.length; i++) {
     const w = words[i].w, b = base(w);
+    const tree = /^GIT_(?:WORK_TREE=(.*)|DIR=(.*))$/.exec(w);
+    if (tree) dir = at(st.dir, { ...words[i], w: tree[1] ?? `${tree[2]}/..` });
     if (/^[A-Za-z_]\w*=/.test(w) || KEYWORDS.has(b)) continue;
     if (b !== 'env' && b !== 'sudo') break;
     while (words[i + 1]?.w.startsWith('-')) {
@@ -291,21 +296,24 @@ function analyze(words, st) {
     let j = 0;
     for (; j < rest.length && /^[-+]/.test(rest[j].w); j++) if (rest[j].w === '-o' || rest[j].w === '+o') j++;
     if (rest.slice(0, j).some((x) => /^-[A-Za-z]*c[A-Za-z]*$/.test(x.w)) && rest[j]) {
-      if (rest[j].bad) st.lost = true; else scan(rest[j].w, false, st);
+      if (rest[j].bad) st.lost = true; else { const keep = st.dir; st.dir = dir; scan(rest[j].w, false, st); st.dir = keep; }
     }
   } else if (CDS.has(b)) {
-    if (b === 'popd' || rest.length !== 1 || rest[0].w.startsWith('-')) st.lost = true; else st.dir = at(st.dir, rest[0]);
+    if (b.startsWith('pop') || rest.length !== 1 || rest[0].w.startsWith('-')) st.lost = true; else st.dir = at(st.dir, rest[0]);
   } else if (b === 'git' || b === 'git.exe') {
     let j = 0;
     for (; j < rest.length && rest[j].w.startsWith('-'); j++) {
       const t = rest[j].w;
       if (t === '-C') dir = at(dir, rest[++j]);
-      else if (/^--(work-tree|git-dir)/.test(t)) { st.lost = true; if (!t.includes('=')) j++; }
+      else if (/^--(work-tree|git-dir)/.test(t)) {
+        const v = t.includes('=') ? { ...rest[j], w: t.slice(t.indexOf('=') + 1) } : rest[++j];
+        [st.lost, dir] = [true, at(dir, v && t.startsWith('--git-dir') ? { ...v, w: `${v.w}/..` } : v)];
+      }
       else if (t === '-c' || t === '--namespace' || t === '--config-env') j++;
     }
-    const sub = rest[j]?.w, args = rest.slice(j + 1);
+    const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1);
     if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) st.calls.push({ sub, dir, args });
-  }
+  } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = true;
 }
 
 const COMMIT_VALUE = new Set(['message', 'file', 'reuse-message', 'reedit-message', 'fixup', 'squash', 'author', 'date', 'template', 'cleanup', 'trailer']);
@@ -348,13 +356,13 @@ function planOf(c, { sub, dir, args }, top) {
     paths = [...r.stdout.matchAll(/^add '(.*)'$/gm)].map((m) => m[1]);
   } else if (!whole) {
     // A commit of the index alone: its dry run would rewrite the index, so the staged names are read instead.
-    if ((r = run('diff', '--cached', '--name-only', '-z')).status !== 0) return null;
+    if ((r = run('diff', '--cached', '--name-only', '--diff-filter=d', '-z')).status !== 0) return null;
     paths = r.stdout.split('\0').filter(Boolean);
   } else {
     if ((r = run('commit', '--dry-run', '--porcelain', '-z', ...opts, '--', ...specs)).status > 1) return null;
     paths = records(r.stdout).filter((x) => !' ?!D'.includes(x.xy[0])).map((x) => x.path);
   }
-  return { paths, ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: whole ? readText(join(top, f)) : blob(c, dir, `:${f}`), was: blob(c, dir, sub === 'add' ? `:${f}` : `HEAD:${f}`) })) };
+  return { paths, ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: (whole ? readText(join(top, f)) : '') + (sub === 'commit' ? `\n${blob(c, dir, `:${f}`)}` : ''), was: blob(c, dir, sub === 'add' ? `:${f}` : `HEAD:${f}`) })) };
 }
 
 // The records of a porcelain v1 -z listing; a rename or a copy carries its old path as the next field, which is skipped.
@@ -382,8 +390,8 @@ function verdict(c, repo, plan) {
   if (!all) {
     const r = git(c, repo.top, ['status', '--porcelain=v1', '-z', '-uall']);
     if (r.status !== 0) throw new Error(`git status exited ${r.status}`);
-    const paths = records(r.stdout).filter((x) => !x.xy.includes('D')).map((x) => x.path);
-    all = { paths, ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: readText(join(repo.top, f)), was: blob(c, repo.top, `HEAD:${f}`) })) };
+    const paths = records(r.stdout).filter((x) => x.xy[0] !== 'D' && x.xy !== ' D').map((x) => x.path);
+    all = { paths, ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: `${readText(join(repo.top, f))}\n${blob(c, repo.top, `:${f}`)}`, was: blob(c, repo.top, `HEAD:${f}`) })) };
   }
   const agents = [...new Set(all.paths.filter(isAgent))].sort();
   const lines = all.ignores.flatMap((g) => {
@@ -399,6 +407,7 @@ function verdict(c, repo, plan) {
     : 'the command cannot be resolved, so it counts as staging every file git does not ignore; '}the call would add ${items.join('; ')}`;
 }
 
+const deny = (reason) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } });
 function staged(c, input) {
   const own = join(configOf(c, input), 'reimagine-primer');
   if (!existsSync(own)) return [];
@@ -412,7 +421,7 @@ function staged(c, input) {
     const repo = isDir(dir) && repoOf(c, dir);
     if (!repo || match(map, repo, c.platform)?.profile !== 'local') continue;
     const reason = verdict(c, repo, one && planOf(c, one, repo.top));
-    if (reason) return [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })];
+    if (reason) return [deny(reason)];
   }
   return [];
 }
@@ -429,14 +438,14 @@ export function main(argv, { env = process.env, platform = process.platform, hom
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path. A hook verb prints nothing but its JSON: on
-// an error of its own session-start prints nothing and staged exits 2, on which the drift hook denies.
+// an error of its own session-start prints nothing, and staged prints a deny that gives the error and exits 2.
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const verb = process.argv[2];
   try {
     const lines = main(process.argv.slice(2));
     process.stdout.write(lines.length ? `${lines.join('\n')}\n` : '');
   } catch (e) {
-    if (verb === 'staged') { process.stderr.write(`primer: ${e?.message ?? e}\n`); process.exitCode = 2; }
+    if (verb === 'staged') { process.stdout.write(`${deny(`primer: the staging check failed, so the call is denied: ${e?.message ?? e}`)}\n`); process.exitCode = 2; }
     else { process.stdout.write(`${e instanceof Refusal ? `primer: ${e.message}` : `primer: unexpected error: ${e?.stack ?? e}`}\n`); process.exitCode = 1; }
   }
 }

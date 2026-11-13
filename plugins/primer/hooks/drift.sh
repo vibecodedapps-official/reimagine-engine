@@ -1,6 +1,6 @@
 #!/bin/sh
 # drift.sh: PreToolUse hook for Bash and PowerShell calls. Reads the tool call from stdin
-# and acts only when it runs `git commit`. Reads stdin, the hub (CLAUDE.md, or AGENTS.md
+# and acts only when it runs `git commit` or stages with git. Reads stdin, the hub (CLAUDE.md, or AGENTS.md
 # behind the adapter, or AGENTS.md alone) and, only when its first line is <!-- primer -->,
 # the tracked nested CLAUDE.md files, rules and skills, `git ls-files` for their globs and the
 # changed file list; never reads git history and never writes a file. Prints at most one JSON
@@ -11,16 +11,16 @@
 #   advise:  additionalContext names rules, skills and nested files that cover changed
 #            paths and are not changed
 #   nothing: not a commit, no opted-in hub, or no finding
-# Where the repository of a `git add` or `git commit` has no opted-in hub and <config>/reimagine-primer exists, it hands
-# stdin to `node scripts/primer.mjs staged` first and prints what that prints; on any other exit status but a missing node
-# it denies.
+# Where <config>/reimagine-primer exists, it first hands the stdin of a call whose text holds `commit`, or `git` before
+# `add` or `stage`, to `node scripts/primer.mjs staged` and prints what that prints; on any other exit status but a missing
+# node it denies. The hub's first line plays no part in that: the script reads the map and follows a change of directory.
 
 json=
 while IFS= read -r in_line || [ -n "$in_line" ]; do
 	json=$json$in_line
 done
 case $json in
-*commit* | *git*add*) ;;
+*commit* | *git*add* | *git*stage*) ;;
 *) exit 0 ;;
 esac
 
@@ -37,8 +37,33 @@ case $json in
 *'"tool_name":"PowerShell"'* | *'"tool_name": "PowerShell"'*) ps=1 ;;
 esac
 
-# One line "D<dir>" per distinct directory where the command runs git commit, one line "E<dir>" per
-# distinct directory where it runs git add, then one line "A" when it runs git add anywhere.
+# The staging check: where primer's own directory exists, primer.mjs decides, since it reads the map and follows a change
+# of directory, and a hub's marker does not say the profile. <config> is three levels above the transcript, else the
+# configuration directory variable, else ~/.claude, as primer.mjs finds it. A missing node lets the call through, as the
+# entry's onFailure does for a missing sh.
+config=$(printf '%s\n' "$json" | LC_ALL=C sed -n -E 's/^.*"transcript_path"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*$/\1/p' | LC_ALL=C sed -e 's/\\\\/\//g' -e 's/\\"/"/g')
+if [ -n "$config" ]; then
+	config=${config%/*}
+	config=${config%/*}
+	config=${config%/*}
+else
+	config=${CLAUDE_CONFIG_DIR:-${USERPROFILE:-$HOME}/.claude}
+fi
+if [ -d "$config/reimagine-primer" ] && command -v node >/dev/null 2>&1; then
+	staged=$(printf '%s\n' "$json" | node "${CLAUDE_PLUGIN_ROOT:-${0%/*}/..}/scripts/primer.mjs" staged 2>/dev/null)
+	st=$?
+	if [ "$st" -ne 0 ] && [ -z "$staged" ]; then
+		printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"primer: the staging check failed with exit status %s, so the call is denied"}}\n' "$st"
+		exit 0
+	fi
+	if [ -n "$staged" ]; then
+		printf '%s\n' "$staged"
+		exit 0
+	fi
+fi
+
+# One line "D<dir>" per distinct directory where the command runs git commit, then one line "A"
+# when the command runs git add or git stage anywhere.
 dirs=$(printf '%s\n' "$raw" | awk -v ps="$ps" '
 BEGIN { SEP = "\001" }
 
@@ -129,10 +154,7 @@ function analyze(str, nw,    a, i, j, k, w, t, cmd, base, dir, edir, hasc) {
 			else if (t == "-c" || t == "--git-dir" || t == "--namespace" || t == "--config-env") j += 2
 			else j++
 		}
-		if (j <= nw && a[j] == "add") {
-			adds = 1
-			if (!(dir in aseen)) { aseen[dir] = 1; print "E" dir }
-		}
+		if (j <= nw && (a[j] == "add" || a[j] == "stage")) adds = 1
 		if (j <= nw && a[j] == "commit") {
 			for (k = j + 1; k <= nw; k++)
 				if (a[k] == "--dry-run" || a[k] == "--help" || a[k] == "-h") return
@@ -471,10 +493,7 @@ marked() {
 
 check_root() {
 	root=$1
-	if ! marked "$root"; then
-		unmarked=1
-		return 0
-	fi
+	marked "$root" || return 0
 
 	cov=
 	ncov=
@@ -581,13 +600,12 @@ EOF
 }
 
 roots=$NL
-unmarked=
 while IFS= read -r line; do
 	case $line in
-	D* | E*) ;;
+	D*) ;;
 	*) continue ;;
 	esac
-	dir=${line#?}
+	dir=${line#D}
 	case $dir in
 	"~") dir=$HOME ;;
 	"~/"*) dir=$HOME/${dir#"~/"} ;;
@@ -597,12 +615,6 @@ while IFS= read -r line; do
 		root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || root=
 	fi
 	[ -n "$root" ] || continue
-	case $line in
-	E*)
-		marked "$root" || unmarked=1
-		continue
-		;;
-	esac
 	case $roots in
 	*"$NL$root$NL"*) continue ;;
 	esac
@@ -611,31 +623,6 @@ while IFS= read -r line; do
 done <<EOF
 $dirs
 EOF
-
-# The staging check: <config> is three levels above the transcript, else the configuration directory variable, else
-# ~/.claude, as primer.mjs finds it. A missing node lets the call through, as the entry's onFailure does for a missing sh.
-if [ -n "$unmarked" ]; then
-	config=$(printf '%s\n' "$json" | LC_ALL=C sed -n -E 's/^.*"transcript_path"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*$/\1/p' | LC_ALL=C sed -e 's/\\\\/\//g' -e 's/\\"/"/g')
-	if [ -n "$config" ]; then
-		config=${config%/*}
-		config=${config%/*}
-		config=${config%/*}
-	else
-		config=${CLAUDE_CONFIG_DIR:-${USERPROFILE:-$HOME}/.claude}
-	fi
-	if [ -d "$config/reimagine-primer" ] && command -v node >/dev/null 2>&1; then
-		staged=$(printf '%s\n' "$json" | node "${CLAUDE_PLUGIN_ROOT:-${0%/*}/..}/scripts/primer.mjs" staged 2>/dev/null)
-		st=$?
-		if [ "$st" -ne 0 ]; then
-			printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"primer: the staging check failed with exit status %s, so the call is denied"}}\n' "$st"
-			exit 0
-		fi
-		if [ -n "$staged" ]; then
-			printf '%s\n' "$staged"
-			exit 0
-		fi
-	fi
-fi
 
 if [ -n "$findings" ]; then
 	msg=$(printf '%s' "$findings" | jesc '; ')

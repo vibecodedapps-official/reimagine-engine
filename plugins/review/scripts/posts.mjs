@@ -29,11 +29,14 @@
 // and line, a summary with the threads that have no path, and the comment its posted id names wherever it is now, since a
 // line moves when the author pushes. Without a posted id a draft has no thread of its own, so another person's comment at
 // the same line leaves it missing. A comment with no id prints as -.
+// A saved comment may hold <redacted: key> where the record's credential scan replaced a value: it equals a draft that
+// holds any text in that place on the same line, and <redacted: pem_key> any text from there to the draft's end.
 //
 // leak takes the strings to look for as arguments, so nothing is written to disk and a path with spaces passes whole in
 // double quotes. Kinds: home, user, host, record, worktree, model, plugin; each may be given more than once. A string is
-// found in any case, where no letter, digit or _ touches either end. A path of home, record or worktree is also found
-// with its slashes turned the other way, and C:/x also as /c/x, so one spelling is enough. It prints, per draft in the
+// found in any case, where no letter, digit or _ touches either end. A path of home, record or worktree is looked for
+// without its trailing slashes, with its slashes turned the other way, and C:/x also as /c/x and /c/x as C:/x, so one
+// spelling is enough. It prints, per draft in the
 // order given, "clean <draft>" or "leak <draft> <kind>[,<kind>...]", and exits 1 when any draft leaks, else 0.
 //
 // A refusal prints one line "posts: <reason>" and exits 1, with nothing else printed.
@@ -129,14 +132,25 @@ export function parseThreads(text) {
   });
 }
 
+const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// True when a saved comment equals a draft's text, a value the credential scan replaced standing for any text there.
+const MARK = /<redacted: ([a-z_]+)>/;
+export function same(saved, draft) {
+  if (saved === draft) return true;
+  if (!MARK.test(saved)) return false;
+  const source = saved.split(MARK).map((part, i) => (i % 2 === 0 ? escape(part) : part === 'pem_key' ? '[\\s\\S]*' : '[^\\n]*')).join('');
+  return new RegExp(`^${source}$`).test(draft);
+}
+
 export function compare(drafts, threads) {
   const all = threads.flatMap((t) => t.comments);
   return drafts.map((d) => {
     const body = normalize(d.body);
     const scope = threads.filter((t) => (d.kind === 'summary' ? t.path === null : t.path === d.path && t.line === d.line));
-    const equal = scope.flatMap((t) => t.comments).filter((c) => c.body === body);
+    const equal = scope.flatMap((t) => t.comments).filter((c) => same(c.body, body));
     const own = d.posted === null ? null : all.find((c) => c.id === d.posted) ?? null;
-    if (own && own.body === body && !equal.includes(own)) equal.unshift(own);
+    if (own && same(own.body, body) && !equal.includes(own)) equal.unshift(own);
     const ids = (list) => list.map((c) => c.id ?? '-').join(',');
     if (equal.length > 1) return `twice ${d.name} ${ids(equal)}`;
     if (equal.length === 1) return `posted ${d.name} ${ids(equal)}`;
@@ -145,16 +159,15 @@ export function compare(drafts, threads) {
   });
 }
 
-const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 // Every spelling of a string the leak check looks for.
 export function spellings(kind, value) {
-  const out = new Set([value]);
-  if (PATH_KINDS.includes(kind)) {
-    for (const v of [value.replaceAll('\\', '/'), value.replaceAll('/', '\\')]) out.add(v);
-    const drive = /^([A-Za-z]):[\\/](.*)$/.exec(value);
-    if (drive) out.add(`/${drive[1].toLowerCase()}/${drive[2].replaceAll('\\', '/')}`);
-  }
+  if (!PATH_KINDS.includes(kind)) return [value];
+  const bare = value.replace(/[\\/]+$/, '') || value;
+  const out = new Set([bare, bare.replaceAll('\\', '/'), bare.replaceAll('/', '\\')]);
+  const drive = /^([A-Za-z]):[\\/](.*)$/.exec(bare);
+  if (drive) out.add(`/${drive[1].toLowerCase()}/${drive[2].replaceAll('\\', '/')}`);
+  const posix = /^\/([A-Za-z])\/(.*)$/.exec(bare);
+  if (posix) for (const sep of ['/', '\\']) out.add(`${posix[1]}:${sep}${posix[2].replaceAll('/', sep)}`);
   return [...out];
 }
 

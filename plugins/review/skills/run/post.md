@@ -1,6 +1,6 @@
 # The posting step
 
-`<record>`, `<round>` and `git <c>` are those of `SKILL.md`, Record and workspace; the round is the highest in the record. A record with no drafts, or drafts a run did not show whole, ends the step with one line saying to run the review first.
+`<record>`, `<round>` and `git <c>` are those of `SKILL.md`, Record and workspace; the round is the highest in the record that holds drafts. A record with no drafts, or drafts a run did not show whole, ends the step with one line saying to run the review first.
 
 ## The forge
 
@@ -20,10 +20,10 @@ Post one at a time, each from its draft's file, the body being the text under th
 
 - An anchored comment on GitHub: `gh api --hostname <host> repos/<owner>/<repo>/pulls/<n>/comments -f commit_id=<head sha> -f path=<path> -F line=<line> -f side=RIGHT -F body=@<outbox file>`, its `id` taken from the reply.
 - A summary: `gh api --hostname <host> repos/<owner>/<repo>/issues/<n>/comments -F body=@<outbox file>`, its `id` taken from the reply.
-- The vote: read the user's latest review state first, `gh api --hostname <host> repos/<owner>/<repo>/pulls/<n>/reviews --paginate`, and cast it only when it differs from the approved one: `gh pr review <n> --approve`, or `gh pr review <n> --request-changes --body-file <outbox file>`, the file `<round>/outbox/vote.txt` holding one line that names the blocking comments by title, checked by `leak` and shown with the vote's approval.
+- The vote: read the user's vote first, the state of the user's latest review in `gh api --hostname <host> repos/<owner>/<repo>/pulls/<n>/reviews --paginate` that is `APPROVED`, `CHANGES_REQUESTED` or `DISMISSED`, since each comment posted on its own makes a `COMMENTED` review, and cast the vote only when it differs from the approved one: `gh pr review <n> -R <host>/<owner>/<repo> --approve`, or `gh pr review <n> -R <host>/<owner>/<repo> --request-changes --body-file <outbox file>`, the file `<round>/outbox/vote.txt` holding one line that names the blocking comments by title, checked by `leak` and shown with the vote's approval.
 - A thread resolution, a ticket edit or a merge: through the tool the session has for it, each after its own yes.
 
-A step that stopped part way is run again with the same request: the compare above leaves out what is already posted.
+A post the forge refuses stops the step: name the draft, quote the forge's answer, and post nothing after it. A step that stopped part way is run again with the same request, once a refused draft is corrected and shown whole again: the compare above leaves out what is already posted.
 
 ## After posting
 

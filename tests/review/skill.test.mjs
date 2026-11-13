@@ -43,12 +43,32 @@ test('R368: the frontmatter names the skill run, says the pull request is someon
   }
 });
 
-test('R368: no allowed-tools entry writes to a forge', () => {
-  const lines = frontmatter(SKILL);
+// The entries of an allowed-tools key, written on its own line or as a list under it.
+const allowedTools = (lines) => {
   const at = lines.findIndex((l) => l.startsWith('allowed-tools:'));
-  const entries = at < 0 ? [] : lines.slice(at + 1).filter((l) => /^\s+-\s/.test(l)).map((l) => l.replace(/^\s+-\s+/, ''));
-  for (const entry of entries) {
-    assert.doesNotMatch(entry, /\bgh (api|pr (comment|review|merge|edit|create|close)|issue)\b|\baz\b|mcp__/, `${entry} can write to a forge`);
+  if (at < 0) return [];
+  const block = [];
+  for (const l of lines.slice(at + 1)) {
+    if (!/^\s+-\s/.test(l)) break;
+    block.push(l.replace(/^\s+-\s+/, ''));
+  }
+  return [...lines[at].slice('allowed-tools:'.length).split(','), ...block].map((e) => e.trim()).filter(Boolean);
+};
+const FORGE_READ = /^Bash\(gh (pr (view|diff|list|checks)|repo view|auth status)\b/;
+const writesToForge = (entry) => /\b(gh|az|curl)\b|\bgit push\b|mcp__/.test(entry) && !FORGE_READ.test(entry);
+
+test('R368: no allowed-tools entry writes to a forge', () => {
+  for (const entry of allowedTools(frontmatter(SKILL))) assert.ok(!writesToForge(entry), `${entry} can write to a forge`);
+});
+
+test('R368: the check reads an inline list and a block list, and takes a broad entry as one that can write', () => {
+  assert.deepEqual(allowedTools(['name: run', 'allowed-tools: Bash(gh *), Read']), ['Bash(gh *)', 'Read']);
+  assert.deepEqual(allowedTools(['allowed-tools:', '  - Bash(git push *)', '  - Grep', 'paths:', '  - src']), ['Bash(git push *)', 'Grep']);
+  for (const entry of ['Bash(gh *)', 'Bash(gh api *)', 'Bash(gh pr review *)', 'Bash(git push *)', 'Bash(az repos *)', 'mcp__github__add_comment']) {
+    assert.equal(writesToForge(entry), true, entry);
+  }
+  for (const entry of ['Read', 'Bash(git status *)', 'Bash(gh pr view *)', 'Bash(gh pr diff *)']) {
+    assert.equal(writesToForge(entry), false, entry);
   }
 });
 
@@ -87,7 +107,7 @@ test('R371: no file of the skill starts a child session or shows a child allow-l
 
 test('R370: every git command a mode file shows carries the hooks path and long paths, through git <c>', () => {
   const block = SKILL.split('\n').find((l) => l.includes('shown below as `git <c>`'));
-  assert.ok(block?.includes('`-c core.hooksPath="<record>/hooks" -c core.longpaths=true`'), 'SKILL.md does not define git <c>');
+  assert.ok(block?.includes('`-c core.hooksPath="<record>/hooks" -c core.longpaths=true -c filter.lfs.smudge= -c filter.lfs.process= -c filter.lfs.required=false`'), 'SKILL.md does not define git <c>');
   for (const rel of ['SKILL.md', 'first.md', 'follow-up.md', 'post.md']) {
     for (const span of [...read(rel).matchAll(/`(git [^`]*)`/g)].map((m) => m[1])) {
       if (/^git (<c>|status --porcelain --ignored|remote -v)$/.test(span)) continue;

@@ -120,6 +120,25 @@ describe('compare', () => {
     ]), 0, ['posted 01-a.md 11', 'twice 02-b.md 21,22']);
   });
 
+  test('R379: a value the record\'s scan replaced in a saved comment equals the draft\'s text in its place, on that line only', () => {
+    expect(compareCase({
+      '01-auth.md': comment('src/auth.js', 4, '`token: string` is logged here (blocks)\n\nBasis: read'),
+      '02-env.md': comment('src/env.js', 9, 'Drop `api_key=abc` from the sample\nand rotate it'),
+      '03-key.md': comment('src/key.js', 1, 'Remove the key below\n\n-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----', '77'),
+      '04-other.md': comment('src/auth.js', 8, '`token: string` is logged twice here'),
+    }, [
+      { id: 'T1', path: 'src/auth.js', line: 4, status: 'open', comments: [{ id: '10', body: '`token: <redacted: token>` is logged here (blocks)\n\nBasis: read' }] },
+      { id: 'T2', path: 'src/env.js', line: 9, status: 'open', comments: [{ id: '11', body: 'Drop `api_key=<redacted: api_key>\nand rotate it now' }] },
+      { id: 'T3', path: 'src/key.js', line: 2, status: 'open', comments: [{ id: '77', body: 'Remove the key below\n\n<redacted: pem_key>' }] },
+      { id: 'T4', path: 'src/auth.js', line: 8, status: 'open', comments: [{ id: '12', body: '`token: <redacted: token>` is logged here' }] },
+    ]), 0, [
+      'posted 01-auth.md 10',
+      'missing 02-env.md',
+      'posted 03-key.md 77',
+      'missing 04-other.md',
+    ]);
+  });
+
   test('R379: a summary is not compared with an anchored comment of the same text, and a comment with no id prints -', () => {
     expect(compareCase({ '01-s.md': summary('Looks right') }, [
       { id: 'T1', path: 'a.js', line: 1, status: 'open', comments: [{ id: '1', body: 'Looks right' }] },
@@ -208,12 +227,23 @@ describe('leak', () => {
     expect(run('leak', '--record', 'C:\\Data\\reviews\\github.com\\o\\r\\1', c), 1, [`leak ${c} record`]);
   });
 
+  test('R379: a path given with its trailing slash is found, and a /c/ form finds the drive form', () => {
+    const [a, b] = draftsOf({
+      '01-a.md': summary('See C:/Data/reviews/github.com/o/r/1/round-1/notes.md'),
+      '02-b.md': summary('Open C:\\Users\\alice\\x.txt'),
+    });
+    expect(run('leak', '--record', 'C:/Data/reviews/github.com/o/r/1/', '--home', '/c/Users/alice', a, b), 1, [
+      `leak ${a} record`,
+      `leak ${b} home`,
+    ]);
+  });
+
   test('R379: a string is found only where no letter, digit or _ touches it', () => {
     const [a, b] = draftsOf({
-      '01-a.md': summary('joey and joe_x and xjoe stay clean'),
-      '02-b.md': summary("It is joe's call"),
+      '01-a.md': summary('anny and ann_x and xann stay clean'),
+      '02-b.md': summary("It is ann's call"),
     });
-    expect(run('leak', '--user', 'Joe', a, b), 1, [`clean ${a}`, `leak ${b} user`]);
+    expect(run('leak', '--user', 'Ann', a, b), 1, [`clean ${a}`, `leak ${b} user`]);
   });
 
   test('R379: the header of a draft is read too', () => {

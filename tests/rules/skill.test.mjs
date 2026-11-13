@@ -296,6 +296,7 @@ test('R363: the draft frontmatter names the skill and its description claims a m
   assert.ok(description, 'a description line exists');
   assert.ok(description.includes('before it is first shown'));
   assert.ok(description.includes('Use whenever this session writes a message that another person will read.'));
+  assert.ok(description.includes('Not for a commit message or a code comment.'));
 });
 
 test('R363: the draft skill is model-invocable and takes no tools list or arguments', () => {

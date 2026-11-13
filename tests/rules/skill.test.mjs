@@ -1,4 +1,4 @@
-// The rules skill's steps and the refactor and handoff prompt skills' files. The skills are text the model follows, so these read the text; the handoff prompt skill's copy of a house-rule item is also compared with core.md, and the chat block's copy of the skill's definition with the skill.
+// The rules skill's steps and the refactor, handoff prompt and draft skills' files. The skills are text the model follows, so these read the text; the handoff prompt skill's copy of a house-rule item is also compared with core.md, and the chat block's copy of the skill's definition with the skill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -338,5 +338,5 @@ test('R366: the style names the draft skill in one sentence and the chat block d
   const style = readFileSync(new URL('../../plugins/rules/output-styles/concise-plain.md', import.meta.url), 'utf8');
   assert.deepEqual(style.split(/\r?\n/).filter((l) => l.includes('draft` skill')), ['Check it with the `rules:draft` skill before it is first shown.']);
   const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1];
-  assert.equal(fenced.includes('rules:draft'), false);
+  assert.equal(/rules:draft|draft`? skill/.test(fenced), false);
 });

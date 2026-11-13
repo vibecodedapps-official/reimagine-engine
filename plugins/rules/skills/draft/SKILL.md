@@ -1,6 +1,6 @@
 ---
 name: draft
-description: 'Check a draft written for someone else, such as an email, a reply, a ticket or review comment, a bug report or a pull request description, before it is first shown. Use whenever this session writes a message that another person will read.'
+description: 'Check a draft written for someone else, such as an email, a reply, a ticket or review comment, a bug report or a pull request description, before it is first shown. Use whenever this session writes a message that another person will read. Not for a commit message or a code comment.'
 ---
 
 # Draft

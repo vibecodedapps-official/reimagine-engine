@@ -4,11 +4,11 @@ The requirements are in requirements.md and win where the two disagree. A fact m
 
 ## Shape
 
-One repository, one marketplace, six plugins that a user installs separately and that work alone.
+One repository, one marketplace, seven plugins that a user installs separately and that work alone. The tree and the table show the state the requirements describe; requirement 360 names what is specified ahead of its build.
 
 ```
 reimagine-engine/
-  .claude-plugin/marketplace.json   catalog: name, owner, six entries
+  .claude-plugin/marketplace.json   catalog: name, owner, seven entries
   .github/workflows/ci.yml          lint, test, mawk, validate, commit messages
   .github/workflows/pr-description.yml  the description check, again on each edit
   .gitattributes                    LF for shipped text
@@ -23,8 +23,9 @@ reimagine-engine/
   plugins/loop/                     plan, build, review, publish a bundle of tickets
   plugins/audit/                    read-only adversarial audit of finished bundles
   plugins/gate/                     code-review passes over a pull request until nothing is left to fix
-  plugins/primer/                   project instructions in the host's forms, memory promotion, two hooks
+  plugins/primer/                   project instructions in the host's forms or in a store outside the repository, memory promotion, hooks
   plugins/guard/                    auto mode classifier entries for a list of repositories
+  plugins/review/                   review of a pull request someone else wrote, ending in comments
   tests/                            node:test suites and the audit sh suites
   tools/commit-messages.mjs         the commit message and description checks of a pull request
   tools/files.mjs                   the file listing lint and release share
@@ -35,26 +36,27 @@ reimagine-engine/
 
 | Plugin | Installs | Entry points | Scripts | Hooks | Version line |
 |---|---|---|---|---|---|
-| rules | house rules block, output style, a rule-driven refactor review, a handoff prompt skill | `/rules`, `/rules:refactor`, `/rules:handoff-prompt`, prose "handoff prompt" | `scripts/rules.mjs` | SessionStart `startup` | own |
+| rules | house rules block, output style, a rule-driven refactor review, a handoff prompt skill, a draft skill | `/rules`, `/rules:refactor`, `/rules:handoff-prompt`, `/rules:draft`, prose "handoff prompt" and a request for a message to someone else | `scripts/rules.mjs` | SessionStart `startup` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | twelve sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/resume.mjs`, `scripts/split.mjs` | none | own |
-| primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh` | PreToolUse `Bash\|PowerShell`; SessionStart `startup` | own |
+| primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh`, `scripts/primer.mjs` | PreToolUse `Bash\|PowerShell` and `Edit\|Write\|NotebookEdit`; SessionStart | own |
 | guard | the auto mode classifier's entries for listed repositories | `/guard` | `scripts/guard.mjs` | PermissionDenied; SessionStart `startup` | own |
+| review | the review of someone else's pull request | `/review:run` (the skill itself), prose "reimagine review" | `scripts/posts.mjs` | none | own |
 
 ## Layers on a machine
 
 1. Claude Code's own defaults.
 2. The house rules block in `$CLAUDE_CONFIG_DIR/CLAUDE.md` (else `~/.claude/CLAUDE.md`), between the digest markers, written only by `rules.mjs`.
 3. The user's own lines in that file, below the end marker, never touched.
-4. The repository's instruction files, kept in the forms the host loads by `primer`: a short hub, rules, nested files and skills.
+4. The repository's instruction files, kept in the forms the host loads by `primer`: a short hub, rules, nested files and skills. In a repository of primer's `local` profile this layer is not in the work tree: it is the layers of a store outside the repository, which a SessionStart hook loads (requirement 388).
 5. The output style `rules:Concise Plain`, selected by the user.
-6. The loop, the gate and the audit, which read layers 2 to 4 at their start and obey every ask-first rule they find.
+6. The loop, the gate, the audit and the review, which read layers 2 to 4 at their start and obey every ask-first rule they find.
 7. The auto mode classifier's `environment` and `allow` entries in the user settings file, `$CLAUDE_CONFIG_DIR/settings.json` else `~/.claude/settings.json`, rendered by `guard.mjs` from the repository list beside it and marked as its own; the user's own entries there stay. A `$defaults` token is expanded into the default lines while repositories are listed and comes back on clear when the copied lines are every current default.
 
-`loop`, `gate` and `audit` do not require `rules`; without it they still read whatever instruction files exist.
+`loop`, `gate`, `audit` and `review` do not require `rules`; without it they still read whatever instruction files exist.
 
-Only five hooks run outside a session request: the rules staleness notice at `startup`, the primer memory notice at `startup`, the primer drift check before a `git commit`, the guard staleness notice at `startup`, and the guard denial record when auto mode denies a tool call. Everything else happens because the user asked.
+Only seven hooks run outside a session request: the rules staleness notice at `startup`, the primer memory notice at `startup`, the primer drift check before a `git commit`, whose entry also runs the staging check of the `local` profile, the primer context loader at a session's start, the primer reach check before a file edit in another repository, the guard staleness notice at `startup`, and the guard denial record when auto mode denies a tool call. Everything else happens because the user asked.
 
 ## Prompt first
 
@@ -104,6 +106,7 @@ plugins/rules/
   skills/rules/SKILL.md          /rules; disable-model-invocation: true
   skills/refactor/SKILL.md       /rules:refactor; disable-model-invocation: true; reads core.md live; writes ticket files only on a yes
   skills/handoff-prompt/SKILL.md /rules:handoff-prompt; model-invocable; holds the handoff prompt's definition and one core.md item; reads none of the plugin's files; writes no file
+  skills/draft/SKILL.md          /rules:draft; model-invocable; the check on a finished draft and the email form; reads none of the plugin's files
   scripts/rules.mjs              status | plan [--adopt] [--options a,b] | apply | remove | decline | session-start
   hooks/hooks.json               SessionStart startup -> node rules.mjs session-start ${CLAUDE_PLUGIN_DATA}
   rules/core.md                  the house rules
@@ -127,7 +130,7 @@ Manifest:
 
 ### Content
 
-`core.md` is the agreed house rules text: one opening paragraph and five sections, Working, Code, Tests, Done and Ask first (requirement 354). A test holds the digest of the rendered body, so the wording has one check and no test holds a single sentence (requirement 18, decision 243). One Working item says what leaves the session is written for its reader and is published only when that is the task's stated purpose or the owner asked (requirement 348). The loop, the gate and the audit carry it word for word, and lint holds each copy to `core.md` (requirement 349, decisions 221 and 244). `windows.md` is the four-line Git Bash paragraph, applied only when the script runs on Windows. The rendered body is `windows` (on Windows) then `core`, joined by one blank line.
+`core.md` is the agreed house rules text: one opening paragraph and five sections, Working, Code, Tests, Done and Ask first (requirement 354). A test holds the digest of the rendered body, so the wording has one check and no test holds a single sentence (requirement 18, decision 243). One Working item says what leaves the session is written for its reader and is published only when that is the task's stated purpose or the owner asked (requirement 348). The loop, the gate, the audit and the review carry it word for word, and lint holds each copy to `core.md` (requirement 349, decisions 221 and 244). The Working item on credentials covers tool output as well as files: key names and never a value, and a query that selects its fields (requirement 361). One Working item has a session log what it learned about its rules to a dated file under the configuration directory and change no rule itself (requirement 362); primer reads those logs. `windows.md` is the four-line Git Bash paragraph, applied only when the script runs on Windows. The rendered body is `windows` (on Windows) then `core`, joined by one blank line.
 
 ### Mechanism
 
@@ -161,6 +164,10 @@ The skill `/rules` runs the script, shows its output, asks before `apply`, and e
 ### Output style and chat block
 
 `output-styles/concise-plain.md` ships verbatim with `keep-coding-instructions: true` and its version in the description; the host lists it as `rules:Concise Plain`. The rules plugin never edits `settings.json`; in the suite only `guard.mjs` does (requirement 336). `chat/instructions.md` holds one fenced block for pasting into a chat product's custom instructions and names no vendor.
+
+### Draft skill
+
+The style holds what shapes every reply; `skills/draft/SKILL.md` holds what applies only while a message to someone else is drafted, and the style names it in one sentence (requirements 363 and 366). The skill is a check on the finished text, run by the session before the draft is first shown: it strikes what no named reader acts on, what is the sender's to settle and what restates a named source, verifies what the sender has not checked, and keeps the owner's notes outside the draft; it never adds detail (requirement 364). An email draft is one HTML file in the scratch directory and no draft is kept in two formats (requirement 365). The check is a skill and not more style text because the rules that failed were loaded when they failed (decision 282).
 
 ### Refactor
 
@@ -414,6 +421,35 @@ The child session is the engine (decision 124). It runs at `gate.models.reviewer
 
 The gate posts nothing to a pull request or a ticket (requirement 350, decision 222). `SKILL.md` carries the house-rules item on what leaves a session, held to `core.md` by lint (requirement 349). The only text the gate sends out is its fix commits' messages. The manifest the run came from gains a top-level `gate` key per bundle, and a run without one writes a minimal manifest in the record, so the report can suggest `/audit:run` on it.
 
+## The `review` plugin
+
+```
+plugins/review/
+  .claude-plugin/plugin.json
+  LICENSE  README.md
+  skills/run/SKILL.md            /review:run; prose "reimagine review"; the reading block, the approval scope, the modes
+  skills/run/<mode>.md           the first review, the follow-up and the posting step, each read in its own run
+  scripts/posts.mjs              compare <drafts directory> <threads file> | leak <draft>...
+```
+
+Review takes a pull request that someone else wrote and ends in comments (requirements 367 to 380). It is a plugin of its own because nothing in the suite ends read-only with findings as a success: the gate fixes and pushes on the user's branch, the audit's act stage commits there, and each of the loop, the gate and the audit calls or builds its own review, so there is no engine to add a mode to (decision 286). The bare `/review` is the host's own review, so the skill is `run`, as the loop's is (decision 35).
+
+It owns little review logic. The first reading is the host's `code-review` in a child session, run as the gate runs its passes but with no check of the repository on its allow-list, or a gate record or audit report for the same head. The pull request's head is the author's and is untrusted: the child session loads no configuration from it, no hook of the repository runs on a `git` command in the scratch worktree, and code from it runs only after the user approved that by name (requirements 369 to 371, decision 287). What the plugin adds comes after the reading:
+
+| After the reading | What it does | Requirement |
+|---|---|---|
+| Siblings | searches the shared name alone, classifies every hit, lists every site | 372 |
+| One hop out | consumers, the tests and documents that state the changed rule, the tickets' criteria | 372 |
+| Citations | reads every location a draft names again at the head | 372 |
+| Basis | labels each finding and fix `read`, `run` or `not run`; runs a fix before recommending it | 373 |
+| Disposition | `post`, `note` or `drop` for every point, by the team's conventions | 374 |
+| Two texts | comments for the author, a summary for the person who gates the merge | 375 |
+| Follow-up | each earlier item landed or open, a trial merge, a read of each merge commit | 376 |
+
+Nothing is written in the reviewed repository's work tree. The record, the drafts and a detached scratch worktree at the pull request's head live under `${CLAUDE_PLUGIN_DATA}/reviews/<repo>/<target>/`, `<repo>` taken from the remote so another clone finds the earlier round, since an ignore entry in someone else's repository would show the review as surely as a record would (decision 287). The run lists what it created and removes nothing without a yes.
+
+Posting is a separate step on a request that says `post`. Each draft is one file; each outward action is approved by name; the head and the threads are read again first; each post is made from its file and recorded before the next; and `posts.mjs compare` checks what the forge holds against the drafts, so a step that stopped part way runs again without posting twice. The vote is cast only when the user's vote on the forge differs from it. `posts.mjs leak` fails a draft that holds a path, user name or host name of the reviewer's machine, or the name of the session's model or of the plugin. On GitHub the four things posting needs, a comment, its anchor to a file and line, a vote and the threads with their status, come from `gh`; on another forge they come from a tool the session lists, else the step writes a paste-ready export. A thread's resolution, a ticket edit and a merge run only where the session has a tool for each and the user approved it by name (requirement 378, decision 289). The script opens no connection, so its suite replaces nothing.
+
 ## The `primer` plugin
 
 ```
@@ -423,13 +459,17 @@ plugins/primer/
   skills/primer/SKILL.md           /primer; the mode choice, the rules of every mode, the proposal and plan forms, maintain
   skills/primer/init.md            the init steps, read in an init run
   skills/primer/adopt.md           the adopt steps, read in an adopt run
+  skills/primer/local.md           the `local` profile's steps, read in a `local` run
   skills/primer/placement.md       the eleven placement items and the tasks test
   skills/primer/shapes.md          hub, nested file, rule and skill templates with their caps
   skills/fold/SKILL.md             /primer:fold; disable-model-invocation: true; reads the docs live, writes nothing
   hooks/hooks.json                 PreToolUse Bash|PowerShell -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh", onFailure continue
                                    SessionStart startup -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"
-  hooks/drift.sh                   the commit check
-  hooks/notice.sh                  one line when auto memory has unreviewed notes
+                                   SessionStart -> node primer.mjs session-start <layer>, one entry per layer, timeout 10
+                                   PreToolUse Edit|Write|NotebookEdit -> node primer.mjs reach, where decision 299 leaves a case
+  hooks/drift.sh                   the commit check; hands a `git add` or `git commit` in a `local` repository to primer.mjs staged
+  hooks/notice.sh                  one line when auto memory or the feedback logs have unreviewed entries
+  scripts/primer.mjs               session-start <layer> | staged | reach | status | measure | map | ledger | copies | transcripts
 ```
 
 Manifest:
@@ -445,7 +485,7 @@ Manifest:
 }
 ```
 
-The skill's description names "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files" (verified: a description's phrases invoked a skill in 2 of 2 runs, decision 84). There is no command file and no script beyond the two hooks.
+The skill's description names "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files" (verified: a description's phrases invoked a skill in 2 of 2 runs, decision 84). There is no command file. The two hooks are POSIX sh; `primer.mjs` is the one Node script, and it serves the `local` profile, the budget, the ledger and the copies.
 
 ### Shapes and caps
 
@@ -490,6 +530,41 @@ SessionStart at `startup`, the same construction. It finds `<config>` from the g
 ### Fold
 
 `/primer:fold` reviews one repository against the documentation as it reads that day and ends in a report in the reply; it writes nothing (R329). It tells the situation from the files, a tool for Claude, a repository worked on with Claude Code, or both, reads the index at `https://code.claude.com/docs/llms.txt` and the starting pages of R327 with one subagent per page, and maps what each returns onto the repository. Each item names the page and section, the file and line, what the docs say, what the repository does and the destination by `placement.md` (R328). A gap in `shapes.md` or `placement.md` is a primer item, a disagreement with the docs about what the host does is an item whose change is the check that would settle it, with primer's file edited only after it (R328), a fold into an instruction file names `/primer`, and one into code or configuration is written as a loop description. `disable-model-invocation: true` keeps its description out of the startup context (decision 166).
+
+### Profiles and the local store
+
+A repository has one of two profiles, picked once by the user on primer's first run there, with no default (requirement 385). `shared` is everything above: instruction files in the work tree, committed. `local` is for a repository where no agent file may appear in the tree or its history: primer writes nothing there and makes no commit.
+
+```
+<config>/reimagine-primer/
+  config.json          {"store": "<path>"}, optional
+  machine.md           the layer of this machine: people, dates, paths; never in the store
+<store>/               the directory config.json names, else <config>/reimagine-primer/store/
+  map.json             {"version": 1, "repos": [{"remotes", "path", "group", "profile", "own"}], "roots": ["<path>"]}
+  shared.md            the layer of every mapped repository
+  groups/<group>.md    the layer of one group of sibling repositories
+  docs/                documents a layer points to, read on demand
+  ledger.jsonl         one line per feedback item
+<config>/feedback/     the dated logs the house rules have every session write (requirement 362)
+```
+
+A repository matches a map entry by a remote, written `host/path` as guard writes it, else by its main work tree's root, found from the git common directory as the notice finds it; so every worktree matches as its repository does (requirement 386, decision 292). The store may be a directory the user versions, which is why the machine's own layer sits outside it. Only `primer.mjs` writes the map and `config.json`; the skill writes a layer or a document on a yes that names the file.
+
+Host facts the profile rests on, read from the hooks, memory, sub-agents and sessions pages of the documentation on 2026-11-13 and not yet observed in a spike: a hook's `additionalContext`, `systemMessage` and plain stdout are each capped at 10,000 characters, measured per hook and per field even when several hooks answer one event, and a longer string is replaced by a file path and a preview of its first 2,000 characters, which the session is not asked to open; a session receives the `additionalContext` of every hook that answers an event; hook context is to be written as factual statements, since text framed as commands can be shown to the user as a suspected injection; a `CLAUDE.local.md` that git ignores exists only in the worktree where it was made; a directory added with `--add-dir` gives its instruction files only when `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD` is set, and never its path-scoped rules; SessionStart has the sources `startup`, `resume`, `clear`, `compact` and `fork`, and `SubagentStart` can add context to a subagent; instruction files are context and only a hook blocks a call. The documentation does not say whether a subagent's context holds a SessionStart string, which sources drop it, or whether a second repository's instruction files load when a session edits a file there; decisions 293 and 299 name the spikes.
+
+### Loader and delivery
+
+In a `local` repository three SessionStart entries run `primer.mjs session-start <layer>`, one per layer, so each layer has the host's cap to itself (requirement 388). Each prints its layer as `additionalContext`, opening with one line that names the layer and its file and closing with a canary taken from the layer's digest; a fresh session asked for the canary answers with the value `primer.mjs status` prints, which is the check that the whole string arrived. The loader measures each string as emitted and warns at every start while one is over the cap, warns when a repository under a listed root has no entry, gives its `git` calls 5 s between them, inside the entry's timeout, emits no layer and reports `unknown` when they run out, and skips its checks and warnings in a subagent and in a session no one attends while still loading the layers (requirement 389).
+
+Two more hooks carry the profile. The drift hook's entry hands a `git add` or `git commit` to `primer.mjs staged`, which in a `local` repository denies a call that would stage an agent file the upstream does not track, or an ignore line that names one (requirement 391, decision 294). The hook is POSIX sh and cannot read the map, so it hands those two commands to the script wherever the hub has no marker and primer's own directory exists, and the script answers only for a `local` repository. A command it cannot resolve is taken to stage every file git does not ignore, an error inside the script denies, and a missing `sh` or `node` lets the call through; the entry stays one process for every other shell call. A PreToolUse entry on file edits runs `primer.mjs reach`, which is silent inside the session's own repository and, on the first edit in another, gives that repository's layers or names its instruction files (requirement 395).
+
+### Budget, placement and fold-back
+
+Size is measured by `primer.mjs measure` on what the loader would emit, for every mapped repository, and a proposal shows each repository's size before and after; an addition names the cut that pays for it or becomes a pointer, and no file states how much room is left (requirement 392). In `local` a rule goes in the shared or the group layer, people and dates in the machine layer with an expiry, and reference material, procedures and conventions for one kind of file in a store document that a layer points to, since nothing outside the work tree loads by path (requirement 393).
+
+Sessions log and never edit: the house rules have each one write what it learned to a dated file under `<config>/feedback/` (requirement 362). The maintain pass reads those logs beside auto memory. It searches every layer and the governed repository's own instructions before proposing anything, runs two passes before the user sees a list, the first on evidence and the second on worth, placement and wording, and ends in a pick (requirements 394 and 398). `ledger.jsonl` holds each item's status and how often it was seen, so a held item that comes up again returns with its count and a later item that matches a folded rule is recorded as that rule's failure (requirement 399, decision 296).
+
+A declared copy of context text is checked against a snapshot of its source by `primer.mjs copies` (requirement 400). `primer.mjs transcripts` lists the user's own messages from the session files with no model call, skipping what it cannot read, since the host documents the transcript format as internal. The detection that counts what the user had to repeat is built only after a pilot (requirement 401, decision 297).
 
 ### Migration from repo-docs
 
@@ -536,14 +611,14 @@ Each plugin has its own version, starting at 0.1.0, in its manifest and its cata
 
 `tools/lint.mjs` has no dependencies and enforces the rules of requirement 219 with one message per rule. It reads an optional `LINT_DENY_TOKENS` environment variable, a comma-separated list, and fails on any tracked file containing one case-insensitively; CI never sets it, so the names stay outside the repository. `tests/lint/lint.test.mjs` copies the repository to a temporary directory, applies one mutation per case, and asserts the message. CI runs lint and tests on ubuntu, macOS and Windows with full history for the tag rule, the audit awk suites again under mawk, and `claude plugin validate --strict` on the marketplace and each plugin with a pinned Claude Code version.
 
-`package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `gate`, `guard`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per pull request before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
+`package.json` has one `test:<area>` script per test directory (`rules`, `loop`, `audit`, `primer`, `gate`, `guard`, `review`, `lint`, `release`) beside `test`; a commit runs the area scripts that cover what it touched, and the whole suite with lint runs once per pull request before its push and in CI (requirement 277). Lint's syntax checks run concurrently (requirement 278). A suite whose cases are independent runs them concurrently under one `describe`, as `tests/audit/sh.test.mjs` does; cases that share a fixture stay serial (decision 105). Process creation under Git for Windows costs about 200 ms per `sh` and 70 ms per `git`, so a suite is measured there before a lever is taken (acceptance item 44).
 
 `tests/evals/<plugin>/<case>/` holds the eval cases of requirement 273; `npm run eval` runs them against the repository root with the host's eval command, locally and never in CI, and their results land in the ignored `tests/evals/results/`. The gate's one case in this suite grants no shell, so it runs where the others do; the runner refused a gate case that needs its scaffold and tool grants (decision 133), so acceptance items 47, 49 and 54 cover those runs by hand, against the seeded fixture repository that `tests/gate/fixture/build.mjs` writes.
 
 ## Security and permissions
 
-The loop, the gate and the audit run inside the user's permission mode and never widen it. The loop's and the gate's pre-approved tools are `date`, `sleep` and read-only `git` and `gh`, none a form requirement 356 bans, a grant that lasts the turn that invokes the skill (decisions 215 and 258); the gate's child sessions run under `--permission-mode default` with an allowlist of read-only tools and the repository's own checks, so a call outside it is denied and counted, never prompted. The audit's agents have no Edit or NotebookEdit and the read-only check detects any write. Guard widens the auto mode classifier only by the allow and environment entries of requirements 338 and 339, for repositories the user listed (the settings-read entry covers the configuration directory's `settings.json` as well as the listed repositories' `.claude/settings.json` and `.claude/settings.local.json`), and only after the user's reply names the change; it writes no permission rule and no entry that clears Self-Modification. Credentials in pasted ticket text are redacted before the record is written, and the audit never passes forge text through the model. Nothing external names a model, an agent or a tool.
+The loop, the gate, the audit and the review run inside the user's permission mode and never widen it. The loop's and the gate's pre-approved tools are `date`, `sleep` and read-only `git` and `gh`, none a form requirement 356 bans, a grant that lasts the turn that invokes the skill (decisions 215 and 258); the gate's child sessions run under `--permission-mode default` with an allowlist of read-only tools and the repository's own checks, so a call outside it is denied and counted, never prompted. The audit's agents have no Edit or NotebookEdit and the read-only check detects any write. Guard widens the auto mode classifier only by the allow and environment entries of requirements 338 and 339, for repositories the user listed (the settings-read entry covers the configuration directory's `settings.json` as well as the listed repositories' `.claude/settings.json` and `.claude/settings.local.json`), and only after the user's reply names the change; it writes no permission rule and no entry that clears Self-Modification. Credentials in pasted ticket text are redacted before the record is written, and the audit never passes forge text through the model. The review never writes to the author's branch or the reviewed work tree and posts only what the user approved by name. It treats the pull request's head as untrusted: its child session loads no configuration from the head, and code from the head runs only after the user approved that by name. Primer's `local` profile writes only under the configuration directory and the store, and its staging check denies and never unstages. Nothing external names a model, an agent or a tool.
 
 ## Out of scope
 
-A second model provider in any form; publishing pull requests on a non-GitHub host; a forge adapter for `work-items.jsonl`; generating the chat block from the output style; `claude plugin eval` in CI; a repair mode that reads earlier review comments; the deferred audit helper scripts; a routine or GitHub Actions integration for the loop; plugin telemetry; a mod for the notices; a workflow for the loop's slices; a second host (requirement 276); for the gate, comments on GitLab and Azure DevOps, the `low`, `max` and `ultra` levels, reading earlier review comments or CI results, and editing a pull request body (requirement 320).
+A second model provider in any form; publishing pull requests on a non-GitHub host; a forge adapter for `work-items.jsonl`; generating the chat block from the output style; `claude plugin eval` in CI; a repair mode that reads earlier review comments, which the review reads only to report (requirement 376); the deferred audit helper scripts; a routine or GitHub Actions integration for the loop; plugin telemetry; a mod for the notices; a workflow for the loop's slices; a second host (requirement 276); for the gate, comments on GitLab and Azure DevOps, the `low`, `max` and `ultra` levels, reading earlier review comments or CI results, and editing a pull request body (requirement 320); for the review, any write to the author's branch and a forge adapter of its own (requirement 380); for primer, a transform that ports rules to another runtime and start-up checks the user defines (decision 298).

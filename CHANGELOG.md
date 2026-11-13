@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.31 - 2026-11-13
+
+- The Working item on credentials covers tool output as well as files: a credential never lands there, a session prints a secret's key names and never a value, one a filter judged harmless included, and a query of logs or records selects the fields it needs. A session that held the rule printed every value of a secret whose key names did not look sensitive, and read the filtered print as following the rule; a log query that returned whole events put a token and a key in tool output. The host keeps tool output on disk in the session's transcript, so it is a place of the same kind as a file.
+
 ## audit 0.1.30 - 2026-11-12
 
 - Queue says that only an agent's own completion notification drives the next launch: a status line at the end of a running agent's output file, or the end of a watch the run set on that file, is not one. A run took the end of such a watch for its auditor's completion and launched pass two, and the auditor then rewrote the report that pass two had read.

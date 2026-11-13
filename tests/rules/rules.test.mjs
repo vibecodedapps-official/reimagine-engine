@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = '4227328c15896701';
+const SHIPPED_CORE_DIGEST = '9e2f0a14f55b7912';
 
 // The shipped version, read from the manifest here so a release moves no literal in this file.
 const SHIPPED_VERSION = JSON.parse(readFileSync(new URL('../../plugins/rules/.claude-plugin/plugin.json', import.meta.url), 'utf8')).version;
@@ -42,8 +42,8 @@ test('R25: the block version is the version in the manifest of the plugin root',
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, '4227328c15896701');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, 'eafc6d4529a54e3f');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, '9e2f0a14f55b7912');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '08f36a5dc0cc48b4');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {

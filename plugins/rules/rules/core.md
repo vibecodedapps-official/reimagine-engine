@@ -27,7 +27,7 @@ pass on an approval the user gave and gives none of its own.
 - A credential never sits in a file, a scratch file included, or in tool output, which
   the host keeps on disk in the transcript; it reaches a command through the
   environment or a tool's own store. To see what a secret holds, print its key names
-  and never a value, one a filter judged harmless included. A query of logs or records
+  and never a value, not even one a filter judged harmless. A query of logs or records
   selects the fields it needs.
 - Before opening an issue or starting a fix, search for an issue or PR that covers it.
   One symptom per issue; a side finding gets its own, linked.

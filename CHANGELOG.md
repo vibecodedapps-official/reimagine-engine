@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## rules 0.1.31 - 2026-11-13
 
-- The Working item on credentials covers tool output as well as files: a credential never lands there, a session prints a secret's key names and never a value, one a filter judged harmless included, and a query of logs or records selects the fields it needs. A session that held the rule printed every value of a secret whose key names did not look sensitive, and read the filtered print as following the rule; a log query that returned whole events put a token and a key in tool output. The host keeps tool output on disk in the session's transcript, so it is a place of the same kind as a file.
+- The Working item on credentials covers tool output as well as files: a credential never lands there, a session prints a secret's key names and never a value, not even one a filter judged harmless, and a query of logs or records selects the fields it needs. A session that held the rule printed every value of a secret whose key names did not look sensitive, and read the filtered print as following the rule; a log query that returned whole events put a token and a key in tool output. The host keeps tool output on disk in the session's transcript, so it is a place of the same kind as a file.
 
 ## audit 0.1.30 - 2026-11-12
 

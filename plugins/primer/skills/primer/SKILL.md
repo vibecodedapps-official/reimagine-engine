@@ -12,6 +12,7 @@ allowed-tools:
   - Bash(git check-ignore *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status *)
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" measure *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" copies --spans *)
 ---
 
 # /primer
@@ -99,7 +100,8 @@ On the yes, make the move commit first: the `git mv` of each move and the path e
    - a skill whose procedure the repository lacks is reported, never deleted; two skills with one procedure are reported as duplicates with the one to keep; a skill over its cap is split into a body and a supporting file beside it;
    - an import of a file git does not track, other tools' rule files, such as `.cursor/rules/` or `.github/copilot-instructions.md`, and personal content are reported and left in place;
    - a statement in `README.md`, `CONTRIBUTING.md` or a `docs/` page that the code makes untrue is reported, never rewritten by this pass;
-   - two instruction files that contradict each other are reported, never resolved by this pass, since `/doctor prompt-audit` checks contradictions.
+   - two instruction files that contradict each other are reported, never resolved by this pass, since `/doctor prompt-audit` checks contradictions;
+   - each copy `status` lists: `source changed` is a port to propose from the diff it shows, followed on its yes by `copies --ported <copy>` of the same script; `copy changed` and `both changed` are reported. The runs `copies --spans` lists are candidates for one home and a pointer. A proposal that copies context text to a second place declares it with `copies --add <copy> <source>`; the script ports nothing.
 3. Promote auto memory. Its directory is the one the session's instructions name for auto memory; else the `autoMemoryDirectory` of `.claude/settings.local.json`, `.claude/settings.json` or `<config>/settings.json`, the first file that sets it deciding, and a value that is not an absolute or `~/` path counting as unset; else `<config>/projects/<name>/memory/` when `$CLAUDE_CONFIG_DIR` and `$CLAUDE_CODE_PROJECT_DIR_NAME` are both set and the name is 1 to 64 letters, digits, `-` or `_` and not a Windows device name such as `con`; else `<config>/projects/<key>/memory/`: `<config>` is `$CLAUDE_CONFIG_DIR`, else `~/.claude`; `<key>` is the main worktree's root, the parent of `git rev-parse --path-format=absolute --git-common-dir`, with every character outside `A-Za-z0-9` replaced by `-`. Without that directory, skip this step. Read `MEMORY.md` and each topic file it lists, taking `type` and `modified` from the frontmatter's `metadata`, and propose in the memory note form of Proposals:
    - a `feedback` note about this repository's code or conventions, placed by `placement.md`; one about how the user works stays;
    - a `project` note with no date, as a rule or a `docs/` page; a dated or ongoing item stays;
@@ -119,7 +121,7 @@ On the yes, make the move commit first: the `git mv` of each move and the path e
 
 The feedback logs under `<config>/feedback/` belong to no one repository. This review runs after Maintain step 3, also when that step skips, and only when a log is newer than the stamp `${CLAUDE_PLUGIN_DATA}/reviewed/feedback`, or there is no stamp.
 
-1. Read those logs and the ledger, `node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs"`. A logged item is an observation with its evidence; its log's `Recommended` section selects the observations that matter. Search as Proposals says before either pass.
+1. Read those logs and the ledger, `node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs"`. What the user said in past sessions comes from `node "${CLAUDE_PLUGIN_ROOT}/scripts/transcripts.mjs" --from <YYYY-MM-DD> --to <YYYY-MM-DD>`, which lists the user's own messages for the repository and the share of lines it could not read; build no reader of your own, and count nothing from its output. A logged item is an observation with its evidence; its log's `Recommended` section selects the observations that matter. Search as Proposals says before either pass.
 2. Evidence pass: check each item's evidence and challenge it. Drop what the files contradict and what names a section that does not exist; an item a loaded rule already states is a miss. Mark each claim verified or unverified, with its check: read at the source, run, or neither.
 3. Worth pass: judge worth, placement by `placement.md`, and wording, and settle items that touch the same lines as one. Draft each edit now, against the files as they are, never copied from the log; nothing is written before the answer of step 6.
 4. Match each item against the ledger. One that states a listed gap is that line seen again. A held line seen again returns to the plan with its count. One that matches a folded rule is that rule's failure: propose to reword the rule, move it or propose a hook, never to state it twice. An entry that says a rule worked counts for that rule, and is the evidence for keeping it when a cut is needed.

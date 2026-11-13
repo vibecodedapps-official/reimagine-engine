@@ -47,6 +47,7 @@ const EXECUTABLES = [
   'plugins/primer/hooks/notice.sh',
   'plugins/primer/scripts/primer.mjs',
   'plugins/primer/scripts/ledger.mjs',
+  'plugins/primer/scripts/transcripts.mjs',
   'plugins/gate/scripts/findings.mjs',
   'plugins/gate/scripts/next.mjs',
   'plugins/gate/scripts/resume.mjs',
@@ -265,7 +266,7 @@ function importFailures(ctx) {
 
 function budgetFailures(ctx) {
   const out = [];
-  for (const script of ['plugins/rules/scripts/rules.mjs', 'plugins/guard/scripts/guard.mjs', 'plugins/primer/scripts/primer.mjs', 'plugins/primer/scripts/ledger.mjs']) {
+  for (const script of ['plugins/rules/scripts/rules.mjs', 'plugins/guard/scripts/guard.mjs', 'plugins/primer/scripts/primer.mjs', 'plugins/primer/scripts/ledger.mjs', 'plugins/primer/scripts/transcripts.mjs']) {
     const source = ctx.text(script);
     if (source === null) continue;
     const lines = source.split('\n').length - 1 + (source !== '' && !source.endsWith('\n') ? 1 : 0);

@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-// Primer: the local profile's store and map, its context loader, its staging check, the budget and the reach check.
+// Primer: the local profile's store and map, its context loader, its staging check, the budget, the reach check and the copies.
 // Usage: node primer.mjs <verb> [args]
 //   session-start <layer> <data dir>  the SessionStart hook: a local repository's layers as context, the delivery warnings, the notice
 //   staged   the drift hook's hand-off: denies a git add or commit that puts an agent file the upstream lacks in a local history
 //   reach <data dir>  the PreToolUse hook on file edits: another repository's instructions, on the session's first edit there
-//   status   the working directory's entry, profile, layers and delivery checks; writes nothing
+//   status   the working directory's entry, profile, layers and delivery checks, and each declared copy; writes nothing
 //   measure  every mapped repository's context string as emitted; --with <file> <layer> measures a proposed layer; writes nothing
 //   map      prints the map; --add, --set and --drop change it for the working directory's repository
+//   copies   each declared copy against its source's snapshot; --add <copy> <source> and --ported <copy> record one;
+//            --spans lists the runs of lines two layers or documents share, and writes nothing
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -187,7 +189,12 @@ function sessionStart(c, layer, input, data) {
 }
 
 function status(c) {
-  const p = places(c, ownOf(c)), map = loadMap(p.map);
+  const p = places(c, ownOf(c)), rec = copiesOf(c, p);
+  return [...delivery(c, p), ...rec.v.copies.flatMap((x) => copyLines(c, rec, x))];
+}
+
+function delivery(c, p) {
+  const map = loadMap(p.map);
   const lines = [`primer: ${p.own}${existsSync(p.own) ? '' : ' (missing)'}`, `store: ${p.store}`, `map: ${p.map} (${map.repos.length} repositories, ${map.roots.length} roots)`];
   let repo;
   try { repo = repoOf(c, c.cwd, Date.now() + c.limit); } catch (e) {
@@ -225,6 +232,89 @@ function measure(c, args) {
     out.push(`repo ${shown(e)}: ${swap ? `${joined(now).length} -> ` : ''}${n} characters (${parts.join(', ')}), ${n > CAP ? 'over' : 'within'} the cap`);
   }
   return out;
+}
+
+const COPIES = 'copies takes nothing, --add <copy> <source>, --ported <copy> or --spans';
+const SPAN = 3;
+const readBuf = (path) => { try { return readFileSync(path); } catch { return null; } };
+
+// The declared copies, <store>/copies.json, with each source's snapshot at <store>/copies/<id>. A path inside the store is held
+// relative to it and one under the home directory as ~/, so a store shared between machines holds few paths of one machine.
+function copiesOf(c, p) {
+  const path = join(p.store, 'copies.json'), v = readJson(path, 'a primer copies record') ?? { version: 1, copies: [] }, k = (f) => keyOf(f, c.platform);
+  const ok = v && v.version === 1 && Array.isArray(v.copies) && v.copies.every((x) => x && /^C\d+$/.test(x.id) && ['copy', 'source', 'digest'].every((f) => typeof x[f] === 'string'));
+  if (!ok) refuse(`${path} is not a primer copies record`);
+  const inside = (f, d) => k(f).startsWith(`${k(d)}/`) && slash(f).slice(k(d).length + 1);
+  const held = (f) => inside(f, p.store) || (inside(f, c.home) ? `~/${inside(f, c.home)}` : slash(f));
+  const real = (h) => (h.startsWith('~/') ? join(c.home, h.slice(2)) : isAbsolute(h) ? h : join(p.store, h));
+  return { path, v, held, real, snap: (x) => join(p.store, 'copies', x.id), find: (f) => v.copies.find((x) => k(x.copy) === k(held(f))) };
+}
+
+// One copy's state, by bytes: the source against its snapshot and the copy against its digest, with the source's diff from the
+// snapshot as git renders it, its path header cut.
+function copyLines(c, rec, x) {
+  const src = readBuf(rec.real(x.source)), cp = readBuf(rec.real(x.copy)), snap = readBuf(rec.snap(x));
+  const s = !src || !snap || !src.equals(snap), k = !cp || createHash('sha256').update(cp).digest('hex') !== x.digest;
+  const gone = [[src, x.source], [cp, x.copy]].filter(([b]) => !b).map(([, f]) => `, ${f} is missing`).join('');
+  const out = [`copy ${x.id} ${x.copy} of ${x.source}: ${s && k ? 'both changed' : s ? 'source changed' : k ? 'copy changed' : 'current'}${gone}`];
+  if (!s || !src || !snap) return out;
+  const r = git(c, dirname(rec.snap(x)), ['-c', 'core.quotepath=off', 'diff', '--no-index', '--no-color', '--no-ext-diff', '--no-textconv', '--', rec.snap(x), rec.real(x.source)]);
+  const lines = r.stdout.split('\n').map((l) => l.replace(/\r$/, '')), at = lines.findIndex((l) => l.startsWith('@@'));
+  return [...out, ...(at < 0 ? [] : lines.slice(at).filter((l, i, a) => l || i < a.length - 1).map((l) => `  ${l}`))];
+}
+
+function copiesVerb(c, [op, ...args]) {
+  const p = places(c, ownOf(c)), rec = copiesOf(c, p), at = (f) => resolve(c.cwd, tilde(f, c.home));
+  const file = (f) => (statSync(at(f), { throwIfNoEntry: false })?.isFile() ? at(f) : refuse(`${at(f)} is not a file`));
+  if (op === undefined) return [`copies: ${rec.path} (${rec.v.copies.length} declared)`, ...rec.v.copies.flatMap((x) => copyLines(c, rec, x))];
+  if (op === '--spans') return args.length ? refuse(COPIES) : spans(p);
+  let x, sign = '~';
+  if (op === '--add' && args.length === 2) {
+    const [copy, source] = args.map(file);
+    if (keyOf(copy, c.platform) === keyOf(source, c.platform)) refuse('a copy and its source are two files');
+    if (rec.find(copy)) refuse(`${rec.find(copy).id} already declares ${slash(copy)}; after a port, use --ported`);
+    x = { id: `C${rec.v.copies.reduce((n, y) => Math.max(n, Number(y.id.slice(1))), 0) + 1}`, copy: rec.held(copy), source: rec.held(source), digest: '' };
+    rec.v.copies.push(x);
+    sign = '+';
+  } else if (op === '--ported' && args.length === 1) x = rec.find(file(args[0])) ?? refuse(`${slash(at(args[0]))} is not a declared copy`);
+  else refuse(COPIES);
+  const src = readBuf(rec.real(x.source)) ?? refuse(`${rec.real(x.source)} cannot be read`);
+  x.digest = createHash('sha256').update(readFileSync(rec.real(x.copy))).digest('hex');
+  writeAtomic(rec.snap(x), src);
+  writeAtomic(rec.path, `${JSON.stringify(rec.v, null, 2)}\n`);
+  return [`primer: wrote ${rec.path} and ${rec.snap(x)}`, `${sign} ${copyLines(c, rec, x)[0]}`];
+}
+
+// The runs of consecutive lines two layers or documents share, trimmed of blank lines at either end and holding at least SPAN
+// lines that are not blank, longest first. Lines compare without their trailing white space.
+function spans(p) {
+  const docs = [], walk = (d) => { for (const e of (() => { try { return readdirSync(d, { withFileTypes: true }); } catch { return []; } })()) (e.isDirectory() ? walk : (f) => docs.push(f))(join(d, e.name)); };
+  walk(join(p.store, 'docs'));
+  const groups = (() => { try { return readdirSync(join(p.store, 'groups')).filter((f) => f.endsWith('.md')).sort().map((f) => join(p.store, 'groups', f)); } catch { return []; } })();
+  const files = [join(p.store, 'shared.md'), ...groups, join(p.own, 'machine.md'), ...docs.sort()].filter((f) => statSync(f, { throwIfNoEntry: false })?.isFile());
+  const text = files.map((f) => { const l = readText(f).split('\n').map((x) => x.trimEnd()); return l.at(-1) === '' ? l.slice(0, -1) : l; });
+  const runs = [];
+  for (let a = 0; a < files.length; a++) for (let b = a + 1; b < files.length; b++) {
+    const A = text[a], B = text[b];
+    let prev = new Int32Array(B.length + 1);
+    for (let i = 0; i < A.length; i++) {
+      const cur = new Int32Array(B.length + 1);
+      for (let j = 0; j < B.length; j++) {
+        if (A[i] !== B[j]) continue;
+        cur[j + 1] = prev[j] + 1;
+        if (i + 1 < A.length && j + 1 < B.length && A[i + 1] === B[j + 1]) continue;
+        let s = i - cur[j + 1] + 1, e = i;
+        while (s <= e && !A[s]) s++;
+        while (e >= s && !A[e]) e--;
+        if (A.slice(s, e + 1).filter(Boolean).length >= SPAN) runs.push({ n: e - s + 1, a, b, sa: s, sb: s + j - i });
+      }
+      prev = cur;
+    }
+  }
+  runs.sort((x, y) => y.n - x.n || x.a - y.a || x.sa - y.sa || x.b - y.b || x.sb - y.sb);
+  const what = `shared by two layers or documents, of at least ${SPAN} lines that are not blank`;
+  return [runs.length ? `primer: ${runs.length} ${runs.length === 1 ? 'run' : 'runs'} ${what}, longest first` : `primer: no run ${what}`,
+    ...runs.map((r) => `${r.n} lines: ${files[r.a]} ${r.sa + 1}-${r.sa + r.n} and ${files[r.b]} ${r.sb + 1}-${r.sb + r.n}`)];
 }
 
 // The directory at or above a path that holds .git, found without git and, as git does, never above a ceiling directory.
@@ -572,7 +662,8 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   if (verb === 'status') return rest.length ? refuse('status takes no arguments') : status(c);
   if (verb === 'measure') return measure(c, rest);
   if (verb === 'map') return mapVerb(c, rest);
-  return refuse(`unknown command${verb ? ` ${verb}` : ''}; use session-start, staged, reach, status, measure or map`);
+  if (verb === 'copies') return copiesVerb(c, rest);
+  return refuse(`unknown command${verb ? ` ${verb}` : ''}; use session-start, staged, reach, status, measure, map or copies`);
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path. A hook verb prints nothing but its JSON: on

@@ -49,6 +49,7 @@ test('R245: the frontmatter names the skill, the four phrases first, and read-on
     'Bash(git check-ignore *)',
     'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status *)',
     'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" measure *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" copies --spans *)',
   ]);
 });
 
@@ -89,7 +90,7 @@ test('R249: adopt inventories, keeps pinned files, converts an index, moves befo
 
 test('R250 and R251: maintain verifies against the code, prints no drift, and names /doctor prompt-audit', () => {
   assert.ok(SKILL.includes('- a statement in `README.md`, `CONTRIBUTING.md` or a `docs/` page that the code makes untrue is reported, never rewritten by this pass;'));
-  assert.ok(SKILL.includes('- two instruction files that contradict each other are reported, never resolved by this pass, since `/doctor prompt-audit` checks contradictions.'));
+  assert.ok(SKILL.includes('- two instruction files that contradict each other are reported, never resolved by this pass, since `/doctor prompt-audit` checks contradictions;'));
   assert.ok(SKILL.includes('- each command the hub or a nested `CLAUDE.md` names exists in a manifest, script or workflow and does what its line says;'));
   assert.ok(SKILL.includes('- each statement of the hub, a rule, a nested file or a skill is true of the files it covers: the names, paths and behavior it states exist;'));
   assert.ok(SKILL.includes('- a skill whose procedure the repository lacks is reported, never deleted;'));
@@ -156,6 +157,13 @@ test('R397 to R399: the fold-back review reads the logs, runs two passes, ends i
   assert.ok(SKILL.includes('then what it holds and what it rejects, each with its reason, and asks once with the rest. An item for the house rules or another plugin is written by its kind, with no person, id or path.'));
   assert.ok(SKILL.includes('`node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs"`'));
   assert.ok(SKILL.includes('Then write the stamp `${CLAUDE_PLUGIN_DATA}/reviewed/feedback` as step 3 writes its own.'));
+});
+
+test('R400 and R401: maintain reports declared copies and proposes ports, and past messages come from the reader alone', () => {
+  assert.ok(SKILL.includes('- each copy `status` lists: `source changed` is a port to propose from the diff it shows, followed on its yes by `copies --ported <copy>` of the same script;'));
+  assert.ok(SKILL.includes('A proposal that copies context text to a second place declares it with `copies --add <copy> <source>`; the script ports nothing.'));
+  assert.ok(SKILL.includes('`node "${CLAUDE_PLUGIN_ROOT}/scripts/transcripts.mjs" --from <YYYY-MM-DD> --to <YYYY-MM-DD>`'));
+  assert.ok(SKILL.includes('build no reader of your own, and count nothing from its output.'));
 });
 
 test('R241 and R393: every addition is classed, and the local profile has its own destinations', () => {

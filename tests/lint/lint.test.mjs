@@ -233,6 +233,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     put(dir, 'plugins/primer/scripts/ledger.mjs', '// x\n'.repeat(701));
     bump(dir, 'primer');
   }, 1, ['plugins/primer/scripts/ledger.mjs: 701 lines, over the 700-line budget']);
+  negative('R387: transcripts.mjs over the 700-line budget', (dir) => {
+    put(dir, 'plugins/primer/scripts/transcripts.mjs', '// x\n'.repeat(701));
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/scripts/transcripts.mjs: 701 lines, over the 700-line budget']);
 
   // Pads the shipped skill to n words, so the two cases hold when its length changes.
   const padLoop = (dir, n) => {
@@ -669,6 +673,11 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
       if (basename(path) === 'ledger.mjs' || read(dir, path).includes('ledger.mjs')) rmSync(join(dir, path));
     }
   }, 1, ['plugins/primer/scripts/ledger.mjs: no test under tests/ names it']);
+  negative('R6: <path>: no test under tests/ names it (transcripts.mjs)', (dir) => {
+    for (const path of files(dir, 'tests/')) {
+      if (basename(path) === 'transcripts.mjs' || read(dir, path).includes('transcripts.mjs')) rmSync(join(dir, path));
+    }
+  }, 1, ['plugins/primer/scripts/transcripts.mjs: no test under tests/ names it']);
 
   negative('R223: .gitattributes: lacks the line <line>', (dir) => {
     put(dir, '.gitattributes', '* text=auto eol=lf\n*.mjs text eol=lf\n*.md text eol=lf\n');

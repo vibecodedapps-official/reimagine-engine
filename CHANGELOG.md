@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.30 - 2026-11-12
+
+- Queue says that only an agent's own completion notification drives the next launch: a status line at the end of a running agent's output file, or the end of a watch the run set on that file, is not one. A run took the end of such a watch for its auditor's completion and launched pass two, and the auditor then rewrote the report that pass two had read.
+
 ## audit 0.1.29 - 2026-11-12
 
 - Before the failure ladder relaunches an agent, the run moves the output file the failed attempt left into that attempt's scratch folder as `failed-output.md`, and no agent reads another agent's scratch folder. A relaunch takes the same output path and an agent leaves a complete file there as final, so after a failure that left a complete file the relaunch wrote nothing; the run then moved the file aside on its own and the next attempt read it.

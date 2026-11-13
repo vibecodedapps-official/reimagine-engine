@@ -203,7 +203,7 @@ In every session, never end the turn while a background agent or a `revert-tests
 
 ### Queue
 
-Keep one queue of agent jobs across all stages. At most `max_agents` agents run at once (default 8). When several stages have work, launch digests first, then maps, then pass one, then jobs in the order their stage became ready. A relaunch goes to the front. Each completion notification drives the next launch. Work beyond the cap waits; scope is never merged or dropped to fit.
+Keep one queue of agent jobs across all stages. At most `max_agents` agents run at once (default 8). When several stages have work, launch digests first, then maps, then pass one, then jobs in the order their stage became ready. A relaunch goes to the front. Each completion notification drives the next launch. Only the agent's own notification counts: while an agent you launched still runs, neither a status line at the end of its output file nor the end of a watch you set on that file is one, since the agent may still write. Work beyond the cap waits; scope is never merged or dropped to fit.
 
 ### Soft budget
 
@@ -289,7 +289,7 @@ A repeated command changes nothing, so run it again when you cannot tell that it
 
 ```json
 {
-  "plugin_version": "0.1.29",
+  "plugin_version": "0.1.30",
   "approvals": [ { "kind": "fetch", "target": "<repo name>:<remote>",
                    "decision": "approved", "time": "2026-10-15T09:15:00Z",
                    "commands": ["git -C <repo> fetch --no-tags --refmap= ..."] } ],

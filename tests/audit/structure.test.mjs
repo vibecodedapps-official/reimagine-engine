@@ -187,6 +187,16 @@ test('the ending of a merger that could not read an input is one literal where i
   }
 });
 
+test('each agent definition ends its report with the calls it was refused', () => {
+  const line = '- On the line before your status line, list each read or call you were refused, as `refused: <tool> <path or command>; ...`, or write `none refused`.';
+  const agents = list('agents/');
+  assert.deepEqual(agents, ['agents/adversary.md', 'agents/auditor.md', 'agents/digester.md', 'agents/mapper.md', 'agents/merger.md']);
+  for (const file of agents) {
+    const rules = TEXT[file].match(/^## Hard rules, restated\n([^]*?)(?=^## )/m)?.[1] ?? '';
+    assert.ok(rules.replace(/\n\s+/g, ' ').includes(line), `${file}: "Hard rules, restated" does not hold the refused line`);
+  }
+});
+
 test('act and the finding rules name the same instruction files to read before a change', () => {
   for (const file of ['skills/audit/stages/9-act.md', 'skills/audit/audit-evidence.md']) {
     const block = paragraphs(file).find((part) => /instruction\s+files/.test(part) && part.includes('`.claude/rules/`'));

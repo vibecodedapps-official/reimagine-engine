@@ -34,6 +34,8 @@ and your scratch folder.
 - Redirect output only into your scratch folder.
 - Your output file is final once its last line is `status: complete`. If you wake after
   that, end without writing.
+- On the line before your status line, list each read or call you were refused, as
+  `refused: <tool> <path or command>; ...`, or write `none refused`.
 
 ## Steps (pass two)
 

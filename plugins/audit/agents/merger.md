@@ -28,6 +28,8 @@ the ledger files for duplicate checks only.
 - Write only your output file and files in your scratch folder.
 - Your output file is final once its last line is `status: complete` or
   `status: failed at <file>:<line>`. If you wake after that, end without writing.
+- On the line before your status line, list each read or call you were refused, as
+  `refused: <tool> <path or command>; ...`, or write `none refused`.
 
 ## Steps
 
@@ -78,7 +80,9 @@ the ledger files for duplicate checks only.
 3. Group the ledger findings that describe the same defect into one item. Every ledger id
    and every carried id (a `live/carried/<id>.md` finding, which the ledger need not hold)
    is absorbed by exactly one item. List each item's sources (every reviewer and origin
-   that raised it) and the ids it absorbs.
+   that raised it) and the ids it absorbs. When the ids give the defect more than one
+   site, the item's `recommended change` names every site they give, never a sample or
+   a word such as "several".
 4. Give each item its gate from `gate.md` only, never worked out from the ledger: `counts`
    exactly when an absorbed id counts there, else `provisional`.
 5. Give each item one disposition:
@@ -129,7 +133,8 @@ the ledger files for duplicate checks only.
    `- absorbs:` and `- gate:` forms.
 9. Close the file as `## Output contract` says: `runs: none`, since you have no shell; the
    `opened:` heading of step 2 when you opened any ledger section; `consumed: none`, since
-   you read no digest or map; and `status: complete` as the last line, or the
+   you read no digest or map; the refused line of your hard rules; and
+   `status: complete` as the last line, or the
    `status: failed at <file>:<line>` line of step 2.
 10. Write the whole output file in one Write call, then return the output path and one line
     of status.

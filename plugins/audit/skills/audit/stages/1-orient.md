@@ -715,6 +715,11 @@ branch to it in the manifest."
          documented fact goes, quoted with its file and the time read, or `none`. It is a
          snapshot at audit time, as the exports are; resume does not read those files
          again, and `/audit:resume <run-id> --from 1` does.
+       - Instruction sources: by path, every instruction source the session loaded that
+         bears on the audit's questions: the user's and the repository's instruction
+         files, and each file a context loader names as its source; then each convention
+         the session holds from no file, such as a table the user gave in the request,
+         quoted.
        - Corrections: empty, filled in stage 5.
 
     d. **Run copies.** Write the run's question list to `questions.md` in the run

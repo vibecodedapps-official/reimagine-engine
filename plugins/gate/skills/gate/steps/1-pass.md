@@ -41,7 +41,7 @@ The redirect saves each output before anything parses it. A saved `result` that 
 ## The stand-in
 
 1. Write `diff-<n>[-<slug>].patch` in the record from `git --literal-pathspecs diff <merge-base>...HEAD`, with `-- ` and the group's `paths` for a split pass.
-2. Call an Agent at `models.fallback-reviewer`, passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and asks for a review of the whole change for correctness bugs, the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, with repository-relative paths, and `[]` when there are none. The calls of a split pass go in one message, within the review time above.
+2. Call an Agent at `models.fallback-reviewer`, passing `model` explicitly and the level word as its `effort`. The request names the patch's absolute path and the instruction files and conventions of SKILL.md, Approval scope, rule 1, and asks for a review of the whole change for correctness bugs, the reply ending in a fenced json array of objects with `file`, `line`, `summary` and `failure_scenario`, with repository-relative paths, and `[]` when there are none. The calls of a split pass go in one message, within the review time above.
 3. Save the reply as `review-<n>[-<slug>].md`, and set `engine` to `stand-in` in `passes.json`: once chosen, the stand-in stays for the run.
 
 ## Findings
@@ -73,7 +73,7 @@ Before any fix, sort every finding of the pass into one bucket with a one-line r
 3. Write each ledger entry's bucket and reason in its `passes.<n>` and set its state: `open` for `fix`, with a regression staying `regressed`, `deferred` for `defer`, `rejected` for `reject`. A matched finding's `match`, `{"of": "<earlier id>", "reason": "<why>"}`, goes in this same write, never a later one.
 4. Write `findings` in the pass entry, `{"<id>": {"bucket": "<bucket>", "reason": "<reason>"}}` for every finding of the pass, a matched one under the earlier id, and write `findings.json`, both before the fix round. Then run `node "<scripts>/findings.mjs" --check <n> <record>/findings.json`, and repair each entry a `findings: warning:` line names, as above.
 
-With more than 30 findings to sort, readers do the reading: read-only Agents at `models.reader`, one per batch of at most 40 findings, all calls in one message, each named in the Log. A reader gets its findings with file, line, summary and failure scenario, each `new` finding's `candidates`, the merge-base, the checkout path and the instruction files, and is told to edit nothing, run no git command that writes and start no background command. Per finding it returns:
+With more than 30 findings to sort, readers do the reading: read-only Agents at `models.reader`, one per batch of at most 40 findings, all calls in one message, each named in the Log. A reader gets its findings with file, line, summary and failure scenario, each `new` finding's `candidates`, the merge-base, the checkout path, and the instruction files and conventions of SKILL.md, Approval scope, rule 1, and is told to edit nothing, run no git command that writes and start no background command. Per finding it returns:
 
 - the id;
 - `same as`: the id of the one candidate that is the same defect, or `none`;

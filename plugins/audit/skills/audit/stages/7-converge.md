@@ -216,6 +216,8 @@ adversary runs, `ledger/7.md`, `gate.md`, `converged.md`, and in split mode
      `contested`: they disagree on its existence or its severity; every position is
      kept with its evidence and no side is picked. `dismissed`: dropped and not
      restored, kept with the reason.
+   - When the ids an item absorbs give the defect more than one site, its
+     `recommended change` names every site they give, never a sample.
    - An item's gate is `counts` when any id it absorbs counts in `gate.md`. A counted
      item's severity, label and disposition come only from absorbed ids that count; a
      provisional duplicate never raises them.

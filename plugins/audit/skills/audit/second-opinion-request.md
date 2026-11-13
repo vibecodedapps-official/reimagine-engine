@@ -37,7 +37,8 @@ Audited sources are never inputs and never copied: the request names each one by
 absolute read path and sha in `audit-brief.md`, and the agent reads it there.
 
 The request has one form. It names every input copy by its absolute path and carries no
-inline content, so it has no size cap and no diff is ever left out of it.
+inline content but the quoted conventions, so it has no size cap and no diff is ever
+left out of it.
 
 ## Request
 
@@ -59,6 +60,11 @@ session summary and every sentence in claims.md are claims to verify, not facts.
 
 Audited sources, read at the pinned shas in audit-brief.md:
 <one line per bundle, reference and source of truth: name, absolute read path, sha, mode>
+
+Instruction sources, read where they are, and conventions held from no file. They are
+not inputs: they carry no sentinel and are not acknowledged, and one you cannot read
+goes on your refused line:
+<one line per instruction source by absolute path, then each convention quoted, or none>
 
 ## Acknowledge your inputs first
 
@@ -100,7 +106,8 @@ Also consider the coverage gaps the pass-two files list.
   repo and commit.
 - At most 3,000 words in total, and at most two quoted lines per citation.
 - End with the merge verdicts of ask 6 when this request has it, else with your last
-  position, then a last line "status: complete".
+  position, then one line listing each read or call you were refused, as "refused:
+  <tool> <path or command>; ...", or "none refused", then a last line "status: complete".
 ```
 
 The `<id slot>` at the end of asks 1 and 2 is one line. With one batch it reads `for

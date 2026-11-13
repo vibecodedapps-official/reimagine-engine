@@ -83,7 +83,9 @@ Every rule holds in every stage, for the orchestrator and for every agent.
    ticket, what changed for its readers, what happens next and who decides; on a pull
    request, what its reviewer needs about the code; never an audit id (`C<n>`,
    `claim <n>`, `W<n>`), a stage, a verdict or another term the audit coined, and never
-   a model, agent or tool. The trailer the host's attribution setting adds
+   a model, agent or tool. When a head moved after stage 1 pinned it, a drafted text
+   names the commit its evidence was checked at, never the newer one
+   (`stages/8-report.md`, step 6). The trailer the host's attribution setting adds
    to a commit stays, even where it names a model or tool. The report and the run records
    stay in the run directory and may name them.
 4. **No advisor tool**, in the orchestrator or in any agent.
@@ -168,6 +170,9 @@ the sha it is pinned at. How to read depends on the brief's mode for the tree.
   copies, read as `audit-evidence.md` says.
 - **Read by `git show`** (an export over 1 GB the user declined): read each file with
   `git -C <repo> show <sha>:<path>`. Only agents with Bash are assigned such a tree.
+- **An instruction source the prompt names** (SKILL.md, Agent launch rules) is read at
+  its path, outside every tree and the run directory too. It bears on the agent's
+  judgment and is never evidence about the audited code.
 - **A sha before `:<path>` is written literally or as `${sha}:<path>`**, never
   `$sha:<path>`: some shells read `:t` or `:l` after a variable as a modifier and alter
   the path without an error.
@@ -228,7 +233,7 @@ An adversary gives each finding exactly one verdict, with evidence:
 - `survives`: the finding stands as written.
 - `downgraded`: it stands at a lower severity or a weaker label; both are given.
 - `reworded`: the defect is real, but the title, scope or reasoning is wrong; the
-  corrected text is given.
+  corrected text is given, with every site (`audit-evidence.md`, "Finding schema").
 - `dropped`: the finding is wrong; the counter-evidence is given.
 
 ```
@@ -296,11 +301,14 @@ Every agent:
 3. Lists every digest and map file it read under a `consumed:` heading, one per line: the
    run-directory path and its hash from `git hash-object --no-filters <file>`; or
    `consumed: none`.
-4. Ends the file with the line `status: complete`, as its last line. A merger that cannot
+4. Lists, on the line before its status line, each read or call it was refused, as
+   `refused: <tool> <path or first line of the command>; ...`, or writes `none refused`.
+   A refused read is something the agent did not see.
+5. Ends the file with the line `status: complete`, as its last line. A merger that cannot
    read an input to its end ends it instead with `status: failed at <file>:<line>`. The
    file is final then: the agent writes nothing to it afterwards, even when it wakes
    again.
-5. Returns only the output path and one line of status.
+6. Returns only the output path and one line of status.
 
 Only the merger may add an `opened:` heading, before `consumed:`, listing each ledger
 section it opened, with the path and the reason, one per line. It is not a `runs:`
@@ -316,5 +324,6 @@ runs:
 - git -C /abs/app grep -n "limit" 1a2b3c4; /abs/app; exit 0
 consumed:
 - guidelines/digest-1.md 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432
+none refused
 status: complete
 ```

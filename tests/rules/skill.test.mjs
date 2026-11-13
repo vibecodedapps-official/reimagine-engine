@@ -341,3 +341,11 @@ test('R366: the style names the draft skill in one sentence and the chat block d
   const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1];
   assert.equal(/rules:draft|draft`? skill/.test(fenced), false);
 });
+
+test('R366: the chat block keeps the sentence the style cut to pay for the one naming the skill', () => {
+  const cut = "Don't present a settled choice as a question, or a proposal as agreed.";
+  const style = readFileSync(new URL('../../plugins/rules/output-styles/concise-plain.md', import.meta.url), 'utf8');
+  assert.equal(style.includes(cut), false);
+  const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1];
+  assert.ok(fenced.includes(cut));
+});

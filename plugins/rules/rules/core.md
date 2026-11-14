@@ -71,6 +71,8 @@ pass on an approval the user gave and gives none of its own.
 - Expected values are literals, never recomputed the way the code computes them.
 - Mock only boundaries you don't own: network, clock, randomness, paid calls.
 - Stop and say why when a test needs new fixtures or mocks.
+- A test of prose written for an agent checks only what the host, a script or another file
+  reads; a run or a review checks the rest.
 
 ## Done
 

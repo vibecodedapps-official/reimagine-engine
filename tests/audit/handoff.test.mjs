@@ -72,12 +72,15 @@ test('R137: handoff.sh reads the handoff the loop gives as its example', () => {
 
 test('R355: the export the loop writes holds every key the audit requires of a ticket export', () => {
   const rule = ORIENT.slice(ORIENT.indexOf('**Exported forge files.**'), ORIENT.indexOf('**Claims files.**')).replace(/\s+/g, ' ');
-  assert.ok(rule.includes('`description`'), 'the audit names no description');
+  const message = '`export <path>: missing <key>`';
+  assert.ok(rule.includes(message), 'the audit prints no missing-key message');
+  const names = [...new Set([...rule.slice(0, rule.indexOf(message)).matchAll(/`([a-z_]+)`/g)].map((m) => m[1]))];
+  const optionalOrPullRequest = ['acceptance_criteria', 'fields', 'links', 'comments', 'body', 'reviews', 'review_comments'];
+  for (const key of optionalOrPullRequest) assert.ok(names.includes(key), `the audit's rule no longer names ${key}`);
   const written = LOOP.split(/\r?\n/).find((line) => line.includes('`exported_by`') && line.includes('`exported_at`'));
   assert.ok(written, 'the loop handoff.md does not say what an export holds');
-  for (const key of ['id', 'url', 'title', 'state', 'source', 'exported_by', 'exported_at']) {
-    assert.ok(rule.includes(`\`${key}\``), `the audit's rule for an export lacks ${key}`);
-    assert.ok(written.includes(`\`${key}\``), `the loop's export lacks ${key}`);
+  for (const key of names.filter((name) => !optionalOrPullRequest.includes(name))) {
+    // The loop's line names the description as a plain word, not in backticks.
+    assert.ok(written.includes(key === 'description' ? key : `\`${key}\``), `the loop's export lacks ${key}`);
   }
-  assert.ok(written.includes('description'), 'the loop\'s export holds no description');
 });

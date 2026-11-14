@@ -1,4 +1,4 @@
-// The primer skill files: the directory contents, the frontmatter the host reads, the caps, and what the hooks, the scripts and an eval grader read from the prose. No case asserts how a sentence is worded (requirement 402).
+// The primer skill files: the directory contents, the frontmatter the host reads, the caps, and what the hooks, the scripts and an eval grader read from the prose. No case asserts how a sentence is worded, but for the bans whose loss lets a run do harm (requirement 402).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -73,12 +73,30 @@ test('R247: the skill names --no-verify only to bar it', () => {
   for (const l of lines) assert.match(l, /[Nn]ever [^.]*--no-verify/, l);
 });
 
+test('R246, R390: the bans whose loss lets a run write where it must not stand in the skill files', () => {
+  const skillLines = SKILL.split('\n');
+  assert.ok(skillLines.some((l) => l.includes('forced `init`') && /never writes over [^.]*`CLAUDE\.md`[^.]*`AGENTS\.md`/.test(l)), 'SKILL.md does not bar a forced init over an existing CLAUDE.md or AGENTS.md');
+  const never = skillLines.find((l) => l.startsWith('- Never edit '));
+  assert.ok(never, 'SKILL.md has no line starting "- Never edit "');
+  const first = never.split('. ')[0];
+  for (const entry of ['code', 'configuration', 'settings', 'CI files', 'package manifests', '`CLAUDE.local.md`', 'anything git ignores', 'the auto memory directory']) assert.ok(first.includes(entry), `the list of what is never edited lacks ${entry}`);
+  assert.ok(LOCAL.split('\n').some((l) => /writes nothing [^.]*work tree[^.]*no commit/.test(l)), 'local.md does not bar a work tree write and a commit');
+});
+
 test('every script command the skill files show names a script that exists, a verb it takes and options it reads', () => {
   const verbs = [...SOURCE['primer.mjs'].matchAll(/verb === '([a-z-]+)'/g)].map((m) => m[1]);
   assert.ok(verbs.includes('status') && verbs.includes('map') && verbs.includes('copies') && verbs.includes('measure'), 'primer.mjs lists its verbs as verb === <name>');
   const shown = [];
+  let optionSpans = 0;
   for (const [name, text] of Object.entries(FILES)) {
     for (const [, span] of text.matchAll(/`([^`\n]+)`/g)) {
+      if (span.startsWith('--')) {
+        const option = span.split(/\s+/)[0];
+        if (option === '--no-verify') continue;
+        optionSpans++;
+        assert.ok(Object.values(SOURCE).some((source) => source.includes(`'${option}'`)), `${name}: ${span} names an option no script reads`);
+        continue;
+      }
       const path = /scripts\/([a-z]+\.mjs)"(.*)$/.exec(span);
       const words = (path ? path[2] : span).trim().split(/\s+/).filter(Boolean);
       if (!path && !(verbs.includes(words[0]) && words.some((w) => w.startsWith('--')))) continue;
@@ -90,6 +108,7 @@ test('every script command the skill files show names a script that exists, a ve
     }
   }
   assert.ok(shown.length >= 10, `only ${shown.length} commands were found`);
+  assert.ok(optionSpans >= 5, `only ${optionSpans} options shown alone were found`);
 });
 
 test('R256 and R397: the stamps the skill writes are the ones the notice hook reads', () => {

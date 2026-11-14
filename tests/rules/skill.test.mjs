@@ -129,17 +129,29 @@ function definitionItems() {
   return lines.slice(start + 1, end).filter((l) => l.startsWith('- '));
 }
 
-test('R347: the definition section holds two items, the second an item of core.md as core.md has it', () => {
-  const core = units(loadTexts()['core.md']).list.filter((u) => u.kind === 'item').map((u) => `- ${u.norm}`);
+test('R347: the definition section holds two items, the second an item of the Code section of core.md as core.md has it', () => {
+  const text = loadTexts()['core.md'];
+  const lines = text.split(/\r?\n/);
+  const start = lines.indexOf('## Code');
+  const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
+  assert.ok(start >= 0 && end > start, 'core.md has no Code section');
+  const code = units(text).list.filter((u) => u.kind === 'item' && u.a > start && u.a < end).map((u) => `- ${u.norm}`);
+  assert.ok(code.length > 0, 'the Code section holds no item');
   const items = definitionItems();
   assert.equal(items.length, 2);
-  assert.equal(core.includes(items[0]), false);
-  assert.ok(core.includes(items[1]), 'the second item is not an item of core.md');
+  assert.equal(code.includes(items[0]), false);
+  assert.ok(code.includes(items[1]), 'the second item is not an item of the Code section of core.md');
 });
 
-test('R346: the chat block carries the first item of the definition as the skill words it', () => {
+test('R346: the chat block carries the first item of the definition as the skill words it, as the last line of the block\'s first list', () => {
   const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1].split(/\r?\n/);
-  assert.ok(fenced.includes(definitionItems()[0]));
+  const line = definitionItems()[0];
+  assert.equal(fenced.filter((l) => l === line).length, 1);
+  const first = fenced.findIndex((l) => l.startsWith('- '));
+  assert.ok(first >= 0, 'the block holds no list');
+  const after = fenced.findIndex((l, i) => i > first && !l.startsWith('- '));
+  assert.ok(after > first, 'the first list has no end');
+  assert.equal(fenced[after - 1], line);
 });
 
 test('R347: the handoff-prompt skill asks for no read of the plugin\'s files', () => {

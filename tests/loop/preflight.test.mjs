@@ -36,7 +36,7 @@ test('R74: SKILL.md names the four host forms of an Azure DevOps remote and the 
 test('R81: Step 0.1.2 knows the keys and subkeys of the configuration block', () => {
   const block = JSON.parse(SKILL.split('\n## Configuration\n')[1].split('```json\n')[1].split('\n```')[0]);
   const item = section(PREFLIGHT, '0.1 Instruction files, configuration, credential scan, permission statement').split('\n').find((line) => line.startsWith('2. '));
-  const keys = [...item.matchAll(/`([a-z-]+)` \(([^)]*)\)/g)].map((m) => [m[1], ticks(m[2])]).filter(([key]) => key in block);
+  const keys = [...item.matchAll(/`([a-z-]+)` \(([^)]*)\)/g)].map((m) => [m[1], ticks(m[2])]);
   assert.deepEqual(keys.map(([key]) => key), Object.keys(block));
   for (const [key, subkeys] of keys) {
     if (typeof block[key] === 'object' && !Array.isArray(block[key])) assert.deepEqual(subkeys.slice(0, Object.keys(block[key]).length), Object.keys(block[key]), key);

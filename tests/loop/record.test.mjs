@@ -88,13 +88,21 @@ test('R89: record.md writes the hash of a slice\'s file with -- before the path,
   for (const command of commands) assert.ok(command.includes(' -- <path>'), `${command} has no -- before <path>`);
 });
 
-test('R96: the commit snapshot commits the plan and the report under docs/runs, and its external form names every section of the report template', () => {
+test('R96: the commit snapshot commits the plan and the report under docs/runs, and its external form splits the report template into the sections it leaves out and the ones it keeps', () => {
   const text = section(RECORD, 'Commit snapshot');
   assert.notEqual(text, null);
   for (const path of ['docs/runs/<branch-slug>/plan.md', 'docs/runs/<branch-slug>/report-<n>.md']) assert.ok(text.includes(path), `Commit snapshot does not name ${path}`);
   const headings = [...REPORT.split('\n## Template\n')[1].split('\n```\n')[1].matchAll(/^## (.+)$/gm)].map((m) => m[1]);
-  const kept = text.split('\n').find((line) => line.startsWith('3. '));
+  const item = text.split('\n').find((line) => line.startsWith('3. '));
   assert.ok(headings.length > 0, 'the report template has no section');
-  // A name counts only where a comma, a semicolon or a period ends it, so "Decisions for you" does not stand for "Decisions".
-  for (const name of headings) assert.ok([',', ';', '.'].some((end) => kept.includes(` ${name}${end}`)), `the external form does not name ${name}`);
+  const sentences = item.split('. ');
+  // A name counts only at the start of a sentence or after a space, and before a comma, a semicolon, a period or the end, so "Decisions for you" does not stand for "Decisions".
+  const named = (sentence) => headings.filter((name) => new RegExp(`(^| )${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([,;.]|$)`).test(sentence));
+  const leftOut = sentences.find((sentence) => named(sentence).includes('Log'));
+  const stays = sentences.find((sentence) => named(sentence).includes('What changed'));
+  assert.ok(leftOut !== undefined && stays !== undefined && leftOut !== stays, 'the external form has no sentence for each of the left out and the kept sections');
+  // These sections hold model and review-level text, which must not be committed under docs/runs.
+  assert.deepEqual(named(leftOut), ['Attended or unattended', 'Risk', 'Decisions', 'Findings rejected and why', 'Open items', 'Decisions for you', 'Log']);
+  assert.deepEqual(named(stays), ['What changed', 'Checks', 'Blocked, stopped or prepared']);
+  for (const name of headings) assert.ok([...named(leftOut), ...named(stays)].includes(name), `the external form does not name ${name}`);
 });

@@ -39,6 +39,13 @@ pass on an approval the user gave and gives none of its own.
   that is the task's stated purpose or I asked, and only what the reader will act on and
   would say themselves.
 - Report once, when the task is done or when the next step turns on my answer.
+- Log what you learn about your rules and context, and change none of them: a rule or
+  fact that was missing, a rule that was loaded and missed, a rule that visibly worked,
+  each as what happened with its evidence, appended to a file named for the date in
+  `feedback/` under `$CLAUDE_CONFIG_DIR`, else `~/.claude`. End your entry with a
+  `Recommended` section that says which observations matter. One recommended for the
+  house rules names no person, id or path and gives each case by its kind. Never edit
+  an instruction file, a rule or loaded context to fix what you logged unless I ask.
 
 ## Code
 

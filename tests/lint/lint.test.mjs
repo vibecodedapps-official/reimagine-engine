@@ -489,10 +489,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', '\nname: Concise Plain\n', '\nname: Plain\n');
     bump(dir, 'rules');
   }, 1, ['plugins/rules/output-styles/concise-plain.md: name is not Concise Plain']);
-  negative('R43: <file>: description does not end in v4.15.', (dir) => {
-    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.15.', 'procedures.');
+  negative('R43: <file>: description does not end in v4.16.', (dir) => {
+    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.16.', 'procedures.');
     bump(dir, 'rules');
-  }, 1, ['plugins/rules/output-styles/concise-plain.md: description does not end in v4.15.']);
+  }, 1, ['plugins/rules/output-styles/concise-plain.md: description does not end in v4.16.']);
   negative('R43: <file>: keep-coding-instructions is not true', (dir) => {
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'keep-coding-instructions: true', 'keep-coding-instructions: false');
     bump(dir, 'rules');
@@ -630,18 +630,18 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'rules');
   }, 2, [`${chat}: holds 2 fenced blocks, not one`, `${chat}: names no Concise Plain version`]);
   negative('R44: <file>: names Concise Plain v<x>, not v<y> as the style does', (dir) => {
-    edit(dir, chat, '(Concise Plain v4.15)', '(Concise Plain v4.14)');
+    edit(dir, chat, '(Concise Plain v4.16)', '(Concise Plain v4.15)');
     bump(dir, 'rules');
-  }, 1, [`${chat}: names Concise Plain v4.14, not v4.15 as the style does`]);
+  }, 1, [`${chat}: names Concise Plain v4.15, not v4.16 as the style does`]);
   negative('R44: <file>: names Concise Plain v<x>, not v<y> as the style does (style bumped)', (dir) => {
-    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.15.', 'procedures. v4.16.');
+    edit(dir, 'plugins/rules/output-styles/concise-plain.md', 'procedures. v4.16.', 'procedures. v4.17.');
     bump(dir, 'rules');
   }, 2, [
-    'plugins/rules/output-styles/concise-plain.md: description does not end in v4.15.',
-    `${chat}: names Concise Plain v4.15, not v4.16 as the style does`,
+    'plugins/rules/output-styles/concise-plain.md: description does not end in v4.16.',
+    `${chat}: names Concise Plain v4.16, not v4.17 as the style does`,
   ]);
   negative('R44: <file>: names no Concise Plain version', (dir) => {
-    edit(dir, chat, ' (Concise Plain v4.15).', '.');
+    edit(dir, chat, ' (Concise Plain v4.16).', '.');
     bump(dir, 'rules');
   }, 1, [`${chat}: names no Concise Plain version`]);
 
@@ -681,8 +681,8 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     settle(dir, 'audit');
   }, 1, ['plugins/audit/skills/audit/SKILL.md: no ## What leaves the run section']);
   negative('R44: <file>: names no Concise Plain version (Kept line lacks it, another mention holds it)', (dir) => {
-    edit(dir, chat, ' (Concise Plain v4.15).', '.');
-    append(dir, chat, '\nSee (Concise Plain v4.15).\n');
+    edit(dir, chat, ' (Concise Plain v4.16).', '.');
+    append(dir, chat, '\nSee (Concise Plain v4.16).\n');
     bump(dir, 'rules');
   }, 1, [`${chat}: names no Concise Plain version`]);
 

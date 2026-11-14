@@ -1,6 +1,6 @@
 ---
 name: rules-feedback
-description: '"rules update", "fold this feedback into the rules" or pasted feedback about core.md, concise-plain.md or instructions.md. Folds feedback into the house rules, the output style or the chat block.'
+description: '"rules update", "fold this feedback into the rules" or pasted feedback about core.md, concise-plain.md, instructions.md or the draft skill. Folds feedback into the house rules, the output style, the chat block or the draft skill.'
 ---
 # rules-feedback
 
@@ -15,4 +15,4 @@ Done when the user has a list of proposed changes, each with file and lines, ord
 
 - The house rules' Code items on reusable files and on prose written for an agent hold for every proposal.
 - The record states the failure and the fix at a level that names no setting, role, host or quoted words; counts stay only where the argument turns on them.
-- Each change names its requirement, its decision entry, whether the chat block mirrors it, and whether `/rules:handoff-prompt` and the loop, gate and audit skills carry it.
+- Each change names its requirement, its decision entry, whether the chat block mirrors it, whether the `draft` skill already holds it, and whether `/rules:handoff-prompt` and the loop, gate and audit skills carry it.

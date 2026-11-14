@@ -1,4 +1,4 @@
-// The rules skill's steps and the refactor and handoff prompt skills' files. The skills are text the model follows, so these read the text; the handoff prompt skill's copy of a house-rule item is also compared with core.md, and the chat block's copy of the skill's definition with the skill.
+// The rules skill's steps and the refactor, handoff prompt and draft skills' files. The skills are text the model follows, so these read the text; the handoff prompt skill's copy of a house-rule item is also compared with core.md, and the chat block's copy of the skill's definition with the skill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -269,4 +269,83 @@ test('R347: the handoff-prompt skill gives the prompt in one fenced block, write
   assert.ok(text.includes('Give the prompt in one fenced block for pasting.'));
   assert.ok(text.includes('Write no file.'));
   assert.ok(text.includes('After the block, add one line on what was left out on purpose or is unverified.'));
+});
+
+const DRAFT_DIR = new URL('../../plugins/rules/skills/draft/', import.meta.url);
+
+function readDraft() {
+  return readFileSync(new URL('SKILL.md', DRAFT_DIR), 'utf8');
+}
+
+function draftFront() {
+  const lines = readDraft().split(/\r?\n/);
+  assert.equal(lines[0], '---');
+  const end = lines.indexOf('---', 1);
+  assert.ok(end > 1, 'the frontmatter has a closing ---');
+  return lines.slice(1, end);
+}
+
+test('R363: the draft skill directory holds SKILL.md only', () => {
+  assert.deepEqual(readdirSync(DRAFT_DIR), ['SKILL.md']);
+});
+
+test('R363: the draft frontmatter names the skill and its description claims a message for someone else', () => {
+  const front = draftFront();
+  assert.ok(front.includes('name: draft'));
+  const description = front.find((l) => l.startsWith('description:'));
+  assert.ok(description, 'a description line exists');
+  assert.ok(description.includes('before it is first shown'));
+  assert.ok(description.includes('Use whenever this session writes a message that another person will read.'));
+  assert.ok(description.includes('Not for a commit message or a code comment.'));
+});
+
+test('R363: the draft skill is model-invocable and takes no tools list or arguments', () => {
+  const front = draftFront();
+  assert.ok(!front.some((l) => l.startsWith('disable-model-invocation:')), 'no disable-model-invocation line');
+  assert.ok(!front.some((l) => l.startsWith('allowed-tools:')), 'no allowed-tools line');
+  assert.ok(!front.some((l) => l.startsWith('argument-hint:')), 'no argument-hint line');
+});
+
+test('R363: the draft SKILL.md is within its cap of 150 lines', () => {
+  const n = lineCount(readDraft());
+  assert.ok(n <= 150, `draft SKILL.md has ${n} lines`);
+});
+
+test('R363: the draft skill holds no numbered step list', () => {
+  const numbered = readDraft().split(/\r?\n/).filter((l) => /^\d+\. /.test(l));
+  assert.deepEqual(numbered, []);
+});
+
+test('R363: the draft skill asks for no read of the plugin\'s files', () => {
+  const text = readDraft();
+  assert.equal(text.includes('core.md'), false);
+  assert.equal(text.includes('concise-plain.md'), false);
+  assert.equal(text.includes('CLAUDE_PLUGIN_ROOT'), false);
+});
+
+test('R364: the draft skill strikes and verifies, adds no detail and launches no agent', () => {
+  const text = readDraft();
+  assert.ok(text.includes('The check strikes and verifies. It never adds detail.'));
+  assert.ok(text.includes('Run it yourself and launch no agent for it, since verifying needs what this session did.'));
+});
+
+test('R365: the draft skill keeps an email draft as one HTML file and no draft in two formats', () => {
+  const text = readDraft();
+  assert.ok(text.includes('An email draft is one HTML file in the scratch directory the house rules name'));
+  assert.ok(text.includes('No draft is kept in two formats.'));
+});
+
+test('R366: the style names the draft skill in one sentence and the chat block does not', () => {
+  const style = readFileSync(new URL('../../plugins/rules/output-styles/concise-plain.md', import.meta.url), 'utf8');
+  assert.deepEqual(style.split(/\r?\n/).filter((l) => l.includes('draft` skill')), ['Check it with the `rules:draft` skill before it is first shown.']);
+  const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1];
+  assert.equal(/rules:draft|draft`? skill/.test(fenced), false);
+});
+
+test('R366: the chat block keeps the sentence the style cut to pay for the one naming the skill', () => {
+  const cut = "Don't present a settled choice as a question, or a proposal as agreed.";
+  const style = readFileSync(new URL('../../plugins/rules/output-styles/concise-plain.md', import.meta.url), 'utf8');
+  assert.equal(style.includes(cut), false);
+  const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1];
+  assert.ok(fenced.includes(cut));
 });

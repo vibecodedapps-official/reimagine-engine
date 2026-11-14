@@ -86,6 +86,18 @@ describe('ledger', () => {
       'L2 superseded by L1, seen 1: A second gap. (2026-11-03.md)', ''].join('\n')]);
   });
 
+  test('an item that replaces one that had replaced another takes both, and a superseded item stays so', () => {
+    const cfg = config();
+    out(cfg, '--add', '2026-11-01.md', 'One.');
+    out(cfg, '--add', '2026-11-02.md', 'Two.');
+    out(cfg, '--add', '2026-11-03.md', 'Three.');
+    out(cfg, '--set', 'L2', 'superseded', '--by', 'L1');
+    out(cfg, '--set', 'L1', 'superseded', '--by', 'L3');
+    assert.deepEqual(out(cfg, '--set', 'L2', 'open'), [1, 'primer: L2 is superseded by L3, which counts its logs; it stays so\n']);
+    assert.deepEqual(out(cfg), [0, [`ledger: ${cfg.ledger}`, 'L1 superseded by L3, seen 2: One. (2026-11-01.md, 2026-11-02.md)', 'L2 superseded by L3, seen 1: Two. (2026-11-02.md)',
+      'L3 open, seen 3: Three. (2026-11-03.md, 2026-11-01.md, 2026-11-02.md)', ''].join('\n')]);
+  });
+
   test('a fold into a place git tracks records its commit, and is refused without one', () => {
     const cfg = config();
     const store = join(base, `versioned-${seq}`);

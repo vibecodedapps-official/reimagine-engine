@@ -422,6 +422,21 @@ describe('reach', () => {
     assert.equal(edit(join(base, `reach-data-${++seq}`), join(dir, 'feedback', '2026-11-14.md'), { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout, '');
   });
 
+  test('a configuration directory reached through a link is still not another repository', () => {
+    const dir = repo(`reach-config-${++seq}`), link = join(base, `reach-config-link-${seq}`);
+    write(dir, 'CLAUDE.md', '# Mine\n');
+    symlinkSync(dir, link, 'junction');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(dir, 'CLAUDE.md'), { extraEnv: { CLAUDE_CONFIG_DIR: link } }).stdout, '');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(link, 'CLAUDE.md'), { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout, '');
+  });
+
+  test('a layer that cannot be read leaves the repository unrecorded', () => {
+    const bad = config(local()), data = join(base, `reach-data-${++seq}`);
+    mkdirSync(join(bad.store, 'groups', 'app.md'), { recursive: true });
+    assert.equal(edit(data, join(app, 'src', 'new.ts'), { extraEnv: { CLAUDE_CONFIG_DIR: bad.dir } }).stdout, '');
+    assert.equal(existsSync(join(data, 'reach', 's1')), false);
+  });
+
   test('a data directory that is not an absolute path is not written to', () => {
     const r = run(['reach', 'reldata'], { cwd: session, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir, CLAUDE_PROJECT_DIR: session },
       input: JSON.stringify({ session_id: 's1', cwd: session, tool_input: { file_path: join(site, 'README.md') } }) });

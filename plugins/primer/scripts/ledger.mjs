@@ -66,6 +66,7 @@ export function main(argv, { env = process.env, home = homedir(), cwd = process.
     }
   } else if (op === '--set' && args.length >= 2 && args.length % 2 === 0) {
     x = item(args[0]);
+    if (x.status === 'superseded') refuse(`${x.id} is superseded by ${x.by}, which counts its logs; it stays so`);
     const status = STATUSES.includes(args[1]) ? args[1] : refuse(`a status is one of ${STATUSES.join(', ')}, not ${args[1]}`), o = {};
     for (let i = 2; i < args.length; i += 2) {
       if (!['--place', '--commit', '--by'].includes(args[i]) || args[i] in o) refuse(FORMS);
@@ -78,8 +79,9 @@ export function main(argv, { env = process.env, home = homedir(), cwd = process.
       const to = item(o['--by']);
       if (to.id === x.id) refuse(`${x.id} cannot supersede itself`);
       if (to.status === 'superseded') refuse(`${to.id} is superseded by ${to.by}; name an item that is not superseded`);
-      // The two state one gap, so the item that stays counts the logs of the one it replaces.
+      // The two state one gap, so the item that stays counts the logs of the one it replaces and takes what that one had replaced.
       for (const l of x.logs) if (!to.logs.includes(l)) { to.logs.push(l); to.seen++; }
+      for (const y of items) if (y.by === x.id) y.by = to.id;
       x.by = to.id;
     }
     if (status === 'folded') {

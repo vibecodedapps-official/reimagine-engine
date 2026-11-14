@@ -48,10 +48,11 @@ test('R18: the shipped body has a fixed digest for options core and for options 
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
   const texts = loadTexts();
-  assert.match(texts['windows.md'], /^On Windows, Bash is Git Bash/);
-  assert.equal(texts['core.md'].includes('On Windows, Bash is Git Bash'), false);
-  assert.equal(plan(null, { texts }).after.includes('On Windows, Bash is Git Bash'), false);
-  assert.equal(plan(null, { texts, platform: 'win32' }).after.includes('On Windows, Bash is Git Bash'), true);
+  const first = texts['windows.md'].split('\n')[0];
+  assert.notEqual(first, '');
+  assert.equal(texts['core.md'].includes(first), false);
+  assert.equal(plan(null, { texts }).after.includes(first), false);
+  assert.equal(plan(null, { texts, platform: 'win32' }).after.includes(first), true);
 });
 
 test('R354: core.md is one opening paragraph and five sections in order', () => {
@@ -965,7 +966,7 @@ test('R34: the overlap note and the recommendation for a hand copy, and adopt th
   assert.equal(bytes(`${s.claude}.reimagine-backup-20261003120000`), copy);
   const after = bytes(s.claude);
   assert.equal(after.startsWith(`# Mine\n\n<!-- reimagine:house-rules begin version=${SHIPPED_VERSION} options=core join=none digest=`), true);
-  assert.equal(after.split('Make the simplest change that is correct').length, 2);
+  assert.equal(after.split(SHIPPED['core.md'].split('\n').find((l) => l.startsWith('- '))).length, 2);
   assert.equal(s.run('plan', ['--options', 'core']).includes('state: current'), true);
   s.run('remove');
   s.run('apply', [], { now: LATER });

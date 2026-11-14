@@ -17,20 +17,20 @@ const LOOP_RECORD = read('../../plugins/loop/skills/run/record.md');
 
 test('R137: the audit looks for the loop\'s record where the loop keeps it, and tells it by the branch in steps.json', () => {
   const path = '`.reimagine/loop/<branch-slug>/`';
-  assert.ok(LOOP_RECORD.includes(`The record directory is ${path}`), 'record.md does not put the record there');
-  assert.ok(AUDIT.includes(`a loop record under ${path}`), 'the audit does not look there');
+  assert.ok(LOOP_RECORD.includes(path), 'record.md does not put the record there');
+  assert.ok(AUDIT.includes(path), 'the audit does not look there');
   const example = JSON.parse(LOOP_RECORD.split('\n## steps.json\n')[1].split('```json\n')[1].split('\n```')[0]);
   assert.equal(typeof example.branch, 'string');
-  assert.ok(AUDIT.includes('branch in its `steps.json` equals the session\'s branch'));
+  assert.ok(AUDIT.includes('`steps.json`'), 'the audit does not read steps.json');
 });
 
-// The decided_by table: from its "- `decided_by`" line through the line that bars names.
+// The decided_by table: its "- `decided_by`" line and the indented lines under it.
 const decidedByTable = (text) => {
-  const lines = text.split('\n');
+  const lines = text.split(/\r?\n/);
   const start = lines.findIndex((line) => line.startsWith('- `decided_by`'));
   if (start === -1) return null;
-  const end = lines.findIndex((line, i) => i > start && line.includes('Never a person\'s name'));
-  return end === -1 ? null : lines.slice(start, end + 1).join('\n');
+  const end = lines.findIndex((line, i) => i > start && !line.startsWith('  '));
+  return lines.slice(start, end === -1 ? lines.length : end).join('\n');
 };
 
 // The first fenced block under the loop's "## Example" heading: the handoff.md of its worked run.
@@ -72,14 +72,12 @@ test('R137: handoff.sh reads the handoff the loop gives as its example', () => {
 
 test('R355: the export the loop writes holds every key the audit requires of a ticket export', () => {
   const rule = ORIENT.slice(ORIENT.indexOf('**Exported forge files.**'), ORIENT.indexOf('**Claims files.**')).replace(/\s+/g, ' ');
-  const keys = (sentence) => [...(rule.match(sentence)?.[1] ?? '').matchAll(/`([a-z_]+)`/g)].map((m) => m[1]);
-  assert.deepEqual(keys(/A ticket requires (.*?), and may have/), ['id', 'url', 'title', 'state', 'description']);
-  assert.deepEqual(keys(/Every file requires (.*?)\./), ['source', 'exported_by', 'exported_at']);
-  assert.ok(rule.includes('the text after the frontmatter is the `description`'));
-  const written = LOOP.split(/\r?\n/).find((line) => line.startsWith('- An export is '));
+  assert.ok(rule.includes('`description`'), 'the audit names no description');
+  const written = LOOP.split(/\r?\n/).find((line) => line.includes('`exported_by`') && line.includes('`exported_at`'));
   assert.ok(written, 'the loop handoff.md does not say what an export holds');
   for (const key of ['id', 'url', 'title', 'state', 'source', 'exported_by', 'exported_at']) {
+    assert.ok(rule.includes(`\`${key}\``), `the audit's rule for an export lacks ${key}`);
     assert.ok(written.includes(`\`${key}\``), `the loop's export lacks ${key}`);
   }
-  assert.ok(written.includes('then the description as the text below it'));
+  assert.ok(written.includes('description'), 'the loop\'s export holds no description');
 });

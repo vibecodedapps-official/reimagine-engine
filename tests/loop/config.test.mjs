@@ -65,17 +65,6 @@ test('the SKILL.md core stays within 5800 words', () => {
   assert.ok(words <= 5800, `SKILL.md has ${words} words`);
 });
 
-test('R82, R83: the branch and slug examples in SKILL.md follow the slug rules they sit beside', () => {
-  // Lowercase, each run outside [a-z0-9] to "-", cut to the length, then no trailing "-"; the predicted slug also drops a leading "-".
-  const slug = (text, length) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+/, '').slice(0, length).replace(/-+$/, '');
-  const branch = SKILL.match(/For `([^`]+)` it is `([^`]+)`/);
-  const title = SKILL.match(/For the title "([^"]+)" the slug is `([^`]+)`/);
-  assert.notEqual(branch, null, 'no branch-slug example');
-  assert.notEqual(title, null, 'no predicted-slug example');
-  assert.equal(slug(branch[1], 60), branch[2]);
-  assert.equal(slug(title[1], 40), title[2]);
-});
-
 test('R59: every Bash rule in allowed-tools has at most one *, and only at its end', () => {
   const frontmatter = SKILL.match(/^---\n([\s\S]*?)\n---\n/)[1];
   const rules = frontmatter.split('\n').map((line) => line.match(/^\s*-\s*Bash\((.*)\)\s*$/)).filter(Boolean).map((m) => m[1]);

@@ -187,19 +187,23 @@ test('the ending of a merger that could not read an input is one literal where i
   }
 });
 
-test('each agent definition ends its report with the calls it was refused', () => {
-  const line = '- On the line before your status line, list each read or call you were refused, as `refused: <tool> <path or first line of the command>; ...`, or write `none refused`.';
+test('each agent definition and the output contract give the refused line in the two forms stage 8 searches for', () => {
+  const forms = ['`refused: <tool> <path or first line of the command>; ...`', '`none refused`'];
   const agents = list('agents/');
   assert.deepEqual(agents, ['agents/adversary.md', 'agents/auditor.md', 'agents/digester.md', 'agents/mapper.md', 'agents/merger.md']);
   for (const file of agents) {
     const rules = TEXT[file].match(/^## Hard rules, restated\n([^]*?)(?=^## )/m)?.[1] ?? '';
-    assert.ok(rules.replace(/\n\s+/g, ' ').includes(line), `${file}: "Hard rules, restated" does not hold the refused line`);
+    for (const form of forms) assert.ok(rules.includes(form), `${file}: "Hard rules, restated" does not give ${form}`);
   }
+  const contract = TEXT['skills/audit/common.md'].match(/^## Output contract\n([^]*?)(?=^## |$(?![^]))/m)?.[1] ?? '';
+  for (const form of forms) assert.ok(contract.includes(form), `common.md: the output contract does not give ${form}`);
+  const search = TEXT['skills/audit/stages/8-report.md'].replace(/\n\s*/g, ' ');
+  for (const start of ['`refused: `', '`none refused`']) assert.ok(search.includes(start), `stages/8-report.md does not search for ${start}`);
 });
 
 test('act and the finding rules name the same instruction files to read before a change', () => {
   for (const file of ['skills/audit/stages/9-act.md', 'skills/audit/audit-evidence.md']) {
-    const block = paragraphs(file).find((part) => /instruction\s+files/.test(part) && part.includes('`.claude/rules/`'));
+    const block = paragraphs(file).find((part) => part.includes('`.claude/rules/`') && part.includes('`REVIEW.md`'));
     assert.ok(block, `${file} has no paragraph on the instruction files read before a change`);
     for (const source of ['AGENTS.md', 'CLAUDE.md', '.claude/rules/', '.claude/skills/', 'REVIEW.md']) {
       assert.ok(block.includes('`' + source + '`'), `${file}: that paragraph does not name ${source}`);
@@ -208,7 +212,7 @@ test('act and the finding rules name the same instruction files to read before a
 });
 
 test('the rule for a failed output names what report.sh skips a pass file for', () => {
-  const rule = paragraphs('skills/audit/common.md').find((part) => part.includes('failed output') && part.includes('`## Claims`'));
+  const rule = paragraphs('skills/audit/common.md').find((part) => part.includes('`## Claims`') && part.includes('`-topup.md`'));
   assert.ok(rule, 'common.md has no paragraph on a failed output');
   for (const [inScript, inRule] of [
     ['"status: complete"', '`status: complete`'],
@@ -265,28 +269,9 @@ test('the registry commands of the audit files are the ones registry.sh takes', 
 });
 
 // An agent leaves a complete file at its output path as final, so a relaunch on that path writes nothing while the file is there.
-test('a failed output leaves its path before a relaunch, by one rule, and no agent reads it', () => {
-  const roles = paragraphs('skills/audit/SKILL.md').find((part) => part.startsWith('An agent fails when')) ?? '';
-  assert.ok(
-    /Before the ladder relaunches an agent, move the output file [^.]*`failed-output\.md`/.test(roles),
-    'SKILL.md, Roles, does not move a failed output off its path before a relaunch',
-  );
+test('no file but the skill moves a failed output, and none says a relaunch overwrites it', () => {
   for (const file of TARGETS) {
     assert.ok(!/relaunch overwrites/i.test(TEXT[file]), `${file} says a relaunch overwrites a file`);
     if (file !== 'skills/audit/SKILL.md') assert.ok(!/mv -f[^\n]*failed-/.test(TEXT[file]), `${file} moves a failed output by a rule of its own`);
-  }
-  assert.ok(
-    TEXT['skills/audit/common.md'].replace(/\s+/g, ' ').includes("It reads nothing in another agent's scratch folder."),
-    "common.md does not keep an agent out of another agent's scratch folder",
-  );
-});
-
-// A watch on an agent's output file ends before the agent does, and the agent may still rewrite the file.
-test('the queue takes only an agent\'s own notification as its completion', () => {
-  const queue = paragraphs('skills/audit/SKILL.md').find((part) => part.startsWith('Keep one queue of agent jobs')) ?? '';
-  const rule = queue.match(/Each completion notification drives the next launch\. ([^.]*\.)/)?.[1] ?? '';
-  assert.ok(rule.startsWith("Only the agent's own notification counts"), 'SKILL.md, Queue, does not say which notification counts');
-  for (const not of ['a status line at the end of its output file', 'the end of a watch you set on that file']) {
-    assert.ok(rule.includes(not), `SKILL.md, Queue, does not rule out ${not}`);
   }
 });

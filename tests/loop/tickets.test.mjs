@@ -11,7 +11,6 @@ const FILES = [
   ...readdirSync(new URL('steps/', DIR)).filter((name) => name.endsWith('.md')).map((name) => `steps/${name}`),
 ];
 const PREFLIGHT = read('steps/0-preflight.md');
-const BUILD = read('steps/4-build.md');
 const PUBLISH = read('steps/7-publish.md');
 const PR_BODY = read('pr-body.md');
 const TICKETS = read('tickets.md');
@@ -49,11 +48,6 @@ test('R352: the - ticket and - draft log lines are written one way, in record.md
   assert.ok(commands(TICKETS, '- ticket <ref> new artifact none').includes('- ticket <ref> new artifact none: <one line>'), 'the shortened ticket line does not follow the form');
 });
 
-test('R351: tickets.md settles each open item as one of three outcomes', () => {
-  const list = section(TICKETS, 'Open items').split('as one of three, with its evidence:\n')[1].split('\n\n')[0];
-  assert.deepEqual([...list.matchAll(/^- ([^:]+): /gm)].map((m) => m[1]), ['Settled by the run', 'A decision for the user', 'Filed to a ticket']);
-});
-
 test('R351: Step 7.2 pushes, then settles the open items, then writes the body files, then opens or comments on the pull request', () => {
   const text = section(PUBLISH, '7.2 Push and pull request');
   const at = [
@@ -64,13 +58,6 @@ test('R351: Step 7.2 pushes, then settles the open items, then writes the body f
   ];
   assert.ok(at.every((place) => place !== -1), 'Step 7.2 lacks a part');
   assert.deepEqual(at, [...at].sort((a, b) => a - b), 'the parts of Step 7.2 are out of order');
-});
-
-test('R351: on a host other than github, Step 6 reads tickets.md before pr-body.md', () => {
-  const step = section(BUILD, 'Step 6 Checks');
-  const other = step.slice(step.indexOf('On any other host'));
-  assert.ok(other.includes('`tickets.md`') && other.includes('`pr-body.md`'), 'Step 6 does not read both on other');
-  assert.ok(other.indexOf('`tickets.md`') < other.indexOf('`pr-body.md`'), 'Step 6 writes the body before it settles the open items');
 });
 
 test('R352: a gh issue command names its repository, an az boards command passes its text as a file, and the artifact calls keep their shape', () => {

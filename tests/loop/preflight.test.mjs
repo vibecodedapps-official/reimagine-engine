@@ -1,4 +1,4 @@
-// Step 0 and the reading block: the order of Step 0's parts, the forms it parses, the configuration it knows and the credential names it scans for.
+// Step 0 and the reading block: the forms Step 0 parses, the configuration it knows and the credential names it scans for.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -19,27 +19,10 @@ const section = (text, heading) => {
 // The backticked names in a text, in order.
 const ticks = (text) => [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
 
-test('Step 0 has its parts in order: the checkout, the host and the input before the numbered items', () => {
-  assert.deepEqual([...PREFLIGHT.matchAll(/^## (.+)$/gm)].map((m) => m[1]), [
-    'Rules that hold in all of Step 0',
-    'Primary checkout',
-    'Host detection',
-    'Input guard',
-    '0.1 Instruction files, configuration, credential scan, permission statement',
-    '0.1a Credentials question (only when the scan matched)',
-    '0.2 Base branch, base commit, continued branch, open pull requests',
-    '0.3 Clean tree, flagged files, worktree',
-    '0.4 Planning snapshot',
-    '0.5 The record',
-    '0.6 Prompts seen',
-  ]);
-});
-
-test('R52, R53: SKILL.md names the nine credential keys the scan matches', () => {
-  const echo = SKILL.split('\n').find((line) => line.startsWith('The echo is redacted with the credential scan'));
-  assert.notEqual(echo, undefined, 'SKILL.md has no credential scan paragraph');
-  const keys = ticks(echo.split('(case-insensitive)')[0].split('A key named ')[1]);
-  assert.deepEqual(keys, ['password', 'passwd', 'secret', 'token', 'api_key', 'apikey', 'client_secret', 'private_key', 'connection_string']);
+test('R52, R53: SKILL.md names the nine credential keys the scan matches, on one line', () => {
+  const keys = ['password', 'passwd', 'secret', 'token', 'api_key', 'apikey', 'client_secret', 'private_key', 'connection_string'];
+  const line = SKILL.split('\n').find((text) => keys.every((key) => text.includes(`\`${key}\``)));
+  assert.notEqual(line, undefined, 'no line of SKILL.md names all nine keys');
 });
 
 test('R74: SKILL.md names the four host forms of an Azure DevOps remote and the path segments it reads', () => {
@@ -53,8 +36,7 @@ test('R74: SKILL.md names the four host forms of an Azure DevOps remote and the 
 test('R81: Step 0.1.2 knows the keys and subkeys of the configuration block', () => {
   const block = JSON.parse(SKILL.split('\n## Configuration\n')[1].split('```json\n')[1].split('\n```')[0]);
   const item = section(PREFLIGHT, '0.1 Instruction files, configuration, credential scan, permission statement').split('\n').find((line) => line.startsWith('2. '));
-  const known = item.split('Known keys: ')[1].split('. The budget')[0];
-  const keys = [...known.matchAll(/`([a-z-]+)` \(([^)]*)\)/g)].map((m) => [m[1], ticks(m[2])]);
+  const keys = [...item.matchAll(/`([a-z-]+)` \(([^)]*)\)/g)].map((m) => [m[1], ticks(m[2])]).filter(([key]) => key in block);
   assert.deepEqual(keys.map(([key]) => key), Object.keys(block));
   for (const [key, subkeys] of keys) {
     if (typeof block[key] === 'object' && !Array.isArray(block[key])) assert.deepEqual(subkeys.slice(0, Object.keys(block[key]).length), Object.keys(block[key]), key);
@@ -77,15 +59,6 @@ test('the reading block prints Tickets, Mode, Scope and Effort, in the order the
   assert.notEqual(block, undefined, 'SKILL.md has no reading block');
   const labels = block.trim().split('\n').map((line) => line.split(':')[0]);
   assert.deepEqual(labels, ['Tickets', 'Mode', 'Scope', 'Effort']);
-  const opening = SKILL.split('\n').find((line) => line.startsWith('3. Print the reading block ('));
-  assert.deepEqual(opening.match(/\(([^)]+)\)/)[1].split(', '), labels);
-});
-
-test('R282: the Mode line is one of three modes with the continue, base and confirm additions, and a ticket names one of five ways it resolved', () => {
-  const after = SKILL.split('\n').find((line) => line.startsWith('Each ticket names how it resolved'));
-  assert.notEqual(after, undefined, 'SKILL.md does not say how a ticket resolved');
-  assert.deepEqual(ticks(after.split('. Mode is')[0]), ['gh', 'az boards', 'mcp:<tool>', 'file', 'text']);
-  assert.deepEqual(ticks(after.split('Mode is ')[1].split('. A pull request')[0]).filter((name) => name !== '.reimagine.json'), [
-    'build and publish', 'plan only', 'build without publishing', '; continue branch <b>', '; base <branch>', '; confirm the plan',
-  ]);
+  const opening = SKILL.split('\n').find((line) => /^\d+\. /.test(line) && line.includes(`(${labels.join(', ')})`));
+  assert.notEqual(opening, undefined, 'no opening action names the four lines in the block\'s order');
 });

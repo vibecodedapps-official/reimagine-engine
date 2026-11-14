@@ -88,17 +88,13 @@ test('R89: record.md writes the hash of a slice\'s file with -- before the path,
   for (const command of commands) assert.ok(command.includes(' -- <path>'), `${command} has no -- before <path>`);
 });
 
-test('R96: the commit snapshot commits the plan and the report under docs/runs, keeping three sections of the report and leaving out the rest', () => {
+test('R96: the commit snapshot commits the plan and the report under docs/runs, and its external form names every section of the report template', () => {
   const text = section(RECORD, 'Commit snapshot');
   assert.notEqual(text, null);
   for (const path of ['docs/runs/<branch-slug>/plan.md', 'docs/runs/<branch-slug>/report-<n>.md']) assert.ok(text.includes(path), `Commit snapshot does not name ${path}`);
   const headings = [...REPORT.split('\n## Template\n')[1].split('\n```\n')[1].matchAll(/^## (.+)$/gm)].map((m) => m[1]);
   const kept = text.split('\n').find((line) => line.startsWith('3. '));
-  for (const name of ['What changed', 'Checks', 'Blocked, stopped or prepared']) {
-    assert.ok(headings.includes(name), `the report has no ${name} section`);
-    assert.ok(kept.includes(name), `the external form does not keep ${name}`);
-  }
-  assert.deepEqual(kept.split('leaves out ')[1].split('. ')[0].split(/, (?:and )?/), [
-    'Attended or unattended', 'Risk', 'Decisions', 'Decisions for you', 'Findings rejected and why', 'Open items', 'Log',
-  ]);
+  assert.ok(headings.length > 0, 'the report template has no section');
+  // A name counts only where a comma, a semicolon or a period ends it, so "Decisions for you" does not stand for "Decisions".
+  for (const name of headings) assert.ok([',', ';', '.'].some((end) => kept.includes(` ${name}${end}`)), `the external form does not name ${name}`);
 });

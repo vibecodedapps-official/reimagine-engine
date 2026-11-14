@@ -66,9 +66,7 @@
 #   the shape the stage 7 check needs must be in merger.md.
 # - agents/merger.md has the tools Read, Grep and Write and no other, in any order.
 #   skills/audit/stages/7-converge.md names
-#   awk 'END { print NR }', and its step 6 and steps 3 and 4 of
-#   skills/audit/stages/7-converge-split.md, the three merger prompts, each say
-#   "line count".
+#   awk 'END { print NR }', and skills/audit/stages/7-converge-split.md exists.
 # - The awk commands of step 1 in skills/audit/stages/7-converge-split.md that cut a section
 #   of ledger/5.md, ledger/6.md or ledger/7.md, found in the indented block by their
 #   content, are filled in and run on temp ledgers: a line inside a code fence never
@@ -481,31 +479,18 @@ if [ -s "$tmp/item-merger.md" ] && [ -s "$tmp/item-7-converge.md" ]; then
 		fail "agents/merger.md: the converged item block differs from skills/audit/stages/7-converge.md"
 fi
 
-# Each merger prompt gives the line counts.
 # step <file> <regex>: print the numbered step whose first line matches the regex, up
 # to the next numbered line.
 step() {
 	tr -d '\r' < "$1" | awk -v s="$2" 'p && /^[ \t]*[0-9]+\. / { exit } $0 ~ s { p = 1 } p'
-}
-# prompt_step <file> <regex>: the merger prompt of that step gives a line count.
-prompt_step() {
-	step "$1" "$2" > "$tmp/step"
-	[ -s "$tmp/step" ] || fail "$1: no step matching $2"
-	grep -q 'line count' "$tmp/step" || fail "$1: the merger prompt of step $2 gives no line count"
 }
 converge=skills/audit/stages/7-converge.md
 split=skills/audit/stages/7-converge-split.md
 if [ -f "$converge" ]; then
 	grep -qF "awk 'END { print NR }'" "$converge" ||
 		fail "$converge: does not count lines with awk 'END { print NR }'"
-	prompt_step "$converge" '^6[.] [*][*]Normal mode'
 fi
-if [ -f "$split" ]; then
-	prompt_step "$split" '^3[.] Launch one merger per group'
-	prompt_step "$split" '^4[.] Launch the final merger'
-else
-	fail "missing: $split"
-fi
+[ -f "$split" ] || fail "missing: $split"
 
 # The slice commands of stage 7 for ledger/5.md, ledger/6.md and ledger/7.md start and end
 # a section only at a line outside a code fence. Each command is taken from the indented

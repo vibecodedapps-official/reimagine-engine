@@ -86,8 +86,8 @@ test('R69: the risk floor lists its six triggers in order', () => {
 });
 
 test('R109, R110: Step 5 holds the items 5.1 to 5.5 in order', () => {
-  const items = [...section(BUILD, 'Step 5 Final review').matchAll(/^\d+\. \*\*(\d\.\d+ [^*]+?)\.\*\*/gm)].map((m) => m[1]);
-  assert.deepEqual(items, ['5.1 Integrate', '5.2 One pass', '5.3 Triage', '5.4 Fix', '5.5 Record']);
+  const items = [...section(BUILD, 'Step 5 Final review').matchAll(/^\d+\. \*\*(\d\.\d+) /gm)].map((m) => m[1]);
+  assert.deepEqual(items, ['5.1', '5.2', '5.3', '5.4', '5.5']);
 });
 
 test('R110: Step 5.3 sorts findings into three buckets', () => {

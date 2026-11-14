@@ -48,6 +48,7 @@ test('R245: the frontmatter names the skill, the four phrases first, and read-on
     'Bash(git ls-files *)',
     'Bash(git check-ignore *)',
     'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" measure *)',
   ]);
 });
 
@@ -138,6 +139,33 @@ test('R385, R386 and R390: local.md keeps the work tree untouched, writes the st
   assert.ok(LOCAL.replace(/\r\n/g, '\n').includes('  ```\n  CLAUDE.md\n  CLAUDE.local.md\n  AGENTS.md\n  .claude/\n  .reimagine/\n  .reimagine.json\n  .mcp.json\n  ```\n'));
   assert.ok(LOCAL.includes('- The plan proposes the host\'s `attribution` setting with empty `commit` and `pr` values, by placement item 2,'));
   assert.ok(LOCAL.includes('- A layer is factual statements, never commands addressed to the session,'));
+});
+
+test('R392 and R394: a proposal searches first, is measured, and names the cut that pays for it', () => {
+  assert.ok(SKILL.includes('Before a rule is proposed, and before any pass that launches an agent, search every layer and document of the store, the user\'s own `CLAUDE.md` and the instruction files of the repository the rule governs for text that already states it.'));
+  assert.ok(SKILL.includes('A hit ends the proposal as nothing, as a one-line pointer, or, where the rule was loaded and missed, as a miss whose fix is delivery or a pointer, never a second statement of the rule.'));
+  assert.ok(SKILL.includes('Size is measured, never estimated.'));
+  assert.ok(SKILL.includes('Either names the cut that pays for it, or becomes a one-line pointer to a document. Cut candidates come in this order: text that says how the file is loaded, text a pointed-to document also holds, text the loader or the host already supplies, facts past their expiry. No file primer writes states how much room is left.'));
+  assert.ok(LOCAL.includes('show `measure --with <file> <layer>`, the layer being `shared.md`, `groups/<group>.md` or `machine.md`, with each repository\'s size before and after.'));
+});
+
+test('R397 to R399: the fold-back review reads the logs, runs two passes, ends in one pick and records the ledger', () => {
+  assert.ok(SKILL.includes('2. Evidence pass: check each item\'s evidence and challenge it. Drop what the files contradict and what names a section that does not exist; an item a loaded rule already states is a miss. Mark each claim verified or unverified, with its check: read at the source, run, or neither.'));
+  assert.ok(SKILL.includes('3. Worth pass: judge worth, placement by `placement.md`, and wording, and settle items that touch the same lines as one. Draft each edit now, against the files as they are, never copied from the log; nothing is written before the answer of step 6.'));
+  assert.ok(SKILL.includes('One that matches a folded rule is that rule\'s failure: propose to reword the rule, move it or propose a hook, never to state it twice.'));
+  assert.ok(SKILL.includes('then what it holds and what it rejects, each with its reason, and asks once with the rest. An item for the house rules or another plugin is written by its kind, with no person, id or path.'));
+  assert.ok(SKILL.includes('`node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs"`'));
+  assert.ok(SKILL.includes('Then write the stamp `${CLAUDE_PLUGIN_DATA}/reviewed/feedback` as step 3 writes its own.'));
+});
+
+test('R241 and R393: every addition is classed, and the local profile has its own destinations', () => {
+  assert.ok(PLACEMENT.includes('Before a home is proposed, class the addition four ways: stable or expiring, shared or personal, rule or reference, the user\'s or another owner\'s. The proposal names the home and the reason.'));
+  assert.ok(PLACEMENT.includes('- A pointer to a source the user keeps current is preferred to a copied value. A copied fact carries the date it was copied and an expiry, or the event that makes it worth checking again.'));
+  assert.ok(PLACEMENT.includes('warns that a hand edit there stops the plugin offering its updates'));
+  assert.ok(PLACEMENT.includes('- A stable, impersonal rule for every mapped repository goes in `shared.md`; one for a group goes in its group layer.'));
+  assert.ok(PLACEMENT.includes('- People, dates and calendars go in `machine.md`, each with an expiry.'));
+  assert.ok(PLACEMENT.includes('- A workaround is a pointer to the report of the fault it works around.'));
+  assert.ok(LOCAL.includes('is in the local profile section of `placement.md`.'));
 });
 
 test('R240: SKILL.md is within its cap of 150 lines, counted as the file has them', () => {

@@ -1,14 +1,17 @@
 #!/usr/bin/env node
-// Primer: the local profile's store and map, its context loader and its staging check. Usage: node primer.mjs <verb> [args]
-//   session-start <layer> <data dir>  the SessionStart hook: a local repository's layers as context, the delivery warnings
+// Primer: the local profile's store and map, its context loader, its staging check, the budget and the reach check.
+// Usage: node primer.mjs <verb> [args]
+//   session-start <layer> <data dir>  the SessionStart hook: a local repository's layers as context, the delivery warnings, the notice
 //   staged   the drift hook's hand-off: denies a git add or commit that puts an agent file the upstream lacks in a local history
+//   reach <data dir>  the PreToolUse hook on file edits: another repository's instructions, on the session's first edit there
 //   status   the working directory's entry, profile, layers and delivery checks; writes nothing
+//   measure  every mapped repository's context string as emitted; --with <file> <layer> measures a proposed layer; writes nothing
 //   map      prints the map; --add, --set and --drop change it for the working directory's repository
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const CAP = 10000;
@@ -67,7 +70,7 @@ function repoOf(c, cwd, deadline) {
 // <config> as the hooks find it: three levels above the input's transcript, else the variable, else ~/.claude.
 const configOf = (c, input) => (typeof input?.transcript_path === 'string' && input.transcript_path
   ? dirname(dirname(dirname(input.transcript_path))) : c.env.CLAUDE_CONFIG_DIR || join(c.home, '.claude'));
-const ownOf = (c) => join(c.env.CLAUDE_CONFIG_DIR || join(c.home, '.claude'), 'reimagine-primer');
+export const ownOf = (c) => join(c.env.CLAUDE_CONFIG_DIR || join(c.home, '.claude'), 'reimagine-primer');
 
 function readJson(path, what) {
   if (!existsSync(path)) return undefined;
@@ -75,7 +78,7 @@ function readJson(path, what) {
 }
 
 // Primer's own directory, its configuration, the store and the map path.
-function places(c, own) {
+export function places(c, own) {
   const cfgPath = join(own, 'config.json'), cfg = readJson(cfgPath, 'a primer configuration') ?? {};
   if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg) || (cfg.store !== undefined && typeof cfg.store !== 'string')) refuse(`${cfgPath} is not a primer configuration`);
   const store = cfg.store ? resolve(tilde(cfg.store, c.home)) : join(own, 'store');
@@ -97,11 +100,12 @@ const under = (map, root, platform) => map.roots.find((d) => `${keyOf(root, plat
 const shown = (e) => `group ${e.group}, profile ${e.profile}, own ${e.own ?? 'unset'}, ${e.remotes.length ? `remotes ${e.remotes.join(', ')}` : `path ${e.path}`}`;
 
 // Each layer of an entry as it is emitted: a line naming the layer and its file, the text, and a canary line holding the first
-// eight hex characters of the SHA-256 of the file's bytes. An empty or missing layer has no text.
-function layersOf(p, entry) {
-  const files = { shared: join(p.store, 'shared.md'), group: join(p.store, 'groups', `${entry.group}.md`), machine: join(p.own, 'machine.md') };
+// eight hex characters of the SHA-256 of the file's bytes. An empty or missing layer has no text. swap gives one file other bytes.
+const fileOf = (p, name, group) => (name === 'machine' ? join(p.own, 'machine.md') : name === 'shared' ? join(p.store, 'shared.md') : join(p.store, 'groups', `${group}.md`));
+function layersOf(p, entry, swap) {
+  const files = Object.fromEntries(LAYERS.map((name) => [name, fileOf(p, name, entry.group)]));
   return LAYERS.map((name) => {
-    const buf = existsSync(files[name]) ? readFileSync(files[name]) : null, body = buf ? buf.toString('utf8').replace(/\s+$/, '') : '';
+    const buf = swap?.file === files[name] ? swap.buf : existsSync(files[name]) ? readFileSync(files[name]) : null, body = buf ? buf.toString('utf8').replace(/\s+$/, '') : '';
     if (!body) return { name, file: files[name] };
     const canary = createHash('sha256').update(buf).digest('hex').slice(0, 8);
     return { name, file: files[name], canary, text: `primer layer ${name} from ${files[name]}\n${body}\nprimer canary ${name} ${canary}` };
@@ -109,7 +113,51 @@ function layersOf(p, entry) {
 }
 const joined = (parts) => parts.filter((x) => x.text).map((x) => x.text).join('\n\n');
 
-function sessionStart(c, layer, input) {
+const unquote = (s) => (s.length >= 2 && /^["']/.test(s) && s.at(-1) === s[0] ? s.slice(1, -1) : s);
+function frontOf(text) {
+  const lines = text.split('\n').map((l) => l.replace(/\r$/, '')), out = {};
+  if (lines[0] !== '---') return out;
+  for (const l of lines.slice(1)) {
+    if (l === '---') break;
+    const m = l.match(/^[ \t]*(type|modified):(.*)$/);
+    if (m && !(m[1] in out)) out[m[1]] = unquote(m[2].replace(/^[ \t]+|[ \t]+$/g, ''));
+  }
+  return out;
+}
+
+// The notice of notice.sh for a local repository, which has no hub: the auto memory notes of type feedback or project modified
+// after the stamp, and the feedback logs under <config>/feedback/ modified after theirs, each counting in full without a stamp.
+function notice(c, input, data, repo) {
+  const config = configOf(c, input), win = c.platform === 'win32', cwd = slash(isDir(input.cwd) ? input.cwd : c.cwd);
+  const tp = typeof input.transcript_path === 'string' ? slash(input.transcript_path) : '', sdir = tp && dirname(tp), key = repo.root.replace(/[^A-Za-z0-9]/g, '-');
+  let memory;
+  for (const f of [join(repo.top, '.claude', 'settings.local.json'), join(repo.top, '.claude', 'settings.json'), join(config, 'settings.json')]) {
+    let v;
+    try { v = JSON.parse(readFileSync(f, 'utf8')); } catch { continue; }
+    if (!v || typeof v !== 'object' || !Object.hasOwn(v, 'autoMemoryDirectory')) continue;
+    const m = typeof v.autoMemoryDirectory === 'string' ? slash(v.autoMemoryDirectory) : '', home = slash((win ? c.env.USERPROFILE || c.env.HOME : c.env.HOME) || c.home);
+    memory = m.startsWith('~/') ? `${home}/${m.slice(2)}` : m.startsWith('//') ? m : m.startsWith('/') ? (win && /^[A-Za-z]:/.test(cwd) ? cwd.slice(0, 2) + m : m)
+      : win && /^[A-Za-z]:\//.test(m) ? m : undefined;
+    break;
+  }
+  memory ??= sdir && c.env.CLAUDE_CODE_PROJECT_DIR_NAME && basename(sdir) === c.env.CLAUDE_CODE_PROJECT_DIR_NAME ? `${sdir}/memory` : join(sdir ? dirname(sdir) : join(config, 'projects'), key, 'memory');
+  const stamp = (name) => { const f = data && join(data, 'reviewed', name); return f && existsSync(f) ? f : null; };
+  const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0], seen = new Set();
+  let n = 0, m = 0;
+  for (const l of readText(join(memory, 'MEMORY.md')).split('\n').map((x) => x.replace(/\r$/, ''))) {
+    const at = l.indexOf(']('), rest = l.slice(at + 2), name = rest.slice(0, rest.indexOf(')'));
+    if (!l.startsWith('- [') || at < 0 || !rest.includes(')') || !name || name.startsWith('/') || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
+    seen.add(name);
+    const fm = frontOf(readText(join(memory, name)));
+    if (['feedback', 'project'].includes(fm.type) && (noted === null || (fm.modified && fm.modified > since))) n++;
+  }
+  const logs = join(config, 'feedback'), after = stamp('feedback') ? statSync(stamp('feedback')).mtimeMs : -Infinity;
+  try { for (const e of readdirSync(logs, { withFileTypes: true })) if (e.isFile() && !e.name.startsWith('.') && statSync(join(logs, e.name)).mtimeMs > after) m++; } catch {}
+  const what = n && m ? `auto memory has ${n} notes and ${m} feedback logs` : n ? `auto memory has ${n} notes` : `${m} feedback logs`;
+  return n || m ? `primer: ${what} since the last review; run /primer` : null;
+}
+
+function sessionStart(c, layer, input, data) {
   if (![...LAYERS, 'all'].includes(layer)) return [];
   const own = join(configOf(c, input), 'reimagine-primer');
   if (!existsSync(own)) return [];
@@ -129,6 +177,9 @@ function sessionStart(c, layer, input) {
     const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
     for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
+    // notice.sh runs at startup alone, and so does this.
+    const told = (input.source ?? 'startup') === 'startup' && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && layer !== 'shared' && layer !== 'machine' && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
+    if (told) msgs.push(told);
   }
   const warn = msgs.length && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && (layer === 'all' || layer === 'group');
   const out = { ...(context ? { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context } } : {}), ...(warn ? { systemMessage: msgs.join('; ') } : {}) };
@@ -154,8 +205,82 @@ function status(c) {
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
+const MEASURE = 'measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md or machine.md';
+
+// Each mapped repository's context string as the loader emits it; with --with, before and after the file takes the layer's place.
+function measure(c, args) {
+  const p = places(c, ownOf(c)), map = loadMap(p.map);
+  let swap;
+  if (args.length) {
+    const [flag, file, layer] = args, g = layer?.match(/^groups\/(.+)\.md$/);
+    if (flag !== '--with' || args.length !== 3 || !(layer === 'shared.md' || layer === 'machine.md' || (g && GROUP.test(g[1])))) refuse(MEASURE);
+    const buf = (() => { try { return readFileSync(resolve(c.cwd, file)); } catch { return refuse(`${file} cannot be read`); } })();
+    swap = { file: fileOf(p, g ? 'group' : layer.slice(0, -3), g?.[1]), buf };
+  }
+  const out = [`primer: the host's cap is ${CAP} characters per context string, counted as emitted`], size = (x) => x.text?.length ?? 0;
+  for (const e of map.repos) {
+    if (e.profile !== 'local') { out.push(`repo ${shown(e)}: no context string`); continue; }
+    const now = layersOf(p, e), next = swap ? layersOf(p, e, swap) : now, n = joined(next).length;
+    const parts = now.map((x, i) => `${x.name} ${size(x)}${x.file === swap?.file ? ` -> ${size(next[i])}` : ''}`);
+    out.push(`repo ${shown(e)}: ${swap ? `${joined(now).length} -> ` : ''}${n} characters (${parts.join(', ')}), ${n > CAP ? 'over' : 'within'} the cap`);
+  }
+  return out;
+}
+
+// The directory at or above a path that holds .git, found without git and, as git does, never above a ceiling directory.
+function topOf(c, path) {
+  const ceilings = (c.env.GIT_CEILING_DIRECTORIES ?? '').split(c.platform === 'win32' ? ';' : ':').filter(Boolean).map((d) => keyOf(d, c.platform));
+  for (let d = resolve(path); ; d = dirname(d)) {
+    if (existsSync(join(d, '.git'))) return slash(d);
+    if (dirname(d) === d || ceilings.includes(keyOf(dirname(d), c.platform))) return null;
+  }
+}
+
+// The root instruction files and unscoped rules of a work tree, as the host would load them for a session started there.
+function instructionsOf(top) {
+  const hub = existsSync(join(top, 'CLAUDE.md')) ? readText(join(top, 'CLAUDE.md')) : null;
+  const names = ['CLAUDE.md', ...(hub === null || /^@AGENTS\.md(\r?\n)?$/.test(hub) ? ['AGENTS.md'] : []), '.claude/CLAUDE.md', 'CLAUDE.local.md'];
+  const rules = [], walk = (d) => {
+    for (const e of (() => { try { return readdirSync(d, { withFileTypes: true }); } catch { return []; } })()) {
+      const f = join(d, e.name);
+      if (e.isDirectory()) walk(f);
+      else if (e.name.endsWith('.md')) {
+        const lines = readText(f).split(/\r?\n/), end = lines[0] === '---' ? lines.indexOf('---', 1) : -1;
+        if (!lines.slice(1, end < 0 ? 1 : end).some((l) => /^paths\s*:/.test(l))) rules.push(slash(relative(top, f)));
+      }
+    }
+  };
+  walk(join(top, '.claude', 'rules'));
+  return [...names.filter((f) => existsSync(join(top, f))), ...rules.sort()].map((f) => `${top}/${f}`);
+}
+
+// The first edit of a session in a repository other than its own: the paths of its root instruction files and unscoped rules, and
+// its layers when it is mapped local. The repository is recorded in <data>/reach/<session>, so a later edit is silent.
+function reach(c, data, input) {
+  const path = input.tool_input?.file_path ?? input.tool_input?.notebook_path, cwd = isDir(input.cwd) ? input.cwd : c.cwd;
+  if (typeof path !== 'string' || !path) return [];
+  const file = resolve(cwd, path), top = topOf(c, dirname(file)), own = topOf(c, c.env.CLAUDE_PROJECT_DIR || cwd), k = (p) => keyOf(p, c.platform);
+  // The host loads the user's own instruction files in every session, so a file under <config>, links followed, is never another repository's.
+  if (!top || (own && k(top) === k(own)) || `${k(real(dirname(file)))}/`.startsWith(`${k(real(configOf(c, input)))}/`)) return [];
+  const log = data && isAbsolute(data) && typeof input.session_id === 'string' && GROUP.test(input.session_id) ? join(data, 'reach', input.session_id) : null;
+  if (log && readText(log).split('\n').includes(k(top))) return [];
+  const deadline = Date.now() + c.limit, repo = repoOf(c, top, deadline), mine = own && repoOf(c, own, deadline);
+  if (!repo) return [];
+  const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf), map = p && loadMap(p.map);
+  // Another work tree of the session's repository is its own: it is recorded and gets nothing.
+  const other = !(mine && k(mine.root) === k(repo.root)), entry = other && map && match(map, repo, c.platform), home = map && mine && match(map, mine, c.platform);
+  // A session that started in a local repository holds the shared and machine layers, and the group's where the two share one.
+  const held = (x) => home?.profile === 'local' && (x.name !== 'group' || home.group === entry.group);
+  const layers = entry?.profile === 'local' && joined(layersOf(p, entry).filter((x) => !held(x))), files = other ? instructionsOf(repo.top) : [];
+  const text = [files.length && `instruction files: ${files.join(', ')}`, layers && `context, which follows.\n\n${layers}`].filter(Boolean).join('; nor its ');
+  // Recorded last, so an error above leaves the next edit to be answered; a record that cannot be written answers every edit.
+  if (log) try { mkdirSync(dirname(log), { recursive: true }); appendFileSync(log, `${k(top)}\n`); } catch {}
+  const lead = `primer: ${repo.top} is in a repository other than the one this session started in, and the session has not loaded its`;
+  return text ? [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: `${lead} ${text}` } })] : [];
+}
+
 // Writes beside the target, then renames over it; on Windows a rename that fails is retried once after a short wait.
-function writeAtomic(path, text) {
+export function writeAtomic(path, text) {
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.reimagine-tmp-${process.pid}`;
   writeFileSync(tmp, text);
@@ -441,15 +566,17 @@ function staged(c, input) {
 export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd(), stdin = () => readFileSync(0, 'utf8'), limit = 5000 } = {}) {
   const [verb, ...rest] = argv, c = { env, platform, home, cwd, limit };
   const input = () => { try { const v = JSON.parse(stdin()); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } };
-  if (verb === 'session-start') { try { return sessionStart(c, rest[0], input()); } catch { return []; } }
+  if (verb === 'session-start') { try { return sessionStart(c, rest[0], input(), rest[1]); } catch { return []; } }
+  if (verb === 'reach') { try { return reach(c, rest[0], input()); } catch { return []; } }
   if (verb === 'staged') return staged(c, input());
   if (verb === 'status') return rest.length ? refuse('status takes no arguments') : status(c);
+  if (verb === 'measure') return measure(c, rest);
   if (verb === 'map') return mapVerb(c, rest);
-  return refuse(`unknown command${verb ? ` ${verb}` : ''}; use session-start, staged, status or map`);
+  return refuse(`unknown command${verb ? ` ${verb}` : ''}; use session-start, staged, reach, status, measure or map`);
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path. A hook verb prints nothing but its JSON: on
-// an error of its own session-start prints nothing, and staged prints a deny that gives the error and exits 2.
+// an error of its own session-start and reach print nothing, and staged prints a deny that gives the error and exits 2.
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const verb = process.argv[2];
   try {

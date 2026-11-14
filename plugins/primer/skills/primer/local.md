@@ -6,8 +6,10 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
 
 - `<config>/reimagine-primer/`, `<config>` being `$CLAUDE_CONFIG_DIR` else `~/.claude`, holds `config.json`, whose `store` key may name the store, and `machine.md`, the layer of this machine: what names a person, a date or a path of this machine.
 - The store, `<config>/reimagine-primer/store/` unless `config.json` names another, holds `map.json`; `shared.md`, the layer of every mapped repository; `groups/<group>.md`, the layer of one group of sibling repositories; and under `docs/` the documents a layer points to. A store the user versions or shares carries nothing of one machine.
-- The loader emits the shared, group and machine layers, in that order, as one string: each opens with a line that names its file and closes with its canary line. It warns at every start while the string is over the host's cap of 10,000 characters.
+- The loader emits the shared, group and machine layers, in that order, as one string: each opens with a line that names its file and closes with its canary line. It warns at every start while the string is over the host's cap of 10,000 characters, and at startup gives the notice of auto memory notes and feedback logs since the last review, as `notice.sh` does where a hub has the marker.
 - A layer is factual statements, never commands addressed to the session, since the host may show imperative injected text to the user as a suspected injection.
+- A shared layer costs in every mapped repository, and the tightest one sets the budget. `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" measure` prints each repository's string as emitted; before a proposal that adds to a layer, write the proposed layer to a temporary file outside the work tree and show `measure --with <file> <layer>`, the layer being `shared.md`, `groups/<group>.md` or `machine.md`, with each repository's size before and after.
+- Where a proposal goes, and what it carries, is in the local profile section of `placement.md`.
 
 ## Mode
 

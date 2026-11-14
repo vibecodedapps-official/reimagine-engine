@@ -3,13 +3,14 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { main } from '../../plugins/primer/scripts/primer.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../plugins/primer/scripts/primer.mjs', import.meta.url));
+const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const SHARED = 'Every mapped repository uses LF line ends.\n';
 const GROUP = 'The app group builds with npm run build.\n';
 const MACHINE = 'This machine keeps its checkouts on one disk.\n';
@@ -58,7 +59,7 @@ before(() => {
   const home = join(base, 'home');
   mkdirSync(home);
   env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: empty, GIT_CEILING_DIRECTORIES: base, CLAUDE_CONFIG_DIR: join(base, 'no-config'), HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(base, 'xdg') };
-  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'CLAUDE_CODE_SESSION_ATTENDED']) delete env[k];
+  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'CLAUDE_CODE_SESSION_ATTENDED', 'CLAUDE_PLUGIN_DATA', 'CLAUDE_PROJECT_DIR', 'CLAUDE_CODE_PROJECT_DIR_NAME']) delete env[k];
 });
 after(() => rmSync(base, { recursive: true, force: true, maxRetries: 15, retryDelay: 100 }));
 
@@ -218,7 +219,7 @@ describe('status', () => {
 
   test('status takes no arguments, and an unknown verb is refused', () => {
     assert.deepEqual([run(['status', 'x']).status, run(['status', 'x']).stdout], [1, 'primer: status takes no arguments\n']);
-    assert.deepEqual([run(['measure']).status, run(['measure']).stdout], [1, 'primer: unknown command measure; use session-start, staged, status or map\n']);
+    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, staged, reach, status, measure or map\n']);
   });
 });
 
@@ -322,5 +323,221 @@ describe('staged', () => {
       + "the call would add CLAUDE.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read)";
     assert.deepEqual([r.status, r.stdout],
       [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
+  });
+});
+
+describe('measure', () => {
+  const site = { remotes: ['example.invalid/team/site'], path: 'unused', group: 'site', profile: 'shared', own: true };
+  const web = { remotes: ['example.invalid/team/web'], path: 'unused', group: 'web', profile: 'local', own: null };
+  const head = "primer: the host's cap is 10000 characters per context string, counted as emitted";
+  const app = 'repo group app, profile local, own unset, remotes example.invalid/team/app';
+  const webLine = 'repo group web, profile local, own unset, remotes example.invalid/team/web';
+  const siteLine = 'repo group site, profile shared, own true, remotes example.invalid/team/site: no context string';
+
+  test('every mapped repository gets its context string as the loader emits it, layer by layer, against the cap', () => {
+    const cfg = config(local({ repos: [...local().repos, web, site] }), { shared: SHARED, group: GROUP });
+    const s = join(cfg.store, 'shared.md').length + 98, g = join(cfg.store, 'groups', 'app.md').length + 94;
+    const r = run(['measure'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.equal(r.status, 0, r.stdout);
+    assert.equal(r.stdout, [head, `${app}: ${s + 2 + g} characters (shared ${s}, group ${g}, machine 0), within the cap`,
+      `${webLine}: ${s} characters (shared ${s}, group 0, machine 0), within the cap`, siteLine, ''].join('\n'));
+  });
+
+  test('--with measures a proposed layer in its file\'s place, before and after, for each repository', () => {
+    const cfg = config(local({ repos: [...local().repos, web, site] }), { shared: SHARED, group: GROUP });
+    const s = join(cfg.store, 'shared.md').length + 98, g = join(cfg.store, 'groups', 'app.md').length + 94;
+    write(base, 'proposal.md', `${GROUP}The app group deploys from main.\n`);
+    const r = run(['measure', '--with', 'proposal.md', 'groups/app.md'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.equal(r.stdout, [head, `${app}: ${s + 2 + g} -> ${s + 2 + g + 33} characters (shared ${s}, group ${g} -> ${g + 33}, machine 0), within the cap`,
+      `${webLine}: ${s} -> ${s} characters (shared ${s}, group 0, machine 0), within the cap`, siteLine, ''].join('\n'));
+    assert.equal(readFileSync(join(cfg.store, 'groups', 'app.md'), 'utf8'), GROUP);
+    write(base, 'big.md', `${'a'.repeat(9990)}\n`);
+    const big = run(['measure', '--with', join(base, 'big.md'), 'shared.md'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
+    assert.equal(big[1], `${app}: ${s + 2 + g} -> ${s + 2 + g + 9948} characters (shared ${s} -> ${s + 9948}, group ${g}, machine 0), over the cap`);
+  });
+
+  test('each form measure does not take is refused with one line', () => {
+    const forms = 'primer: measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md or machine.md\n';
+    for (const args of [['--with', 'x.md'], ['--with', 'x.md', 'groups/../x.md'], ['--with', 'x.md', 'other.md'], ['x']]) {
+      assert.deepEqual([run(['measure', ...args]).status, run(['measure', ...args]).stdout], [1, forms], args.join(' '));
+    }
+    assert.equal(run(['measure', '--with', 'missing.md', 'machine.md']).stdout, 'primer: missing.md cannot be read\n');
+  });
+});
+
+describe('reach', () => {
+  let session, app, site, cfg;
+  const lead = (dir) => `primer: ${slash(dir)} is in a repository other than the one this session started in, and the session has not loaded its`;
+  const said = (text) => `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: text } })}\n`;
+  const edit = (data, file, { id = 's1', tool = 'Edit', extraEnv = {} } = {}) => run(['reach', data], {
+    input: JSON.stringify({ session_id: id, cwd: session, hook_event_name: 'PreToolUse', tool_name: tool, tool_input: tool === 'NotebookEdit' ? { notebook_path: file } : { file_path: file } }),
+    extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir, CLAUDE_PROJECT_DIR: session, ...extraEnv },
+  });
+  const files = (dir) => [`${slash(dir)}/CLAUDE.md`, `${slash(dir)}/CLAUDE.local.md`, `${slash(dir)}/.claude/rules/area/deep.md`, `${slash(dir)}/.claude/rules/style.md`].join(', ');
+  before(() => {
+    session = repo('reach-session', 'https://example.invalid/team/session.git');
+    app = repo('reach-app', 'https://example.invalid/team/app.git');
+    site = repo('reach-site', 'https://example.invalid/team/site.git');
+    write(site, 'CLAUDE.md', '# Site\n');
+    write(site, 'CLAUDE.local.md', '# Mine\n');
+    write(site, '.claude/rules/style.md', '# Style\n');
+    write(site, '.claude/rules/area/deep.md', '---\nname: deep\n---\n# Deep\n');
+    write(site, '.claude/rules/area/code.md', '---\npaths: src/**\n---\n# Code\n');
+    cfg = config(local(), { group: GROUP });
+  });
+
+  test('the first edit in another repository gets its layers when it is mapped local, or its instruction files, and a later edit nothing', () => {
+    const data = join(base, `reach-data-${++seq}`);
+    assert.equal(edit(data, join(app, 'src', 'new.ts')).stdout,
+      said(`${lead(app)} context, which follows.\n\n${part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')}`));
+    assert.equal(edit(data, join(app, 'README.md')).stdout, '');
+    const r = edit(data, join(site, 'src', 'a.ts'));
+    assert.deepEqual([r.status, r.stdout], [0, said(`${lead(site)} instruction files: ${files(site)}`)]);
+    assert.equal(edit(data, join(site, 'README.md')).stdout, '');
+    assert.equal(readFileSync(join(data, 'reach', 's1'), 'utf8').split('\n').length, 3);
+    assert.equal(edit(data, join(site, 'README.md'), { id: 's2' }).stdout, said(`${lead(site)} instruction files: ${files(site)}`));
+    assert.equal(edit(data, join(site, 'x.ipynb'), { id: 's3', tool: 'NotebookEdit' }).stdout, said(`${lead(site)} instruction files: ${files(site)}`));
+  });
+
+  test('a session that started in a local repository gets the group layer of another alone, and nothing where the two share a group', () => {
+    const home = (group) => config(local({ repos: [...local().repos, { remotes: ['example.invalid/team/session'], path: 'unused', group, profile: 'local', own: null }] }),
+      { shared: SHARED, group: GROUP, machine: MACHINE });
+    const other = home('home'), same = home('app');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(app, 'src', 'new.ts'), { extraEnv: { CLAUDE_CONFIG_DIR: other.dir } }).stdout,
+      said(`${lead(app)} context, which follows.\n\n${part('group', join(other.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')}`));
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(app, 'src', 'new.ts'), { extraEnv: { CLAUDE_CONFIG_DIR: same.dir } }).stdout, '');
+  });
+
+  test('a local repository\'s own instruction files are named before its layers', () => {
+    write(app, 'CLAUDE.md', '# App\n');
+    const r = edit(join(base, `reach-data-${++seq}`), join(app, 'src', 'new.ts'));
+    rmSync(join(app, 'CLAUDE.md'));
+    assert.equal(r.stdout, said(`${lead(app)} instruction files: ${slash(app)}/CLAUDE.md; nor its context, which follows.\n\n`
+      + part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')));
+  });
+
+  test('a file under the configuration directory prints nothing, though that directory is a repository with a hub', () => {
+    const dir = repo(`reach-config-${++seq}`);
+    write(dir, 'CLAUDE.md', '# Mine\n');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(dir, 'feedback', '2026-11-14.md'), { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout, '');
+  });
+
+  test('a configuration directory reached through a link is still not another repository', () => {
+    const dir = repo(`reach-config-${++seq}`), link = join(base, `reach-config-link-${seq}`);
+    write(dir, 'CLAUDE.md', '# Mine\n');
+    symlinkSync(dir, link, 'junction');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(dir, 'CLAUDE.md'), { extraEnv: { CLAUDE_CONFIG_DIR: link } }).stdout, '');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(link, 'CLAUDE.md'), { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout, '');
+  });
+
+  test('a layer that cannot be read leaves the repository unrecorded', () => {
+    const bad = config(local()), data = join(base, `reach-data-${++seq}`);
+    mkdirSync(join(bad.store, 'groups', 'app.md'), { recursive: true });
+    assert.equal(edit(data, join(app, 'src', 'new.ts'), { extraEnv: { CLAUDE_CONFIG_DIR: bad.dir } }).stdout, '');
+    assert.equal(existsSync(join(data, 'reach', 's1')), false);
+  });
+
+  test('a data directory that is not an absolute path is not written to', () => {
+    const r = run(['reach', 'reldata'], { cwd: session, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir, CLAUDE_PROJECT_DIR: session },
+      input: JSON.stringify({ session_id: 's1', cwd: session, tool_input: { file_path: join(site, 'README.md') } }) });
+    assert.equal(r.stdout, said(`${lead(site)} instruction files: ${files(site)}`));
+    assert.equal(existsSync(join(session, 'reldata')), false);
+  });
+
+  test('a map that cannot be read leaves the repository unrecorded, so the next edit is answered', () => {
+    const bad = config(local()), data = join(base, `reach-data-${++seq}`), at = { extraEnv: { CLAUDE_CONFIG_DIR: bad.dir } };
+    writeFileSync(join(bad.store, 'map.json'), '{');
+    assert.equal(edit(data, join(site, 'README.md'), at).stdout, '');
+    assert.equal(existsSync(join(data, 'reach', 's1')), false);
+    writeFileSync(join(bad.store, 'map.json'), JSON.stringify(local()));
+    assert.equal(edit(data, join(site, 'README.md'), at).stdout, said(`${lead(site)} instruction files: ${files(site)}`));
+  });
+
+  test('an edit in the session\'s own repository, its worktree or outside any repository prints nothing', () => {
+    const data = join(base, `reach-data-${++seq}`);
+    git(session, 'worktree', 'add', '-q', join(base, 'reach-session-wt'));
+    assert.equal(edit(data, join(session, 'src', 'x.ts')).stdout, '');
+    assert.equal(edit(data, join(base, 'reach-session-wt', 'README.md')).stdout, '');
+    assert.equal(edit(data, join(base, 'reach-loose', 'x.txt')).stdout, '');
+    assert.equal(edit(data, join(base, 'reach-session-wt', 'README.md')).stdout, '');
+  });
+
+  test('the own repository is told by the file system alone, so a git that does not answer costs it nothing', () => {
+    const slow = { ...slowGit(), CLAUDE_CONFIG_DIR: cfg.dir, CLAUDE_PROJECT_DIR: session };
+    const t0 = Date.now();
+    const out = main(['reach', join(base, 'reach-slow')], { env: slow, home: join(base, 'home'), cwd: base, limit: 8000,
+      stdin: () => JSON.stringify({ session_id: 's1', cwd: session, tool_input: { file_path: join(session, 'src', 'x.ts') } }) });
+    assert.deepEqual(out, []);
+    assert.ok(Date.now() - t0 < 3000, `took ${Date.now() - t0} ms`);
+  });
+
+  test('without a session id it says so on every edit; without primer\'s own directory a local repository is read as any other', () => {
+    const data = join(base, `reach-data-${++seq}`);
+    for (let i = 0; i < 2; i++) assert.equal(edit(data, join(site, 'README.md'), { id: '../x' }).stdout, said(`${lead(site)} instruction files: ${files(site)}`));
+    assert.equal(existsSync(join(data, 'reach')), false);
+    write(app, 'AGENTS.md', '# Agents\n');
+    const none = { CLAUDE_CONFIG_DIR: join(base, 'no-config') };
+    assert.equal(edit(data, join(app, 'README.md'), { extraEnv: none }).stdout, said(`${lead(app)} instruction files: ${slash(app)}/AGENTS.md`));
+    rmSync(join(app, 'AGENTS.md'));
+    assert.equal(edit(data, join(app, 'README.md'), { id: 's4', extraEnv: none }).stdout, '');
+  });
+});
+
+// Requirement 397: notice.sh, where the hub has the marker, and the loader, in a local repository, give one message on one fixture.
+describe('the notice', () => {
+  let memory, dir, cfg, key;
+  const day = 86400;
+  before(() => {
+    const build = spawnSync('sh', ['tests/primer/fixture/memory/build.sh'], { cwd: ROOT, env: { ...env, TMPDIR: slash(base) }, encoding: 'utf8' });
+    assert.equal(build.status, 0, build.stderr);
+    memory = build.stdout.trim();
+    dir = repo('notice-both', 'https://example.invalid/team/app.git');
+    write(dir, 'CLAUDE.md', '<!-- primer -->\n# demo\n');
+    cfg = config(local());
+    key = dir.replace(/[^A-Za-z0-9]/g, '-');
+    cpSync(join(memory, 'memory'), join(cfg.dir, 'projects', key, 'memory'), { recursive: true });
+  });
+  const stamps = (data, { notes, logs }) => {
+    mkdirSync(join(data, 'reviewed'), { recursive: true });
+    rmSync(join(data, 'reviewed', key), { force: true });
+    rmSync(join(data, 'reviewed', 'feedback'), { force: true });
+    if (notes) write(data, `reviewed/${key}`, `${notes}\n`);
+    if (logs) { write(data, 'reviewed/feedback', '2026-11-01T00:00:00.000Z\n'); utimesSync(join(data, 'reviewed', 'feedback'), logs, logs); }
+  };
+  const both = (data, extra = {}) => {
+    const input = JSON.stringify({ session_id: 'test', transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SessionStart', source: 'startup', ...extra });
+    const sh = spawnSync('sh', ['plugins/primer/hooks/notice.sh'], { cwd: ROOT, env: { ...env, CLAUDE_PLUGIN_DATA: data }, input, encoding: 'utf8' });
+    assert.equal(sh.status, 0, sh.stderr);
+    return [sh.stdout, run(['session-start', 'all', data], { input }).stdout];
+  };
+  const message = (text) => `{"systemMessage":"${text}"}\n`;
+
+  test('notes alone, notes and logs, and logs alone each read the same from both hooks', () => {
+    const t = 1793491200;
+    for (const [i, at] of [t - day, t + day, t + 2 * day].entries()) { write(cfg.dir, `feedback/2026-11-0${i + 1}.md`, '# Log\n'); utimesSync(join(cfg.dir, 'feedback', `2026-11-0${i + 1}.md`), at, at); }
+    const data = join(base, `notice-data-${++seq}`);
+    stamps(data, { notes: '2026-09-15T12:00:00.000Z', logs: t + 3 * day });
+    const one = message('primer: auto memory has 1 notes since the last review; run /primer');
+    assert.deepEqual(both(data), [one, one]);
+    stamps(data, { notes: '2026-09-15T12:00:00.000Z', logs: t });
+    const two = message('primer: auto memory has 1 notes and 2 feedback logs since the last review; run /primer');
+    assert.deepEqual(both(data), [two, two]);
+    stamps(data, { notes: '2026-12-01T00:00:00.000Z' });
+    const three = message('primer: 3 feedback logs since the last review; run /primer');
+    assert.deepEqual(both(data), [three, three]);
+    rmSync(join(cfg.dir, 'projects', key, 'memory', 'MEMORY.md'));
+    stamps(data, { logs: t });
+    const logs = message('primer: 2 feedback logs since the last review; run /primer');
+    assert.deepEqual(both(data), [logs, logs]);
+    cpSync(join(memory, 'memory', 'MEMORY.md'), join(cfg.dir, 'projects', key, 'memory', 'MEMORY.md'));
+  });
+
+  test('the loader gives no notice on a later source or in a session no one attends', () => {
+    const data = join(base, `notice-data-${++seq}`);
+    stamps(data, {});
+    const input = (source) => JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, source });
+    assert.equal(run(['session-start', 'all', data], { input: input('resume') }).stdout, '');
+    assert.equal(run(['session-start', 'all', data], { input: input('startup'), extraEnv: { CLAUDE_CODE_SESSION_ATTENDED: '0' } }).stdout, '');
+    assert.notEqual(run(['session-start', 'all', data], { input: input('startup') }).stdout, '');
   });
 });

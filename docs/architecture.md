@@ -466,10 +466,11 @@ plugins/primer/
   hooks/hooks.json                 PreToolUse Bash|PowerShell -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh", onFailure continue
                                    SessionStart startup -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"
                                    SessionStart -> node primer.mjs session-start all, one entry, no matcher, timeout 10
-                                   PreToolUse Edit|Write|NotebookEdit -> node primer.mjs reach, where decision 299 leaves a case
+                                   PreToolUse Edit|Write|NotebookEdit -> node primer.mjs reach, timeout 10, onFailure continue
   hooks/drift.sh                   the commit check; hands a `git add` or `git commit` in a `local` repository to primer.mjs staged
   hooks/notice.sh                  one line when auto memory or the feedback logs have unreviewed entries
-  scripts/primer.mjs               session-start <layer> | staged | reach | status | measure | map | ledger | copies | transcripts
+  scripts/primer.mjs               session-start <layer> | staged | reach | status | measure | map | copies | transcripts
+  scripts/ledger.mjs               the fold-back ledger in the store: list | --add | --seen | --worked | --set
 ```
 
 Manifest:
@@ -485,7 +486,7 @@ Manifest:
 }
 ```
 
-The skill's description names "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files" (verified: a description's phrases invoked a skill in 2 of 2 runs, decision 84). There is no command file. The two hooks are POSIX sh; `primer.mjs` is the one Node script, and it serves the `local` profile, the budget, the ledger and the copies.
+The skill's description names "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files" (verified: a description's phrases invoked a skill in 2 of 2 runs, decision 84). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, and `ledger.mjs`, which keeps the fold-back ledger.
 
 ### Shapes and caps
 

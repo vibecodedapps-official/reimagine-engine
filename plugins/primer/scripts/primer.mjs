@@ -175,7 +175,8 @@ function sessionStart(c, layer, input, data) {
   if (root) msgs.push(`primer: ${repo.root} is unmapped, under ${root} of the map's roots; run /primer to map it`);
   if (entry?.profile === 'local') {
     const parts = layersOf(p, entry).filter((x) => x.text);
-    context = layer === 'all' ? joined(parts) : parts.find((x) => x.name === layer)?.text;
+    // A resumed session still holds the string its start was given.
+    context = input.source === 'resume' ? undefined : layer === 'all' ? joined(parts) : parts.find((x) => x.name === layer)?.text;
     const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
     for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);

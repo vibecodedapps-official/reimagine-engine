@@ -113,6 +113,20 @@ describe('session-start', () => {
     assert.equal(r.stdout, context(text, `primer: the context string is ${sharedSize + 2 + groupSize} characters as emitted, over the host's cap of 10000 (shared ${sharedSize}, group ${groupSize})`));
   });
 
+  test('a resumed session gets no string and still gets the warning; every other source gets the string', () => {
+    const cfg = config(local(), { shared: SHARED, group: `${'a'.repeat(9990)}\n` });
+    const dir = repo('sources', 'https://example.invalid/team/app.git');
+    const file = join(cfg.store, 'groups', 'app.md');
+    const text = `${part('shared', join(cfg.store, 'shared.md'), SHARED.trim(), 'c09a8e67')}\n\n${part('group', file, 'a'.repeat(9990), 'fb0545d8')}`;
+    const sharedSize = join(cfg.store, 'shared.md').length + 98, groupSize = file.length + 10044;
+    const warning = `primer: the context string is ${sharedSize + 2 + groupSize} characters as emitted, over the host's cap of 10000 (shared ${sharedSize}, group ${groupSize})`;
+    const from = (source) => run(['session-start', 'all', join(base, 'data')], { input: JSON.stringify({ cwd: dir, hook_event_name: 'SessionStart', ...(source ? { source } : {}) }), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
+    assert.equal(from('resume'), context(null, warning));
+    const groupAlone = run(['session-start', 'group', join(base, 'data')], { input: JSON.stringify({ cwd: dir, hook_event_name: 'SessionStart', source: 'resume' }), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
+    assert.equal(groupAlone, context(null, `primer: the group layer is ${groupSize} characters as emitted, over the host's cap of 10000`));
+    for (const source of ['startup', 'clear', 'compact', 'fork', undefined]) assert.equal(from(source), context(text, warning), String(source));
+  });
+
   test('in a session no one attends the layers load and no warning prints', () => {
     const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
     const r = start(cfg, repo('unattended', 'https://example.invalid/team/app.git'), { CLAUDE_CODE_SESSION_ATTENDED: '0' });

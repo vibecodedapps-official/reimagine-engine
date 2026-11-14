@@ -39,7 +39,7 @@ A pull request must be open, in the repository of the session and not from a for
 - Implementers fix the findings in the fix bucket. The run's checks run (from the request, the manifest bundle or `.reimagine.json`, in that order), a failing check is fixed at most three times, and a pass that changed anything ends with one commit and a push on the target's branch.
 - The gate never edits a pull request. After it pushes fixes, the description still describes the head before them, and the report says what to bring up to date.
 - The record decides the next level, or the stop, by fixed rules. A run stops when a pass finds nothing to fix, or finds at most 3 things to fix that all sit in files the last fix round changed, fixes them and sees the checks pass. A change that returns after being fixed is a regression and goes back to the fix bucket; a rejection that returns counts as nothing.
-- At the end it writes the report and prints it as its last message. The gate posts nothing to a pull request, a ticket or an issue.
+- At the end it writes the report, where the run has a record, and prints it as its last message. The gate posts nothing to a pull request, a ticket or an issue.
 
 The gate never types a review level of `low`, `max` or `ultra`, and a run leaves the level you last chose in your own sessions as it was.
 

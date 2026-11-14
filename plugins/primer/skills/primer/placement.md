@@ -40,6 +40,26 @@ Each entry gives the destination and one example of a piece that lands there.
 10. A personal preference or a note about one machine is reported and left for the user. The report says where it belongs: `CLAUDE.local.md`, the user's own `CLAUDE.md`, or the house rules block the `rules` plugin owns. Example: "use tabs, I find them easier".
 11. A piece that is derivable from the code, duplicated elsewhere, true of every project, or stale is deleted. The plan gives the line and the reason. Example: "the test runner is in package.json" is derivable.
 
+## Every addition
+
+Before a home is proposed, class the addition four ways: stable or expiring, shared or personal, rule or reference, the user's or another owner's. The proposal names the home and the reason.
+
+- A pointer to a source the user keeps current is preferred to a copied value. A copied fact carries the date it was copied and an expiry, or the event that makes it worth checking again.
+- A proposal whose target sits inside a block a plugin manages, such as the house rules block, warns that a hand edit there stops the plugin offering its updates, says where a line of the user's own goes instead, and says how a change is proposed to the plugin.
+- Before a layer, a document, a rule or a skill is written, check its text against the house rules' item on prose written for an agent, when that block is installed.
+
+## In the local profile
+
+The items above give way to these destinations, since nothing outside the work tree loads by path:
+
+- A stable, impersonal rule for every mapped repository goes in `shared.md`; one for a group goes in its group layer.
+- People, dates and calendars go in `machine.md`, each with an expiry.
+- Reference material, a procedure and a convention for one kind of file become a document under the store's `docs/`, with a pointer in the layer that says when to read it and which part.
+- A convention that belongs to another repository goes in that repository's own instruction files, by its own profile.
+- A general working rule is recommended for the house rules through the feedback log.
+- A workaround is a pointer to the report of the fault it works around.
+- A layer's text is factual statements.
+
 ## Personal content
 
 A personal preference in the hub or a rule is first person, a path on one machine, or a taste. List each one in the plan or the report under item 10, in this form:

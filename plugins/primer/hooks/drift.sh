@@ -1,6 +1,6 @@
 #!/bin/sh
 # drift.sh: PreToolUse hook for Bash and PowerShell calls. Reads the tool call from stdin
-# and acts only when it runs `git commit`. Reads stdin, the hub (CLAUDE.md, or AGENTS.md
+# and acts only when it runs `git commit` or stages with git. Reads stdin, the hub (CLAUDE.md, or AGENTS.md
 # behind the adapter, or AGENTS.md alone) and, only when its first line is <!-- primer -->,
 # the tracked nested CLAUDE.md files, rules and skills, `git ls-files` for their globs and the
 # changed file list; never reads git history and never writes a file. Prints at most one JSON
@@ -11,13 +11,16 @@
 #   advise:  additionalContext names rules, skills and nested files that cover changed
 #            paths and are not changed
 #   nothing: not a commit, no opted-in hub, or no finding
+# Where <config>/reimagine-primer exists, it first hands the stdin of a call whose text holds `commit`, or `git` before
+# `add` or `stage`, to `node scripts/primer.mjs staged` and prints what that prints; on any other exit status but a missing
+# node it denies. The hub's first line plays no part in that: the script reads the map and follows a change of directory.
 
 json=
 while IFS= read -r in_line || [ -n "$in_line" ]; do
 	json=$json$in_line
 done
 case $json in
-*commit*) ;;
+*commit* | *[Gg][Ii][Tt]*add* | *[Gg][Ii][Tt]*stage*) ;;
 *) exit 0 ;;
 esac
 
@@ -34,8 +37,33 @@ case $json in
 *'"tool_name":"PowerShell"'* | *'"tool_name": "PowerShell"'*) ps=1 ;;
 esac
 
+# The staging check: where primer's own directory exists, primer.mjs decides, since it reads the map and follows a change
+# of directory, and a hub's marker does not say the profile. <config> is three levels above the transcript, else the
+# configuration directory variable, else ~/.claude, as primer.mjs finds it. A missing node lets the call through, as the
+# entry's onFailure does for a missing sh.
+config=$(printf '%s\n' "$json" | LC_ALL=C sed -n -E 's/^.*"transcript_path"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*$/\1/p' | LC_ALL=C sed -e 's/\\\\/\//g' -e 's/\\"/"/g')
+if [ -n "$config" ]; then
+	config=${config%/*}
+	config=${config%/*}
+	config=${config%/*}
+else
+	config=${CLAUDE_CONFIG_DIR:-${USERPROFILE:-$HOME}/.claude}
+fi
+if [ -d "$config/reimagine-primer" ] && command -v node >/dev/null 2>&1; then
+	staged=$(printf '%s\n' "$json" | node "${CLAUDE_PLUGIN_ROOT:-${0%/*}/..}/scripts/primer.mjs" staged 2>/dev/null)
+	st=$?
+	if [ "$st" -ne 0 ] && [ -z "$staged" ]; then
+		printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"primer: the staging check failed with exit status %s, so the call is denied"}}\n' "$st"
+		exit 0
+	fi
+	if [ -n "$staged" ]; then
+		printf '%s\n' "$staged"
+		exit 0
+	fi
+fi
+
 # One line "D<dir>" per distinct directory where the command runs git commit, then one line "A"
-# when the command runs git add anywhere.
+# when the command runs git add or git stage anywhere.
 dirs=$(printf '%s\n' "$raw" | awk -v ps="$ps" '
 BEGIN { SEP = "\001" }
 
@@ -126,7 +154,7 @@ function analyze(str, nw,    a, i, j, k, w, t, cmd, base, dir, edir, hasc) {
 			else if (t == "-c" || t == "--git-dir" || t == "--namespace" || t == "--config-env") j += 2
 			else j++
 		}
-		if (j <= nw && a[j] == "add") adds = 1
+		if (j <= nw && (a[j] == "add" || a[j] == "stage")) adds = 1
 		if (j <= nw && a[j] == "commit") {
 			for (k = j + 1; k <= nw; k++)
 				if (a[k] == "--dry-run" || a[k] == "--help" || a[k] == "-h") return
@@ -446,21 +474,26 @@ EOF
 	fi
 }
 
-check_root() {
-	root=$1
-	if [ -f "$root/CLAUDE.md" ]; then
+# marked <root>: true when the root's hub opens with the marker; sets hub.
+marked() {
+	if [ -f "$1/CLAUDE.md" ]; then
 		hub=CLAUDE.md
-		if awk '{ sub(/\r$/, ""); if (NR == 1) l = $0 } END { exit (NR == 1 && l == "@AGENTS.md") ? 0 : 1 }' "$root/CLAUDE.md" 2>/dev/null; then
+		if awk '{ sub(/\r$/, ""); if (NR == 1) l = $0 } END { exit (NR == 1 && l == "@AGENTS.md") ? 0 : 1 }' "$1/CLAUDE.md" 2>/dev/null; then
 			hub=AGENTS.md
-			[ -f "$root/AGENTS.md" ] || return 0
+			[ -f "$1/AGENTS.md" ] || return 1
 		fi
-	elif [ -f "$root/AGENTS.md" ]; then
+	elif [ -f "$1/AGENTS.md" ]; then
 		hub=AGENTS.md
 	else
-		return 0
+		return 1
 	fi
-	mark=$(awk 'NR == 1 { sub(/\r$/, ""); print; exit }' "$root/$hub" 2>/dev/null)
-	[ "$mark" = "<!-- primer -->" ] || return 0
+	mark=$(awk 'NR == 1 { sub(/\r$/, ""); print; exit }' "$1/$hub" 2>/dev/null)
+	[ "$mark" = "<!-- primer -->" ]
+}
+
+check_root() {
+	root=$1
+	marked "$root" || return 0
 
 	cov=
 	ncov=

@@ -9,6 +9,7 @@ const INIT = readFileSync(new URL('init.md', DIR), 'utf8');
 const ADOPT = readFileSync(new URL('adopt.md', DIR), 'utf8');
 const SHAPES = readFileSync(new URL('shapes.md', DIR), 'utf8');
 const PLACEMENT = readFileSync(new URL('placement.md', DIR), 'utf8');
+const LOCAL = readFileSync(new URL('local.md', DIR), 'utf8');
 
 function lineCount(text) {
   if (text === '') return 0;
@@ -16,8 +17,8 @@ function lineCount(text) {
   return newlines + (text.endsWith('\n') ? 0 : 1);
 }
 
-test('R237: the skill directory holds SKILL.md, adopt.md, init.md, placement.md and shapes.md only', () => {
-  assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'adopt.md', 'init.md', 'placement.md', 'shapes.md']);
+test('R237: the skill directory holds SKILL.md, adopt.md, init.md, local.md, placement.md and shapes.md only', () => {
+  assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'adopt.md', 'init.md', 'local.md', 'placement.md', 'shapes.md']);
 });
 
 test('R245: the frontmatter names the skill, the four phrases first, and read-only tools', () => {
@@ -46,11 +47,14 @@ test('R245: the frontmatter names the skill, the four phrases first, and read-on
     'Bash(git rev-parse *)',
     'Bash(git ls-files *)',
     'Bash(git check-ignore *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" measure *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" copies --spans *)',
   ]);
 });
 
 test('R245: the mode is the first line, chosen from the files on disk', () => {
-  assert.ok(SKILL.includes('- The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain> (<one-line reason>)`, with no text before it.'));
+  assert.ok(SKILL.includes('- The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain> (<one-line reason>)`, with no text before it but the profile question, and the second is `primer: profile <shared|local>`.'));
   assert.ok(SKILL.includes('The mode is chosen from the files on disk, ignored ones included.'));
   assert.ok(SKILL.includes('- A mode named after the command (`/primer adopt`) forces it. A forced `init` never writes over an existing `CLAUDE.md` or `AGENTS.md`: say so and stop.'));
   assert.ok(SKILL.includes('- Otherwise find the hub: the root `CLAUDE.md`; the root `AGENTS.md` when the root `CLAUDE.md` is exactly `@AGENTS.md` plus at most one newline; the root `AGENTS.md` when there is no root `CLAUDE.md`. Read these files from disk, never from the copy loaded at session start, which drops HTML comments, the marker included. Then, in order: the hub\'s line 1 is exactly `<!-- primer -->` and no line of it is exactly `## Spokes`: `maintain`. Else any `CLAUDE.md` or `AGENTS.md` exists at any depth, `.claude/CLAUDE.md` included: `adopt`. Else: `init`.'));
@@ -86,7 +90,7 @@ test('R249: adopt inventories, keeps pinned files, converts an index, moves befo
 
 test('R250 and R251: maintain verifies against the code, prints no drift, and names /doctor prompt-audit', () => {
   assert.ok(SKILL.includes('- a statement in `README.md`, `CONTRIBUTING.md` or a `docs/` page that the code makes untrue is reported, never rewritten by this pass;'));
-  assert.ok(SKILL.includes('- two instruction files that contradict each other are reported, never resolved by this pass, since `/doctor prompt-audit` checks contradictions.'));
+  assert.ok(SKILL.includes('- two instruction files that contradict each other are reported, never resolved by this pass, since `/doctor prompt-audit` checks contradictions;'));
   assert.ok(SKILL.includes('- each command the hub or a nested `CLAUDE.md` names exists in a manifest, script or workflow and does what its line says;'));
   assert.ok(SKILL.includes('- each statement of the hub, a rule, a nested file or a skill is true of the files it covers: the names, paths and behavior it states exist;'));
   assert.ok(SKILL.includes('- a skill whose procedure the repository lacks is reported, never deleted;'));
@@ -118,6 +122,60 @@ test('R253 to R255: propose reads four sources in order, never proposes the neve
   assert.ok(!SKILL.includes('not in this prerelease'));
 });
 
+test('R385 and R396: the profile is asked once with no default, recorded by the script, and sets the fallback commit subject', () => {
+  assert.ok(SKILL.includes('- The profile: a hub whose line 1 is the marker is `shared`; else the `profile:` line of `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status` names it. With none, the reply is only one question, with no default:'));
+  assert.ok(SKILL.includes('for `shared`, also whether the repository is the user\'s own. The question names the run that records the answer, `map --add --profile <shared|local>` with `--own <true|false>` for `shared`, by the same script; run it on the answer. Without an answer write nothing.'));
+  assert.ok(SKILL.includes('- A `local` run reads `local.md` in this skill\'s directory before the mode line and follows it where it differs from this file.'));
+  assert.ok(SKILL.includes('- In a `shared` run, when the root `CLAUDE.md` or root `AGENTS.md` is ignored by git, say so after the profile line and stop with nothing written.'));
+  assert.ok(SKILL.includes('Where `status` shows `own false`, the fallback is `docs: <subject>`.'));
+});
+
+test('R385, R386 and R390: local.md keeps the work tree untouched, writes the store on a named yes and the map through the script', () => {
+  assert.ok(LOCAL.includes('A `local` run writes nothing in the repository\'s work tree, makes no commit or stash, and changes neither the index nor a `.gitignore`.'));
+  assert.ok(LOCAL.includes('- `init` while the store holds no layer for the repository\'s group, `maintain` after; `adopt` does not run.'));
+  assert.ok(LOCAL.includes('- Instruction files the upstream tracks are the repository\'s own: read them, never rewrite them. A root instruction file git ignores is the user\'s own and does not stop the run.'));
+  assert.ok(LOCAL.includes('- Write a layer, a document under the store\'s `docs/` or `machine.md` with the Write or Edit tool, and only on a yes that names the file.'));
+  assert.ok(LOCAL.includes('`map.json` and `config.json` change only through the same script\'s `map` verb: show the exact command and the change it makes, run it on a yes, and never edit either file by hand.'));
+  assert.ok(LOCAL.includes('- As its own question, offer the lines below for `info/exclude` under the repository\'s common directory (`git rev-parse --git-common-dir`), which git never shares. On a yes, append them; where the host refuses that write, show them for the user to add; a no leaves it.'));
+  assert.ok(LOCAL.replace(/\r\n/g, '\n').includes('  ```\n  CLAUDE.md\n  CLAUDE.local.md\n  AGENTS.md\n  .claude/\n  .reimagine/\n  .reimagine.json\n  .mcp.json\n  ```\n'));
+  assert.ok(LOCAL.includes('- The plan proposes the host\'s `attribution` setting with empty `commit` and `pr` values, by placement item 2,'));
+  assert.ok(LOCAL.includes('- A layer is factual statements, never commands addressed to the session,'));
+});
+
+test('R392 and R394: a proposal searches first, is measured, and names the cut that pays for it', () => {
+  assert.ok(SKILL.includes('Before a rule is proposed, and before any pass that launches an agent, search every layer and document of the store, the user\'s own `CLAUDE.md` and the instruction files of the repository the rule governs for text that already states it.'));
+  assert.ok(SKILL.includes('A hit ends the proposal as nothing, as a one-line pointer, or, where the rule was loaded and missed, as a miss whose fix is delivery or a pointer, never a second statement of the rule.'));
+  assert.ok(SKILL.includes('Size is measured, never estimated.'));
+  assert.ok(SKILL.includes('Either names the cut that pays for it, or becomes a one-line pointer to a document. Cut candidates come in this order: text that says how the file is loaded, text a pointed-to document also holds, text the loader or the host already supplies, facts past their expiry. No file primer writes states how much room is left.'));
+  assert.ok(LOCAL.includes('show `measure --with <file> <layer>`, the layer being `shared.md`, `groups/<group>.md` or `machine.md`, with each repository\'s size before and after.'));
+});
+
+test('R397 to R399: the fold-back review reads the logs, runs two passes, ends in one pick and records the ledger', () => {
+  assert.ok(SKILL.includes('2. Evidence pass: check each item\'s evidence and challenge it. Drop what the files contradict and what names a section that does not exist; an item a loaded rule already states is a miss. Mark each claim verified or unverified, with its check: read at the source, run, or neither.'));
+  assert.ok(SKILL.includes('3. Worth pass: judge worth, placement by `placement.md`, and wording, and settle items that touch the same lines as one. Draft each edit now, against the files as they are, never copied from the log; nothing is written before the answer of step 6.'));
+  assert.ok(SKILL.includes('One that matches a folded rule is that rule\'s failure: propose to reword the rule, move it or propose a hook, never to state it twice.'));
+  assert.ok(SKILL.includes('then what it holds and what it rejects, each with its reason, and asks once with the rest. An item for the house rules or another plugin is written by its kind, with no person, id or path.'));
+  assert.ok(SKILL.includes('`node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs"`'));
+  assert.ok(SKILL.includes('Then write the stamp `${CLAUDE_PLUGIN_DATA}/reviewed/feedback` as step 3 writes its own.'));
+});
+
+test('R400 and R401: maintain reports declared copies and proposes ports, and past messages come from the reader alone', () => {
+  assert.ok(SKILL.includes('- each copy `status` lists: `source changed` is a port to propose from the diff it shows, followed on its yes by `copies --ported <copy>` of the same script;'));
+  assert.ok(SKILL.includes('A proposal that copies context text to a second place declares it with `copies --add <copy> <source>`; the script ports nothing.'));
+  assert.ok(SKILL.includes('`node "${CLAUDE_PLUGIN_ROOT}/scripts/transcripts.mjs" --from <YYYY-MM-DD> --to <YYYY-MM-DD>`'));
+  assert.ok(SKILL.includes('build no reader of your own, and count nothing from its output.'));
+});
+
+test('R241 and R393: every addition is classed, and the local profile has its own destinations', () => {
+  assert.ok(PLACEMENT.includes('Before a home is proposed, class the addition four ways: stable or expiring, shared or personal, rule or reference, the user\'s or another owner\'s. The proposal names the home and the reason.'));
+  assert.ok(PLACEMENT.includes('- A pointer to a source the user keeps current is preferred to a copied value. A copied fact carries the date it was copied and an expiry, or the event that makes it worth checking again.'));
+  assert.ok(PLACEMENT.includes('warns that a hand edit there stops the plugin offering its updates'));
+  assert.ok(PLACEMENT.includes('- A stable, impersonal rule for every mapped repository goes in `shared.md`; one for a group goes in its group layer.'));
+  assert.ok(PLACEMENT.includes('- People, dates and calendars go in `machine.md`, each with an expiry.'));
+  assert.ok(PLACEMENT.includes('- A workaround is a pointer to the report of the fault it works around.'));
+  assert.ok(LOCAL.includes('is in the local profile section of `placement.md`.'));
+});
+
 test('R240: SKILL.md is within its cap of 150 lines, counted as the file has them', () => {
   assert.equal(lineCount('a\nb\nc'), 3);
   assert.equal(lineCount('a\nb\nc\n'), 3);
@@ -132,7 +190,7 @@ test('R237: every skill file SKILL.md names exists', () => {
   for (const m of SKILL.matchAll(/`([^`\n]+)`/g)) {
     if (/^[A-Za-z0-9_.-]+\.md$/.test(m[1]) && !host.has(m[1])) named.add(m[1]);
   }
-  assert.deepEqual([...named].sort(), ['adopt.md', 'init.md', 'placement.md', 'shapes.md']);
+  assert.deepEqual([...named].sort(), ['adopt.md', 'init.md', 'local.md', 'placement.md', 'shapes.md']);
   for (const name of named) assert.ok(existsSync(new URL(name, DIR)), `${name} exists`);
   assert.ok(SKILL.includes('read `shapes.md` and `placement.md` in this skill\'s directory.'));
 });

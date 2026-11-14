@@ -118,7 +118,7 @@ describe('primer messy fixture', () => {
 
       const event = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git commit -m x' }, cwd: repo });
       const hookPath = 'plugins/primer/hooks/drift.sh';
-      const hook = spawnSync('sh', [hookPath], { cwd: root, input: event, encoding: 'utf8' });
+      const hook = spawnSync('sh', [hookPath], { cwd: root, input: event, encoding: 'utf8', env: { ...process.env, CLAUDE_CONFIG_DIR: join(dir, 'no-config') } });
       assert.equal(hook.status, 0, `${hookPath}: ${hook.stderr}`);
       assert.equal(hook.stdout, '', hookPath);
 

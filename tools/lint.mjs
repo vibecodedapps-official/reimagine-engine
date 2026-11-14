@@ -46,6 +46,9 @@ const EXECUTABLES = [
     .map((n) => `plugins/audit/scripts/${n}.sh`),
   'plugins/primer/hooks/drift.sh',
   'plugins/primer/hooks/notice.sh',
+  'plugins/primer/scripts/primer.mjs',
+  'plugins/primer/scripts/ledger.mjs',
+  'plugins/primer/scripts/transcripts.mjs',
   'plugins/gate/scripts/findings.mjs',
   'plugins/gate/scripts/next.mjs',
   'plugins/gate/scripts/resume.mjs',
@@ -85,8 +88,14 @@ const GUARD_HOOK = {
 };
 const PRIMER_HOOK = {
   hooks: {
-    PreToolUse: [{ matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] }],
-    SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] }],
+    PreToolUse: [
+      { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] },
+      { matcher: 'Edit|Write|NotebookEdit', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'reach', '${CLAUDE_PLUGIN_DATA}'], timeout: 10, onFailure: 'continue' }] },
+    ],
+    SessionStart: [
+      { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
+      { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
+    ],
   },
 };
 
@@ -259,7 +268,7 @@ function importFailures(ctx) {
 
 function budgetFailures(ctx) {
   const out = [];
-  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
+  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
     const source = ctx.text(script);
     if (source === null) continue;
     const lines = source.split('\n').length - 1 + (source !== '' && !source.endsWith('\n') ? 1 : 0);
@@ -450,7 +459,7 @@ function skillFailures(ctx) {
 function hookFailures(ctx) {
   const out = [];
   if (!same(ctx.json(RULES_HOOKS), ROOT_HOOKS)) out.push(`${RULES_HOOKS}: not the SessionStart startup shape`);
-  if (!same(ctx.json(PRIMER_HOOKS), PRIMER_HOOK)) out.push(`${PRIMER_HOOKS}: not the PreToolUse Bash|PowerShell and SessionStart startup shape`);
+  if (!same(ctx.json(PRIMER_HOOKS), PRIMER_HOOK)) out.push(`${PRIMER_HOOKS}: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape`);
   if (!same(ctx.json(GUARD_HOOKS), GUARD_HOOK)) out.push(`${GUARD_HOOKS}: not the PermissionDenied and SessionStart startup shape`);
   const manifests = new Map(ctx.plugins.map((p) => [p.path, p.manifest]));
   const message = (file) => `${file}: hooks outside ${RULES_HOOKS}, ${PRIMER_HOOKS} and ${GUARD_HOOKS}`;

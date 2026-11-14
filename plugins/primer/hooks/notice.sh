@@ -4,11 +4,13 @@
 # first line is <!-- primer -->, `git rev-parse` for the repository root and the main worktree,
 # the autoMemoryDirectory key of the local, project and user settings files, the auto memory
 # index MEMORY.md (by default <config>/projects/<key>/memory/), the topic files it lists, and
-# the review stamp $CLAUDE_PLUGIN_DATA/reviewed/<key>; never writes a file. Prints at most one
+# the review stamp $CLAUDE_PLUGIN_DATA/reviewed/<key>, and the feedback logs of <config>/feedback/
+# with their stamp $CLAUDE_PLUGIN_DATA/reviewed/feedback; never writes a file. Prints at most one
 # JSON object and always exits 0:
-#   notice:  the count of listed feedback or project notes modified after the stamp, every one
-#            when there is no stamp, as a systemMessage that points at /primer
-#   nothing: no opted-in hub, no memory index, or no such note
+#   notice:  the count of listed feedback or project notes modified after the stamp, and of logs
+#            modified after theirs, every one when there is no stamp, as a systemMessage that
+#            points at /primer
+#   nothing: no opted-in hub, or no such note and no such log
 
 json=
 while IFS= read -r in_line || [ -n "$in_line" ]; do
@@ -94,7 +96,19 @@ if [ -z "$memory" ] && [ -n "$CLAUDE_CODE_PROJECT_DIR_NAME" ] && [ "${sdir##*/}"
 fi
 [ -n "$memory" ] || memory=$projects/$key/memory
 memory=${memory%/}
-[ -f "$memory/MEMORY.md" ] || exit 0
+
+# The feedback logs of <config>/feedback/ modified after their stamp, every one when there is none.
+m=0
+fstamp=
+if [ -n "$CLAUDE_PLUGIN_DATA" ] && [ -f "$CLAUDE_PLUGIN_DATA/reviewed/feedback" ]; then
+	fstamp=$CLAUDE_PLUGIN_DATA/reviewed/feedback
+fi
+for f in "${projects%/*}/feedback"/*; do
+	[ -f "$f" ] || continue
+	if [ -z "$fstamp" ] || [ "$f" -nt "$fstamp" ]; then
+		m=$((m + 1))
+	fi
+done
 
 stamp=
 has=
@@ -153,7 +167,12 @@ substr($0, 1, 3) == "- [" && (a = index($0, "](")) > 0 {
 }
 END { print total + 0 }' "$memory/MEMORY.md" 2>/dev/null)
 
-if [ "$n" -gt 0 ] 2>/dev/null; then
+[ "$n" -gt 0 ] 2>/dev/null || n=0
+if [ "$n" -gt 0 ] && [ "$m" -gt 0 ]; then
+	printf '{"systemMessage":"primer: auto memory has %s notes and %s feedback logs since the last review; run /primer"}\n' "$n" "$m"
+elif [ "$n" -gt 0 ]; then
 	printf '{"systemMessage":"primer: auto memory has %s notes since the last review; run /primer"}\n' "$n"
+elif [ "$m" -gt 0 ]; then
+	printf '{"systemMessage":"primer: %s feedback logs since the last review; run /primer"}\n' "$m"
 fi
 exit 0

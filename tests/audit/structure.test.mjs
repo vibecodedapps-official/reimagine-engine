@@ -203,10 +203,11 @@ test('each agent definition and the output contract give the refused line in the
 
 test('act and the finding rules name the same instruction files to read before a change', () => {
   for (const file of ['skills/audit/stages/9-act.md', 'skills/audit/audit-evidence.md']) {
-    const block = paragraphs(file).find((part) => part.includes('`.claude/rules/`') && part.includes('`REVIEW.md`'));
-    assert.ok(block, `${file} has no paragraph on the instruction files read before a change`);
+    // The paragraph is the one that says which rules apply by their `paths`; act's list of baseline checks names the rules directory too.
+    const blocks = paragraphs(file).filter((part) => part.includes('`.claude/rules/`') && part.includes('`paths`'));
+    assert.equal(blocks.length, 1, `${file}: the paragraphs on the rules that apply by their paths`);
     for (const source of ['AGENTS.md', 'CLAUDE.md', '.claude/rules/', '.claude/skills/', 'REVIEW.md']) {
-      assert.ok(block.includes('`' + source + '`'), `${file}: that paragraph does not name ${source}`);
+      assert.ok(blocks[0].includes('`' + source + '`'), `${file}: that paragraph does not name ${source}`);
     }
   }
 });
@@ -269,9 +270,10 @@ test('the registry commands of the audit files are the ones registry.sh takes', 
 });
 
 // An agent leaves a complete file at its output path as final, so a relaunch on that path writes nothing while the file is there.
-test('no file but the skill moves a failed output, and none says a relaunch overwrites it', () => {
+test('no file but the skill names the file a failed output is moved to, and none says a relaunch overwrites it', () => {
+  assert.ok(TEXT['skills/audit/SKILL.md'].includes('`failed-output.md`'), 'SKILL.md does not name failed-output.md');
   for (const file of TARGETS) {
     assert.ok(!/relaunch overwrites/i.test(TEXT[file]), `${file} says a relaunch overwrites a file`);
-    if (file !== 'skills/audit/SKILL.md') assert.ok(!/mv -f[^\n]*failed-/.test(TEXT[file]), `${file} moves a failed output by a rule of its own`);
+    if (file !== 'skills/audit/SKILL.md') assert.ok(!TEXT[file].includes('failed-output') && !/mv -f[^\n]*failed-/.test(TEXT[file]), `${file} names the file a failed output is moved to, or moves one by a rule of its own`);
   }
 });

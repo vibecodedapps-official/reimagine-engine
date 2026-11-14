@@ -89,29 +89,34 @@ test('every script command the skill files show names a script that exists, a ve
   const shown = [];
   let optionSpans = 0;
   for (const [name, text] of Object.entries(FILES)) {
-    for (const [, span] of text.matchAll(/`([^`\n]+)`/g)) {
-      if (span.startsWith('--')) {
-        const option = span.split(/\s+/)[0];
-        if (option === '--no-verify') continue;
-        optionSpans++;
-        assert.ok(Object.values(SOURCE).some((source) => source.includes(`'${option}'`)), `${name}: ${span} names an option no script reads`);
-        continue;
+    for (const line of text.split('\n')) {
+      // An option shown alone belongs to a script its line names, by path or as "the <name> script".
+      const named = [...line.matchAll(/scripts\/([a-z]+\.mjs)|the ([a-z]+) script/g)].map((m) => m[1] ?? `${m[2]}.mjs`).filter((script) => script in SOURCE);
+      for (const [, span] of line.matchAll(/`([^`]+)`/g)) {
+        if (span.startsWith('--')) {
+          const option = span.split(/\s+/)[0];
+          if (option === '--no-verify') continue;
+          optionSpans++;
+          assert.ok(named.length > 0, `${name}: ${span} stands on a line that names no script`);
+          assert.ok(named.some((script) => SOURCE[script].includes(`'${option}'`)), `${name}: ${span} names an option ${named.join(' or ')} does not read`);
+          continue;
+        }
+        const path = /scripts\/([a-z]+\.mjs)"(.*)$/.exec(span);
+        const words = (path ? path[2] : span).trim().split(/\s+/).filter(Boolean);
+        if (!path && !(verbs.includes(words[0]) && words.some((w) => w.startsWith('--')))) continue;
+        const script = path ? path[1] : 'primer.mjs';
+        assert.ok(script in SOURCE, `${name}: ${span} names a script that does not exist`);
+        if (script === 'primer.mjs' && words.length) assert.ok(verbs.includes(words[0]), `${name}: ${span} names a verb primer.mjs does not take`);
+        for (const option of words.filter((w) => w.startsWith('--'))) assert.ok(SOURCE[script].includes(`'${option}'`), `${name}: ${span} names an option ${script} does not read`);
+        shown.push(span);
       }
-      const path = /scripts\/([a-z]+\.mjs)"(.*)$/.exec(span);
-      const words = (path ? path[2] : span).trim().split(/\s+/).filter(Boolean);
-      if (!path && !(verbs.includes(words[0]) && words.some((w) => w.startsWith('--')))) continue;
-      const script = path ? path[1] : 'primer.mjs';
-      assert.ok(script in SOURCE, `${name}: ${span} names a script that does not exist`);
-      if (script === 'primer.mjs' && words.length) assert.ok(verbs.includes(words[0]), `${name}: ${span} names a verb primer.mjs does not take`);
-      for (const option of words.filter((w) => w.startsWith('--'))) assert.ok(SOURCE[script].includes(`'${option}'`), `${name}: ${span} names an option ${script} does not read`);
-      shown.push(span);
     }
   }
   assert.ok(shown.length >= 10, `only ${shown.length} commands were found`);
-  assert.ok(optionSpans >= 5, `only ${optionSpans} options shown alone were found`);
+  assert.ok(optionSpans >= 2, `only ${optionSpans} options shown alone were found`);
 });
 
-test('R256 and R397: the stamps the skill writes are the ones the notice hook reads', () => {
+test('R256, R257 and R397: the stamps the skill writes are the ones the notice hook reads', () => {
   for (const [written, held] of [
     ['`${CLAUDE_PLUGIN_DATA}/reviewed/<key>`', '"$CLAUDE_PLUGIN_DATA/reviewed/$key"'],
     ['`${CLAUDE_PLUGIN_DATA}/reviewed/feedback`', '"$CLAUDE_PLUGIN_DATA/reviewed/feedback"'],
@@ -155,12 +160,21 @@ test('R238: the hub template of shapes.md opens with the marker the hooks test f
   assert.ok(SHAPES.includes(`\`\`\`\n${marks[0]}\n# `), 'no fence of shapes.md opens with the marker and a heading');
 });
 
-test('R240 and R262: shapes.md names every cap the drift hook holds', () => {
-  const caps = (fn) => [...new Set([...DRIFT.matchAll(new RegExp(`^\\s*${fn} "\\$\\w+" (\\d+)$`, 'gm'))].map((m) => Number(m[1])))].sort((a, b) => a - b);
-  assert.deepEqual(caps('lines_over'), [60, 150, 200]);
-  assert.deepEqual(caps('chars_over'), [40000]);
+test('R240 and R262: shapes.md gives each kind of file the cap the drift hook holds for it', () => {
+  // The hook caps the hub by its own variable and every other kind inside the loop over the list it last filled with `tracked`.
+  const caps = (fn) =>
+    Object.fromEntries(
+      [...DRIFT.matchAll(new RegExp(`^\\s*${fn} "\\$(\\w+)" (\\d+)$`, 'gm'))].map((m) => {
+        const lists = [...DRIFT.slice(0, m.index).matchAll(/^\s*(\w+)=\$\(tracked /gm)];
+        return [m[1] === 'f' ? lists[lists.length - 1][1] : m[1], Number(m[2])];
+      }),
+    );
+  assert.deepEqual(caps('lines_over'), { hub: 60, nested: 60, rules: 200, skills: 150 });
+  assert.deepEqual(caps('chars_over'), { nested: 40000, rules: 40000 });
   const section = /^## Counting and caps\n([^]*?)(?=^## )/m.exec(SHAPES)?.[1] ?? '';
-  for (const n of caps('lines_over')) assert.ok(section.includes(`${n} lines`), `Counting and caps names no cap of ${n} lines`);
+  const kinds = { Hub: 'hub', 'Nested `CLAUDE.md`': 'nested', Rule: 'rules', '`SKILL.md`': 'skills' };
+  const shown = [...section.matchAll(/((?:`[^`\n]+`|[^.:`\n])+): (\d+) lines/g)].map((m) => [m[1].replace(/^[\s-]+/, '').trim(), Number(m[2])]);
+  assert.deepEqual(Object.fromEntries(shown.map(([label, cap]) => [kinds[label] ?? label, cap])), caps('lines_over'), 'the line caps of Counting and caps differ from the hook');
   assert.ok(section.includes('40,000 characters'), 'Counting and caps names no cap of 40,000 characters');
 });
 

@@ -20,7 +20,7 @@ const run = promisify(execFile);
 const root = fileURLToPath(new URL('..', import.meta.url));
 
 const CATALOG = '.claude-plugin/marketplace.json';
-const NAMES = ['rules', 'loop', 'audit', 'primer', 'gate', 'guard'];
+const NAMES = ['rules', 'loop', 'audit', 'primer', 'gate', 'guard', 'review'];
 const RETIRED = ['repo-docs'];
 const LOOP_SKILL = 'plugins/loop/skills/run/SKILL.md';
 const LOOP_DIR = 'plugins/loop/skills/run/';
@@ -29,6 +29,7 @@ const AUDIT_SKILL = 'plugins/audit/skills/audit/SKILL.md';
 const PRIMER_SKILL = 'plugins/primer/skills/primer/SKILL.md';
 const GATE_SKILL = 'plugins/gate/skills/gate/SKILL.md';
 const GUARD_SKILL = 'plugins/guard/skills/guard/SKILL.md';
+const REVIEW_SKILL = 'plugins/review/skills/run/SKILL.md';
 const STYLE = 'plugins/rules/output-styles/concise-plain.md';
 const CHAT = 'plugins/rules/chat/instructions.md';
 const CORE = 'plugins/rules/rules/core.md';
@@ -53,6 +54,7 @@ const EXECUTABLES = [
   'plugins/gate/scripts/resume.mjs',
   'plugins/gate/scripts/split.mjs',
   'plugins/guard/scripts/guard.mjs',
+  'plugins/review/scripts/posts.mjs',
 ];
 const GUARD_RUNS = ['status', 'list', 'plan', 'denials'].map((verb) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" ${verb} *)`);
 const EXECUTABLE_EXTENSIONS = ['.sh', '.mjs', '.js', '.cjs', '.py', '.ps1', '.bat', '.cmd', '.exe'];
@@ -266,11 +268,11 @@ function importFailures(ctx) {
 
 function budgetFailures(ctx) {
   const out = [];
-  for (const script of ['plugins/rules/scripts/rules.mjs', 'plugins/guard/scripts/guard.mjs', 'plugins/primer/scripts/primer.mjs', 'plugins/primer/scripts/ledger.mjs', 'plugins/primer/scripts/transcripts.mjs']) {
+  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
     const source = ctx.text(script);
     if (source === null) continue;
     const lines = source.split('\n').length - 1 + (source !== '' && !source.endsWith('\n') ? 1 : 0);
-    if (lines > 700) out.push(`${script}: ${lines} lines, over the 700-line budget`);
+    if (lines > cap) out.push(`${script}: ${lines} lines, over the ${cap}-line budget`);
   }
   const skill = ctx.text(LOOP_SKILL);
   if (skill !== null) {
@@ -405,6 +407,13 @@ function skillFailures(ctx) {
   }
   for (const entry of listEntries(gateFm.get('allowed-tools'))) {
     if (!PRE_APPROVED.test(entry)) out.push(`${GATE_SKILL}: allowed-tools entry ${entry} is not a pre-approved read`);
+  }
+
+  const review = ctx.text(REVIEW_SKILL);
+  const reviewFm = frontmatter(review);
+  if (review === null || reviewFm.get('name') !== 'run') out.push(`${REVIEW_SKILL}: frontmatter name is ${reviewFm.get('name') || 'missing'}, not run`);
+  if (review !== null && !String(reviewFm.get('description') ?? '').includes('reimagine review')) {
+    out.push(`${REVIEW_SKILL}: description does not name "reimagine review"`);
   }
 
   if (!String(frontmatter(ctx.text(AUDIT_SKILL)).get('description') ?? '').includes('reimagine audit')) {
@@ -564,13 +573,13 @@ function listItems(lines) {
   return out.map((item) => item.trim().replace(/\s+/g, ' '));
 }
 
-// The loop, the gate and the audit each work without the rules plugin, so each carries the house-rules item on what leaves a session:
+// The loop, the gate, the audit and the review each work without the rules plugin, so each carries the house-rules item on what leaves a session:
 // one `- ` line, with nothing under it that a Markdown reader would add to it.
 function carriedFailures(ctx) {
   const out = [];
   const unfenced = (file) => outsideFences(ctx.text(file) ?? '').map((l) => l.line);
   const core = listItems(unfenced(CORE));
-  for (const file of [LOOP_SKILL, GATE_SKILL, AUDIT_SKILL]) {
+  for (const file of [LOOP_SKILL, GATE_SKILL, AUDIT_SKILL, REVIEW_SKILL]) {
     const lines = unfenced(file);
     const start = lines.indexOf(CARRIED);
     if (start < 0) {

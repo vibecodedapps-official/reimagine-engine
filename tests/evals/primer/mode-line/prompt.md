@@ -4,4 +4,4 @@ max_turns: 8
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-check the instruction files
+check the instruction files. The profile is shared, and the repository is my own.

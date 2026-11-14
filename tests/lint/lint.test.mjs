@@ -87,7 +87,7 @@ const shown = (r) => `status ${r.status}\nstdout:\n${r.stdout}\nstderr:\n${r.std
 
 const passes = (r) => {
   assert.equal(r.status, 0, shown(r));
-  assert.match(r.stdout, /^lint: ok \(\d+ files, 6 plugins\)\n$/, shown(r));
+  assert.match(r.stdout, /^lint: ok \(\d+ files, 7 plugins\)\n$/, shown(r));
 };
 
 const fails = (r, n, messages) => {
@@ -127,7 +127,7 @@ const changelog = (list) => '# Changelog\n\n' + list.map((h) => `${h}\n\n`).join
 
 // The suite checks the rules, not the release state: the copy holds every plugin at 0.1.0-alpha.1, one heading each.
 const pin = (dir) => {
-  for (const name of ['rules', 'loop', 'audit', 'primer', 'gate', 'guard']) setVersion(dir, name, '0.1.0-alpha.1');
+  for (const name of ['rules', 'loop', 'audit', 'primer', 'gate', 'guard', 'review']) setVersion(dir, name, '0.1.0-alpha.1');
   for (const path of ['plugins/audit/skills/audit/SKILL.md', 'plugins/audit/skills/audit/resume.md', 'plugins/audit/skills/audit/stages/1-orient.md']) {
     put(dir, path, read(dir, path).split('\n').map((l) => (l.includes('plugin_version') ? l.replace(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]*[0-9A-Za-z])?/g, '0.1.0-alpha.1') : l)).join('\n'));
   }
@@ -168,7 +168,7 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
 
   after(() => rmSync(base, { recursive: true, force: true }));
 
-  test('R218: a clean copy prints lint: ok (<f> files, 6 plugins) and exits 0', async () => {
+  test('R218: a clean copy prints lint: ok (<f> files, 7 plugins) and exits 0', async () => {
     passes(await lint(caseDir()));
   });
 
@@ -237,6 +237,14 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     put(dir, 'plugins/primer/scripts/transcripts.mjs', '// x\n'.repeat(701));
     bump(dir, 'primer');
   }, 1, ['plugins/primer/scripts/transcripts.mjs: 701 lines, over the 700-line budget']);
+  negative('R379: posts.mjs over the 300-line budget', (dir) => {
+    put(dir, 'plugins/review/scripts/posts.mjs', '// x\n'.repeat(301));
+    bump(dir, 'review');
+  }, 1, ['plugins/review/scripts/posts.mjs: 301 lines, over the 300-line budget']);
+  positive('R379: posts.mjs at 300 lines passes', (dir) => {
+    put(dir, 'plugins/review/scripts/posts.mjs', '// x\n'.repeat(300));
+    bump(dir, 'review');
+  });
 
   // Pads the shipped skill to n words, so the two cases hold when its length changes.
   const padLoop = (dir, n) => {
@@ -287,18 +295,18 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     'plugins/rules/.claude-plugin/plugin.json: version 0.1.1-01 is not semver',
   ]);
 
-  negative('R1: .claude-plugin/marketplace.json: entry <name> is not one of rules, loop, audit, primer, gate, guard', (dir) => {
+  negative('R1: .claude-plugin/marketplace.json: entry <name> is not one of rules, loop, audit, primer, gate, guard, review', (dir) => {
     editJson(dir, catalog, (c) => { c.plugins.push({ name: 'extra', source: './plugins/loop', description: 'x', version: '0.1.0-alpha.1' }); });
     append(dir, 'README.md', '/plugin install extra@reimagine-engine\n/plugin uninstall extra@reimagine-engine\n');
   }, 2, [
-    '.claude-plugin/marketplace.json: entry extra is not one of rules, loop, audit, primer, gate, guard',
+    '.claude-plugin/marketplace.json: entry extra is not one of rules, loop, audit, primer, gate, guard, review',
     '.claude-plugin/marketplace.json: entry extra source ./plugins/loop is not a plugin directory ./plugins/extra',
   ]);
-  negative('R268: .claude-plugin/marketplace.json: a repo-docs entry is not one of rules, loop, audit, primer, gate, guard', (dir) => {
+  negative('R268: .claude-plugin/marketplace.json: a repo-docs entry is not one of rules, loop, audit, primer, gate, guard, review', (dir) => {
     editJson(dir, catalog, (c) => { c.plugins.push({ name: 'repo-docs', source: './plugins/loop', description: 'x', version: '0.1.0-alpha.1' }); });
     append(dir, 'README.md', '/plugin install repo-docs@reimagine-engine\n/plugin uninstall repo-docs@reimagine-engine\n');
   }, 2, [
-    '.claude-plugin/marketplace.json: entry repo-docs is not one of rules, loop, audit, primer, gate, guard',
+    '.claude-plugin/marketplace.json: entry repo-docs is not one of rules, loop, audit, primer, gate, guard, review',
     '.claude-plugin/marketplace.json: entry repo-docs source ./plugins/loop is not a plugin directory ./plugins/repo-docs',
   ]);
   negative('R219: .claude-plugin/marketplace.json: entry <name> source <source> is not a plugin directory ./plugins/<name>', (dir) => {
@@ -316,12 +324,12 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   negative('R219: plugins/<dir>: no catalog entry', (dir) => {
     editJson(dir, catalog, (c) => { c.plugins = c.plugins.filter((p) => p.name !== 'loop'); });
   }, 1, ['plugins/loop: no catalog entry']);
-  negative('R1: .claude-plugin/marketplace.json: lists <names>; a release catalog lists rules, loop, audit, primer, gate, guard', (dir) => {
-    for (const name of ['rules', 'loop', 'primer', 'gate', 'guard']) setVersion(dir, name, '0.1.0');
+  negative('R1: .claude-plugin/marketplace.json: lists <names>; a release catalog lists rules, loop, audit, primer, gate, guard, review', (dir) => {
+    for (const name of ['rules', 'loop', 'primer', 'gate', 'guard', 'review']) setVersion(dir, name, '0.1.0');
     editJson(dir, catalog, (c) => { c.plugins = c.plugins.filter((p) => p.name !== 'audit'); });
   }, 2, [
     'plugins/audit: no catalog entry',
-    '.claude-plugin/marketplace.json: lists rules, loop, primer, gate, guard; a release catalog lists rules, loop, audit, primer, gate, guard',
+    '.claude-plugin/marketplace.json: lists rules, loop, primer, gate, guard, review; a release catalog lists rules, loop, audit, primer, gate, guard, review',
   ]);
 
   negative('R14: <manifest>: version <v> is not semver', (dir) => {
@@ -424,6 +432,24 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, 'plugins/loop/skills/run/SKILL.md', '  - Bash(date)\n', '  - Bash(date)\n  - Bash(git push *)\n');
     bump(dir, 'loop');
   }, 1, ['plugins/loop/skills/run/SKILL.md: allowed-tools entry Bash(git push *) is not a pre-approved read']);
+
+  const reviewSkill = 'plugins/review/skills/run/SKILL.md';
+  negative('R368: <file>: frontmatter name is <name>, not run (review)', (dir) => {
+    edit(dir, reviewSkill, '\nname: run\n', '\nname: review\n');
+    bump(dir, 'review');
+  }, 1, [`${reviewSkill}: frontmatter name is review, not run`]);
+  negative('R368: <file>: frontmatter name is missing, not run (review)', (dir) => {
+    edit(dir, reviewSkill, '\nname: run\n', '\n');
+    bump(dir, 'review');
+  }, 1, [`${reviewSkill}: frontmatter name is missing, not run`]);
+  negative('R368: <file>: description does not name "reimagine review"', (dir) => {
+    edit(dir, reviewSkill, '"reimagine review"', '"reimagine-review"');
+    bump(dir, 'review');
+  }, 1, [`${reviewSkill}: description does not name "reimagine review"`]);
+  negative('R349: <file>: no ## What leaves the run section (review)', (dir) => {
+    edit(dir, reviewSkill, '## What leaves the run\n', '## What leaves a run\n');
+    bump(dir, 'review');
+  }, 1, [`${reviewSkill}: no ## What leaves the run section`]);
 
   const gateSkill = 'plugins/gate/skills/gate/SKILL.md';
   negative('R288: <file>: frontmatter name is <name>, not gate', (dir) => {
@@ -613,10 +639,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   }, 1, [`${extra}:2: not ASCII`]);
 
   negative('R4: <file>: not the Apache License 2.0 text with Copyright 2026 vibecodedapps.net (root)', (dir) => {
-    for (const path of ['LICENSE', 'plugins/rules/LICENSE', 'plugins/loop/LICENSE', 'plugins/audit/LICENSE', 'plugins/primer/LICENSE', 'plugins/gate/LICENSE', 'plugins/guard/LICENSE']) {
+    for (const path of ['LICENSE', 'plugins/rules/LICENSE', 'plugins/loop/LICENSE', 'plugins/audit/LICENSE', 'plugins/primer/LICENSE', 'plugins/gate/LICENSE', 'plugins/guard/LICENSE', 'plugins/review/LICENSE']) {
       edit(dir, path, 'Copyright 2026 vibecodedapps.net', 'Copyright 2026 someone');
     }
-    for (const name of ['rules', 'loop', 'audit', 'primer', 'gate', 'guard']) settle(dir, name);
+    for (const name of ['rules', 'loop', 'audit', 'primer', 'gate', 'guard', 'review']) settle(dir, name);
   }, 1, ['LICENSE: not the Apache License 2.0 text with Copyright 2026 vibecodedapps.net']);
   negative('R4: <file>: not the Apache License 2.0 text with Copyright 2026 vibecodedapps.net (plugin differs)', (dir) => {
     append(dir, 'plugins/loop/LICENSE', 'x\n');
@@ -716,10 +742,11 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (core.md changes alone)', (dir) => {
     edit(dir, 'plugins/rules/rules/core.md', carried, '- Write what leaves the session for the reader.');
     bump(dir, 'rules');
-  }, 3, [
+  }, 4, [
     'plugins/loop/skills/run/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
     'plugins/gate/skills/gate/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
     'plugins/audit/skills/audit/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
+    'plugins/review/skills/run/SKILL.md: the item under ## What leaves the run is not an item of plugins/rules/rules/core.md',
   ]);
   negative('R349: <file>: the item under ## What leaves the run is not an item of core.md (a copy stops a sentence short)', (dir) => {
     const skill = 'plugins/audit/skills/audit/SKILL.md';

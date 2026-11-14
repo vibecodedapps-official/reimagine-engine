@@ -2,8 +2,8 @@
   "name": "reimagine-engine",
   "owner": { "name": "vibecodedapps.net" },
   "metadata": {
-    "version": "0.1.103",
-    "description": "A suite of Claude Code plugins: house rules, a ticket-to-pull-request loop, a read-only audit of finished pull requests, a review gate, instruction-file maintenance, and auto mode trust for listed repositories."
+    "version": "0.1.104",
+    "description": "A suite of Claude Code plugins: house rules, a ticket-to-pull-request loop, a read-only audit of finished pull requests, a review gate, instruction-file maintenance, auto mode trust for listed repositories, and a review of pull requests someone else wrote."
   },
   "plugins": [
     {
@@ -41,6 +41,12 @@
       "source": "./plugins/guard",
       "description": "Auto mode trust for the repositories you list: the classifier's entries in your user settings file, written by a script when you run /guard, each change shown before it is made.",
       "version": "0.1.3"
+    },
+    {
+      "name": "review",
+      "source": "./plugins/review",
+      "description": "Review a pull request someone else wrote and end in drafted comments for its author and a summary for the person who gates the merge, posted only on a later request, each post approved by name.",
+      "version": "0.1.0"
     }
   ]
 }

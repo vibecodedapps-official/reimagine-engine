@@ -2,7 +2,7 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
-## review 0.1.0 - 2026-11-13
+## review 0.1.0 - 2026-11-14
 
 - A seventh plugin, `review`, for a pull request someone else wrote: `/review:run`, or the prose "reimagine review", ends in drafted comments for the author and a short summary for the person who gates the merge. Run on someone else's pull request, the gate ended `unconverged` because it found something, a failure state for the outcome a review exists for, and the audit's act stage and ticket edits take the branch and the tickets to be the user's.
 - Before any draft the skill searches the siblings of each lead by the shared name alone, reads one hop out from the diff, reads every cited location again at the head, labels every finding and fix `read`, `run` or `not run`, and gives each point a disposition. A list of sites built from one spelling of a name held 15 of 20, the consumers of a changed output sat outside the diff, and the first fix proposed for a blocking finding was wrong until a run showed it. A follow-up reports each earlier item as landed or open and decides conflicts by a trial merge, since a branch the forge showed as free of conflicts had three conflicting files.

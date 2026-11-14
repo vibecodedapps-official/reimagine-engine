@@ -10,7 +10,7 @@ A suite of seven Claude Code plugins, built on three ideas: achieve more with le
 - `guard`: auto mode trust for the repositories you list, the classifier's entries in your user settings file, written by a script when you run `/guard`, each change shown before it is made.
 - `review`: a review of a pull request someone else wrote, ending in drafted comments for its author and a summary for the person who gates the merge, posted only on a later request, each post approved by name.
 
-Status: six plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`; `review` is at 0.1.0 with no tag yet.
+Status: all seven plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`.
 
 ## Requirements
 

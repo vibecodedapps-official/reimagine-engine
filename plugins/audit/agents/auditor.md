@@ -31,6 +31,8 @@ to `Q4` or a custom list.
 - Redirect output only into your scratch folder.
 - Your output file is final once its last line is `status: complete`. If you wake after
   that, end without writing.
+- On the line before your status line, list each read or call you were refused, as
+  `refused: <tool> <path or first line of the command>; ...`, or write `none refused`.
 
 ## Steps
 
@@ -43,7 +45,8 @@ to `Q4` or a custom list.
    and no other id form.
 2. Read `audit-brief.md`: the bundles, the head, base and merge-base shas, the stack
    order, the source order, the tier, and the read path of each tree. Read only the trees
-   the brief maps for you and the run-directory files it names.
+   the brief maps for you and the run-directory files it names. Read each instruction source
+   your prompt names at its path as well.
 3. Read `groups.md`, your scope file and `claims.md`. Your scope is every changed file of
    your group and every claim your scope file lists by number and kind; the claim text
    comes from `claims.md`. Do not search `claims.md` for your scope id: a claim targeted
@@ -130,15 +133,17 @@ A group or `combined` scope runs these on its files in every tree mode, with `gi
 
 ## Top-up mode
 
-A top-up prompt names a digest or map and the group.
+A top-up prompt names a digest or map and the group. Read each instruction source it
+names at its path as well.
 
 1. Apply every rule of the digest, or every answer of the map, to the group's files, not
    only its `potential finding:` lines. Cite the original document or source at its sha.
 2. When the barrier found that the group's report did not consume the current digest or
    map, your output is the group's `pass1/<scope>.md`. Keep every line it holds, drop only
    its final `status: complete` line, and append `## Top-up` naming the digest or map, your
-   findings numbered after the file's highest `<scope>-F<n>`, your `runs:`, and a
-   `consumed:` list with the digest's or map's hash. End with `status: complete`.
+   findings numbered after the file's highest `<scope>-F<n>`, your `runs:`, a
+   `consumed:` list with the digest's or map's hash, and your own refused line. End with
+   `status: complete`.
 3. After a map correction, write `pass2/<scope>-topup.md` as your own file. Number and tag
    each finding as `## Ids and origin tags` says for a map-correction top-up, and list the
    corrected map with its hash under `consumed:`.

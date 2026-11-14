@@ -73,9 +73,9 @@ in split mode as in normal mode.
    with Grep, only to settle a suspected duplicate inside the slice, recording each
    section it opened and why under its own `opened:` heading, apart from `runs:`.
    Each item holds the defect, its sources, each position's severity and label, the
-   disposition, the gate, the absorbed ids and a ledger section pointer, with no
-   `C<n>` id yet, and the `absorbs` and `gate` lines in the forms of step 6. Each
-   file ends with `status: complete`.
+   disposition, the gate, the absorbed ids, every site those ids give for the defect and a
+   ledger section pointer, with no `C<n>` id yet, and the `absorbs` and `gate` lines in
+   the forms of step 6. Each file ends with `status: complete`.
 
 4. Launch the final merger, scope `converged`, scratch folder
    `<run dir>/tmp/agents/7-converged/`, with the paths of

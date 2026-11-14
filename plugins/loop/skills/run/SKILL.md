@@ -135,7 +135,7 @@ Agent calls never use a fork. Every Agent call passes `model` explicitly, and pa
 
 You orchestrate, judge, review each slice diff and decide. You never implement a slice. `.reimagine.json` `models` accepts `implementer`, `reviewer`, `fallback-reviewer` and `reader`, each one of `sonnet`, `opus`, `haiku`, `fable`. It never changes the risk floor or the Step 5 role.
 
-The rules of each role, and the briefs and reply shapes each Agent call carries, are in the step files.
+The rules of each role, and the briefs and reply shapes each Agent call carries, are in the step files. Every brief or request the run sends to an agent names by path each instruction source the session loaded that bears on its question: the user's and the repository's instruction files, and each file a context loader names as its source. It quotes a convention the session holds from no file, such as a table the user gave in the request, since an agent knows only its brief and what the host loads for it. The `code-review` skill takes no request text, so such a convention is applied to its findings at triage.
 
 ## Budgets and rounds
 

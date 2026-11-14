@@ -9,7 +9,10 @@ file says where each part comes from and how the verdict is decided. Inputs:
 `converged.md`, `gate.md`, `ledger/5.md`, `ledger/6.md`, `ledger/7.md`, the `pass1/` and
 `pass2/` files, `claims.md`, `audit-brief.md`, `manifest.json`, `stages.json`,
 `usage.md`, `baseline/*-check.md`, `late/adversary.md`, and the live files
-`live/findings.md`, `live/claims.md` and each `live/carried/<id>.md`, whichever exist.
+`live/findings.md`, `live/claims.md` and each `live/carried/<id>.md`, whichever exist,
+and the refused lines of every other agent output file, a `.pre-topup.md` copy left out,
+found by a search for the lines that start `refused: ` or read `none refused`, never by
+reading those files whole.
 The results files `live/results-<k>.md` that the derived files cite are read for each
 result's text, approver and time; a `result_file` result's text is its copy
 `live/results-<k>/<line>.txt`, hashed in `live/results-<k>/SHA256SUMS`. Outputs:
@@ -120,7 +123,19 @@ result's text, approver and time; a `result_file` result's text is its copy
    - Else `ready to merge`.
 
 6. **Fill the body** in the order of `report.md`, the header as `report.md`, "Body",
-   lays it out, with the `REVIEW.md:` line from the brief. The twelve sections:
+   lays it out, with the `REVIEW.md:` line from the brief. Before the report is written,
+   read the head of each pull request again by stage 1's read (`stages/1-orient.md`,
+   Pull requests) with `headRefOid` as its only `--json` field, its output redirected to
+   `<run dir>/tmp/head-<bundle>.json`, never to a file under `forge/`, and compare its
+   `headRefOid` with the `headRefOid` of `forge/<bundle>/pr.json`, the head stage 1 read,
+   which for a `working-tree` bundle is not the commit step 1c built; a read that fails
+   stops nothing and gives `not read again`, and so does a `file:` pull request, which has
+   no read of a forge to repeat. When a head moved, the header's `heads:` line says so,
+   and every text the orchestrator drafts for a ticket or a pull request, in section 7,
+   in the part of section 8 it writes and in `work-items.jsonl`, names the commit its
+   evidence was checked at, never the newer one; `08-decisions.md` is copied by
+   `report.sh parts` as its entries were written, and the `heads:` line stands for it.
+   The twelve sections:
    1. **Verdict**, from steps 4 and 5, then the `next:` block of step 14.
    2. **Findings by ticket**, as `report.md`, "2. Findings by ticket", says. A
       `provisional` item's missing review comes from its `gate.md` reason, or from the
@@ -156,7 +171,8 @@ result's text, approver and time; a `result_file` result's text is its copy
        - the outward trace from the `pass1/` and `pass2/` files and the stage 4 and 5
          entries; a scope whose trace is `not assessed` is recorded there as
          `outward trace: not assessed`;
-       - the files stage 2 split by byte range, from `split_files`.
+       - the files stage 2 split by byte range, from `split_files`;
+       - the refused calls, from the refused lines of every agent output file.
    12. **Usage**, as `report.md`, "12. Usage", says.
 
    The body is built from part files under `<run dir>/report/parts/`, joined into
@@ -267,7 +283,8 @@ result's text, approver and time; a `result_file` result's text is its copy
     state with `registry.sh set`, as `SKILL.md`, "State files", says. On a refusal or a
     failure, go on by that section's cases: a missing entry or a stale state.
 
-14. **Print and stop,** in plain words: the verdict as a sentence, the absolute path of
+14. **Print and stop,** in plain words: the verdict as a sentence, each head that moved
+    after stage 1 as the header's `heads:` line gives it, the absolute path of
     `report.md`, and the terminal state. For `partial`, say that
     `/audit:resume <run-id>` finishes the missing work and print it, when the run's
     entry is in `runs.json`. When the entry is absent, whatever the state, print the

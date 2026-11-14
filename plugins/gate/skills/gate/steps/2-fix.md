@@ -15,7 +15,7 @@ Every `blocked` ending below records the pass `failed` with its `ended`, the `ch
 The brief is the implementer's whole prompt, one per group:
 
 - The group's findings, each with its file, line, summary, failure scenario and triage reason. The failure scenario comes from the saved review output, the rest from the record.
-- The instruction files to read first, the user's and the repository's. A rule the host loaded for those files binds too.
+- The instruction files to read first, the user's and the repository's, by path, with each file a context loader names as its source and the conventions quoted, as SKILL.md, Approval scope, rule 1, says. A rule the host loaded for those files binds too.
 - The checkout path. Every path in the brief is absolute.
 - The line endings to keep, from `git ls-files --eol` on the group's files: an `eol=` attribute is matched; `text` or `text=auto` with no `eol=` allows any ending; otherwise the majority ending of the file's directory, else of the repository. An implementer never changes the endings of a file it edits.
 - The scope: change nothing outside the group's files, add nothing the findings do not ask for, and report anything else instead of editing it. No git command that writes, no install, no `gh`, and no background command, since one that ends after the call returns wakes the call again.

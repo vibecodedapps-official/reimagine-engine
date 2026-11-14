@@ -30,6 +30,8 @@ Your prompt names `audit-brief.md`, `common.md`, your question list, your output
 - Redirect output only into your scratch folder.
 - Your output file is final once its last line is `status: complete`. If you wake after
   that, end without writing.
+- On the line before your status line, list each read or call you were refused, as
+  `refused: <tool> <path or first line of the command>; ...`, or write `none refused`.
 
 ## Steps
 
@@ -37,7 +39,8 @@ Your prompt names `audit-brief.md`, `common.md`, your question list, your output
    contract` sections hold for the whole task.
 2. Read `audit-brief.md`: your source's name, rank, pinned sha and read path, and the other
    sources of truth with their ranks. Read only the trees the brief maps for you and the
-   run-directory files it names.
+   run-directory files it names. Read each instruction source your prompt names at its
+   path as well.
 3. Read the question list. Keep its ticket order and its ids `<ticket>-M<n>` with their
    group ids.
 4. Answer each question with how the source handles what the ticket changes, cited as a

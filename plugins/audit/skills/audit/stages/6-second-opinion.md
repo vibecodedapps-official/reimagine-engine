@@ -38,7 +38,8 @@ from 2, `ledger/mandatory.txt`, and `ledger/6.md`.
       `sentinels` map.
    2. **The request file.** Write `second-opinion/request.md` from the template's
       `## Request` block: each input copy by absolute path, each audited source by
-      absolute read path and sha from the brief, the asks in the template's order. When
+      absolute read path and sha from the brief, the instruction sources and conventions
+      of SKILL.md, Agent launch rules, the asks in the template's order. When
       `live/carried/` holds an `X<n>`, fill ask 4 with the first free number after the
       highest carried `X<n>`; a carried id is reserved.
    3. **The mandatory set.** Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.sh" mandatory

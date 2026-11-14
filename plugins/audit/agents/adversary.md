@@ -34,6 +34,8 @@ and your scratch folder.
 - Redirect output only into your scratch folder.
 - Your output file is final once its last line is `status: complete`. If you wake after
   that, end without writing.
+- On the line before your status line, list each read or call you were refused, as
+  `refused: <tool> <path or first line of the command>; ...`, or write `none refused`.
 
 ## Steps (pass two)
 
@@ -45,7 +47,8 @@ and your scratch folder.
    `### Leads a finding must clear`, `## Outward trace` and `## Outward trace challenged`
    sections.
 2. Read `audit-brief.md`, then only the trees it maps for you and the run-directory files it
-   names. Read the pass-one report you were given, every `## Top-up` section included.
+   names. Read each instruction source your prompt names at its path as well. Read the
+   pass-one report you were given, every `## Top-up` section included.
 3. For each finding, open every citation at the sha it names and confirm that the quoted
    lines are there and say what the finding says. Look for counter-evidence: callers,
    guards, tests, configuration, the three-dot diff, the ticket and pull request text, and
@@ -85,7 +88,8 @@ and your scratch folder.
 1. Read `common.md`, `audit-evidence.md`, `audit-brief.md`, `ledger/5.md` and `ledger/6.md`,
    and, when your prompt names them, `live/findings.md`, `live/claims.md`, the files under
    `live/carried/`, and in full each result copy `live/results-<k>/<line>.txt`: a result
-   kept as a file is the result itself.
+   kept as a file is the result itself. Read each instruction source your prompt names at
+   its path as well.
 2. Your ids are in the file your prompt names (`tmp/late-ids.txt`, one per line). Challenge
    every one and no other: the late additions (`- origin: pass2`, `- origin: topup`,
    `- origin: second-opinion`), the findings the second opinion asked to restore, and the

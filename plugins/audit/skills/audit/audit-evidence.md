@@ -197,6 +197,13 @@ Every finding is exactly this block:
 The report splits the `live check` field at its semicolons, so the query, the place and
 the results hold no semicolon of their own; outcomes are joined with periods.
 
+A finding that says a defect occurs at more than one site lists in `evidence` every site
+it found, each as a location `repo@sha:path:line`, with the search that found them: the
+shared part of the name searched alone, and each hit classed as a site or not, with the
+reason. Where a cap of `## Outward trace` or the budget cut the search short, the finding
+says the list is partial and how far the search went. A sample, or a word such as
+"several", never stands for the list.
+
 When a `recommended change` adds or moves a documented fact (a rationale, a history note,
 a decision, a how-to, a ticket number), its author first reads the instruction files that
 apply to the target file: the repository's `AGENTS.md` and `CLAUDE.md` and the files they

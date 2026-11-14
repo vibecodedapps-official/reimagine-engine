@@ -53,7 +53,7 @@ restate the finding schema or the output contract.
      that shows it, or `none`;
    - at every tier, `## Claims challenged`, with a line for every `verification` claim the
      report marks true, then `## Decisions challenged` and `## Scope challenged`;
-   - `runs:`, `consumed:`, and a last line `status: complete`.
+   - `runs:`, `consumed:`, the refused line, and a last line `status: complete`.
 
    A finding without a verdict makes the file incomplete, and so does a `verification`
    claim marked true without a line under `## Claims challenged`; both are failures. An

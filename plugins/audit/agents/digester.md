@@ -32,6 +32,8 @@ and the scope's questions.
 - Redirect output only into your scratch folder.
 - Your output file is final once its last line is `status: complete`. If you wake after
   that, end without writing.
+- On the line before your status line, list each read or call you were refused, as
+  `refused: <tool> <path or first line of the command>; ...`, or write `none refused`.
 
 ## Steps
 
@@ -39,7 +41,8 @@ and the scope's questions.
    contract` sections hold for the whole task.
 2. Read `audit-brief.md`: the corpus's name, rank, pinned sha and read path, and the paths
    of `claims.md`, `groups.md` and each `diffs/<bundle>.stat`. Read only the trees the brief
-   maps for you and the run-directory files it names.
+   maps for you and the run-directory files it names. Read each instruction source your
+   prompt names at its path as well.
 3. Read every file of the chunk in full; never sample. List the skipped binary files as the
    chunk file gives them.
 4. A chunk entry `<path> bytes <start>-<end>` (0-based, end exclusive) is a byte range of

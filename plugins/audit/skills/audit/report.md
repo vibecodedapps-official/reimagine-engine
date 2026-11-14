@@ -113,6 +113,7 @@ manifest: <absolute path of <run dir>/manifest.json> (source: <the manifest file
 resume: /audit:resume <run-id>
 tier: <tier> (<reason>)
 bundles: <bundle> <repo> <head sha> against <base> <base sha> (merge-base <sha>), ...
+heads: <bundle> unchanged | <bundle> moved to <sha now>, evidence checked at <head sha> | <bundle> not read again (<reason>), ...
 REVIEW.md: <bundle> <path> at <base sha>, ... | <bundle> none applied at the base | not read[; head-only REVIEW.md not applied: <bundle> <path>, ...][; head change not applied: <bundle> <path>, ...]
 generated: <time>
 ```
@@ -121,6 +122,9 @@ The header carries everything a reader needs to find the record when nothing els
 shown, as in a headless session: the run id, the run directory, the manifest path, the
 terminal state and the resume command. For a `head: working-tree` bundle, `<head sha>` is
 followed by `(working tree on <parent sha>)`, the built commit and the `HEAD` it sits on.
+The `heads:` line gives each bundle's head as stage 8 read it again
+(`stages/8-report.md`, step 6); a bundle that is not a pull request, a `file:` pull
+request, or one whose read failed, is `not read again`, never `unchanged`.
 The `REVIEW.md:` line names each copy applied, read at the bundle's base, or says none
 applied there, or `not read` when `sources_of_truth` replaced the default rank; a copy
 only the head holds, or changes, is named as not applied.
@@ -150,7 +154,8 @@ no `###` or `####` heading. It is part of the body the revision hashes.
 Per ticket, then `unticketed`, then `cross-cutting`, items severity first. Each item sits
 under a heading `#### C<n>: <title>`, which the work-items validator reads. Under it:
 the effective severity, gate, disposition, absorbed ledger ids, the evidence as cited in
-the ledger, what breaks and for whom, and the item's state after each review (pass-two
+the ledger, every site its findings give with the search that found them, or that the
+list is partial and how far the search went, never a sample, what breaks and for whom, and the item's state after each review (pass-two
 verdict, second opinion, late review). A provisional item is marked `provisional` and
 says which review it still lacks, or `held by REVIEW.md: <rule>` beside the gate it
 had. Under each item a `REVIEW.md` rule touches, the rule with its `<path>:<line>`: a
@@ -184,7 +189,8 @@ closing.
 
 ### 6. Code fixes
 
-By repository, then file: each change, with the item ids it resolves.
+By repository, then file: each change, with the item ids it resolves, at every site its
+item gives.
 
 ### 7. Work-item fixes
 
@@ -266,6 +272,10 @@ A run record.
   Neither fails a scope or changes a count.
 - Brief errata: each line of the stage 5 entry's `brief_errata`, as the adversaries
   wrote it.
+- Refused calls: the number of calls on the refused lines of every agent output file, a
+  top-up's included and a `.pre-topup.md` copy left out (`common.md`, "Output contract"),
+  then each distinct call with the agents it was refused to; or `none refused`. An output
+  with no refused line is named. A refused read is something that agent did not see.
 - Outward trace, from the pass files and stage entries, so it shows even when pass two
   failed or never ran: each scope whose trace is `not assessed`; each `not traced:`
   symbol; each entry with result `incomplete`; each entry cut to `(<k> of <n> checked)`,

@@ -1,6 +1,6 @@
 # review
 
-Review a pull request that someone else wrote, or a pair of them, and end in drafted comments for its author and a short summary for the person who gates the merge. Findings listed is a successful end. The review never commits, pushes or edits on the author's branch and writes nothing in the repository it reviews. Posting is a separate request, and each post is approved by name.
+Review a pull request that someone else wrote, or a pair of them, and end in drafted comments for its author and a short summary for the person who gates the merge. Findings listed is a successful end. The review never commits, pushes or edits on the author's branch and writes nothing in the work tree of the repository it reviews. Posting is a separate request, and each post is approved by name.
 
 For your own pull request, use the gate: it fixes what it finds and pushes on your branch.
 

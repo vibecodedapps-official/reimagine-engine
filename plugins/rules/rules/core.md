@@ -24,8 +24,11 @@ pass on an approval the user gave and gives none of its own.
 - Scratch files go in the repo's ignored scratch directory, else the host's scratchpad,
   else outside the repo. When done, list by exact name the files, scripts, worktrees and
   branches you made and which are safe to delete; delete only on my yes.
-- A credential never sits in a file, a scratch file included; it reaches a command
-  through the environment or a tool's own store.
+- A credential never sits in a file, a scratch file included, or in tool output, which
+  the host keeps on disk in the transcript; it reaches a command through the
+  environment or a tool's own store. To see what a secret holds, print its key names
+  and never a value, not even one a filter judged harmless. A query of logs or records
+  selects the fields it needs.
 - Before opening an issue or starting a fix, search for an issue or PR that covers it.
   One symptom per issue; a side finding gets its own, linked.
 - Write what leaves the session for its reader. A pull request says only what its

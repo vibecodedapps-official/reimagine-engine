@@ -73,10 +73,6 @@ test('R117: an Azure DevOps ticket is written as a Refs line, and as a work item
   ]) assert.ok(text.includes(form), `the closing rules lack ${form}`);
 });
 
-test('R215: pr-body.md names the Azure DevOps description cap, 4,000 characters', () => {
-  assert.ok(PR_BODY.includes('4,000 characters'));
-});
-
 test('R126: the CI poll waits with sleep 30 in a background Bash call, since the host blocks a foreground sleep', () => {
   const text = read('ci-watch.md');
   assert.ok(text.includes('`sleep 30`'));

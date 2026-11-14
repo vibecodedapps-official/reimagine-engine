@@ -1,7 +1,7 @@
 <!-- primer -->
 # reimagine-engine
 
-One repository and one marketplace, `reimagine-engine`, holding seven Claude Code plugins that install and work alone: `rules`, `loop`, `audit`, `primer`, `gate`, `guard` and `review`, each under `plugins/<name>/`. `repo-docs` is retired and keeps only its tags and changelog headings. Read `docs/requirements.md` before changing behavior under `plugins/` or `tests/`. Read `docs/architecture.md` before adding or moving a file. Read `docs/acceptance.md` before running or recording an acceptance item. Read `docs/decisions.md` before reversing a design choice.
+One repository and one marketplace, `reimagine-engine`, holding seven Claude Code plugins that install and work alone: `rules`, `loop`, `audit`, `primer`, `gate`, `guard` and `review`, each under `plugins/<name>/`. `repo-docs` is retired and keeps only its tags and changelog headings. Read `docs/requirements.md` before changing behavior under `plugins/` or `tests/`. Read `docs/architecture.md` before adding or moving a file. Read `docs/acceptance.md` before writing, running or recording an acceptance item. Read `docs/decisions.md` before reversing a design choice.
 
 ## Commands
 

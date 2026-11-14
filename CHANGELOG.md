@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.32 - 2026-11-14
+
+- A fourth Tests item says a test of prose written for an agent checks only what the host, a script or another file reads, and that a run or a review checks the rest. A test that asserts a sentence of a skill meets the two items that ask for tests, on literal expected values and on a test for a behavior change, and suites built that way came to pin hundreds of sentences: a cut or a reworded line moved a test, and a pin could not tell a rule that held from one that had only kept its wording. An installed block reads `stale` once.
+
 ## review 0.1.1 - 2026-11-14
 
 - The starting status of the reviewed work tree is saved in a call of its own, whose result is read before the fetch. A run sent the save and the fetch in one message: the save was refused and the fetch ran, so the comparison at the end of that run would not have covered it.

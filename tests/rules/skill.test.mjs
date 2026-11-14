@@ -1,4 +1,4 @@
-// The rules skill's steps and the refactor, handoff prompt and draft skills' files. The skills are text the model follows, so these read the text; the handoff prompt skill's copy of a house-rule item is also compared with core.md, and the chat block's copy of the skill's definition with the skill.
+// The rules, refactor, handoff prompt and draft skills' files: the frontmatter the host reads, the caps, the commands shown, and the copies of an item that two files must hold alike. No case asserts how a sentence is worded (requirement 402).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -7,14 +7,9 @@ import { loadTexts, units } from '../../plugins/rules/scripts/rules.mjs';
 const SKILL = readFileSync(new URL('../../plugins/rules/skills/rules/SKILL.md', import.meta.url), 'utf8');
 
 test('R36: the adopt step passes only the options the user gave, never the plan\'s options line', () => {
-  const line = SKILL.split('\n').find((l) => l.startsWith('- On adopt,'));
-  assert.notEqual(line, undefined);
-  assert.equal(line.includes('options:'), false);
-  assert.equal(line.includes('--adopt'), true);
-});
-
-test('R39: the skill runs each command with the Bash tool, which its allowed-tools pre-approves', () => {
-  assert.ok(SKILL.includes('Run each command with the Bash tool, which the `allowed-tools` line pre-approves.'));
+  const lines = SKILL.split('\n').filter((l) => /rules\.mjs" plan [^`]*--adopt/.test(l));
+  assert.ok(lines.length > 0, 'the skill shows no plan --adopt command');
+  for (const l of lines) assert.equal(l.includes('options:'), false, l);
 });
 
 const REFACTOR_DIR = new URL('../../plugins/rules/skills/refactor/', import.meta.url);
@@ -76,100 +71,8 @@ test('R330: the refactor skill holds no numbered step list', () => {
   assert.deepEqual(numbered, []);
 });
 
-test('R331: refactor launches its reviewers as agents, never as a workflow', () => {
-  assert.ok(readRefactor().includes('with the Agent tool, never as a workflow'));
-});
-
-test('R331: refactor reviews tracked files only', () => {
-  assert.ok(readRefactor().includes('Areas hold tracked files only, as `git ls-files` lists them.'));
-});
-
-test('R331: refactor\'s second pass refutes a finding a test or decision holds, or whose rule does not cover it', () => {
-  assert.ok(readRefactor().includes('launch a fresh read-only subagent at model `sonnet` that tries to refute every one: the case the cited text holds, the caller that uses the option, a test that already holds the case, the repository\'s instruction or recorded decision that permits or chose it, and a quoted rule that does not cover the case when no other item does.'));
-});
-
-test('R331: refactor briefs tell refuters to rest a refutation on the quoted rules and the tree', () => {
-  assert.ok(readRefactor().includes('Its brief also says that a refutation rests on the quoted rules and the tree, never on the refuter\'s own session instructions or environment.'));
-});
-
-test('R331: refactor keeps reviewers and refuters together at most 20 at a time', () => {
-  assert.ok(readRefactor().includes('The run\'s reviewers and refuters together stay at most 20 at a time because the host refuses more'));
-});
-
-test('R332: refactor bundles only recommended findings that quote a rule', () => {
-  assert.ok(readRefactor().includes('Group the surviving recommended findings that quote a rule into bundles.'));
-});
-
-test('R331: refactor recommends by the core.md item and quotes no rule', () => {
-  assert.ok(readRefactor().includes('by the `core.md` item on finding issues and proposing changes'));
-});
-
-test('R333: refactor names each ticket file from the clock in a fixed format', () => {
-  assert.ok(readRefactor().includes('Name each ticket file `refactor-<time>-<n>.md`, where `<time>` is the output of `date -u +%Y%m%d-%H%M%S`, which may prompt once, and `<n>` is the bundle\'s number, so no earlier run\'s ticket has its path.'));
-});
-
-test('R333: refactor checks the scratch directory with a trailing slash', () => {
-  assert.ok(readRefactor().includes('checked with `git check-ignore` on its path with a trailing slash'));
-});
-
-test('R333: refactor keeps each reviewer brief in the prompt, never in a file', () => {
-  assert.ok(readRefactor().includes('Each brief goes in the Agent prompt, never in a file.'));
-});
-
-test('R333: refactor asks its one question only when there is a bundle', () => {
-  assert.ok(readRefactor().includes('When the report has at least one bundle, ask one question: write the ticket files to the ticket directory, naming it.'));
-});
-
-test('R333: refactor finds the ticket directory before launching any subagent and asks after the report', () => {
-  const text = readRefactor();
-  const check = text.indexOf('checked with `git check-ignore` on its path with a trailing slash');
-  const launch = text.indexOf('Launch one read-only subagent');
-  const question = text.indexOf('ask one question: write the ticket files to the ticket directory, naming it.');
-  assert.notEqual(check, -1);
-  assert.notEqual(launch, -1);
-  assert.notEqual(question, -1);
-  assert.ok(check < launch);
-  assert.ok(launch < question);
-});
-
-test('R332: refactor keeps a finding whose change is to an instruction file out of the bundles', () => {
-  assert.ok(readRefactor().includes('A finding whose change is to an instruction file names `/primer` and stays out of the bundles.'));
-});
-
-test('R332: each refactor finding gives what the change costs', () => {
-  assert.ok(readRefactor().includes('- what the change costs'));
-});
-
-test('R331: refactor reads imported and nested instruction files', () => {
-  assert.ok(readRefactor().includes('nested `CLAUDE.md` and `AGENTS.md` files, the files they import,'));
-});
-
-test('R331: refactor treats a sentence the tree contradicts throughout as a disagreement, never a note', () => {
-  assert.ok(readRefactor().includes('A sentence the tree contradicts throughout, across many files, is such a disagreement, never a note.'));
-});
-
-test('R331: refactor rests no finding or note on the reviewing session\'s own instructions, settings or environment', () => {
-  assert.ok(readRefactor().includes('The reviewing session\'s own instructions, settings and environment are not a source: no finding or note rests on them.'));
-});
-
-test('R331: refactor briefs tell reviewers to rest findings on the quoted rules and the tree', () => {
-  assert.ok(readRefactor().includes('It also says that a finding rests on the quoted rules and the tree, never on the reviewer\'s own session instructions or environment, and that an instruction-file sentence the tree contradicts is a finding for `/primer`, not a note.'));
-});
-
-test('R332: a refactor bundle holds one area with its tests and a separately released part is its own bundle naming its release', () => {
-  assert.ok(readRefactor().includes('A bundle is one cohesive refactor sized for one loop run: it holds the files of one area and the tests of that area, and a change to a part the repository versions and releases on its own is its own bundle that names the release it needs.'));
-});
-
-test('R332: a refactor ticket holds the release it needs when the bundle names one', () => {
-  assert.ok(readRefactor().includes('the done condition; the release it needs, when the bundle names one; and the repository\'s checks by command, taken from its instruction files or manifest.'));
-});
-
-test('R330: refactor runs each git read with the Bash tool, before its first git read', () => {
-  const text = readRefactor();
-  const sentence = text.indexOf('Run each `git` read with the Bash tool. The `allowed-tools` list pre-approves the reads no option of which writes a file or runs a program;');
-  assert.notEqual(sentence, -1);
-  assert.ok(sentence < text.indexOf('`git check-ignore`'));
-  assert.equal(text.includes('PowerShell'), false);
+test('R330: the refactor skill names no PowerShell tool', () => {
+  assert.equal(readRefactor().includes('PowerShell'), false);
 });
 
 const HANDOFF_DIR = new URL('../../plugins/rules/skills/handoff-prompt/', import.meta.url);
@@ -218,57 +121,43 @@ test('R347: the handoff-prompt skill holds no numbered step list', () => {
   assert.deepEqual(numbered, []);
 });
 
-test('R347: the definition section holds the handoff prompt item, then the agent-prose item as core.md has it', () => {
-  const prose = units(loadTexts()['core.md']).list.find((u) => u.kind === 'item' && u.norm.startsWith('Prose written for an agent'));
-  assert.notEqual(prose, undefined);
+function definitionItems() {
   const lines = readHandoff().split(/\r?\n/);
   const start = lines.indexOf('## The definition');
   const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
   assert.ok(start >= 0 && end > start, 'the definition section has a start and an end');
-  const items = lines.slice(start + 1, end).filter((l) => l.startsWith('- '));
+  return lines.slice(start + 1, end).filter((l) => l.startsWith('- '));
+}
+
+test('R347: the definition section holds two items, the second the last item of the Code section of core.md as core.md has it', () => {
+  const text = loadTexts()['core.md'];
+  const lines = text.split(/\r?\n/);
+  const start = lines.indexOf('## Code');
+  const end = lines.findIndex((l, i) => i > start && l.startsWith('## '));
+  assert.ok(start >= 0 && end > start, 'core.md has no Code section');
+  const code = units(text).list.filter((u) => u.kind === 'item' && u.a > start && u.a < end).map((u) => `- ${u.norm}`);
+  assert.ok(code.length > 0, 'the Code section holds no item');
+  const items = definitionItems();
   assert.equal(items.length, 2);
-  assert.ok(items[0].startsWith('- A handoff prompt carries work to a later session:'));
-  assert.equal(items[1], `- ${prose.norm}`);
+  assert.equal(code.includes(items[0]), false);
+  assert.equal(items[1], code[code.length - 1], 'the second item is not the last item of the Code section of core.md');
 });
 
-test('R346: the chat block carries the handoff prompt item as the skill words it, as the last line of Content', () => {
-  const item = readHandoff().split(/\r?\n/).find((l) => l.startsWith('- A handoff prompt carries work to a later session:'));
-  assert.notEqual(item, undefined);
+test('R346: the chat block carries the first item of the definition as the skill words it, as the last line of the block\'s first list', () => {
   const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1].split(/\r?\n/);
-  assert.equal(fenced[fenced.indexOf('Leave out.') - 2], item);
+  const line = definitionItems()[0];
+  assert.equal(fenced.filter((l) => l === line).length, 1);
+  const first = fenced.findIndex((l) => l.startsWith('- '));
+  assert.ok(first >= 0, 'the block holds no list');
+  const after = fenced.findIndex((l, i) => i > first && !l.startsWith('- '));
+  assert.ok(after > first, 'the first list has no end');
+  assert.equal(fenced[after - 1], line);
 });
 
 test('R347: the handoff-prompt skill asks for no read of the plugin\'s files', () => {
   const text = readHandoff();
   assert.equal(text.includes('core.md'), false);
   assert.equal(text.includes('CLAUDE_PLUGIN_ROOT'), false);
-});
-
-test('R347: the handoff-prompt skill sends an idea as the idea, marked as not worked out', () => {
-  assert.ok(readHandoff().includes('An idea goes as the idea in the user\'s words, with why it came up and what is known, and says it is not worked out; it gains no option, plan or answer.'));
-});
-
-test('R347: the handoff-prompt skill suggests nothing and asks nothing of anyone else', () => {
-  assert.ok(readHandoff().includes('An unsettled item is an open question for the user, never an ask of anyone else and never a suggested answer.'));
-});
-
-test('R347: the handoff-prompt skill writes for a receiver that has nothing of this session', () => {
-  assert.ok(readHandoff().includes('The receiver has nothing of this session. Unless the user names another, it is a Claude Code session: name the repository, branch, commit and the files worth reading.'));
-});
-
-test('R347: the handoff-prompt skill keeps both kinds of handoff no more specific than the user was', () => {
-  assert.ok(readHandoff().includes('Both stay no more specific than the user was.'));
-});
-
-test('R347: the handoff-prompt skill sends a summary with what was settled, its facts and the open questions', () => {
-  assert.ok(readHandoff().includes('A summary carries what was settled, the facts it rests on with when and how each was checked, and the open questions for the user.'));
-});
-
-test('R347: the handoff-prompt skill gives the prompt in one fenced block, writes no file, and adds one line after it', () => {
-  const text = readHandoff();
-  assert.ok(text.includes('Give the prompt in one fenced block for pasting.'));
-  assert.ok(text.includes('Write no file.'));
-  assert.ok(text.includes('After the block, add one line on what was left out on purpose or is unverified.'));
 });
 
 const DRAFT_DIR = new URL('../../plugins/rules/skills/draft/', import.meta.url);
@@ -323,29 +212,9 @@ test('R363: the draft skill asks for no read of the plugin\'s files', () => {
   assert.equal(text.includes('CLAUDE_PLUGIN_ROOT'), false);
 });
 
-test('R364: the draft skill strikes and verifies, adds no detail and launches no agent', () => {
-  const text = readDraft();
-  assert.ok(text.includes('The check strikes and verifies. It never adds detail.'));
-  assert.ok(text.includes('Run it yourself and launch no agent for it, since verifying needs what this session did.'));
-});
-
-test('R365: the draft skill keeps an email draft as one HTML file and no draft in two formats', () => {
-  const text = readDraft();
-  assert.ok(text.includes('An email draft is one HTML file in the scratch directory the house rules name'));
-  assert.ok(text.includes('No draft is kept in two formats.'));
-});
-
-test('R366: the style names the draft skill in one sentence and the chat block does not', () => {
+test('R366: the style names the draft skill on one line and the chat block does not', () => {
   const style = readFileSync(new URL('../../plugins/rules/output-styles/concise-plain.md', import.meta.url), 'utf8');
-  assert.deepEqual(style.split(/\r?\n/).filter((l) => l.includes('draft` skill')), ['Check it with the `rules:draft` skill before it is first shown.']);
+  assert.equal(style.split(/\r?\n/).filter((l) => l.includes('`rules:draft` skill')).length, 1);
   const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1];
   assert.equal(/rules:draft|draft`? skill/.test(fenced), false);
-});
-
-test('R366: the chat block keeps the sentence the style cut to pay for the one naming the skill', () => {
-  const cut = "Don't present a settled choice as a question, or a proposal as agreed.";
-  const style = readFileSync(new URL('../../plugins/rules/output-styles/concise-plain.md', import.meta.url), 'utf8');
-  assert.equal(style.includes(cut), false);
-  const fenced = readFileSync(new URL('../../plugins/rules/chat/instructions.md', import.meta.url), 'utf8').split('```')[1];
-  assert.ok(fenced.includes(cut));
 });

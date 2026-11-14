@@ -7,6 +7,8 @@ disable-model-invocation: true
 
 Done when the tag `<plugin>--v<version>` exists on the remote, `CHANGELOG.md` has the heading for it, and `docs/acceptance.md` records the eval scores.
 
+One pull request per plugin carries a run of related work, its fixes as separate commits, with one version and one tag. A fix users need at once ships alone, and a pull request too large to review is split. A change that needs several plugins at once is one pull request, with one version and one tag for each. For such a change, steps 1, 2 and 5 run once for each plugin, step 4's one eval run covers them all, step 6 is one commit that names each plugin and its version, and the release is done when every tag exists.
+
 1. Bump: `node tools/release.mjs <plugin> <version>`. The output lists the edited paths, with the catalog's own `metadata.version` raised by one, and ends with `lint: ok`.
 2. Commit the bump on the change's branch, staging those paths and step 1's edits only. Add `## <plugin> <version> - <YYYY-MM-DD>` to `CHANGELOG.md` with the release notes and commit it as `docs(changelog): add the <plugin> <version> heading`.
 3. After a yes, push the branch; after another, open the pull request. The owner merges it; CI is green on the merge commit before the next step.

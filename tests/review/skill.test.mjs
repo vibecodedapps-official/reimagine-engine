@@ -86,10 +86,10 @@ test('R368: the plugin ships its manifest, LICENSE, README, the skill and its th
 });
 
 test('R349: ## What leaves the run holds one item, the core.md item with its lines joined', () => {
-  const item = CORE.split('\n- ').map((s) => s.split('\n\n')[0].replace(/\s+/g, ' ').trim()).find((s) => s.startsWith('Write what leaves the session'));
-  assert.notEqual(item, undefined, 'core.md holds no such item');
+  const core = CORE.split('\n- ').slice(1).map((s) => `- ${s.split('\n\n')[0].replace(/\s+/g, ' ').trim()}`);
   const items = section(SKILL, 'What leaves the run').filter((l) => /^\s*(?:[-*+]|\d+[.)])\s/.test(l));
-  assert.deepEqual(items, [`- ${item}`]);
+  assert.equal(items.length, 1);
+  assert.ok(core.includes(items[0]), `${items[0]} is not an item of core.md`);
 });
 
 test('R219: SKILL.md names each mode file and the script under ## Supporting files, and each exists', () => {
@@ -106,8 +106,7 @@ test('R371: no file of the skill starts a child session or shows a child allow-l
 });
 
 test('R370: every git command a mode file shows carries the hooks path and long paths, through git <c>', () => {
-  const block = SKILL.split('\n').find((l) => l.includes('shown below as `git <c>`'));
-  assert.ok(block?.includes('`-c core.hooksPath="<record>/hooks" -c core.longpaths=true -c filter.lfs.smudge= -c filter.lfs.process= -c filter.lfs.required=false`'), 'SKILL.md does not define git <c>');
+  assert.ok(SKILL.includes('`-c core.hooksPath="<record>/hooks" -c core.longpaths=true -c filter.lfs.smudge= -c filter.lfs.process= -c filter.lfs.required=false`'), 'SKILL.md does not define git <c>');
   for (const rel of ['SKILL.md', 'first.md', 'follow-up.md', 'post.md']) {
     for (const span of [...read(rel).matchAll(/`(git [^`]*)`/g)].map((m) => m[1])) {
       if (/^git (<c>|status --porcelain --ignored|remote -v)$/.test(span)) continue;

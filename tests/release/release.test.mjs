@@ -148,13 +148,9 @@ test('R221: audit 0.1.0 also sets the plugin_version literals', () => {
     ' M plugins/audit/skills/audit/resume.md',
     ' M plugins/audit/skills/audit/stages/1-orient.md',
   ]);
-  for (const [path, line] of [
-    [skill, '  "plugin_version": "0.1.0",'],
-    [resume, '   - `plugin_version`, compared with the literal `"0.1.0"`; any other recorded value'],
-    [orient, '      `mv -f`, with `plugin_version` `0.1.0`, empty `approvals`, and a stage 1 entry'],
-  ]) {
+  for (const path of [skill, resume, orient]) {
     const held = read(dir, path).split('\n');
-    assert.equal(held.filter((l) => l === line).length, 1, `${path} does not hold the line ${line} exactly once`);
+    assert.ok(held.some((l) => l.includes('plugin_version') && /(^|[^0-9.])0\.1\.0([^0-9.-]|$)/.test(l)), `${path} holds no plugin_version literal 0.1.0`);
     assert.deepEqual(held.filter((l) => l.includes('0.1.0-alpha.1')), [], `${path} still holds the old version 0.1.0-alpha.1`);
   }
 });

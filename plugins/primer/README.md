@@ -81,7 +81,7 @@ The fold-back review in `maintain` checks each logged item's evidence, then its 
 
 ## Reach hook
 
-Before Claude Code edits a file in a repository other than the one the session started in, the hook tells it, once per repository and session, what it has not loaded there: the layers of a `local` repository, or the paths of the root instruction files and unscoped rules of any other. It records each repository in a file per session under the plugin's data directory. An edit in the session's own repository costs one Node start and no `git` call. It never blocks an edit, and where `node` is missing the edit goes through.
+Before Claude Code edits a file in a repository other than the one the session started in, the hook tells it, once per repository and session, what it has not loaded there: the paths of the repository's root instruction files and unscoped rules, and the layers of a `local` repository, less the ones a session that started in a `local` repository already holds. A file under the configuration directory is never answered. It records each repository in a file per session under the plugin's data directory. An edit in the session's own repository costs one Node start and no `git` call. It never blocks an edit, and where `node` is missing the edit goes through.
 
 ## Local profile
 

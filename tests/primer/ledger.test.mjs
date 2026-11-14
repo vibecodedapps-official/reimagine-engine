@@ -81,7 +81,8 @@ describe('ledger', () => {
     assert.deepEqual(out(cfg, '--worked', 'L2', '2026-11-03.md'), [1, 'primer: L2 is open; only a folded rule can have worked\n']);
     assert.equal(out(cfg, '--set', 'L2', 'superseded', '--by', 'L1')[1].split('\n')[1], '~ L2 superseded by L1, seen 1: A second gap. (2026-11-03.md)');
     assert.deepEqual(out(cfg, '--seen', 'L2', '2026-11-01.md'), [1, 'primer: L2 is superseded by L1; record it there\n']);
-    assert.deepEqual(out(cfg), [0, [`ledger: ${cfg.ledger}`, `L1 folded in ${slash(place)}, seen 2, failed 1, worked 1: A commit named a tool. (2026-11-01.md, 2026-11-02.md)`,
+    assert.deepEqual(out(cfg, '--set', 'L1', 'superseded', '--by', 'L2'), [1, 'primer: L2 is superseded by L1; name an item that is not superseded\n']);
+    assert.deepEqual(out(cfg), [0, [`ledger: ${cfg.ledger}`, `L1 folded in ${slash(place)}, seen 3, failed 1, worked 1: A commit named a tool. (2026-11-01.md, 2026-11-02.md, 2026-11-03.md)`,
       'L2 superseded by L1, seen 1: A second gap. (2026-11-03.md)', ''].join('\n')]);
   });
 

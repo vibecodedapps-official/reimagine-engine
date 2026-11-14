@@ -75,8 +75,12 @@ export function main(argv, { env = process.env, home = homedir(), cwd = process.
     if (Object.keys(o).some((k) => !allowed.includes(k)) || (status === 'folded' && !o['--place']) || (status === 'superseded' && !o['--by'])) refuse(FORMS);
     Object.assign(x, { status, place: null, commit: null, by: null });
     if (status === 'superseded') {
-      if (item(o['--by']).id === x.id) refuse(`${x.id} cannot supersede itself`);
-      x.by = o['--by'];
+      const to = item(o['--by']);
+      if (to.id === x.id) refuse(`${x.id} cannot supersede itself`);
+      if (to.status === 'superseded') refuse(`${to.id} is superseded by ${to.by}; name an item that is not superseded`);
+      // The two state one gap, so the item that stays counts the logs of the one it replaces.
+      for (const l of x.logs) if (!to.logs.includes(l)) { to.logs.push(l); to.seen++; }
+      x.by = to.id;
     }
     if (status === 'folded') {
       const place = resolve(cwd, o['--place']);

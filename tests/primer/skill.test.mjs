@@ -151,7 +151,7 @@ test('R392 and R394: a proposal searches first, is measured, and names the cut t
 
 test('R397 to R399: the fold-back review reads the logs, runs two passes, ends in one pick and records the ledger', () => {
   assert.ok(SKILL.includes('2. Evidence pass: check each item\'s evidence and challenge it. Drop what the files contradict and what names a section that does not exist; an item a loaded rule already states is a miss. Mark each claim verified or unverified, with its check: read at the source, run, or neither.'));
-  assert.ok(SKILL.includes('3. Worth pass: judge worth, placement by `placement.md`, and wording, and settle items that touch the same lines as one. Write each edit now, against the files as they are, never copied from the log.'));
+  assert.ok(SKILL.includes('3. Worth pass: judge worth, placement by `placement.md`, and wording, and settle items that touch the same lines as one. Draft each edit now, against the files as they are, never copied from the log; nothing is written before the answer of step 6.'));
   assert.ok(SKILL.includes('One that matches a folded rule is that rule\'s failure: propose to reword the rule, move it or propose a hook, never to state it twice.'));
   assert.ok(SKILL.includes('then what it holds and what it rejects, each with its reason, and asks once with the rest. An item for the house rules or another plugin is written by its kind, with no person, id or path.'));
   assert.ok(SKILL.includes('`node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs"`'));

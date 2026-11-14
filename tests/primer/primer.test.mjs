@@ -399,6 +399,45 @@ describe('reach', () => {
     assert.equal(edit(data, join(site, 'x.ipynb'), { id: 's3', tool: 'NotebookEdit' }).stdout, said(`${lead(site)} instruction files: ${files(site)}`));
   });
 
+  test('a session that started in a local repository gets the group layer of another alone, and nothing where the two share a group', () => {
+    const home = (group) => config(local({ repos: [...local().repos, { remotes: ['example.invalid/team/session'], path: 'unused', group, profile: 'local', own: null }] }),
+      { shared: SHARED, group: GROUP, machine: MACHINE });
+    const other = home('home'), same = home('app');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(app, 'src', 'new.ts'), { extraEnv: { CLAUDE_CONFIG_DIR: other.dir } }).stdout,
+      said(`${lead(app)} context, which follows.\n\n${part('group', join(other.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')}`));
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(app, 'src', 'new.ts'), { extraEnv: { CLAUDE_CONFIG_DIR: same.dir } }).stdout, '');
+  });
+
+  test('a local repository\'s own instruction files are named before its layers', () => {
+    write(app, 'CLAUDE.md', '# App\n');
+    const r = edit(join(base, `reach-data-${++seq}`), join(app, 'src', 'new.ts'));
+    rmSync(join(app, 'CLAUDE.md'));
+    assert.equal(r.stdout, said(`${lead(app)} instruction files: ${slash(app)}/CLAUDE.md; nor its context, which follows.\n\n`
+      + part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')));
+  });
+
+  test('a file under the configuration directory prints nothing, though that directory is a repository with a hub', () => {
+    const dir = repo(`reach-config-${++seq}`);
+    write(dir, 'CLAUDE.md', '# Mine\n');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(dir, 'feedback', '2026-11-14.md'), { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout, '');
+  });
+
+  test('a data directory that is not an absolute path is not written to', () => {
+    const r = run(['reach', 'reldata'], { cwd: session, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir, CLAUDE_PROJECT_DIR: session },
+      input: JSON.stringify({ session_id: 's1', cwd: session, tool_input: { file_path: join(site, 'README.md') } }) });
+    assert.equal(r.stdout, said(`${lead(site)} instruction files: ${files(site)}`));
+    assert.equal(existsSync(join(session, 'reldata')), false);
+  });
+
+  test('a map that cannot be read leaves the repository unrecorded, so the next edit is answered', () => {
+    const bad = config(local()), data = join(base, `reach-data-${++seq}`), at = { extraEnv: { CLAUDE_CONFIG_DIR: bad.dir } };
+    writeFileSync(join(bad.store, 'map.json'), '{');
+    assert.equal(edit(data, join(site, 'README.md'), at).stdout, '');
+    assert.equal(existsSync(join(data, 'reach', 's1')), false);
+    writeFileSync(join(bad.store, 'map.json'), JSON.stringify(local()));
+    assert.equal(edit(data, join(site, 'README.md'), at).stdout, said(`${lead(site)} instruction files: ${files(site)}`));
+  });
+
   test('an edit in the session\'s own repository, its worktree or outside any repository prints nothing', () => {
     const data = join(base, `reach-data-${++seq}`);
     git(session, 'worktree', 'add', '-q', join(base, 'reach-session-wt'));

@@ -254,24 +254,28 @@ function instructionsOf(top) {
   return [...names.filter((f) => existsSync(join(top, f))), ...rules.sort()].map((f) => `${top}/${f}`);
 }
 
-// The first edit of a session in a repository other than its own: that repository's layers when it is mapped local, else the paths
-// of its root instruction files and unscoped rules. The repository is recorded in <data>/reach/<session>, so a later edit is silent.
+// The first edit of a session in a repository other than its own: the paths of its root instruction files and unscoped rules, and
+// its layers when it is mapped local. The repository is recorded in <data>/reach/<session>, so a later edit is silent.
 function reach(c, data, input) {
   const path = input.tool_input?.file_path ?? input.tool_input?.notebook_path, cwd = isDir(input.cwd) ? input.cwd : c.cwd;
   if (typeof path !== 'string' || !path) return [];
-  const top = topOf(c, dirname(resolve(cwd, path))), own = topOf(c, c.env.CLAUDE_PROJECT_DIR || cwd), k = (p) => keyOf(p, c.platform);
-  if (!top || (own && k(top) === k(own))) return [];
-  const log = data && typeof input.session_id === 'string' && GROUP.test(input.session_id) ? join(data, 'reach', input.session_id) : null;
+  const file = resolve(cwd, path), top = topOf(c, dirname(file)), own = topOf(c, c.env.CLAUDE_PROJECT_DIR || cwd), k = (p) => keyOf(p, c.platform);
+  // The host loads the user's own instruction files in every session, so a file under <config> is never another repository's.
+  if (!top || (own && k(top) === k(own)) || `${k(file)}/`.startsWith(`${k(configOf(c, input))}/`)) return [];
+  const log = data && isAbsolute(data) && typeof input.session_id === 'string' && GROUP.test(input.session_id) ? join(data, 'reach', input.session_id) : null;
   if (log && readText(log).split('\n').includes(k(top))) return [];
   const deadline = Date.now() + c.limit, repo = repoOf(c, top, deadline), mine = own && repoOf(c, own, deadline);
   if (!repo) return [];
+  const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf), map = p && loadMap(p.map);
   if (log) { mkdirSync(dirname(log), { recursive: true }); appendFileSync(log, `${k(top)}\n`); }
   if (mine && k(mine.root) === k(repo.root)) return [];
-  const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf), entry = p && match(loadMap(p.map), repo, c.platform);
+  const entry = map && match(map, repo, c.platform), home = map && mine && match(map, mine, c.platform);
+  // A session that started in a local repository holds the shared and machine layers, and the group's where the two share one.
+  const held = (x) => home?.profile === 'local' && (x.name !== 'group' || home.group === entry.group);
+  const layers = entry?.profile === 'local' && joined(layersOf(p, entry).filter((x) => !held(x))), files = instructionsOf(repo.top);
+  const text = [files.length && `instruction files: ${files.join(', ')}`, layers && `context, which follows.\n\n${layers}`].filter(Boolean).join('; nor its ');
   const lead = `primer: ${repo.top} is in a repository other than the one this session started in, and the session has not loaded its`;
-  const layers = entry?.profile === 'local' && joined(layersOf(p, entry)), files = entry?.profile === 'local' ? [] : instructionsOf(repo.top);
-  const text = layers ? `${lead} context, which follows.\n\n${layers}` : files.length ? `${lead} instruction files: ${files.join(', ')}` : null;
-  return text ? [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: text } })] : [];
+  return text ? [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: `${lead} ${text}` } })] : [];
 }
 
 // Writes beside the target, then renames over it; on Windows a rename that fails is retried once after a short wait.

@@ -219,7 +219,119 @@ describe('status', () => {
 
   test('status takes no arguments, and an unknown verb is refused', () => {
     assert.deepEqual([run(['status', 'x']).status, run(['status', 'x']).stdout], [1, 'primer: status takes no arguments\n']);
-    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, staged, reach, status, measure or map\n']);
+    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, staged, reach, status, measure, map or copies\n']);
+  });
+});
+
+describe('copies', () => {
+  const SOURCE = 'Rule one.\nRule two.\nRule three.\n';
+  const DIFF = ['  @@ -1,3 +1,3 @@', '   Rule one.', '  -Rule two.', '  +Rule two, reworded.', '   Rule three.'];
+
+  test('a declared copy reads source changed with the diff, then both changed, then current after a port', () => {
+    const cfg = config(local(), { shared: SOURCE });
+    const home = env.HOME, n = ++seq, copy = join(home, `notes-${n}`, 'copy.md'), held = `~/notes-${n}/copy.md`;
+    write(home, `notes-${n}/copy.md`, 'Rule two.\nRule three.\n');
+    const record = join(cfg.store, 'copies.json'), snap = join(cfg.store, 'copies', 'C1');
+    const plain = join(base, `copies-plain-${n}`);
+    mkdirSync(plain);
+    const c = (...args) => { const r = run(['copies', ...args], { cwd: plain, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }); return [r.status, r.stdout]; };
+    const copies = () => run(['status'], { cwd: plain, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n').slice(4).join('\n');
+    assert.deepEqual(c('--add', copy, join(cfg.store, 'shared.md')), [0, `primer: wrote ${record} and ${snap}\n+ copy C1 ${held} of shared.md: current\n`]);
+    assert.deepEqual(JSON.parse(readFileSync(record, 'utf8')),
+      { version: 1, copies: [{ id: 'C1', copy: held, source: 'shared.md', digest: '2653f590b6602e544df15d93833729bcf89f6a1cc060f87fd8fb876ec264c303' }] });
+    assert.equal(readFileSync(snap, 'utf8'), SOURCE);
+    assert.equal(copies(), `copy C1 ${held} of shared.md: current\n`);
+
+    write(cfg.store, 'shared.md', 'Rule one.\nRule two, reworded.\nRule three.\n');
+    assert.equal(copies(), [`copy C1 ${held} of shared.md: source changed`, ...DIFF, ''].join('\n'));
+    write(home, `notes-${n}/copy.md`, 'Rule two, reworded.\nRule three.\n');
+    assert.equal(copies(), [`copy C1 ${held} of shared.md: both changed`, ...DIFF, ''].join('\n'));
+    assert.deepEqual(c('--ported', copy), [0, `primer: wrote ${record} and ${snap}\n~ copy C1 ${held} of shared.md: current\n`]);
+    assert.equal(copies(), `copy C1 ${held} of shared.md: current\n`);
+    assert.deepEqual(c(), [0, `copies: ${record} (1 declared)\ncopy C1 ${held} of shared.md: current\n`]);
+
+    write(home, `notes-${n}/copy.md`, 'Rule two.\n');
+    assert.deepEqual(c(), [0, `copies: ${record} (1 declared)\ncopy C1 ${held} of shared.md: copy changed\n`]);
+    rmSync(copy);
+    assert.deepEqual(c(), [0, `copies: ${record} (1 declared)\ncopy C1 ${held} of shared.md: copy changed, ${held} is missing\n`]);
+  });
+
+  test('a copy outside the store and the home directory is held by its absolute path', () => {
+    const cfg = config(local(), { shared: SOURCE });
+    const copy = join(base, `loose-copy-${++seq}.md`);
+    writeFileSync(copy, 'Rule one.\n');
+    const r = run(['copies', '--add', copy, join(cfg.store, 'shared.md')], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.equal(r.stdout.split('\n')[1], `+ copy C1 ${slash(copy)} of shared.md: current`);
+  });
+
+  test('a snapshot that is missing is named, and no diff is shown', () => {
+    const cfg = config(local(), { shared: SOURCE });
+    const copy = join(base, `loose-copy-${++seq}.md`), at = { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };
+    writeFileSync(copy, 'Rule one.\n');
+    assert.equal(run(['copies', '--add', copy, join(cfg.store, 'shared.md')], at).status, 0);
+    rmSync(join(cfg.store, 'copies', 'C1'));
+    assert.equal(run(['copies'], at).stdout, `copies: ${join(cfg.store, 'copies.json')} (1 declared)\ncopy C1 ${slash(copy)} of shared.md: source changed, the snapshot copies/C1 is missing\n`);
+  });
+
+  test('--ported takes a path, else a copy as status prints it, and refuses a copy that cannot be read', () => {
+    const cfg = config(local(), { shared: SOURCE, group: GROUP });
+    const plain = join(base, `copies-plain-${++seq}`), at = { cwd: plain, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };
+    mkdirSync(plain);
+    assert.equal(run(['copies', '--add', join(cfg.store, 'groups', 'app.md'), join(cfg.store, 'shared.md')], at).stdout.split('\n')[1], '+ copy C1 groups/app.md of shared.md: current');
+    write(cfg.store, 'shared.md', 'Rule one.\nRule two, reworded.\nRule three.\n');
+    assert.equal(run(['copies', '--ported', 'groups/app.md'], at).stdout,
+      `primer: wrote ${join(cfg.store, 'copies.json')} and ${join(cfg.store, 'copies', 'C1')}\n~ copy C1 groups/app.md of shared.md: current\n`);
+    rmSync(join(cfg.store, 'groups', 'app.md'));
+    assert.equal(run(['copies', '--ported', 'groups/app.md'], at).stdout, `primer: ${join(cfg.store, 'groups', 'app.md')} cannot be read\n`);
+    write(plain, 'groups/app.md', 'Rule one.\n');
+    assert.equal(run(['copies', '--add', join(plain, 'groups', 'app.md'), join(cfg.store, 'shared.md')], at).stdout.split('\n')[1], `+ copy C2 ${slash(join(plain, 'groups', 'app.md'))} of shared.md: current`);
+    assert.equal(run(['copies', '--ported', 'groups/app.md'], at).stdout.split('\n')[1], `~ copy C2 ${slash(join(plain, 'groups', 'app.md'))} of shared.md: current`);
+  });
+
+  test('each form copies does not take is refused with one line and writes nothing', () => {
+    const cfg = config(local(), { shared: SOURCE, group: GROUP });
+    const shared = join(cfg.store, 'shared.md'), group = join(cfg.store, 'groups', 'app.md'), record = join(cfg.store, 'copies.json');
+    const c = (...args) => { const r = run(['copies', ...args], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }); return [r.status, r.stdout]; };
+    const forms = 'primer: copies takes nothing, --add <copy> <source>, --ported <copy> or --spans\n';
+    assert.deepEqual(c('--add', group), [1, forms]);
+    assert.deepEqual(c('--move', group), [1, forms]);
+    assert.deepEqual(c('--spans', '--add', group, shared), [1, forms]);
+    assert.deepEqual(c('--spans', 'x'), [1, forms]);
+    assert.deepEqual(c('--add', shared, shared), [1, 'primer: a copy and its source are two files\n']);
+    assert.deepEqual(c('--add', join(base, 'nope.md'), shared), [1, `primer: ${join(base, 'nope.md')} is not a file\n`]);
+    assert.deepEqual(c('--ported', group), [1, `primer: ${slash(group)} is not a declared copy\n`]);
+    assert.equal(existsSync(record), false);
+    assert.equal(existsSync(join(cfg.store, 'copies')), false);
+    assert.equal(c('--add', group, shared)[0], 0);
+    const before = readFileSync(record, 'utf8');
+    assert.deepEqual(c('--add', group, shared), [1, `primer: C1 already declares ${slash(group)}; after a port, use --ported\n`]);
+    assert.deepEqual(c('--spans'), [0, `primer: no run shared by two layers or documents, of at least 3 lines that are not blank\n`]);
+    assert.equal(readFileSync(record, 'utf8'), before);
+    writeFileSync(record, '{"version":1,"copies":[{"id":"x"}]}\n');
+    assert.deepEqual(c(), [1, `primer: ${record} is not a primer copies record\n`]);
+    assert.deepEqual(c('--spans'), [0, `primer: no run shared by two layers or documents, of at least 3 lines that are not blank\n`]);
+    const plain = join(base, `copies-plain-${++seq}`);
+    mkdirSync(plain);
+    assert.deepEqual(run(['status'], { cwd: plain, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n').slice(4), [`copies: ${record} is not a primer copies record`, '']);
+  });
+
+  test('--spans lists the runs two layers or documents share, longest first, and leaves out runs under three lines', () => {
+    const cfg = config(local(), {
+      shared: '# Shared\nAlpha one.\nAlpha two.\n\nAlpha three.\nAlpha four.\nAlpha five.\nShared end.\n',
+      group: 'Alpha one.\nAlpha two.\n\nAlpha three.\nAlpha four.  \nAlpha five.\nGroup end.\nPair one.\nPair two.\n',
+      machine: 'Pair one.\nPair two.\nBeta one.\nBeta two.\nBeta three.\n',
+    });
+    write(cfg.store, 'docs/guide.md', '# Guide\r\nBeta one.\r\nBeta two.\r\nBeta three.\r\n');
+    write(cfg.store, 'docs/blank.md', '\n\n\n\nShared end.\n');
+    const r = run(['copies', '--spans'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.equal(r.status, 0, r.stdout);
+    assert.equal(r.stdout, [
+      'primer: 2 runs shared by two layers or documents, of at least 3 lines that are not blank, longest first',
+      `6 lines: ${join(cfg.store, 'shared.md')} 2-7 and ${join(cfg.store, 'groups', 'app.md')} 1-6`,
+      `3 lines: ${join(cfg.own, 'machine.md')} 3-5 and ${join(cfg.store, 'docs', 'guide.md')} 2-4`,
+      '',
+    ].join('\n'));
+    assert.equal(existsSync(join(cfg.store, 'copies.json')), false);
   });
 });
 

@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## review 0.1.1 - 2026-11-14
+
+- The starting status of the reviewed work tree is saved in a call of its own, whose result is read before the fetch. A run sent the save and the fetch in one message: the save was refused and the fetch ran, so the comparison at the end of that run would not have covered it.
+- Every `git` command of a run carries all five of its settings. A run kept the hooks path on its later commands and dropped the long-path and LFS settings.
+
 ## primer 0.1.13 - 2026-11-14
 
 - The loader prints no context string on the session source `resume`. A resumed session still holds the string its start was given, so each resume added a second copy of up to 10,000 characters. Its warnings still print there, and every other source gets the string. A layer changed after a session started reaches that session after `/clear` or `/compact`.

@@ -273,6 +273,16 @@ describe('copies', () => {
     assert.equal(run(['copies'], at).stdout, `copies: ${join(cfg.store, 'copies.json')} (1 declared)\ncopy C1 ${slash(copy)} of shared.md: source changed, the snapshot copies/C1 is missing\n`);
   });
 
+  test('--ported takes a copy inside the store as status prints it', () => {
+    const cfg = config(local(), { shared: SOURCE, group: GROUP });
+    const plain = join(base, `copies-plain-${++seq}`), at = { cwd: plain, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };
+    mkdirSync(plain);
+    assert.equal(run(['copies', '--add', join(cfg.store, 'groups', 'app.md'), join(cfg.store, 'shared.md')], at).stdout.split('\n')[1], '+ copy C1 groups/app.md of shared.md: current');
+    write(cfg.store, 'shared.md', 'Rule one.\nRule two, reworded.\nRule three.\n');
+    assert.equal(run(['copies', '--ported', 'groups/app.md'], at).stdout,
+      `primer: wrote ${join(cfg.store, 'copies.json')} and ${join(cfg.store, 'copies', 'C1')}\n~ copy C1 groups/app.md of shared.md: current\n`);
+  });
+
   test('each form copies does not take is refused with one line and writes nothing', () => {
     const cfg = config(local(), { shared: SOURCE, group: GROUP });
     const shared = join(cfg.store, 'shared.md'), group = join(cfg.store, 'groups', 'app.md'), record = join(cfg.store, 'copies.json');

@@ -271,6 +271,7 @@ function copiesVerb(c, [op, ...args]) {
   if (op === '--spans') return args.length ? refuse(COPIES) : spans(p);
   const rec = copiesOf(c, p), file = (f) => (statSync(at(f), { throwIfNoEntry: false })?.isFile() ? at(f) : refuse(`${at(f)} is not a file`));
   if (op === undefined) return [`copies: ${rec.path} (${rec.v.copies.length} declared)`, ...rec.v.copies.flatMap((x) => copyLines(c, rec, x))];
+  // --ported takes a path to the copy's file, or the copy as status prints it: one inside the store is relative to the store.
   let x, sign = '~';
   if (op === '--add' && args.length === 2) {
     const [copy, source] = args.map(file);
@@ -279,7 +280,7 @@ function copiesVerb(c, [op, ...args]) {
     x = { id: `C${rec.v.copies.reduce((n, y) => Math.max(n, Number(y.id.slice(1))), 0) + 1}`, copy: rec.held(copy), source: rec.held(source), digest: '' };
     rec.v.copies.push(x);
     sign = '+';
-  } else if (op === '--ported' && args.length === 1) x = rec.find(file(args[0])) ?? refuse(`${slash(at(args[0]))} is not a declared copy`);
+  } else if (op === '--ported' && args.length === 1) x = rec.v.copies.find((y) => y.copy === args[0]) ?? rec.find(file(args[0])) ?? refuse(`${slash(at(args[0]))} is not a declared copy`);
   else refuse(COPIES);
   const src = readBuf(rec.real(x.source)) ?? refuse(`${rec.real(x.source)} cannot be read`);
   x.digest = createHash('sha256').update(readFileSync(rec.real(x.copy))).digest('hex');

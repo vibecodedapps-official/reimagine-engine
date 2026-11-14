@@ -771,6 +771,7 @@ describe('primer drift hook', () => {
       const dir = await clone();
       const reason = deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
       assert.equal(await check('git stage CLAUDE.md', dir), reason);
+      assert.equal(await check('echo `git add CLAUDE.md`', dir), reason);
       assert.equal(await check(`env -C ${slash(dir)} sh -c 'git add CLAUDE.md'`, base), reason);
       assert.equal(await check(`Push-Location ${slash(dir)}; git add CLAUDE.md`, base, { tool: 'PowerShell' }), reason);
     });
@@ -808,6 +809,7 @@ describe('primer drift hook', () => {
       const reason = deny(lead(dir) + unresolved + 'the call would add ' + both);
       assert.equal(await check('cd "$APP" && git add CLAUDE.md', fixture, { env: { CLAUDE_CONFIG_DIR: far } }), reason);
       assert.equal(await check(`cd ${slash(join(base, 'no-such-directory'))} && git add src/a.ts`, fixture, { env: { CLAUDE_CONFIG_DIR: far } }), reason);
+      assert.equal(await check('bash -c "cd $APP && git add -A"', fixture, { env: { CLAUDE_CONFIG_DIR: far } }), reason);
     });
     test('a command that stages and commits nothing passes, whatever in it cannot be resolved', async () => {
       const dir = await clone();

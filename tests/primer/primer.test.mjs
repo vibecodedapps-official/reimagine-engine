@@ -266,6 +266,16 @@ describe('map', () => {
     assert.equal(r.stdout, `primer: wrote ${join(cfgDir, 'reimagine-primer', 'store', 'map.json')}\nroot: + ${slash(target)}\n`);
   });
 
+  test('an entry is not set to the shared profile without saying who owns the repository', () => {
+    const dir = repo('map-shared-own', 'https://example.invalid/team/own.git');
+    const cfgDir = join(base, `map-config-${++seq}`);
+    const m = (...args) => { const r = run(['map', ...args], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } }); return [r.status, r.stdout]; };
+    m('--add', '--profile', 'local');
+    assert.deepEqual(m('--set', '--profile', 'shared'), [1, 'primer: --set --profile shared takes --own true or --own false\n']);
+    assert.deepEqual(m('--set', '--profile', 'shared', '--own', 'true'),
+      [0, `primer: wrote ${join(cfgDir, 'reimagine-primer', 'store', 'map.json')}\nrepo: ~ group own, profile shared, own true, remotes example.invalid/team/own\n`]);
+  });
+
   test('each form the map does not take is refused with one line', () => {
     const dir = repo('map-refused', 'https://example.invalid/team/app.git');
     const m = (...args) => { const r = run(['map', ...args], { cwd: dir }); return [r.status, r.stdout]; };

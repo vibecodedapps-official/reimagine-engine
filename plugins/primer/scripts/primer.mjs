@@ -195,6 +195,7 @@ function mapVerb(c, [op, ...args]) {
     else if (op === '--drop') out.push(`repo: - ${shown(map.repos.splice(at, 1)[0])}`);
     else {
       for (const k of ['profile', 'own', 'group']) if (k in o) map.repos[at][k] = o[k];
+      if (map.repos[at].profile === 'shared' && map.repos[at].own === null) refuse('--set --profile shared takes --own true or --own false');
       out.push(`repo: ~ ${shown(map.repos[at])}`);
     }
   }
@@ -212,7 +213,8 @@ function mapVerb(c, [op, ...args]) {
 // The simple commands of a shell text, each a list of words { w, bad, git }, with ( and ) kept: bad marks an expansion the
 // script cannot resolve, a brace expansion among them, git a command substitution that stages or commits with git. Null for a quote
 // left open or a process substitution outside quotes. A here-document ends the list, which then carries lost, and hidden when the
-// text from there on names a git add, stage or commit, so the calls before it keep their directories.
+// text from there on names a git add, stage or commit, so the calls before it keep their directories. A backtick outside quotes
+// separates commands in sh, so what a substitution runs is read as a command of its own.
 function commands(s, ps) {
   const out = [];
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = false;
@@ -247,11 +249,11 @@ function commands(s, ps) {
       end();
       while ('>&|'.includes(s[i + 1] ?? 'x')) i++;
       skip = true;
-    } else if (' \t\r\n;&|()'.includes(ch) || ('{}'.includes(ch) && (ps || (!inw && (ch === '}' || nx === undefined || ' \t\r\n'.includes(nx)))))) {
+    } else if (' \t\r\n;&|()'.includes(ch) || (!ps && ch === '`') || ('{}'.includes(ch) && (ps || (!inw && (ch === '}' || nx === undefined || ' \t\r\n'.includes(nx)))))) {
       end();
       if (!' \t\r'.includes(ch)) { cut(); if (ch === '(' || ch === ')') out.push(ch); }
     } else {
-      if (ch === '$' || (!ps && (ch === '`' || ch === '{'))) { bad = true; sub ||= ch === '`'; }
+      if (ch === '$' || (!ps && ch === '{')) bad = true;
       cur += ch; inw = true;
     }
   }
@@ -421,7 +423,7 @@ function staged(c, input) {
   const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false };
   scan(command, ps, st);
   if (!st.calls.length && !st.hidden) return [];
-  if (st.calls.some((x) => !isDir(x.dir))) st.lost = st.far = true;
+  if (st.hidden || st.calls.some((x) => !isDir(x.dir))) st.lost = st.far = true;
   const one = st.calls.length === 1 && !st.lost ? st.calls[0] : null, dirs = new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd]);
   // Where a directory is unknown the call may run in any local repository, so each one the map holds is checked too.
   if (st.far) for (const e of [{ path: cwd }, ...map.repos.filter((x) => x.profile === 'local')]) dirs.add(e.path);

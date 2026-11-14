@@ -189,8 +189,11 @@ function sessionStart(c, layer, input, data) {
 }
 
 function status(c) {
-  const p = places(c, ownOf(c)), rec = copiesOf(c, p);
-  return [...delivery(c, p), ...rec.v.copies.flatMap((x) => copyLines(c, rec, x))];
+  const p = places(c, ownOf(c));
+  // A copies record that cannot be read costs the copies their lines and not the rest of the report.
+  let copies;
+  try { const rec = copiesOf(c, p); copies = rec.v.copies.flatMap((x) => copyLines(c, rec, x)); } catch (e) { if (!(e instanceof Refusal)) throw e; copies = [`copies: ${e.message}`]; }
+  return [...delivery(c, p), ...copies];
 }
 
 function delivery(c, p) {
@@ -255,7 +258,7 @@ function copiesOf(c, p) {
 function copyLines(c, rec, x) {
   const src = readBuf(rec.real(x.source)), cp = readBuf(rec.real(x.copy)), snap = readBuf(rec.snap(x));
   const s = !src || !snap || !src.equals(snap), k = !cp || createHash('sha256').update(cp).digest('hex') !== x.digest;
-  const gone = [[src, x.source], [cp, x.copy]].filter(([b]) => !b).map(([, f]) => `, ${f} is missing`).join('');
+  const gone = [[src, x.source], [cp, x.copy], [snap, `the snapshot copies/${x.id}`]].filter(([b]) => !b).map(([, f]) => `, ${f} is missing`).join('');
   const out = [`copy ${x.id} ${x.copy} of ${x.source}: ${s && k ? 'both changed' : s ? 'source changed' : k ? 'copy changed' : 'current'}${gone}`];
   if (!s || !src || !snap) return out;
   const r = git(c, dirname(rec.snap(x)), ['-c', 'core.quotepath=off', 'diff', '--no-index', '--no-color', '--no-ext-diff', '--no-textconv', '--', rec.snap(x), rec.real(x.source)]);
@@ -264,10 +267,10 @@ function copyLines(c, rec, x) {
 }
 
 function copiesVerb(c, [op, ...args]) {
-  const p = places(c, ownOf(c)), rec = copiesOf(c, p), at = (f) => resolve(c.cwd, tilde(f, c.home));
-  const file = (f) => (statSync(at(f), { throwIfNoEntry: false })?.isFile() ? at(f) : refuse(`${at(f)} is not a file`));
-  if (op === undefined) return [`copies: ${rec.path} (${rec.v.copies.length} declared)`, ...rec.v.copies.flatMap((x) => copyLines(c, rec, x))];
+  const p = places(c, ownOf(c)), at = (f) => resolve(c.cwd, tilde(f, c.home));
   if (op === '--spans') return args.length ? refuse(COPIES) : spans(p);
+  const rec = copiesOf(c, p), file = (f) => (statSync(at(f), { throwIfNoEntry: false })?.isFile() ? at(f) : refuse(`${at(f)} is not a file`));
+  if (op === undefined) return [`copies: ${rec.path} (${rec.v.copies.length} declared)`, ...rec.v.copies.flatMap((x) => copyLines(c, rec, x))];
   let x, sign = '~';
   if (op === '--add' && args.length === 2) {
     const [copy, source] = args.map(file);

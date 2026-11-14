@@ -13,8 +13,8 @@ import { pathToFileURL } from 'node:url';
 import { Refusal, ownOf } from './primer.mjs';
 
 const FORMS = 'transcripts takes --repo <dir>, --from <YYYY-MM-DD> and --to <YYYY-MM-DD>, each at most once';
-// Texts the host writes into a user line: a local command's output, a shell command's output, an interruption.
-const HOST = /^(<local-command-(stdout|stderr|caveat)>|<bash-(stdout|stderr)>|\[Request interrupted by user)/;
+// Texts the host writes into a user line: the output of a local or shell command, a background task's notice, an interruption.
+const HOST = /^(<local-command-(stdout|stderr|caveat)>|<bash-(stdout|stderr)>|<task-notification>|\[Request interrupted by user)/;
 const refuse = (message) => { throw new Refusal(message); };
 const slash = (p) => p.replace(/\\/g, '/');
 
@@ -31,9 +31,10 @@ function lineOf(l) {
   if (!v || typeof v !== 'object' || Array.isArray(v) || typeof v.type !== 'string') return undefined;
   if (v.type !== 'user') return null;
   const m = v.message, content = m?.content, at = typeof v.timestamp === 'string' ? Date.parse(v.timestamp) : NaN;
+  // A line the host marks as not the user's is read and left out, whatever else it holds.
+  if (v.isMeta === true || v.isSidechain === true || v.isCompactSummary === true || (m && typeof m === 'object' && m.role !== 'user')) return null;
   if (!m || typeof m !== 'object' || typeof v.sessionId !== 'string' || typeof v.cwd !== 'string' || Number.isNaN(at)) return undefined;
   if (typeof content !== 'string' && !(Array.isArray(content) && content.every((x) => x && typeof x.type === 'string'))) return undefined;
-  if (m.role !== 'user' || v.isMeta === true || v.isSidechain === true || v.isCompactSummary === true) return null;
   const text = typeof content === 'string' ? content : content.filter((x) => x.type === 'text' && typeof x.text === 'string').map((x) => x.text).join('\n');
   return text.trim() && !HOST.test(text.trimStart()) ? { at: new Date(at).toISOString(), session: v.sessionId, cwd: v.cwd, text } : null;
 }
@@ -45,18 +46,22 @@ export function main(argv, { env = process.env, platform = process.platform, hom
     if (!['--repo', '--from', '--to'].includes(argv[i]) || argv[i] in o || argv[i + 1] === undefined) refuse(FORMS);
     o[argv[i]] = argv[i + 1];
   }
-  const from = o['--from'] && day('--from', o['--from']), to = o['--to'] && day('--to', o['--to']);
+  const from = '--from' in o ? day('--from', o['--from']) : undefined, to = '--to' in o ? day('--to', o['--to']) : undefined;
   if (from && to && from > to) refuse(`--from ${from} is after --to ${to}`);
   const dir = resolve(cwd, o['--repo'] ?? '.'), k = (p) => { const s = slash(p).replace(/\/+$/, ''); return platform === 'win32' ? s.toLowerCase() : s; };
   const git = (...a) => spawnSync('git', ['-C', dir, ...a], { encoding: 'utf8', env: { ...env, GIT_OPTIONAL_LOCKS: '0' } });
   const common = git('rev-parse', '--path-format=absolute', '--git-common-dir');
   if (common.status !== 0) refuse(`${slash(dir)} is in no git work tree`);
-  const root = slash(dirname(common.stdout.trim()));
-  const trees = [...new Set([root, ...git('worktree', 'list', '--porcelain').stdout.split('\n').filter((l) => l.startsWith('worktree ')).map((l) => slash(l.slice(9)))])];
+  // Every work tree of the repository, the main one first. A bare repository's own directory is none, and its parent holds others;
+  // it is the root the first line names.
+  const list = git('worktree', 'list', '--porcelain').stdout.split('\n\n').map((b) => b.trim()).filter((b) => b.startsWith('worktree ')), at = (b) => slash(b.split('\n')[0].slice(9).trim());
+  const root = list.length ? at(list[0]) : slash(dirname(common.stdout.trim())), trees = list.length ? list.filter((b) => !/\nbare$/m.test(b)).map(at) : [root];
   // A session's directory is named for the directory it started in, every character outside A-Za-z0-9 a -; one started in a
-  // subdirectory has a longer name, so a candidate directory is kept by the cwd of each line.
+  // subdirectory has a longer name, so a candidate directory is kept by the cwd of each line. Beside CLAUDE_CONFIG_DIR, the host
+  // takes the name from CLAUDE_CODE_PROJECT_DIR_NAME instead.
   const keys = trees.map((t) => k(t.replace(/[^A-Za-z0-9]/g, '-'))), projects = join(dirname(ownOf({ env, home })), 'projects');
-  const names = (() => { try { return readdirSync(projects); } catch { return []; } })().filter((n) => keys.some((x) => k(n) === x || k(n).startsWith(`${x}-`))).sort();
+  const named = env.CLAUDE_CONFIG_DIR && env.CLAUDE_CODE_PROJECT_DIR_NAME;
+  const names = (() => { try { return readdirSync(projects); } catch { return []; } })().filter((n) => n === named || keys.some((x) => k(n) === x || k(n).startsWith(`${x}-`))).sort();
   const since = from ? Date.parse(`${from}T00:00:00Z`) : -Infinity, mine = (p) => trees.some((t) => k(p) === k(t) || k(p).startsWith(`${k(t)}/`));
   const found = [];
   let files = 0, lines = 0, skipped = 0;

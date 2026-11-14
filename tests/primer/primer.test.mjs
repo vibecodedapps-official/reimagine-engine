@@ -264,6 +264,15 @@ describe('copies', () => {
     assert.equal(r.stdout.split('\n')[1], `+ copy C1 ${slash(copy)} of shared.md: current`);
   });
 
+  test('a snapshot that is missing is named, and no diff is shown', () => {
+    const cfg = config(local(), { shared: SOURCE });
+    const copy = join(base, `loose-copy-${++seq}.md`), at = { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };
+    writeFileSync(copy, 'Rule one.\n');
+    assert.equal(run(['copies', '--add', copy, join(cfg.store, 'shared.md')], at).status, 0);
+    rmSync(join(cfg.store, 'copies', 'C1'));
+    assert.equal(run(['copies'], at).stdout, `copies: ${join(cfg.store, 'copies.json')} (1 declared)\ncopy C1 ${slash(copy)} of shared.md: source changed, the snapshot copies/C1 is missing\n`);
+  });
+
   test('each form copies does not take is refused with one line and writes nothing', () => {
     const cfg = config(local(), { shared: SOURCE, group: GROUP });
     const shared = join(cfg.store, 'shared.md'), group = join(cfg.store, 'groups', 'app.md'), record = join(cfg.store, 'copies.json');
@@ -285,7 +294,10 @@ describe('copies', () => {
     assert.equal(readFileSync(record, 'utf8'), before);
     writeFileSync(record, '{"version":1,"copies":[{"id":"x"}]}\n');
     assert.deepEqual(c(), [1, `primer: ${record} is not a primer copies record\n`]);
-    assert.equal(run(['status'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout, `primer: ${record} is not a primer copies record\n`);
+    assert.deepEqual(c('--spans'), [0, `primer: no run shared by two layers or documents, of at least 3 lines that are not blank\n`]);
+    const plain = join(base, `copies-plain-${++seq}`);
+    mkdirSync(plain);
+    assert.deepEqual(run(['status'], { cwd: plain, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n').slice(4), [`copies: ${record} is not a primer copies record`, '']);
   });
 
   test('--spans lists the runs two layers or documents share, longest first, and leaves out runs under three lines', () => {

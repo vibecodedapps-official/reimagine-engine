@@ -22,12 +22,12 @@ const git = (cwd, ...args) => {
   assert.equal(r.status, 0, `git ${args.join(' ')}\n${r.stderr}`);
   return r.stdout;
 };
-const run = (args, cwd = root, config = cfg) => {
-  const r = spawnSync(process.execPath, [SCRIPT, ...args], { cwd, env: { ...env, CLAUDE_CONFIG_DIR: config }, encoding: 'utf8' });
+const run = (args, cwd = root, config = cfg, extra = {}) => {
+  const r = spawnSync(process.execPath, [SCRIPT, ...args], { cwd, env: { ...env, CLAUDE_CONFIG_DIR: config, ...extra }, encoding: 'utf8' });
   return [r.status, r.stdout];
 };
 // The session directory the host names for a directory a session started in.
-const project = (dir) => join(cfg, 'projects', slash(dir).replace(/[^A-Za-z0-9]/g, '-'));
+const project = (dir, config = cfg) => join(config, 'projects', slash(dir).replace(/[^A-Za-z0-9]/g, '-'));
 const user = (content, at, sessionId, cwd, extra = {}) => JSON.stringify({ type: 'user', message: { role: 'user', content }, timestamp: at, sessionId, cwd: slash(cwd), ...extra });
 
 before(() => {
@@ -60,6 +60,8 @@ before(() => {
     user('<local-command-stdout>output</local-command-stdout>', '2026-11-02T09:02:00.000Z', 's-one', root),
     user('Before the span.', '2026-10-30T12:00:00.000Z', 's-one', root),
     user('From a subagent.', '2026-11-02T09:03:00.000Z', 's-one', root, { isSidechain: true }),
+    JSON.stringify({ type: 'user', message: { role: 'user', content: { text: 'Loaded.' } }, isMeta: true }),
+    user('<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n</task-notification>', '2026-11-02T09:05:00.000Z', 's-one', root),
   ];
   write(project(root), 's-one.jsonl', `${one.join('\r\n')}\r\n`);
   write(project(root), 's-one/subagents/agent-1.jsonl', `${user('Not the user.', '2026-11-02T09:04:00.000Z', 's-one', root)}\n`);
@@ -82,7 +84,7 @@ describe('transcripts', () => {
       '2026-11-03T10:00:00.000Z s-wt "From the worktree."',
       '2026-11-03T23:30:00.000Z s-one "Which layer\\nholds the release steps?"',
       '2026-11-04T08:00:00.000Z s-two "Use the date from the changelog."',
-      'primer: skipped 3 of 15 lines (20.0%), which the reader could not read',
+      'primer: skipped 3 of 17 lines (17.6%), which the reader could not read',
       '',
     ].join('\n')]);
   });
@@ -92,7 +94,7 @@ describe('transcripts', () => {
       `primer: 2 messages of the user in 2 sessions of ${slash(root)}, 2026-11-03 to 2026-11-03, from 4 files under ${join(cfg, 'projects')}`,
       '2026-11-03T10:00:00.000Z s-wt "From the worktree."',
       '2026-11-03T23:30:00.000Z s-one "Which layer\\nholds the release steps?"',
-      'primer: skipped 3 of 15 lines (20.0%), which the reader could not read',
+      'primer: skipped 3 of 17 lines (17.6%), which the reader could not read',
       '',
     ].join('\n')]);
   });
@@ -105,6 +107,32 @@ describe('transcripts', () => {
     ].join('\n')]);
   });
 
+  test('a session directory the host named from CLAUDE_CODE_PROJECT_DIR_NAME is read', () => {
+    const named = join(base, 'named-config');
+    write(join(named, 'projects', 'myproj'), 's-named.jsonl', `${user('Keep the notes short.', '2026-11-02T11:00:00.000Z', 's-named', root)}\n`);
+    assert.deepEqual(run(['--repo', root], base, named, { CLAUDE_CODE_PROJECT_DIR_NAME: 'myproj' }), [0, [
+      `primer: 1 messages of the user in 1 sessions of ${slash(root)}, the first day to the last day, from 1 files under ${join(named, 'projects')}`,
+      '2026-11-02T11:00:00.000Z s-named "Keep the notes short."',
+      'primer: skipped 0 of 1 lines (0.0%), which the reader could not read',
+      '',
+    ].join('\n')]);
+  });
+
+  test('the directory that holds a bare repository is no work tree of it', () => {
+    const bare = join(base, 'code', 'proj.git'), main = join(base, 'code', 'proj-main'), other = join(base, 'code', 'other'), config = join(base, 'bare-config');
+    mkdirSync(join(base, 'code'));
+    git(base, 'clone', '-q', '--bare', root, bare);
+    git(bare, 'worktree', 'add', '-q', main, 'main');
+    write(project(main, config), 's-main.jsonl', `${user('From the work tree of a bare repository.', '2026-11-02T12:00:00.000Z', 's-main', main)}\n`);
+    write(project(other, config), 's-far.jsonl', `${user('Another repository beside it.', '2026-11-02T12:01:00.000Z', 's-far', other)}\n`);
+    assert.deepEqual(run(['--repo', main], base, config), [0, [
+      `primer: 1 messages of the user in 1 sessions of ${slash(bare)}, the first day to the last day, from 1 files under ${join(config, 'projects')}`,
+      '2026-11-02T12:00:00.000Z s-main "From the work tree of a bare repository."',
+      'primer: skipped 0 of 1 lines (0.0%), which the reader could not read',
+      '',
+    ].join('\n')]);
+  });
+
   test('each form it does not take is refused with one line', () => {
     const forms = 'primer: transcripts takes --repo <dir>, --from <YYYY-MM-DD> and --to <YYYY-MM-DD>, each at most once\n';
     assert.deepEqual(run(['--from']), [1, forms]);
@@ -112,6 +140,7 @@ describe('transcripts', () => {
     assert.deepEqual(run(['--to', '2026-11-01', '--to', '2026-11-02']), [1, forms]);
     assert.deepEqual(run(['--from', '2026-02-30']), [1, 'primer: --from takes a date as YYYY-MM-DD, not 2026-02-30\n']);
     assert.deepEqual(run(['--to', '11/04/2026']), [1, 'primer: --to takes a date as YYYY-MM-DD, not 11/04/2026\n']);
+    assert.deepEqual(run(['--from', '', '--to', '2026-11-04']), [1, 'primer: --from takes a date as YYYY-MM-DD, not \n']);
     assert.deepEqual(run(['--from', '2026-11-05', '--to', '2026-11-01']), [1, 'primer: --from 2026-11-05 is after --to 2026-11-01\n']);
     assert.deepEqual(run(['--repo', base]), [1, `primer: ${slash(base)} is in no git work tree\n`]);
   });

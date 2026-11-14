@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.13 - 2026-11-14
+
+- The loader prints no context string on the session source `resume`. A resumed session still holds the string its start was given, so each resume added a second copy of up to 10,000 characters. Its warnings still print there, and every other source gets the string. A layer changed after a session started reaches that session after `/clear` or `/compact`.
+
 ## gate 0.1.20 - 2026-11-14
 
 - A run that resolves no target prints its reading block and its report in one last message. In a session with no shell tool, three of six runs of one request ended in a few paragraphs of prose with no report, and two of those with no reading block. Nothing at the point where a run with no target left ends `stopped` sent it to the step that prints the report, that step asked for the time and the run entry before it said what a run with no record does, and a block printed before a tool call did not reach the caller.

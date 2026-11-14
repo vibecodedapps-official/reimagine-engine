@@ -4,9 +4,9 @@ After `blocked` nothing more is pushed.
 
 ## The run entry
 
-Take `date -u +%Y-%m-%dT%H:%M:%SZ`. Write this run's entry in `runs` with that time as `ended` and the terminal state as `state`, keeping every other key of the entry, `kept` among them.
+A run that ended before preflight made the record takes no `date` and writes nothing: no run entry, no manifest and no report file. It goes to The report. Its report is printed only, in one message with the reading block above it, since a block printed before a tool call may not have reached the caller.
 
-A run that ended before preflight made the record writes nothing: no run entry, no manifest and no report file. Its report is printed only.
+Otherwise take `date -u +%Y-%m-%dT%H:%M:%SZ`. Write this run's entry in `runs` with that time as `ended` and the terminal state as `state`, keeping every other key of the entry, `kept` among them.
 
 ## The manifest
 
@@ -29,6 +29,6 @@ Either file is written whole to a temporary file beside it and moved over with `
 
 ## The report
 
-Read `report.md` and write the report from the record to `<record>/report.md`. Then print its whole text, unchanged, as the last text of this target. Nothing follows it: no summary, note or offer. A headless caller sees only the last message, so the report has to be it.
+Read `report.md` and write the report from the record to `<record>/report.md`, or to no file where there is no record. Then print its whole text, unchanged, as the last text of this target. Nothing follows it: no summary, note or offer. A headless caller sees only the last message, so the report has to be it.
 
 With another target left in the order of the reading block, read `steps/0-preflight.md` for it, without its section on instruction files and the permission statement, which ran once. Otherwise the run is over.

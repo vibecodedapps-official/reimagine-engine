@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.20 - 2026-11-14
+
+- A run that resolves no target prints its reading block and its report in one last message. In a session with no shell tool, three of six runs of one request ended in a few paragraphs of prose with no report, and two of those with no reading block. Nothing at the point where a run with no target left ends `stopped` sent it to the step that prints the report, that step asked for the time and the run entry before it said what a run with no record does, and a block printed before a tool call did not reach the caller.
+
 ## review 0.1.0 - 2026-11-14
 
 - A seventh plugin, `review`, for a pull request someone else wrote: `/review:run`, or the prose "reimagine review", ends in drafted comments for the author and a short summary for the person who gates the merge. Run on someone else's pull request, the gate ended `unconverged` because it found something, a failure state for the outcome a review exists for, and the audit's act stage and ticket edits take the branch and the tickets to be the user's.

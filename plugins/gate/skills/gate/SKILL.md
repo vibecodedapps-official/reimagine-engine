@@ -45,7 +45,7 @@ The request is the words that came with the invocation: "reimagine gate PR 73", 
 - "base <branch>": the base of a branch target.
 - "checks <command>[; <command>]": the checks of the fix round. The phrase runs to the next comma that another phrase of this list follows, else to the end of the request, since a command may hold a comma; split it at `;`.
 
-Targets. A pull request must be open, in the session's repository and not from a fork; several run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or a file of its shape, and runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order. The path of "repo <path>" must be a git toplevel or a linked worktree: `git -C <path> rev-parse --is-inside-work-tree --show-prefix` prints `true` and then an empty line. Compare no path strings, and write a leading `~` as `$HOME`, since git does not expand a quoted `~`. A target that cannot be resolved, such as a pull request from a fork, a pull request number on a host other than GitHub, or "repo <path>" beside a pull request or a manifest, gets one line in the reading block and the run goes on with the others; with none left it ends `stopped`.
+Targets. A pull request must be open, in the session's repository and not from a fork; several run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or a file of its shape, and runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order. The path of "repo <path>" must be a git toplevel or a linked worktree: `git -C <path> rev-parse --is-inside-work-tree --show-prefix` prints `true` and then an empty line. Compare no path strings, and write a leading `~` as `$HOME`, since git does not expand a quoted `~`. A target that cannot be resolved, such as a pull request from a fork, a pull request number on a host other than GitHub, or "repo <path>" beside a pull request or a manifest, gets one line in the reading block and the run goes on with the others; with none left it ends `stopped`, after the reading block.
 
 Roots. Every target has a root, the toplevel of its repository: a bundle's `repo`, the toplevel of "repo <path>", and otherwise the output of `git rev-parse --show-toplevel` in the session's folder. A target runs in place when the session's folder is its root, and from outside otherwise: a bundle, "repo <path>", and any target of a session started in a subfolder, where `git rev-parse --show-prefix` prints a path. From outside, every git command runs as `git -C "<root>" <command>` and every other command as `cd "<root>" && <command>` in one Bash call, since git prints the paths of a status from the root and reads the paths of `git add` and `git checkout` from the current folder. Those forms are not pre-approved. The record, `.reimagine.json`, the instruction files and the exclude file are always those of the root.
 
@@ -57,7 +57,7 @@ Scripts. `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell. Resolve the sc
 
 ## The reading block
 
-Make only the read-only calls that resolve the targets and the engine: `git remote`, `git rev-parse`, `gh pr view`, a manifest read and `command -v claude`. Then print the block as your next text, before any other tool call:
+Make only the read-only calls that resolve the targets and the engine: `git remote`, `git rev-parse`, `gh pr view`, a manifest read and `command -v claude`. A call the session cannot make, or that is refused, leaves its target `not resolved` with the reason. Then print the block as your next text, before any other tool call, in every run, one that resolves no target included:
 
 ```
 Targets: PR #73 (gh) on feat/68-4567-export, base main; PR #74 (gh) on fix/70-retry, base main
@@ -69,7 +69,7 @@ Scripts: <the plugin's directory>/scripts
 
 Targets gives each target, how it resolved and its base, with its root when it runs from outside the session's folder. Mode is `fix` or `no fixes`. Budget gives the run budget and its source, then `max-passes`, `split` and `parallel`, then the subagent, review and check budgets, each with its source when it is not the default. Engine is `subprocess`, or `stand-in` with the reason, then the model of the reviewer and of the stand-in, each with its source when it is not the default; when the repositories of a manifest set different models, each repository's models follow its path. A configuration key that is unknown or has a bad value is reported in the block and ignored. The configuration read is the one at the target's root.
 
-After the block, read `steps/0-preflight.md`.
+After the block, read `steps/0-preflight.md`, or with no target resolved `steps/4-publish.md`, which prints the report.
 
 ## Approval scope
 

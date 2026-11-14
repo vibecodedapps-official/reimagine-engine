@@ -115,3 +115,13 @@ test('R370: every git command a mode file shows carries the hooks path and long 
     }
   }
 });
+
+test('R370: a fetch into the run\'s refs moves no remote-tracking ref, and range-diff reads no attributes', () => {
+  const spans = ['SKILL.md', 'first.md', 'follow-up.md', 'post.md'].flatMap((rel) => [...read(rel).matchAll(/`(git [^`]*)`/g)].map((m) => m[1]));
+  const fetches = spans.filter((s) => s.includes(':refs/'));
+  assert.equal(fetches.length, 1);
+  assert.ok(fetches[0].startsWith('git <c> fetch --refmap= <remote> '), `${fetches[0]} can move a remote-tracking ref`);
+  const ranges = spans.filter((s) => s.includes(' range-diff '));
+  assert.equal(ranges.length, 1);
+  assert.ok(ranges[0].startsWith('git <c> --attr-source=4b825dc642cb6eb9a060e54bf8d69288fbee4904 range-diff '), `${ranges[0]} reads the attributes of a checkout`);
+});

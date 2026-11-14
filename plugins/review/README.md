@@ -53,7 +53,7 @@ Each pull request has a record in the plugin's data directory, under `reviews/<h
 /plugin uninstall review@reimagine-engine
 ```
 
-Remove the worktrees first with the commands a run listed, since a worktree's entry stays in the reviewed repository's git directory.
+Remove the worktrees and the refs first with the commands a run listed, since a worktree's entry and the run's refs, under `refs/reimagine/review/`, stay in the reviewed repository's git directory.
 
 ## License
 

@@ -129,7 +129,7 @@ function definitionItems() {
   return lines.slice(start + 1, end).filter((l) => l.startsWith('- '));
 }
 
-test('R347: the definition section holds two items, the second an item of the Code section of core.md as core.md has it', () => {
+test('R347: the definition section holds two items, the second the last item of the Code section of core.md as core.md has it', () => {
   const text = loadTexts()['core.md'];
   const lines = text.split(/\r?\n/);
   const start = lines.indexOf('## Code');
@@ -140,7 +140,7 @@ test('R347: the definition section holds two items, the second an item of the Co
   const items = definitionItems();
   assert.equal(items.length, 2);
   assert.equal(code.includes(items[0]), false);
-  assert.ok(code.includes(items[1]), 'the second item is not an item of the Code section of core.md');
+  assert.equal(items[1], code[code.length - 1], 'the second item is not the last item of the Code section of core.md');
 });
 
 test('R346: the chat block carries the first item of the definition as the skill words it, as the last line of the block\'s first list', () => {

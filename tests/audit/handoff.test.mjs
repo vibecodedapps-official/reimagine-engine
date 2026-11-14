@@ -21,7 +21,8 @@ test('R137: the audit looks for the loop\'s record where the loop keeps it, and 
   assert.ok(AUDIT.includes(path), 'the audit does not look there');
   const example = JSON.parse(LOOP_RECORD.split('\n## steps.json\n')[1].split('```json\n')[1].split('\n```')[0]);
   assert.equal(typeof example.branch, 'string');
-  assert.ok(AUDIT.includes('`steps.json`'), 'the audit does not read steps.json');
+  const clauses = AUDIT.replace(/\s+/g, ' ').split(/[,:;.] /);
+  assert.ok(clauses.some((c) => c.includes('`steps.json`') && /\bbranch\b(?!-)/.test(c)), 'the audit does not name the branch key where it names steps.json');
 });
 
 // The decided_by table: its "- `decided_by`" line and the indented lines under it.

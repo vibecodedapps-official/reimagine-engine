@@ -121,13 +121,14 @@ test('R256 and R397: the stamps the skill writes are the ones the notice hook re
   }
 });
 
-test('R390 and R391: the info/exclude lines local.md offers are the agent files the staging check knows', () => {
+test('R390 and R391: the info/exclude lines local.md offers are the agent files the staging check knows, as git reads them', () => {
   const set = (name) => new RegExp(`const ${name} = new Set\\(\\[([^\\]]+)\\]\\)`).exec(SOURCE['primer.mjs'])?.[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')) ?? [];
   const known = [...set('AGENT_NAMES'), ...set('AGENT_DIRS')].sort();
   assert.equal(known.length, 7);
   const fence = /\n  ```\n((?:  \S+\n)+)  ```\n/.exec(LOCAL)?.[1] ?? '';
-  const offered = fence.split('\n').filter(Boolean).map((l) => l.trim().toLowerCase().replace(/\/$/, '')).sort();
-  assert.deepEqual(offered, known);
+  const written = fence.split('\n').filter(Boolean).map((l) => l.trim().replace(/\/$/, ''));
+  assert.deepEqual(written.map((l) => l.toLowerCase()).sort(), known);
+  assert.deepEqual([...written].sort(), ['.claude', '.mcp.json', '.reimagine', '.reimagine.json', 'AGENTS.md', 'CLAUDE.local.md', 'CLAUDE.md']);
 });
 
 test('R240: SKILL.md is within its cap of 150 lines, counted as the file has them', () => {

@@ -273,7 +273,7 @@ describe('copies', () => {
     assert.equal(run(['copies'], at).stdout, `copies: ${join(cfg.store, 'copies.json')} (1 declared)\ncopy C1 ${slash(copy)} of shared.md: source changed, the snapshot copies/C1 is missing\n`);
   });
 
-  test('--ported takes a copy inside the store as status prints it', () => {
+  test('--ported takes a path, else a copy as status prints it, and refuses a copy that cannot be read', () => {
     const cfg = config(local(), { shared: SOURCE, group: GROUP });
     const plain = join(base, `copies-plain-${++seq}`), at = { cwd: plain, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };
     mkdirSync(plain);
@@ -281,6 +281,11 @@ describe('copies', () => {
     write(cfg.store, 'shared.md', 'Rule one.\nRule two, reworded.\nRule three.\n');
     assert.equal(run(['copies', '--ported', 'groups/app.md'], at).stdout,
       `primer: wrote ${join(cfg.store, 'copies.json')} and ${join(cfg.store, 'copies', 'C1')}\n~ copy C1 groups/app.md of shared.md: current\n`);
+    rmSync(join(cfg.store, 'groups', 'app.md'));
+    assert.equal(run(['copies', '--ported', 'groups/app.md'], at).stdout, `primer: ${join(cfg.store, 'groups', 'app.md')} cannot be read\n`);
+    write(plain, 'groups/app.md', 'Rule one.\n');
+    assert.equal(run(['copies', '--add', join(plain, 'groups', 'app.md'), join(cfg.store, 'shared.md')], at).stdout.split('\n')[1], `+ copy C2 ${slash(join(plain, 'groups', 'app.md'))} of shared.md: current`);
+    assert.equal(run(['copies', '--ported', 'groups/app.md'], at).stdout.split('\n')[1], `~ copy C2 ${slash(join(plain, 'groups', 'app.md'))} of shared.md: current`);
   });
 
   test('each form copies does not take is refused with one line and writes nothing', () => {

@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.12 - 2026-11-13
+
+- A `local` profile, for a repository where instruction files cannot be committed: nothing is written or committed in the work tree, the repository's context lives in a store under the configuration directory, in a shared layer, a layer per group of sibling repositories and a layer for the machine, and a map records each repository's profile and group. `/primer` asks once which profile applies, with no default. Some repositories may hold no agent file in their tree or history, and primer could not be used there: it wrote every destination into the work tree, committed with a scope that names the plugin, marked the hub with a comment that names it, and stopped when the root instruction file was ignored.
+- A SessionStart entry runs `scripts/primer.mjs` and loads the three layers as one string, each layer opening with a line that names its file and closing with a canary that `status` prints. It warns at every start while the string is over the host's cap of 10,000 characters, warns when a repository under a listed directory has no entry, and reports `unknown` when its `git` calls run past 5 seconds. Context once sat over the cap for days with nothing reporting it, and a session could not tell whether its context had loaded.
+- In a `local` repository the drift hook hands each `git add` and `git commit` to a staging check, which denies one that would stage or commit an agent file the upstream does not track, or a `.gitignore` line that names one, since an agent file that reaches a pushed history cannot be taken back. A command it cannot resolve counts as staging every file git does not ignore; `/primer` offers the `info/exclude` lines that keep agent files out of that. The check reads a session's ordinary commands and is no boundary: a git alias, an `eval` and a script are not read.
+- The loader and the staging check need Node 22 or later. The loader's entry starts it at every session start, whatever the profile; the `shared` profile's own checks still need only `sh` and git.
+
 ## audit 0.1.31 - 2026-11-13
 
 - A finding, a merged item and the report list every site of a defect with the search that found them, or say the list is partial and how far the search went. One report said "several" and one gave half the sites as all of them.

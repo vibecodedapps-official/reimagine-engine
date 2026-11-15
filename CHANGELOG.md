@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.21 - 2026-11-14
+
+- A report that ends `blocked` with a fix round's edits left in the work tree gives the commands that keep them and the commands that drop them, and says what the next run does after each. After a check past its budget it names `gate.timeouts.check`, and the README says to set that key to hold the slowest check and lists the ending under `blocked`. A check stopped at its budget left the fixes uncommitted, the next run ended `blocked` on the dirty tree, and nothing said how to go on.
+- A run with no record is described in one place, and a brief names the instruction files by the rule of Approval scope. The repeats stood in files a run already reads.
+- The README says `timeouts.review` holds a reading and one run of each check, since a review may run the checks itself and one past its budget ends the run `unconverged`.
+
 ## audit 0.1.32 - 2026-11-14
 
 - `/audit:handoff` removes a trailing `-` from the branch slug, as the loop and the gate do. For a branch whose slug ends in `-`, such as a long name cut at a separator, it looked for the loop's record under another name, found none, and wrote the handoff without the plan, the review log and the commit lines.

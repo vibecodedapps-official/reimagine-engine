@@ -284,3 +284,10 @@ test('R219: the skill stays within its word budget', () => {
   const total = prose().reduce((n, rel) => n + words(read(rel)), 0);
   assert.ok(total <= 10400, `the skill holds ${total} words, over 10400`);
 });
+
+test('R309: preflight excludes an untracked .reimagine.json before it asks whether the tree is clean', () => {
+  const text = read('steps/0-preflight.md');
+  const probe = text.indexOf('`git status --porcelain -- .reimagine.json`');
+  assert.notEqual(probe, -1);
+  assert.ok(probe < text.indexOf('`git status --porcelain`'), 'the config file is excluded after the clean-tree check');
+});

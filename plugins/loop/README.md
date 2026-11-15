@@ -68,7 +68,7 @@ When the change has 500 or more changed lines, the report suggests `/gate` on th
 
 ## Configuration
 
-An optional `.reimagine.json` at the repository root. Every key is optional; the values shown are the defaults, except `checks`, which is an example.
+An optional `.reimagine.json` at the repository root. Every key is optional; the values shown are the defaults, except `checks`, which is an example. An untracked one is added to `.git/info/exclude`, so it does not make the tree dirty; to commit it after that, use `git add -f .reimagine.json`. Git can overwrite an excluded file when it checks out a branch that tracks one, so keep a copy if a branch of yours commits it.
 
 ```json
 {

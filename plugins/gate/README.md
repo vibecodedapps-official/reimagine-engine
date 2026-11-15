@@ -71,6 +71,8 @@ An optional `.reimagine.json` at the repository root, with a `gate` key beside t
 
 Forges. On GitHub the gate takes a pull request or a branch, and judges before each push whether it triggers a deploy, from the workflow files under `.github/workflows`. On any other host, such as Azure DevOps or a local remote, it takes a branch only and has no file to read a deploy from, so it asks once before each target's first push. With nobody to answer, as in a `claude -p` run, the run stops at that question with its fix committed and not pushed, and the record names the commit. `"ask-push": false` drops the question, which a run that must finish alone on such a host needs.
 
+An untracked `.reimagine.json` is added to `.git/info/exclude`, so it does not make the tree dirty; a tracked one is read as it is. To commit the file after that, use `git add -f .reimagine.json`. Git can overwrite an excluded file when it checks out a branch that tracks one, so keep a copy if a branch of yours commits it.
+
 ## How a run ends
 
 - `pass`: a pass found nothing left to fix, or only a few corrections to the last fixes, which were made and passed the checks; nothing was deferred.

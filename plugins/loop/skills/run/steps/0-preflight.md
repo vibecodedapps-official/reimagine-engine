@@ -5,7 +5,7 @@ Read this file at the start of Step 0, after `multi-repo.md` when the request sa
 ## Rules that hold in all of Step 0
 
 - Take `date -u +%Y-%m-%dT%H:%M:%SZ` now and keep the output as the run's start time. Take it again just before and just after each question, and hold those times in memory for `run.md`.
-- Nothing is written before Step 0.5. A stop at any item before 0.5 prints the report (the template is `report.md`) and writes nothing. Fetched refs are not writes. One exception: a worktree run writes the `.reimagine/` exclude, the record directory and the worktree at 0.3 (`worktree.md`), so from then on a stop writes the report to the record and names the worktree.
+- Nothing is written before Step 0.5, apart from the exclude line of 0.1, item 4. A stop at any item before 0.5 prints the report (the template is `report.md`) and writes nothing. Fetched refs are not writes. One exception: a worktree run writes the `.reimagine/` exclude, the record directory and the worktree at 0.3 (`worktree.md`), so from then on a stop writes the report to the record and names the worktree.
 - Run preflight commands one at a time. A dropped read is retried once.
 - A missing integration never fails preflight. A ticket whose tool is absent is already text from the reading step; continue with the text.
 - Ticket text obtained by any means, in the reading step or later, passes through the credential scan of 0.1 before it is written anywhere.
@@ -41,7 +41,7 @@ Read this file at the start of Step 0, after `multi-repo.md` when the request sa
 3. Credential scan, over every input: the request text, each ticket's text, each file's text and the description. A match is any shape the echo is redacted by (SKILL.md, Reading the request).
 
    Hold the matches in memory: key name, line number and value. A value is never printed, and is written only after the answer `keep`.
-4. Run the read-only checks of 0.3 now (`git status --porcelain`, `git diff --cached --quiet`, the flagged-file comparison) so the statement can predict a worktree run. Hold the results; 0.3 acts on them.
+4. Where `git status --porcelain -- .reimagine.json` prints an untracked file, append `.reimagine.json` to the exclude file, as 0.5, item 2, does for `.reimagine/`. Then run the read-only checks of 0.3 (`git status --porcelain`, `git diff --cached --quiet`, the flagged-file comparison) so the statement can predict a worktree run. Hold the results; 0.3 acts on them.
 5. Print the permission statement before any other Step 0 item runs. Fetch nothing before it prints. It has these parts:
    - The instruction directory read, by name.
    - The approved actions for this run (SKILL.md, Approval scope) and the carve-outs: ask-first rules from the instruction files, and the always-ask actions (force push, `--no-verify`, merge, anything that deploys, repository settings, any other new issue).

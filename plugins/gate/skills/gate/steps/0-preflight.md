@@ -4,7 +4,7 @@ Take the targets in the order of the reading block's Targets line. Each target g
 
 - Take `date -u +%Y-%m-%dT%H:%M:%SZ` now and keep the output as the run's start; take it again at the start of each later target.
 - Run read-only commands one at a time, and retry a dropped read once.
-- Nothing is written before the record below. Fetched refs are not writes.
+- Nothing is written before the record below, apart from the exclude line of Clean tree. Fetched refs are not writes.
 - A stop in this step ends the run `blocked` or `stopped`, as its item says.
 
 ## Instruction files and the permission statement
@@ -30,7 +30,7 @@ this run will prompt at: the reads of the remote's refs, the record, the child s
 
 ## Clean tree
 
-Before any checkout, `git status --porcelain` must print nothing, untracked files that are not ignored included, and `git diff --cached --quiet` must succeed. Otherwise the run ends `blocked`, naming what is dirty.
+Where `git status --porcelain -- .reimagine.json` prints an untracked file, first append `.reimagine.json` to the exclude file, as The record, item 2, does. Before any checkout, `git status --porcelain` must print nothing, untracked files that are not ignored included, and `git diff --cached --quiet` must succeed. Otherwise the run ends `blocked`, naming what is dirty.
 
 ## Base and merge-base
 

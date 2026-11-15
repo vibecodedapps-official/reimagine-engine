@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## guard 0.1.4 - 2026-11-15
+
+- The wait between tries for the lock is passed to the script's `main` by its caller, and a run passes none and waits as before. The test of a held lock slept through all 200 tries, about 10 seconds.
+
 ## review 0.1.2 - 2026-11-14
 
 - In a first review of a pair, the comments on both pull requests state the dependency and the merge order, as a follow-up's already did. The rule stood only in the follow-up file.

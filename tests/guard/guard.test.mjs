@@ -51,7 +51,7 @@ function world({ configEnv = true } = {}) {
   w.settings = join(configEnv ? w.config : join(w.home, '.claude'), 'settings.json');
   w.list = join(configEnv ? w.config : join(w.home, '.claude'), 'reimagine-guard.json');
   w.claude = (args, d) => stand(w, args, d);
-  const call = (argv) => main([argv[0], w.data, ...argv.slice(1)], { env: w.env, now: w.now, home: w.home, cwd: w.work, claude: w.claude, platform: w.platform });
+  const call = (argv) => main([argv[0], w.data, ...argv.slice(1)], { env: w.env, now: w.now, home: w.home, cwd: w.work, claude: w.claude, platform: w.platform, wait: w.wait });
   // One session: it takes the id from its plan's plan: line and gives it to apply, as the skill does.
   w.run = (...argv) => {
     if (argv[0] === 'apply' && argv.length === 1) return call(['apply', w.planId ?? '000000000000']);
@@ -474,9 +474,13 @@ function agedLock(w, seconds) {
 test('R342: a lock 100 s old is held by a live step: plan refuses and leaves it', () => {
   const w = repoWorld();
   const lock = agedLock(w, 100);
+  const waits = [];
+  w.wait = (ms) => waits.push(ms);
   assert.throws(() => w.run('plan', '--add', w.repo.path), refusal(`another /guard step holds ${lock}; nothing was written; run /guard again`));
   assert.equal(existsSync(lock), true);
   assert.deepEqual(w.calls, []);
+  assert.equal(waits.length, 200);
+  assert.deepEqual(new Set(waits), new Set([50]));
 });
 
 test('R342: a lock 300 s old is stale: plan takes it over and runs', () => {

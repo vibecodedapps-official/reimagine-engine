@@ -113,7 +113,7 @@ before(() => {
 
 after(() => rmSync(base, { recursive: true, force: true }));
 
-describe('primer notice hook', () => {
+describe('R258: primer notice hook', () => {
   test('counts the notes newer than the stamp', () => {
     const dir = repo('my_repo.v2');
     const { config, data } = place(dir, { stamp: true });

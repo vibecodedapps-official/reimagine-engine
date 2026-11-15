@@ -86,6 +86,14 @@ test('R246, R390: the bans whose loss lets a run write where it must not stand i
 test('every script command the skill files show names a script that exists, a verb it takes and options it reads', () => {
   const verbs = [...SOURCE['primer.mjs'].matchAll(/verb === '([a-z-]+)'/g)].map((m) => m[1]);
   assert.ok(verbs.includes('status') && verbs.includes('map') && verbs.includes('copies') && verbs.includes('measure'), 'primer.mjs lists its verbs as verb === <name>');
+  // An option counts only in the function that reads its verb's arguments: the script also quotes options it passes to git.
+  const READERS = { status: 'status', measure: 'measure', map: 'mapVerb', copies: 'copiesVerb' };
+  const reader = Object.fromEntries(Object.entries(READERS).map(([verb, name]) => [verb, SOURCE['primer.mjs'].match(new RegExp(`^function ${name}\\(.*?^}`, 'ms'))?.[0]]));
+  for (const [verb, body] of Object.entries(reader)) assert.ok(body, `primer.mjs has no function that reads ${verb}`);
+  const reads = (script, option, verb) => {
+    if (script !== 'primer.mjs') return SOURCE[script].includes(`'${option}'`);
+    return (verb ? [reader[verb] ?? ''] : Object.values(reader)).some((body) => body.includes(`'${option}'`));
+  };
   const shown = [];
   let optionSpans = 0;
   for (const [name, text] of Object.entries(FILES)) {
@@ -98,7 +106,7 @@ test('every script command the skill files show names a script that exists, a ve
           if (option === '--no-verify') continue;
           optionSpans++;
           assert.ok(named.length > 0, `${name}: ${span} stands on a line that names no script`);
-          assert.ok(named.some((script) => SOURCE[script].includes(`'${option}'`)), `${name}: ${span} names an option ${named.join(' or ')} does not read`);
+          assert.ok(named.some((script) => reads(script, option)), `${name}: ${span} names an option ${named.join(' or ')} does not read`);
           continue;
         }
         const path = /scripts\/([a-z]+\.mjs)"(.*)$/.exec(span);
@@ -107,7 +115,7 @@ test('every script command the skill files show names a script that exists, a ve
         const script = path ? path[1] : 'primer.mjs';
         assert.ok(script in SOURCE, `${name}: ${span} names a script that does not exist`);
         if (script === 'primer.mjs' && words.length) assert.ok(verbs.includes(words[0]), `${name}: ${span} names a verb primer.mjs does not take`);
-        for (const option of words.filter((w) => w.startsWith('--'))) assert.ok(SOURCE[script].includes(`'${option}'`), `${name}: ${span} names an option ${script} does not read`);
+        for (const option of words.filter((w) => w.startsWith('--'))) assert.ok(reads(script, option, words[0]), `${name}: ${span} names an option ${script} does not read for ${words[0]}`);
         shown.push(span);
       }
     }

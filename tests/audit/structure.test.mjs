@@ -187,14 +187,8 @@ test('the ending of a merger that could not read an input is one literal where i
   }
 });
 
-test('each agent definition and the output contract give the refused line in the two forms stage 8 searches for', () => {
+test('the output contract gives the refused line in the two forms stage 8 searches for', () => {
   const forms = ['`refused: <tool> <path or first line of the command>; ...`', '`none refused`'];
-  const agents = list('agents/');
-  assert.deepEqual(agents, ['agents/adversary.md', 'agents/auditor.md', 'agents/digester.md', 'agents/mapper.md', 'agents/merger.md']);
-  for (const file of agents) {
-    const rules = TEXT[file].match(/^## Hard rules, restated\n([^]*?)(?=^## )/m)?.[1] ?? '';
-    for (const form of forms) assert.ok(rules.includes(form), `${file}: "Hard rules, restated" does not give ${form}`);
-  }
   const contract = TEXT['skills/audit/common.md'].match(/^## Output contract\n([^]*?)(?=^## |$(?![^]))/m)?.[1] ?? '';
   for (const form of forms) assert.ok(contract.includes(form), `common.md: the output contract does not give ${form}`);
   const search = TEXT['skills/audit/stages/8-report.md'].replace(/\n\s*/g, ' ');

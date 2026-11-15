@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## review 0.1.2 - 2026-11-14
+
+- In a first review of a pair, the comments on both pull requests state the dependency and the merge order, as a follow-up's already did. The rule stood only in the follow-up file.
+- A draft changed after it was shown is shown and recorded again, by the skill's one sentence. The posting file said in three places that such a draft is shown again and in none that it is recorded again, which the posting step checks before it posts.
+- Out of scope lists only what the skill says nowhere else, and the round and the order of the drafts are each given once. The repeats stood in files a run reads after the skill.
+- The reviewing agent of a first reading is called once, at the model an instruction file sets for reviews, else the session's own. A session whose instruction files set a lower tier for reviews started it at that tier and again at the session's model, and kept the second reading. The leak check before a post takes the names of the agent's model beside the session's.
+- The session user is read on GitHub only. For an export the read was a `gh` call to a host that is not GitHub.
+
 ## primer 0.1.14 - 2026-11-14
 
 - In the local profile, what a layer's text is stands in `local.md` alone, and what goes in `machine.md` stands in `placement.md` alone, which now names a path of this machine. Each file held both rules and the two differed, so a run could follow either.

@@ -2,6 +2,20 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.15 - 2026-11-15
+
+- The staging check reads a PowerShell here-string as one word. A commit message typed in one with an apostrophe left the command with no parse, so the check judged every `local` repository of the map and could deny for an agent file in another repository, and a here-string that ran no git was denied when its text held `commit`. One inside a word, or with text joined to its closer, still leaves the command with no parse, and one that no git call takes counts as running the git add or commit its text names, as a here-document does.
+- A commit that names a path git does not know counts as staging every file git does not ignore. The dry run's exit status for it was read as nothing to commit, so a commit with an agent file staged passed.
+- A command handed to `pwsh`, `powershell` or `cmd` that names an add or a commit counts as running one out of sight. It was not read, so `pwsh -c "git add -A"` passed.
+- The check goes on only where the command itself holds `commit`, or `git` before `add` or `stage`. A call whose description held the word was judged too.
+- While the map cannot be read, the check denies each `git add` and `git commit` with a reason that names the file and how to restore it, and passes every other command. It denied every call that reached it, `git log --grep commit` among them.
+- The drift hook reads a PowerShell here-string as one word. After one with an apostrophe it missed a commit in the same call, and it took a line of one for a commit and denied a call that made none.
+- Only `/primer` starts the skill, and `/primer` followed by one item records that item alone. The description's four phrases, two of them everyday words, could start a run from a passing remark.
+- A reply that stops in place of a pass still opens with the mode line and the profile line. A run that found nothing to read answered with a stop report alone.
+- The fallback commit subject is `docs: <subject>` in every repository. In the user's own it was `docs(primer): <subject>`, which names the plugin in the history.
+- `local.md` says what a `local` run does beside instruction files and settings the team tracks: it reads them, writes none, and keeps the user's additions in the store. Nothing covered nested files, rules, skills or a tracked `.claude/settings.json`.
+- Requirement 391 says agent file names count in any letter case on purpose, and a test holds it.
+
 ## rules 0.1.33 - 2026-11-15
 
 - A hook denies a commit, a push or a forge post whose text holds a string listed in `rules-outbound.txt` in the config folder, and does nothing until that file exists. Nothing checked a commit message, a pull request body or a comment for a name the user wants kept out of a repository's history and off its forge; the rule stood as prose only. `/rules` offers to write the list, and the README says what is read and what is not.

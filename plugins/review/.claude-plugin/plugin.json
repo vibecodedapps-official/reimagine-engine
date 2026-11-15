@@ -1,6 +1,6 @@
 {
   "name": "review",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Review a pull request someone else wrote and end in drafted comments for its author and a summary for the person who gates the merge, posted only on a later request, each post approved by name.",
   "author": { "name": "vibecodedapps.net" },
   "repository": "https://github.com/vibecodedapps-official/reimagine-engine",

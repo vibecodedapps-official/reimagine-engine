@@ -6,7 +6,7 @@ At the start of each of Steps 1, 2 and 3, run `date -u +%Y-%m-%dT%H:%M:%SZ` and 
 
 ## Reviewer request
 
-Step 3 sends it to the plan reviewer. Step 5 sends it only to the `opus` stand-in (`steps/4-build.md`, 5.2), with the changes named below; the `code-review` skill takes no request text. The plan reviewer is a fresh Agent call at the `reviewer` model (`opus` unless `.reimagine.json` says otherwise), never a fork, with `model` passed explicitly. The stand-in is an Agent call at `opus`, and the `fallback-reviewer` key does not apply to it. Each reads and reports, and never edits a file, runs a command that changes anything, or posts anything.
+Step 3 sends it to the plan reviewer. Step 5 sends it only to the `opus` stand-in (`steps/4-build.md`, 5.2), with the changes named below. The plan reviewer is a fresh Agent call at the `reviewer` model (`opus` unless `.reimagine.json` says otherwise), never a fork, with `model` passed explicitly. The stand-in is an Agent call at `opus`, and the `fallback-reviewer` key does not apply to it. Each reads and reports, and never edits a file, runs a command that changes anything, or posts anything.
 
 Give the reviewer:
 

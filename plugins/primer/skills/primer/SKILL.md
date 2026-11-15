@@ -44,7 +44,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 ## Commits
 
 - `adopt`, and `maintain` when it has changes, print a plan that lists every commit, ask once, and make those commits. One yes covers the listed commits. `maintain` with nothing to change writes nothing.
-- A commit follows the repository's own commit convention when its instruction files name one, else `docs(primer): <subject>` in lowercase. The body's first line is `Instruction-file <mode> pass, <YYYY-MM-DD>.`, followed by why. Where `status` shows `own false`, the fallback is `docs: <subject>`. A commit message never names a model, an agent or a tool. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
+- A commit follows the repository's own commit convention when its instruction files name one, else `docs: <subject>` in lowercase. The body's first line is `Instruction-file <mode> pass, <YYYY-MM-DD>.`, followed by why. A commit message never names a model, an agent or a tool. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
 - Stage only the paths the plan names, by path. Never push, amend, or pass `--no-verify`.
 - When the drift hook denies a commit, fix what its findings name and commit again; never route around it. When it advises a recheck, recheck the files it names before the next commit.
 

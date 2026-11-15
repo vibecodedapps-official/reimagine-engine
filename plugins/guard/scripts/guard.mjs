@@ -493,7 +493,7 @@ function listDenials(dataDir) {
 }
 
 // Each step but status and list changes the shared plan and state files, so steps take turns through a lock directory.
-function locked(dataDir, fn) {
+function locked(dataDir, fn, wait) {
   const lock = join(dataDir, 'guard.lock');
   mkdirSync(dataDir, { recursive: true });
   for (let tries = 0; ; tries++) {
@@ -504,7 +504,7 @@ function locked(dataDir, fn) {
       if (e.code !== 'EEXIST' && !removing) throw e;
       try { if (Date.now() - statSync(lock).mtimeMs > 240_000) { rmSync(lock, { recursive: true, force: true }); continue; } } catch {}
       if (tries >= 200) refuse(`another /guard step holds ${lock}; nothing was written; run /guard again`);
-      sleep(50);
+      wait(50);
     }
   }
   try { return fn(); } finally { rmSync(lock, { recursive: true, force: true }); }
@@ -604,7 +604,7 @@ function sessionStart(c) {
 }
 
 // Returns the output lines. A refusal throws.
-export function main(argv, { env = process.env, platform = process.platform, now = new Date(), home = homedir(), cwd = process.cwd(), claude = runClaude, stdin = () => readFileSync(0, 'utf8') } = {}) {
+export function main(argv, { env = process.env, platform = process.platform, now = new Date(), home = homedir(), cwd = process.cwd(), claude = runClaude, stdin = () => readFileSync(0, 'utf8'), wait = sleep } = {}) {
   const [verb, dataDir, ...rest] = argv;
   if (verb === 'denied') {
     try {
@@ -625,7 +625,7 @@ export function main(argv, { env = process.env, platform = process.platform, now
   if (!dataDir) refuse('the data directory argument is missing');
   const request = parseRequest(verb, rest);
   const step = () => run(verb, request, { env, platform, now, home, cwd, claude, dataDir });
-  return verb === 'plan' || verb === 'apply' ? locked(dataDir, step) : step();
+  return verb === 'plan' || verb === 'apply' ? locked(dataDir, step, wait) : step();
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path.

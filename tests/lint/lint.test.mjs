@@ -230,6 +230,15 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'guard');
   });
 
+  negative('R406: ask.mjs over the 480-line budget', (dir) => {
+    put(dir, 'plugins/guard/scripts/ask.mjs', '// x\n'.repeat(481));
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/scripts/ask.mjs: 481 lines, over the 480-line budget']);
+  positive('R406: ask.mjs at 480 lines passes', (dir) => {
+    put(dir, 'plugins/guard/scripts/ask.mjs', '// x\n'.repeat(480));
+    bump(dir, 'guard');
+  });
+
   negative('R387: primer.mjs over the 700-line budget', (dir) => {
     put(dir, 'plugins/primer/scripts/primer.mjs', '// x\n'.repeat(701));
     bump(dir, 'primer');
@@ -610,30 +619,42 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     rmSync(join(dir, 'plugins/primer/hooks/hooks.json'));
     bump(dir, 'primer');
   }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
-  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape', (dir) => {
+  negative('R344: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape', (dir) => {
     edit(dir, 'plugins/guard/hooks/hooks.json', '"denied"', '"status"');
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
-  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (timeout)', (dir) => {
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape (timeout)', (dir) => {
     edit(dir, 'plugins/guard/hooks/hooks.json', '"timeout": 10', '"timeout": 20');
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
-  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart matcher)', (dir) => {
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape (SessionStart matcher)', (dir) => {
     edit(dir, 'plugins/guard/hooks/hooks.json', '"startup"', '"resume"');
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
-  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart timeout)', (dir) => {
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape (SessionStart timeout)', (dir) => {
     edit(dir, 'plugins/guard/hooks/hooks.json', '"timeout": 30', '"timeout": 60');
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
-  negative('R341: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (SessionStart verb)', (dir) => {
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
+  negative('R341: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape (SessionStart verb)', (dir) => {
     edit(dir, 'plugins/guard/hooks/hooks.json', '"session-start"', '"status"');
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
-  negative('R344: plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape (missing)', (dir) => {
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape (missing)', (dir) => {
     rmSync(join(dir, 'plugins/guard/hooks/hooks.json'));
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/hooks/hooks.json: not the PermissionDenied and SessionStart startup shape']);
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape (PreToolUse script)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '/scripts/ask.mjs', '/scripts/guard.mjs');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape (PreToolUse onFailure)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"onFailure": "continue"', '"onFailure": "block"');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
+  negative('R344: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape (PreToolUse matcher)', (dir) => {
+    edit(dir, 'plugins/guard/hooks/hooks.json', '"Bash|PowerShell|mcp__.*"', '"Bash|PowerShell"');
+    bump(dir, 'guard');
+  }, 1, ['plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape']);
   negative('R8: <file>: hooks outside plugins/rules/hooks/hooks.json, plugins/primer/hooks/hooks.json and plugins/guard/hooks/hooks.json (hooks.json)', (dir) => {
     put(dir, 'plugins/loop/hooks/hooks.json', '{}\n');
     bump(dir, 'loop');
@@ -714,6 +735,11 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
       if (basename(path) === 'transcripts.mjs' || read(dir, path).includes('transcripts.mjs')) rmSync(join(dir, path));
     }
   }, 1, ['plugins/primer/scripts/transcripts.mjs: no test under tests/ names it']);
+  negative('R6: <path>: no test under tests/ names it (ask.mjs)', (dir) => {
+    for (const path of files(dir, 'tests/')) {
+      if (basename(path) === 'ask.mjs' || read(dir, path).includes('ask.mjs')) rmSync(join(dir, path));
+    }
+  }, 1, ['plugins/guard/scripts/ask.mjs: no test under tests/ names it']);
 
   negative('R223: .gitattributes: lacks the line <line>', (dir) => {
     put(dir, '.gitattributes', '* text=auto eol=lf\n*.mjs text eol=lf\n*.md text eol=lf\n');

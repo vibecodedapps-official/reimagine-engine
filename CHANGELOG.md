@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## guard 0.1.5 - 2026-11-15
+
+- `/guard add <path> ask` has the host ask before every push, pull request and comment aimed at that repository, through a new hook that reads each shell and MCP call before it runs. A push and a new pull request in a listed repository ran with no question, and no setting made one repository ask.
+- The hook asks whenever it cannot tell where a call goes, and prints nothing while no repository is flagged. With nobody to answer, the host denies a call that asks, so an unattended run cannot push or post to a flagged repository.
+- At startup guard names a list file that cannot be read, and one that is missing while the settings file holds its entries. Both printed nothing. In either state the hook asks before every push and every `gh` and `az repos` write.
+- The README says that two configuration folders that sync `settings.json` are not supported and that a copy of the list file beside the second one ends the questions, and it lists what the hook does not see.
+
 ## primer 0.1.15 - 2026-11-15
 
 - The staging check reads a PowerShell here-string as one word. A commit message typed in one with an apostrophe left the command with no parse, so the check judged every `local` repository of the map and could deny for an agent file in another repository, and a here-string that ran no git was denied when its text held `commit`. One inside a word, or with text joined to its closer, still leaves the command with no parse, and one that no git call takes counts as running the git add or commit its text names, as a here-document does.

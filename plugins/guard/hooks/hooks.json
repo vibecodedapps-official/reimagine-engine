@@ -1,5 +1,19 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/ask.mjs"],
+            "timeout": 10,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ],
     "PermissionDenied": [
       {
         "hooks": [

@@ -1,7 +1,7 @@
 ---
 name: guard
 description: Keeps the auto mode classifier's entries for the repositories you list in your user settings file, and shows each change before it is made.
-argument-hint: "[add PATH [merge] [reads] | drop PATH-OR-REMOTE | clear | list | status | denials]"
+argument-hint: "[add PATH [merge] [reads] [ask] | drop PATH-OR-REMOTE | clear | list | status | denials]"
 disable-model-invocation: true
 allowed-tools:
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" status *)
@@ -23,7 +23,7 @@ $ARGUMENTS
 ## Accepted arguments
 
 - Empty.
-- `add <path>`, then `merge`, `reads`, both or neither.
+- `add <path>`, then any of `merge`, `reads` and `ask`, or none.
 - `drop <path or remote>`
 - `clear`
 - `list`
@@ -50,7 +50,7 @@ Run exactly one command with the Bash tool, chosen by the arguments:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}"`
 - `add <path>`:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}" --add "<path>"`
-- `add <path>` with `merge`, `reads` or both: the same command with `--merge`, `--reads` or both after the path.
+- `add <path>` with `merge`, `reads` or `ask`: the same command with `--merge`, `--reads` or `--ask` for each word given, after the path. `ask` has the host ask before every push, pull request and comment aimed at that repository.
 - `drop <path or remote>`:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}" --drop "<path or remote>"`
 - `clear`:

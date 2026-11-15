@@ -55,6 +55,7 @@ const EXECUTABLES = [
   'plugins/gate/scripts/resume.mjs',
   'plugins/gate/scripts/split.mjs',
   'plugins/guard/scripts/guard.mjs',
+  'plugins/guard/scripts/ask.mjs',
   'plugins/review/scripts/posts.mjs',
 ];
 const GUARD_RUNS = ['status', 'list', 'plan', 'denials'].map((verb) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" ${verb} *)`);
@@ -86,6 +87,7 @@ const ROOT_HOOKS = {
 };
 const GUARD_HOOK = {
   hooks: {
+    PreToolUse: [{ matcher: 'Bash|PowerShell|mcp__.*', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/ask.mjs'], timeout: 10, onFailure: 'continue' }] }],
     PermissionDenied: [{ hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs', 'denied', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] }],
     SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs', 'session-start', '${CLAUDE_PLUGIN_DATA}'], timeout: 30 }] }],
   },
@@ -272,7 +274,7 @@ function importFailures(ctx) {
 
 function budgetFailures(ctx) {
   const out = [];
-  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/rules/scripts/outbound.mjs', 300], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
+  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/rules/scripts/outbound.mjs', 300], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/guard/scripts/ask.mjs', 480], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
     const source = ctx.text(script);
     if (source === null) continue;
     const lines = source.split('\n').length - 1 + (source !== '' && !source.endsWith('\n') ? 1 : 0);
@@ -461,7 +463,7 @@ function hookFailures(ctx) {
   const out = [];
   if (!same(ctx.json(RULES_HOOKS), ROOT_HOOKS)) out.push(`${RULES_HOOKS}: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape`);
   if (!same(ctx.json(PRIMER_HOOKS), PRIMER_HOOK)) out.push(`${PRIMER_HOOKS}: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape`);
-  if (!same(ctx.json(GUARD_HOOKS), GUARD_HOOK)) out.push(`${GUARD_HOOKS}: not the PermissionDenied and SessionStart startup shape`);
+  if (!same(ctx.json(GUARD_HOOKS), GUARD_HOOK)) out.push(`${GUARD_HOOKS}: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape`);
   const manifests = new Map(ctx.plugins.map((p) => [p.path, p.manifest]));
   const message = (file) => `${file}: hooks outside ${RULES_HOOKS}, ${PRIMER_HOOKS} and ${GUARD_HOOKS}`;
   for (const file of ctx.shipped) {

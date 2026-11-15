@@ -1,7 +1,7 @@
 // Runs the primer drift hook (plugins/primer/hooks/drift.sh) against throwaway repositories, one test per rule, and its hand-off to
 // the staging check of plugins/primer/scripts/primer.mjs.
 // The hook needs sh, git, awk and sed on PATH. Every repository lives under one temporary base that is removed at the end.
-// The groups whose cases each build their own repository run their cases concurrently.
+// The groups whose cases build their own repository or only read a shared one run their cases concurrently.
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -165,154 +165,177 @@ before(async () => {
 after(() => rmSync(base, { recursive: true, force: true }));
 
 describe('primer drift hook', () => {
-  test('hooks.json registers PreToolUse hooks for Bash and PowerShell and for file edits, one SessionStart hook for startup and the loader on every source', () => {
-    const json = JSON.parse(readFileSync(join(root, 'plugins/primer/hooks/hooks.json'), 'utf8'));
-    assert.deepEqual(json, {
-      hooks: {
-        PreToolUse: [
-          { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] },
-          { matcher: 'Edit|Write|NotebookEdit', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'reach', '${CLAUDE_PLUGIN_DATA}'], timeout: 10, onFailure: 'continue' }] },
-        ],
-        SessionStart: [
-          { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
-          { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
-        ],
-      },
+  describe('cases that write no shared repository', { concurrency }, () => {
+    test('hooks.json registers PreToolUse hooks for Bash and PowerShell and for file edits, one SessionStart hook for startup and the loader on every source', () => {
+      const json = JSON.parse(readFileSync(join(root, 'plugins/primer/hooks/hooks.json'), 'utf8'));
+      assert.deepEqual(json, {
+        hooks: {
+          PreToolUse: [
+            { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] },
+            { matcher: 'Edit|Write|NotebookEdit', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'reach', '${CLAUDE_PLUGIN_DATA}'], timeout: 10, onFailure: 'continue' }] },
+          ],
+          SessionStart: [
+            { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
+            { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
+          ],
+        },
+      });
     });
-  });
 
-  const positive = [
-    'git commit -m x',
-    'git add -A && git commit -m x',
-    'git add -A; git commit -m x',
-    'git add -A\ngit commit -m x',
-    'echo msg | git commit -F -',
-    '(git commit -m x)',
-    'env GIT_AUTHOR_NAME=a git commit -m x',
-    'sudo git commit -m x',
-    'GIT_EDITOR=true git commit',
-    'bash -c "git commit -m x"',
-    "sh -c 'git add -A; git commit -m x'",
-    '& git commit -m x',
-    'git.exe commit -m x',
-    '& "C:\\Program Files\\Git\\cmd\\git.exe" commit -m x',
-    'git -c user.name=a commit -m x',
-    'git --git-dir=.git commit -m x',
-    'git --git-dir .git --work-tree . commit -m x',
-    'git --no-pager commit -m "fix; things"',
-  ];
-  for (const command of positive) {
-    test(`detects a commit: ${JSON.stringify(command)}`, async () => {
-      assert.equal(await run(command, broken), deny(brokenFinding));
+    const positive = [
+      'git commit -m x',
+      'git add -A && git commit -m x',
+      'git add -A; git commit -m x',
+      'git add -A\ngit commit -m x',
+      'echo msg | git commit -F -',
+      '(git commit -m x)',
+      'env GIT_AUTHOR_NAME=a git commit -m x',
+      'sudo git commit -m x',
+      'GIT_EDITOR=true git commit',
+      'bash -c "git commit -m x"',
+      "sh -c 'git add -A; git commit -m x'",
+      '& git commit -m x',
+      'git.exe commit -m x',
+      '& "C:\\Program Files\\Git\\cmd\\git.exe" commit -m x',
+      'git -c user.name=a commit -m x',
+      'git --git-dir=.git commit -m x',
+      'git --git-dir .git --work-tree . commit -m x',
+      'git --no-pager commit -m "fix; things"',
+    ];
+    for (const command of positive) {
+      test(`detects a commit: ${JSON.stringify(command)}`, async () => {
+        assert.equal(await run(command, broken), deny(brokenFinding));
+      });
+    }
+
+    const wrapped = [
+      'if git diff --cached --quiet; then echo none; else git commit -m x; fi',
+      'for f in a; do git commit -m x; done',
+      '! git commit -m x',
+      'time git commit -m x',
+      'command git commit -m x',
+      'bash -o pipefail -c "git commit -m x"',
+      'echo "$(git commit -m x)"',
+      '/usr/bin/env git commit -m x',
+      'git -C "$REPO" commit -m x',
+    ];
+    for (const command of wrapped) {
+      test(`detects a commit: ${JSON.stringify(command)}`, async () => {
+        assert.equal(await run(command, broken), deny(brokenFinding));
+      });
+    }
+
+    test('detects a commit after env -C from a non-repository cwd', async () => {
+      assert.equal(await run('env -C broken git commit -m x', base), deny(brokenFinding));
     });
-  }
 
-  const wrapped = [
-    'if git diff --cached --quiet; then echo none; else git commit -m x; fi',
-    'for f in a; do git commit -m x; done',
-    '! git commit -m x',
-    'time git commit -m x',
-    'command git commit -m x',
-    'bash -o pipefail -c "git commit -m x"',
-    'echo "$(git commit -m x)"',
-    '/usr/bin/env git commit -m x',
-    'git -C "$REPO" commit -m x',
-  ];
-  for (const command of wrapped) {
-    test(`detects a commit: ${JSON.stringify(command)}`, async () => {
-      assert.equal(await run(command, broken), deny(brokenFinding));
+    test('detects a commit after git -C ~/dir with HOME set', async () => {
+      assert.equal(await run('git -C ~/broken commit -m x', base, { env: { HOME: base } }), deny(brokenFinding));
     });
-  }
 
-  test('detects a commit after env -C from a non-repository cwd', async () => {
-    assert.equal(await run('env -C broken git commit -m x', base), deny(brokenFinding));
-  });
-
-  test('detects a commit after git -C ~/dir with HOME set', async () => {
-    assert.equal(await run('git -C ~/broken commit -m x', base, { env: { HOME: base } }), deny(brokenFinding));
-  });
-
-  test('detects a commit from the PowerShell tool', async () => {
-    assert.equal(await run('git commit -m x', broken, { tool: 'PowerShell' }), deny(brokenFinding));
-  });
-
-  test('PowerShell reads a backslash before a closing quote as a plain character', async () => {
-    assert.equal(await run('cd "C:\\work\\"; git commit -m x', broken, { tool: 'PowerShell' }), deny(brokenFinding));
-  });
-
-  test('PowerShell reads a backtick before a quote as a literal quote', async () => {
-    assert.equal(await run('echo "a`"b"; git commit -m x', broken, { tool: 'PowerShell' }), deny(brokenFinding));
-  });
-
-  test('Bash keeps a backslash-escaped quote inside the string', async () => {
-    assert.equal(await run('echo "x\\"; git commit -m x', broken, { tool: 'Bash' }), '');
-  });
-
-  test('detects a commit in pretty-printed stdin', async () => {
-    const input = {
-      session_id: 'test',
-      hook_event_name: 'PreToolUse',
-      tool_name: 'Bash',
-      tool_input: { command: 'git commit -m x', description: 'Run a command' },
-      cwd: broken,
-    };
-    assert.equal(await hook(JSON.stringify(input, null, 2)), deny(brokenFinding));
-  });
-
-  const slashed = (p) => p.replaceAll('\\', '/');
-  const directory = [
-    ['a relative -C', () => 'git -C broken commit -m x'],
-    ['a forward-slash -C', () => `git -C ${slashed(brokenPath)} commit -m x`],
-    ['a quoted OS-path -C', () => `git -C "${brokenPath}" commit -m x`],
-    ['a forward-slash --work-tree=', () => `git --work-tree=${slashed(brokenPath)} commit -m x`],
-  ];
-  for (const [label, command] of directory) {
-    test(`detects a commit from a non-repository cwd with ${label}`, async () => {
-      assert.equal(await run(command(), base), deny(brokenFinding));
+    test('detects a commit from the PowerShell tool', async () => {
+      assert.equal(await run('git commit -m x', broken, { tool: 'PowerShell' }), deny(brokenFinding));
     });
-  }
 
-  const negative = [
-    ['git log --grep commit', {}],
-    ['echo git commit', {}],
-    ['echo "a; git commit"', {}],
-    ['git commit-tree HEAD^{tree}', {}],
-    ['git show HEAD:commit', {}],
-    ['ls commit', {}],
-    ['git status', { description: 'git commit the staged change' }],
-    ['git status', { description: 'commit' }],
-    ['git commit --dry-run', {}],
-    ['git commit --help', {}],
-    ['git commit -h', {}],
-  ];
-  for (const [command, extra] of negative) {
-    test(`stays quiet: ${JSON.stringify(command)} ${extra.description ?? ''}`.trim(), async () => {
-      assert.equal(await run(command, broken, extra), '');
+    test('PowerShell reads a backslash before a closing quote as a plain character', async () => {
+      assert.equal(await run('cd "C:\\work\\"; git commit -m x', broken, { tool: 'PowerShell' }), deny(brokenFinding));
     });
-  }
 
-  test('stays quiet on empty stdin', async () => {
-    assert.equal(await hook(''), '');
-  });
+    test('PowerShell reads a backtick before a quote as a literal quote', async () => {
+      assert.equal(await run('echo "a`"b"; git commit -m x', broken, { tool: 'PowerShell' }), deny(brokenFinding));
+    });
 
-  test('stays quiet on stdin that is not JSON', async () => {
-    assert.equal(await hook('not json commit'), '');
-  });
+    test('Bash keeps a backslash-escaped quote inside the string', async () => {
+      assert.equal(await run('echo "x\\"; git commit -m x', broken, { tool: 'Bash' }), '');
+    });
 
-  test('prints nothing outside a repository', async () => {
-    const dir = join(base, 'plain');
-    write(dir, 'CLAUDE.md', brokenHub);
-    assert.equal(await run('git commit -m x', dir), '');
-  });
+    test('detects a commit in pretty-printed stdin', async () => {
+      const input = {
+        session_id: 'test',
+        hook_event_name: 'PreToolUse',
+        tool_name: 'Bash',
+        tool_input: { command: 'git commit -m x', description: 'Run a command' },
+        cwd: broken,
+      };
+      assert.equal(await hook(JSON.stringify(input, null, 2)), deny(brokenFinding));
+    });
 
-  test('a byte that is not UTF-8 in the command does not disable the hook under a UTF-8 locale', async () => {
-    const dir = await make('bad-byte', { 'CLAUDE.md': brokenHub });
-    const input = Buffer.concat([
-      Buffer.from('{"tool_name":"Bash","tool_input":{"command":"git commit -m \\"caf'),
-      Buffer.from([0xff]),
-      Buffer.from('\\""},"cwd":' + JSON.stringify(dir) + '}'),
-    ]);
-    for (const locale of ['en_US.UTF-8', 'C.UTF-8', 'C']) assert.equal(await hook(input, { LC_ALL: locale }), deny(brokenFinding), locale);
+    const slashed = (p) => p.replaceAll('\\', '/');
+    const directory = [
+      ['a relative -C', () => 'git -C broken commit -m x'],
+      ['a forward-slash -C', () => `git -C ${slashed(brokenPath)} commit -m x`],
+      ['a quoted OS-path -C', () => `git -C "${brokenPath}" commit -m x`],
+      ['a forward-slash --work-tree=', () => `git --work-tree=${slashed(brokenPath)} commit -m x`],
+    ];
+    for (const [label, command] of directory) {
+      test(`detects a commit from a non-repository cwd with ${label}`, async () => {
+        assert.equal(await run(command(), base), deny(brokenFinding));
+      });
+    }
+
+    const negative = [
+      ['git log --grep commit', {}],
+      ['echo git commit', {}],
+      ['echo "a; git commit"', {}],
+      ['git commit-tree HEAD^{tree}', {}],
+      ['git show HEAD:commit', {}],
+      ['ls commit', {}],
+      ['git status', { description: 'git commit the staged change' }],
+      ['git status', { description: 'commit' }],
+      ['git commit --dry-run', {}],
+      ['git commit --help', {}],
+      ['git commit -h', {}],
+    ];
+    for (const [command, extra] of negative) {
+      test(`stays quiet: ${JSON.stringify(command)} ${extra.description ?? ''}`.trim(), async () => {
+        assert.equal(await run(command, broken, extra), '');
+      });
+    }
+
+    test('stays quiet on empty stdin', async () => {
+      assert.equal(await hook(''), '');
+    });
+
+    test('stays quiet on stdin that is not JSON', async () => {
+      assert.equal(await hook('not json commit'), '');
+    });
+
+    test('prints nothing outside a repository', async () => {
+      const dir = join(base, 'plain');
+      write(dir, 'CLAUDE.md', brokenHub);
+      assert.equal(await run('git commit -m x', dir), '');
+    });
+
+    test('a byte that is not UTF-8 in the command does not disable the hook under a UTF-8 locale', async () => {
+      const dir = await make('bad-byte', { 'CLAUDE.md': brokenHub });
+      const input = Buffer.concat([
+        Buffer.from('{"tool_name":"Bash","tool_input":{"command":"git commit -m \\"caf'),
+        Buffer.from([0xff]),
+        Buffer.from('\\""},"cwd":' + JSON.stringify(dir) + '}'),
+      ]);
+      for (const locale of ['en_US.UTF-8', 'C.UTF-8', 'C']) assert.equal(await hook(input, { LC_ALL: locale }), deny(brokenFinding), locale);
+    });
+
+    test('several findings come in the order hub, nested, rules, skills', async () => {
+      const dir = await make('order', {
+        'CLAUDE.md': pad(brokenHub, 12, 61),
+        'src/api/CLAUDE.md': pad(apiText, 11, 61),
+        '.claude/rules/code.md': codeWith('paths: [unclosed'),
+        '.claude/skills/release/SKILL.md': skillNoDescription,
+      });
+      assert.equal(
+        await run('git commit -m x', dir),
+        deny(
+          'CLAUDE.md has 61 lines, over its cap of 60; CLAUDE.md names missing path docs/gone.md; src/api/CLAUDE.md has 61 lines, over its cap of 60; .claude/rules/code.md has a paths value the host cannot read; .claude/skills/release/SKILL.md has no description',
+        ),
+      );
+    });
+
+    test('a deny wins over advice', async () => {
+      const dir = await make('deny-wins', { 'CLAUDE.md': brokenHub });
+      await stage(dir, 'src/app.tsx', 'export const a = 2;\n');
+      assert.equal(await run('git commit -m x', dir), deny(brokenFinding));
+    });
   });
 
   describe('quiet and opt-in', { concurrency }, () => {
@@ -543,21 +566,6 @@ describe('primer drift hook', () => {
     });
   });
 
-  test('several findings come in the order hub, nested, rules, skills', async () => {
-    const dir = await make('order', {
-      'CLAUDE.md': pad(brokenHub, 12, 61),
-      'src/api/CLAUDE.md': pad(apiText, 11, 61),
-      '.claude/rules/code.md': codeWith('paths: [unclosed'),
-      '.claude/skills/release/SKILL.md': skillNoDescription,
-    });
-    assert.equal(
-      await run('git commit -m x', dir),
-      deny(
-        'CLAUDE.md has 61 lines, over its cap of 60; CLAUDE.md names missing path docs/gone.md; src/api/CLAUDE.md has 61 lines, over its cap of 60; .claude/rules/code.md has a paths value the host cannot read; .claude/skills/release/SKILL.md has no description',
-      ),
-    );
-  });
-
   describe('advice from the changed set', () => {
     const codeMore = baseFiles['.claude/rules/code.md'] + 'More.\n';
     const steps = [
@@ -617,12 +625,6 @@ describe('primer drift hook', () => {
         }
       });
     }
-  });
-
-  test('a deny wins over advice', async () => {
-    const dir = await make('deny-wins', { 'CLAUDE.md': brokenHub });
-    await stage(dir, 'src/app.tsx', 'export const a = 2;\n');
-    assert.equal(await run('git commit -m x', dir), deny(brokenFinding));
   });
 
   describe('never writes a file', () => {

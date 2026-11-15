@@ -41,6 +41,7 @@ test('R116, R118: every gh command that posts a body passes it with --body-file 
     const creates = [...read(file).matchAll(/`(gh pr create --title [^`]+)`/g)].map((m) => m[1]);
     assert.ok(creates.length > 0, `${file} shows no gh pr create`);
     for (const create of creates) assert.ok(create.includes('--base <base>'), `${file} shows ${create} without --base <base>`);
+    assert.ok(read(file).includes('`--head <branch>`'), `${file} names no --head <branch> for a continued branch`);
   }
 });
 

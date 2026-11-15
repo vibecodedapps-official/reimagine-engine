@@ -4,7 +4,7 @@ Take the targets in the order of the reading block's Targets line. Each target g
 
 - Take `date -u +%Y-%m-%dT%H:%M:%SZ` now and keep the output as the run's start; take it again at the start of each later target.
 - Run read-only commands one at a time, and retry a dropped read once.
-- Nothing is written before the record below. Fetched refs are not writes.
+- Nothing is written before the record below, apart from the exclude line of Clean tree. Fetched refs are not writes.
 - A stop in this step ends the run `blocked` or `stopped`, as its item says.
 
 ## Instruction files and the permission statement
@@ -13,7 +13,7 @@ Do this once, before the first fetch. With a manifest, read every bundle's repos
 
 1. Read the user's instruction files in `$CLAUDE_CONFIG_DIR` when it is set, else in `~/.claude`, never both, since the session loads only that directory. From the target's root, read `CLAUDE.md`, `AGENTS.md`, `.claude/CLAUDE.md` and every file they import, and `CLAUDE.md` and `.claude/CLAUDE.md` in each folder above the root, and in each folder from the root down to the session's folder when the session started below it, which the session loads as project instructions. Record every ask-first rule with the file it came from.
 2. Read `.reimagine.json` at the root. A file that does not parse ends the run `blocked`.
-3. Print the permission statement. It gives the approved and the always-ask actions (SKILL.md, Approval scope), the instruction directory read, the ask-first rules found with their files, the run's checks with their source, or that no check will run, and for each action of the run whether it will prompt: fetch, the reads of a remote's refs (`git ls-remote`), checkout, the exclude file and the record, the child sessions, the subagents, the checks, the `node` scripts, the commit and the push. Judge each from the permission mode the session states and the allow, ask and deny rules of the user, project and local settings files. An action runs unprompted only when the mode approves it, or an allow rule matches its command and no ask or deny rule does. A command in the `git -C` or `cd` form of a target that runs from outside the session's folder is not pre-approved, and an outcome you cannot determine counts as a prompt. A push that triggers a deploy always prompts and is judged before each push, so outside "no fixes" the Prompts line ends with `deploy: judged before each push`. End with "this run will prompt at: <list>" or "this run is unattended".
+3. Print the permission statement. It gives the approved and the always-ask actions (SKILL.md, Approval scope), the instruction directory read, the ask-first rules found with their files, the run's checks with their source, or that no check will run, and for each action of the run whether it will prompt: fetch, the reads of a remote's refs (`git ls-remote`), checkout, the exclude file and the record, the child sessions, the subagents, the checks, the `node` scripts, the commit and the push. Judge each from the permission mode the session states and the allow, ask and deny rules of the user, project and local settings files. An action runs unprompted only when the mode approves it, or an allow rule matches its command and no ask or deny rule does. A command in the `git -C` or `cd` form of a target that runs from outside the session's folder is not pre-approved, and an outcome you cannot determine counts as a prompt. A push that triggers a deploy always prompts and is judged before each push, so outside "no fixes" the Prompts line ends with `deploy: judged before each push`. Where the target's first push asks (`steps/2-fix.md`, The push), the push counts as a prompt. End with "this run will prompt at: <list>" or "this run is unattended".
 
 ```
 Approved for this run: fix commits on each target's branch, push it.
@@ -30,7 +30,7 @@ this run will prompt at: the reads of the remote's refs, the record, the child s
 
 ## Clean tree
 
-Before any checkout, `git status --porcelain` must print nothing, untracked files that are not ignored included, and `git diff --cached --quiet` must succeed. Otherwise the run ends `blocked`, naming what is dirty.
+Where `git status --porcelain -- .reimagine.json` prints an untracked file, first append `.reimagine.json` to the exclude file, as The record, item 2, does. Before any checkout, `git status --porcelain` must print nothing, untracked files that are not ignored included, and `git diff --cached --quiet` must succeed. Otherwise the run ends `blocked`, naming what is dirty.
 
 ## Base and merge-base
 

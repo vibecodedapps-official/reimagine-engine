@@ -2,6 +2,19 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.22 - 2026-11-15
+
+- On a host the gate cannot tell is GitHub, the run asks once before each target's first push, and `"ask-push": false` in the `gate` key drops the question. The deploy judgment reads only the workflow files under `.github/workflows`, so on any other host no push asked. With nobody to answer, the run stops at the question with its fix committed and not pushed.
+- An untracked `.reimagine.json` is added to the exclude file before the clean-tree check. It made the tree dirty, so a run in a repository that does not commit the file ended `blocked` before it began.
+- The README names the forges: a pull request or a branch on GitHub, a branch elsewhere.
+- Sentences that repeated a rule a step file holds are cut from the skill, which stood at its word budget.
+
+## loop 0.1.31 - 2026-11-15
+
+- The implementer brief says that a test the slice adds must fail with the change it guards undone, and the reply says for each such test whether a run showed that. The loop failed a behavior change with no test and asked nothing of the test itself.
+- An untracked `.reimagine.json` is added to the exclude file before the tree is first read, as the gate does, so it no longer ends the run `blocked`.
+- The commands a `prepared` run prints name `--head <branch>` on a continued branch, as the publish step does. Without it the head was whatever branch the command was pasted in.
+
 ## review 0.1.3 - 2026-11-15
 
 - The first reading is also asked for weak tests of the change and for breaks of the conventions its brief carries, and before any draft each test the change adds or alters is read for whether it would fail with the change it guards undone. The brief asked for correctness bugs only, and the proof that a test fails with the change undone covered only a test the reviewer hands to the author.

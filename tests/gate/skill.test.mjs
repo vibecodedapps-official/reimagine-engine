@@ -90,7 +90,7 @@ test('R313: the configuration block is the same in SKILL.md and the README and h
   assert.notEqual(readme, undefined, 'README.md has no json block');
   assert.equal(skill.lines.join('\n'), readme.lines.join('\n'));
   assert.deepEqual(JSON.parse(skill.lines.join('\n')), {
-    gate: { split: 1500, parallel: 3, 'max-passes': 4, budget: 120, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', reviewer: 'opus', 'fallback-reviewer': 'opus' } },
+    gate: { split: 1500, parallel: 3, 'max-passes': 4, budget: 120, 'ask-push': true, timeouts: { subagent: 20, review: 30, check: 15 }, models: { implementer: 'sonnet', reader: 'sonnet', reviewer: 'opus', 'fallback-reviewer': 'opus' } },
   });
 });
 
@@ -283,4 +283,11 @@ test('the README names the phrases a request may hold and where the record is', 
 test('R219: the skill stays within its word budget', () => {
   const total = prose().reduce((n, rel) => n + words(read(rel)), 0);
   assert.ok(total <= 10400, `the skill holds ${total} words, over 10400`);
+});
+
+test('R309: preflight excludes an untracked .reimagine.json before it asks whether the tree is clean', () => {
+  const text = read('steps/0-preflight.md');
+  const probe = text.indexOf('`git status --porcelain -- .reimagine.json`');
+  assert.notEqual(probe, -1);
+  assert.ok(probe < text.indexOf('`git status --porcelain`'), 'the config file is excluded after the clean-tree check');
 });

@@ -62,3 +62,10 @@ test('the reading block prints Tickets, Mode, Scope and Effort, in the order the
   const opening = SKILL.split('\n').find((line) => /^\d+\. /.test(line) && line.includes(`(${labels.join(', ')})`));
   assert.notEqual(opening, undefined, 'no opening action names the four lines in the block\'s order');
 });
+
+test('R82: preflight excludes an untracked .reimagine.json before its first read of the whole tree', () => {
+  const text = PREFLIGHT;
+  const probe = text.indexOf('`git status --porcelain -- .reimagine.json`');
+  assert.notEqual(probe, -1);
+  assert.ok(probe < text.indexOf('`git status --porcelain`'), 'the config file is excluded after the clean-tree check');
+});

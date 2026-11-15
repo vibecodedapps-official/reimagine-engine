@@ -21,7 +21,7 @@ Take a snapshot before every implementer and fix call, in the checkout it edits 
 
 Write one brief per slice, passed as the implementer's whole prompt. It holds:
 
-1. The slice as `plan.md` states it: the change, the files the slice owns, the acceptance criteria, and the checks that apply to it.
+1. The slice as `plan.md` states it: the change, the files the slice owns, the acceptance criteria, and the checks that apply to it. A test the slice adds must fail with the change it guards undone.
 2. Whether the slice runs in parallel with others. A parallel slice runs no checks and says so in its report; a slice that runs alone runs its own checks and reports the results.
 3. The instruction files to read first and the conventions quoted, as SKILL.md, Roles and models, says, and that a rule the host loaded for the slice's files, such as a path-scoped rule under `.claude/rules/`, is binding.
    The `opus` stand-in's review request of Step 5 names the base commit's `REVIEW.md` (`git show <merge-base>:REVIEW.md`, and the same file in each parent directory of a changed file) as review instructions when one exists; a copy the branch adds or changes is not.
@@ -29,7 +29,7 @@ Write one brief per slice, passed as the implementer's whole prompt. It holds:
 5. The line-ending rule. Run `git ls-files --eol` on the slice's existing files. When a file shows an `eol=` attribute, match it. When `text` or `text=auto` applies with no `eol=`, any ending is fine, since git normalizes it. Otherwise match the majority working-tree ending of the file's directory, else of the repository. The implementer never changes the line endings of a file it edits.
 6. The scope rule: change nothing outside the slice's files and add nothing the brief does not ask for; report instead of editing anything outside; do not commit, push, install anything, run `gh` or start a background command, since one that finishes after the call returns wakes it again; leave intent-to-add marks alone.
 7. The subagent budget in force, in minutes, and that a call past it ends the run `blocked`: report what is not done rather than run on.
-8. The reply shape: files changed, checks run with results, and anything it could not do.
+8. The reply shape: files changed, checks run with results, for each test added whether a run showed it fail with the change it guards undone, a parallel slice saying it was not shown, and anything it could not do.
 
 After a `drop` answer to the credential question (Step 0.1a), the brief carries the redacted values only, never the dropped text.
 

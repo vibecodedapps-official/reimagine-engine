@@ -19,7 +19,7 @@
 
 ## Resume
 
-Preflight sends the run here when the record holds passes. This run's entry is already in `runs`. Nothing of an earlier run is changed except `passes.json`, `findings.json` and the files a repeated pass rewrites.
+This run's entry is already in `runs`. Nothing of an earlier run is changed except `passes.json`, `findings.json` and the files a repeated pass rewrites.
 
 Run `node "<scripts>/resume.mjs" <absolute passes.json> <head> <remote head> <merge-base> <mode>`: the output of `git rev-parse HEAD`, the remote head preflight kept or `none`, the merge-base preflight found, each sha in full, and the mode as `fix` or `no-fixes`. It prints one line that names an `action`. A non-zero exit ends the run `blocked` with the script's stderr line.
 

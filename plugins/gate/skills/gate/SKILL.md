@@ -67,7 +67,7 @@ Engine: subprocess; reviewer opus, stand-in opus (default)
 Scripts: <the plugin's directory>/scripts
 ```
 
-Targets gives each target, how it resolved and its base, with its root when it runs from outside the session's folder. Mode is `fix` or `no fixes`. Budget gives the run budget and its source, then `max-passes`, `split` and `parallel`, then the subagent, review and check budgets, each with its source when it is not the default. Engine is `subprocess`, or `stand-in` with the reason, then the model of the reviewer and of the stand-in, each with its source when it is not the default; when the repositories of a manifest set different models, each repository's models follow its path. A configuration key that is unknown or has a bad value is reported in the block and ignored. The configuration read is the one at the target's root.
+Targets gives each target, how it resolved and its base, with its root when it runs from outside the session's folder. Mode is `fix` or `no fixes`. Budget gives the run budget and its source, then `max-passes`, `split` and `parallel`, then the subagent, review and check budgets, each with its source when it is not the default. Engine is `subprocess`, or `stand-in` with the reason, then the model of the reviewer and of the stand-in, each with its source when it is not the default; when the repositories of a manifest set different models, each repository's models follow its path. A configuration key that is unknown or has a bad value is reported in the block and ignored.
 
 After the block, read `steps/0-preflight.md`, or with no target resolved `steps/4-publish.md`, which prints the report.
 
@@ -76,7 +76,7 @@ After the block, read `steps/0-preflight.md`, or with no target resolved `steps/
 Invoking this skill by name approves, for this run only, fix commits on each target's branch and pushing that branch. Nothing else is approved: no branch, no pull request, no comment, no body edit, no ticket comment and no issue.
 
 1. Instruction files win. Before changing anything, read the user's instruction files, the repository's, those of each folder above its root, and `.reimagine.json`. Record every ask-first rule, and prompt for any approved action a rule covers. Every brief the run sends, a reader's, an implementer's or the stand-in's request, names by path each of these files and each file a context loader names as its source that bears on its question, and quotes a convention the session holds from no file, such as a table the user gave in the request, since an agent knows only its brief and what the host loads for it. A child session that reviews is started with the review command alone and loads the instruction files itself, so such a convention is applied to its findings at triage.
-2. Always ask before a force push, `--no-verify`, a merge, rebase, amend or reset, anything that deploys, a push that triggers a deploy, a change to repository settings and a new issue.
+2. Always ask before a force push, `--no-verify`, a merge, rebase, amend or reset, anything that deploys, a push that triggers a deploy, a target's first push to a host not known to be GitHub unless `ask-push` is `false`, a change to repository settings and a new issue.
 3. A denial is final. What the user or the permission mode denies is never retried and never done another way. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A denied check is recorded as denied, and the next one runs.
 4. The gate never stashes, resets, cleans or forces, and never stages anything under `.reimagine/`.
 
@@ -95,11 +95,11 @@ The gate posts nothing to a forge. Its findings, deferred list, checks, commits 
 | reader | read-only Agents at `models.reader`, when a pass has more than 30 findings to sort | retried once, then the orchestrator reads that batch |
 | implementer | an Agent at `models.implementer` per group of files | the tree is restored from its snapshot and the run ends `blocked` |
 
-The gate never calls `code-review` through the Skill tool, and a level typed in a child session does not change the level the user last typed, so a run leaves the user's interactive level as it was.
+The gate never calls `code-review` through the Skill tool, so the user's interactive level stays as it was.
 
 ## Levels, stops and caps
 
-The first pass of a sequence runs at `xhigh`. After each pass you do not choose what follows: `next.mjs` reads the record and returns the next level or the stop, with the rule that produced it (`steps/3-next.md`). A run stops when a pass finds nothing to fix, or finds only a few corrections to the fix round before it, which are made and pass the checks. Only `xhigh`, `high` and `medium` are ever typed.
+The first pass of a sequence runs at `xhigh`. After each pass you do not choose what follows: `next.mjs` reads the record and returns the next level or the stop, with the rule that produced it (`steps/3-next.md`). Only `xhigh`, `high` and `medium` are ever typed.
 
 - The run budget is "budget <n> minutes" in the request, else `gate.budget`, else a session instruction, else the default. Waits for an answer are outside it.
 - A cap on passes, the run budget or a review past its budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends it `blocked`. What the pass saved is kept, and a pushed commit stays.
@@ -117,6 +117,7 @@ With "no fixes" the run makes pass 1 only: the review and the triage run, nothin
     "parallel": 3,
     "max-passes": 4,
     "budget": 120,
+    "ask-push": true,
     "timeouts": { "subagent": 20, "review": 30, "check": 15 },
     "models": { "implementer": "sonnet", "reader": "sonnet", "reviewer": "opus", "fallback-reviewer": "opus" }
   }
@@ -127,6 +128,7 @@ With "no fixes" the run makes pass 1 only: the review and the triage run, nothin
 - `parallel`: the reviews of one pass that run at once. Each is a model session of its own, so a machine short of memory lowers it.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
+- `ask-push`: on a host that is not known to be GitHub, where no file shows a deploy, the run asks before each target's first push. Only `false` drops the question.
 - `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`). A key absent here takes the root `timeouts` value of the same name, then the default.
 - `models`: the model of each role, one of `sonnet`, `opus`, `haiku` and `fable`. The reviewer's is never the root `models` key, which is the loop's.
 
@@ -144,7 +146,7 @@ Every run ends in exactly one state, and then reads `steps/4-publish.md`.
 
 ## Record
 
-The record is `.reimagine/gate/<branch-slug>/` under the target's root: the branch name in lowercase, each run of characters outside `[a-z0-9]` written as `-`, cut to 60 characters, trailing `-` removed. `passes.json` in it is the only record of completion, and `record.md` describes every file. A second invocation on the same branch adds a run to the record, and `resume.mjs` reads it and returns where the run starts (`steps/3-next.md`, Resume).
+The record is `.reimagine/gate/<branch-slug>/` under the target's root: the branch name in lowercase, each run of characters outside `[a-z0-9]` written as `-`, cut to 60 characters, trailing `-` removed. `passes.json` in it is the only record of completion, and `record.md` describes every file. A second invocation on the same branch adds a run to the record.
 
 ## Supporting files
 
@@ -155,7 +157,7 @@ The record is `.reimagine/gate/<branch-slug>/` under the target's root: the bran
 - `steps/4-publish.md`: at every terminal state, for the run's end, the manifest, the report and the next target.
 - `record.md`: when a step writes a record file.
 - `report.md`: when the run ends, for the report.
-- `scripts/split.mjs`: at the start of each pass, to size the change and group its paths into reviews.
-- `scripts/findings.mjs`: after the reviews of a pass, to turn their saved output into the pass's findings and the ledger.
-- `scripts/next.mjs`: after each fix round, to decide the next level or the stop.
-- `scripts/resume.mjs`: when preflight finds a record that holds passes, to decide where the run starts.
+- `scripts/split.mjs`: Step 1.
+- `scripts/findings.mjs`: Step 1.
+- `scripts/next.mjs`: Step 3.
+- `scripts/resume.mjs`: Steps 0 and 3.

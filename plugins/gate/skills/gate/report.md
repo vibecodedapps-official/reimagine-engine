@@ -4,7 +4,7 @@ Fill every section from the record, `passes.json`, `findings.json` and the saved
 
 With a record, write the report to `report.md` in it, as `record.md`, Write discipline, says, and print the same text. With no record, the report names the preflight item that failed and its fix, or each target that did not resolve and why. A headless caller sees only the last message, so the header alone must let a reader find the record.
 
-The report may name models, agents and tools, because it stays in the record. It is the only place the run's findings, checks, commits and verdict are written for a reader.
+The report may name models, agents and tools, because it stays in the record.
 
 ## Template
 

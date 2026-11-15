@@ -1,7 +1,7 @@
 ---
 plugins: ["../../../../plugins/primer"]
 max_turns: 8
-allowed_tools: [Read, Glob, Grep, Skill]
+allowed_tools: [Read, Glob, Grep]
 ---
 
-check the instruction files. The profile is shared, and the repository is my own.
+/primer The profile is shared, and the repository is my own.

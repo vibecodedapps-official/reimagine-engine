@@ -27,7 +27,13 @@ Name a mode to force it:
 /primer adopt
 ```
 
-The skill also answers to "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files".
+Add one item after the command to record it alone, such as a checklist you just ran:
+
+```
+/primer turn this checklist into a skill
+```
+
+Only the command starts the skill; Claude Code does not start it from what you say.
 
 Run `/primer:fold` for a read-only report of where the current Claude Code documentation describes a practice or mechanism the repository could fold in, each item with the page, the file and the destination; it writes nothing.
 

@@ -517,17 +517,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   }
 
   const primerSkill = 'plugins/primer/skills/primer/SKILL.md';
-  const primerPhrases = ['turn this into a skill', 'we keep doing this', 'add this to the project instructions', 'check the instruction files'];
-  for (const phrase of primerPhrases) {
-    negative(`R245: <file>: description does not name "${phrase}"`, (dir) => {
-      edit(dir, primerSkill, `"${phrase}"`, `"${phrase.replace(' ', '-')}"`);
-      bump(dir, 'primer');
-    }, 1, [`${primerSkill}: description does not name "${phrase}"`]);
-  }
-  negative('R245: <file>: description does not name "<phrase>" (missing)', (dir) => {
-    rmSync(join(dir, primerSkill));
+  negative('R245: <file>: frontmatter lacks disable-model-invocation: true (primer)', (dir) => {
+    edit(dir, primerSkill, 'disable-model-invocation: true\n', '');
     bump(dir, 'primer');
-  }, 4, primerPhrases.map((phrase) => `${primerSkill}: description does not name "${phrase}"`));
+  }, 1, [`${primerSkill}: frontmatter lacks disable-model-invocation: true`]);
 
   negative('R219: <file>: description holds < or >; write a placeholder as [name] (plugin skill)', (dir) => {
     edit(dir, gateSkill, '"gate PR [n]"', '"gate PR <n>"');

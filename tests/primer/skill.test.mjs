@@ -25,7 +25,7 @@ test('R237: the skill directory holds SKILL.md, adopt.md, init.md, local.md, pla
   assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'adopt.md', 'init.md', 'local.md', 'placement.md', 'shapes.md']);
 });
 
-test('R245: the frontmatter names the skill, the four phrases first, and read-only tools', () => {
+test('R245: the frontmatter names the skill, leaves its start to the command, and grants read-only tools', () => {
   const lines = SKILL.split('\n');
   assert.equal(lines[0], '---');
   const end = lines.indexOf('---', 1);
@@ -34,8 +34,8 @@ test('R245: the frontmatter names the skill, the four phrases first, and read-on
   assert.ok(front.includes('name: primer'));
   const description = front.find((l) => l.startsWith('description:'));
   assert.ok(description, 'a description line exists');
-  const value = description.slice('description:'.length).trim().replace(/^'/, '');
-  assert.ok(value.startsWith('Use when the user says "turn this into a skill", "we keep doing this", "add this to the project instructions" or "check the instruction files"'));
+  assert.ok(description.slice('description:'.length).trim() !== '', 'the description has a value');
+  assert.ok(front.includes('disable-model-invocation: true'));
   const at = front.findIndex((l) => l.startsWith('allowed-tools:'));
   assert.ok(at >= 0, 'an allowed-tools line exists');
   const tools = [];

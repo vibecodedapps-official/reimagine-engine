@@ -124,3 +124,11 @@ test('R370: a fetch into the run\'s refs moves no remote-tracking ref, and range
   assert.equal(ranges.length, 1);
   assert.ok(ranges[0].startsWith('git <c> --attr-source=4b825dc642cb6eb9a060e54bf8d69288fbee4904 range-diff '), `${ranges[0]} reads the attributes of a checkout`);
 });
+
+test('R372: the GitHub read of a pull request asks for its title and body, and the export holds both', () => {
+  const views = [...SKILL.matchAll(/`gh pr view <n> --json ([^` ]+)`/g)].map((m) => m[1].split(','));
+  assert.equal(views.length, 1);
+  for (const field of ['title', 'body']) assert.ok(views[0].includes(field), `gh pr view does not ask for ${field}`);
+  const exportLine = section(SKILL, 'The request').find((l) => l.startsWith('An export is '));
+  assert.match(exportLine, /`title`, `body`/);
+});

@@ -29,11 +29,12 @@ Phrases it reads beside the target: `follow-up`, `level <word>` (else `xhigh`), 
 ## What a run does
 
 - It fetches the pull request's head into a ref of its own and checks it out in a detached worktree under its record, with the repository's hooks switched off for every git command it makes.
-- A reviewing agent of the session reads the change at the head; a gate record or audit report for the same head can stand in for that reading.
+- A reviewing agent of the session reads the change at the head, for correctness bugs, weak tests and breaks of the team's conventions; a gate record or audit report for the same head can stand in for that reading.
 - Each lead is then checked: every site of a shared name, the consumers of what the change alters and the documents that state its rule, the tickets' acceptance criteria, and every cited location read again at the head. Each finding and each fix says whether it was read, run or not run.
+- The change's own tests are read for whether they would fail with the change they guard undone, and the pull request's title and body are held against the change: a claim the change contradicts, or one a later push made stale, is a finding. Evidence a description must carry is asked for only where the team's conventions, the repository's own or a file you name, require it.
 - Every point gets a disposition, `post`, `note` or `drop`, by the team's conventions, read at the base commit.
 - The drafts are files in the record, shown whole: comments for the author, and a summary for the person who gates the merge.
-- A follow-up reports each earlier item as landed or open, follows the author's replies to the code, settles the conflict status by a trial merge, and reads each merge commit.
+- A follow-up reports each earlier item as landed or open, follows the author's replies to the code, settles the conflict status by a trial merge, reads each merge commit, and reads the description again against the new head.
 
 ## What invoking approves
 
@@ -41,11 +42,11 @@ Reads of the repository and the forge, a fetch of the head and of the base branc
 
 ## Posting
 
-`reimagine review PR 12, post` checks each draft for your machine's paths, user name and host name and for the name of the model, reads the head and the threads again, and posts only the drafts the forge does not hold yet, one at a time, each recorded before the next, so a step that stopped part way can run again. The vote is cast only when your vote on the forge differs from it. Afterwards every post is read back and compared with its draft. Without a forge tool that gives comments, anchors, a vote and threads, the step writes a paste-ready export instead.
+`reimagine review PR 12, post` checks each draft for your machine's paths, user name and host name and for the name of the model, reads the head, the description and the threads again, and posts only the drafts the forge does not hold yet, one at a time, each recorded before the next, so a step that stopped part way can run again. The vote is cast only when your vote on the forge differs from it. Afterwards every post is read back and compared with its draft. Without a forge tool that gives comments, anchors, a vote and threads, the step writes a paste-ready export instead.
 
 ## The record
 
-Each pull request has a record in the plugin's data directory, under `reviews/<host>/<path>/<id>/`: the reading, the notes, the drafts, what was posted, and the scratch worktree. Another clone of the same repository finds the earlier round there. The run ends by listing the worktree, the refs and the files it created, with the commands that remove them, and removes none without your yes. The record goes with the plugin when it is uninstalled.
+Each pull request has a record in the plugin's data directory, under `reviews/<host>/<path>/<id>/`: the reading, the pull request's title and body, the notes, the drafts, what was posted, and the scratch worktree. Another clone of the same repository finds the earlier round there. The run ends by listing the worktree, the refs and the files it created, with the commands that remove them, and removes none without your yes. The record goes with the plugin when it is uninstalled.
 
 ## Uninstall
 

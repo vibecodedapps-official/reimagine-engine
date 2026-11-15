@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.32 - 2026-11-14
+
+- `/audit:handoff` removes a trailing `-` from the branch slug, as the loop and the gate do. For a branch whose slug ends in `-`, such as a long name cut at a separator, it looked for the loop's record under another name, found none, and wrote the handoff without the plan, the review log and the commit lines.
+- Stage 7's rule that a recommended change names every site also bars a word such as "several", as the merger's own rule does.
+- The agent definitions no longer restate the refused line, stage 8 names the rule on a head that moved and the `heads:` values in place of restating them, and the report's Refused calls line no longer repeats how it is gathered. Each stood in a file its reader already holds, and three of the copies had come to differ from it.
+
 ## rules 0.1.32 - 2026-11-14
 
 - A fourth Tests item says a test of prose written for an agent checks only what the host, a script or another file reads, and that a run or a review checks the rest. A test that asserts a sentence of a skill meets the two items that ask for tests, on literal expected values and on a test for a behavior change, and suites built that way came to pin hundreds of sentences: a cut or a reworded line moved a test, and a pin could not tell a rule that held from one that had only kept its wording. An installed block reads `stale` once.

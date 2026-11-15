@@ -3,9 +3,9 @@
 #
 # Usage: sh tests/audit/readonly.sh
 #
-# Each case builds a fresh solo-dirty fixture (tests/audit/fixture/build.sh), takes a baseline
-# snapshot, makes one change, runs `readonly.sh check`, and compares stdout, stderr, and
-# the exit status with literals. The run directory is outside the app repository, except
+# Each case starts from its own copy of one solo-dirty fixture (tests/audit/fixture/build.sh),
+# takes a baseline snapshot, makes one change, runs `readonly.sh check`, and compares stdout,
+# stderr, and the exit status with literals. The run directory is outside the app repository, except
 # in cases 10 and 19. The script under test runs under `sh`, or under $RO_SH when set, for
 # example `RO_SH=dash sh tests/audit/readonly.sh`. Cases 13 to 18 and 21 build their extra repos inline,
 # with a pinned identity and commit date, so their shas are literals. Cases 26 and 27 add
@@ -75,14 +75,32 @@ mismatch() {
 	bad=$((bad + 1))
 }
 
-# fresh: build a new solo-dirty fixture; sets A (the app repo) and R (a run directory
-# outside it).
+# fresh: copy the solo-dirty fixture, built on the first call, to a new directory named as
+# build.sh names one; sets A (the app repo) and R (a run directory outside it). The files
+# that name the built directory, the app's filter config among them, are made to name the
+# copy instead.
+tpl=
 fresh() {
-	m=$(TMPDIR=$root sh "$here/fixture/build.sh" solo-dirty) || {
-		mismatch "fixture build failed"
+	if [ -z "$tpl" ]; then
+		m=$(TMPDIR=$root sh "$here/fixture/build.sh" solo-dirty) || {
+			mismatch "fixture build failed"
+			exit 1
+		}
+		tpl=$(dirname "$m")
+	fi
+	F=$(mktemp -d "$(dirname "$tpl")/fixture.XXXXXX") && cp -Rp "$tpl/." "$F" || {
+		mismatch "fixture copy failed"
 		exit 1
 	}
-	F=$(dirname "$m")
+	grep -rlF -- "$tpl" "$F" | while IFS= read -r f; do
+		OLD=$tpl NEW=$F awk '{
+			s = $0; o = ""
+			while ((i = index(s, ENVIRON["OLD"])) > 0) {
+				o = o substr(s, 1, i - 1) ENVIRON["NEW"]; s = substr(s, i + length(ENVIRON["OLD"]))
+			}
+			print o s
+		}' "$f" > "$tmp/fix" && cat "$tmp/fix" > "$f"
+	done
 	A=$F/app
 	R=$(mktemp -d "$root/run.XXXXXX")
 	results=$A/.test-output/results.txt

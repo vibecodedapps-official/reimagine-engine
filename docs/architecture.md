@@ -36,7 +36,7 @@ reimagine-engine/
 
 | Plugin | Installs | Entry points | Scripts | Hooks | Version line |
 |---|---|---|---|---|---|
-| rules | house rules block, output style, a rule-driven refactor review, a handoff prompt skill, a draft skill | `/rules`, `/rules:refactor`, `/rules:handoff-prompt`, `/rules:draft`, prose "handoff prompt" and a request for a message to someone else | `scripts/rules.mjs` | SessionStart `startup` | own |
+| rules | house rules block, output style, a rule-driven refactor review, a handoff prompt skill, a draft skill | `/rules`, `/rules:refactor`, `/rules:handoff-prompt`, `/rules:draft`, prose "handoff prompt" and a request for a message to someone else | `scripts/rules.mjs`, `scripts/outbound.mjs` | SessionStart `startup`; PreToolUse `Bash\|PowerShell\|mcp__.*` | own |
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | twelve sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/resume.mjs`, `scripts/split.mjs` | none | own |
@@ -56,11 +56,11 @@ reimagine-engine/
 
 `loop`, `gate`, `audit` and `review` do not require `rules`; without it they still read whatever instruction files exist.
 
-Only seven hooks run outside a session request: the rules staleness notice at `startup`, the primer memory notice at `startup`, the primer drift check before a `git commit`, whose entry also runs the staging check of the `local` profile, the primer context loader at a session's start, the primer reach check before a file edit in another repository, the guard staleness notice at `startup`, and the guard denial record when auto mode denies a tool call. Everything else happens because the user asked.
+Only eight hooks run outside a session request: the rules staleness notice at `startup`, the rules outbound check before a shell or MCP call, the primer memory notice at `startup`, the primer drift check before a `git commit`, whose entry also runs the staging check of the `local` profile, the primer context loader at a session's start, the primer reach check before a file edit in another repository, the guard staleness notice at `startup`, and the guard denial record when auto mode denies a tool call. Everything else happens because the user asked.
 
 ## Prompt first
 
-Prose carries the process. Scripts exist only where a model cannot be trusted to do the job byte for byte: editing the user's `CLAUDE.md` (`rules.mjs`), writing the `autoMode` value of the user settings file while keeping every byte outside it (`plugins/guard/scripts/guard.mjs`), snapshotting and checking a repository's state (`readonly.sh`), building ledgers and gates from many files (`ledger.sh`), the other audit scripts, and turning a review's output into ledger entries, the next pass level and the place a later run starts (`findings.mjs`, `next.mjs`, `resume.mjs`), each with a suite behind it. The two primer hooks are scripts because a hook has no model. No new script ships without a test under `tests/`.
+Prose carries the process. Scripts exist only where a model cannot be trusted to do the job byte for byte: editing the user's `CLAUDE.md` (`rules.mjs`), checking what a commit, a push or a post would send against the user's list (`outbound.mjs`), writing the `autoMode` value of the user settings file while keeping every byte outside it (`plugins/guard/scripts/guard.mjs`), snapshotting and checking a repository's state (`readonly.sh`), building ledgers and gates from many files (`ledger.sh`), the other audit scripts, and turning a review's output into ledger entries, the next pass level and the place a later run starts (`findings.mjs`, `next.mjs`, `resume.mjs`), each with a suite behind it. The two primer hooks are scripts because a hook has no model. No new script ships without a test under `tests/`.
 
 Skills are user-invocable and carry their trigger phrases in `description` (verified: the phrase in the description invoked the skill in 2 of 2 runs, and the bare skill name also carried; decisions.md item 14). Rarely used paths live in their own files, read on demand, and each step file ends by naming the next read.
 
@@ -108,7 +108,9 @@ plugins/rules/
   skills/handoff-prompt/SKILL.md /rules:handoff-prompt; model-invocable; holds the handoff prompt's definition and one core.md item; reads none of the plugin's files; writes no file
   skills/draft/SKILL.md          /rules:draft; model-invocable; the check on a finished draft and the email form; reads none of the plugin's files
   scripts/rules.mjs              status | plan [--adopt] [--options a,b] | apply | remove | decline | session-start
+  scripts/outbound.mjs           the outbound check; reads the hook input on stdin
   hooks/hooks.json               SessionStart startup -> node rules.mjs session-start ${CLAUDE_PLUGIN_DATA}
+                                 PreToolUse Bash|PowerShell|mcp__.* -> node outbound.mjs, timeout 10, onFailure continue
   rules/core.md                  the house rules
   rules/windows.md               the Windows paragraph
   output-styles/concise-plain.md keep-coding-instructions: true
@@ -160,6 +162,8 @@ States and what `plan` does with each:
 Two calls. `plan` reads the target and its `@path` imports read-only (four hops, fifty files, 256 KiB each; code spans, fences, HTML comments and quotes masked), counts the rules already present outside the block as Markdown units, recommends `apply`, `adopt` or `decline`, shows the diff as one hunk per changed run with three lines of context, and writes `rules-plan.json` in the data directory with the target's hash. `apply` re-reads the target, refuses if its hash changed (a file created where none was counts), copies the existing file to `<path>.reimagine-backup-<YYYYMMDDHHMMSS>` (never overwriting a backup), writes `<path>.reimagine-tmp-<pid>` and renames it into place, and records the state in `rules-state.json`. A lock directory `rules.lock` serializes concurrent runs; a lock older than its owner is taken over. `plan --adopt` additionally removes a full copy of the rules found outside the block, headings included, and places the block where the copy stood; a file holding Markdown the unit parser does not handle is left alone with a decline recommendation. `remove` takes the block and its join bytes; a file the script created is deleted unless the user added text. `decline` records the digest. `session-start` reads the state file and the target, prints one `systemMessage` line when the target is stale and not declined, and is silent otherwise.
 
 The skill `/rules` runs the script, shows its output, asks before `apply`, and ends by telling the user how to select the output style. It never edits the file through the model.
+
+The outbound check is `outbound.mjs`, a PreToolUse hook on `Bash|PowerShell|mcp__.*` that reads `rules-outbound.txt` in `$CLAUDE_CONFIG_DIR`, else `~/.claude`, and does nothing while that file is missing (requirement 405, decision 316). It denies a commit, a push or a forge post whose command, named message or body files, local commits that no remote-tracking ref holds, or MCP string values hold a listed string, and lets the call go ahead on any error of its own. `/rules` offers to write the list when it is missing.
 
 ### Output style and chat block
 

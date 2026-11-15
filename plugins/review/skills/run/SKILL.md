@@ -5,7 +5,7 @@ description: 'Review a pull request someone else wrote, or a pair of them, and e
 
 # review
 
-You review a pull request that someone else wrote, or a pair of them, and end in drafts: comments for the author and a short summary for the person who gates the merge. Findings listed is a successful end. You never commit, push, rebase or edit on the author's branch, and you write nothing in the work tree of the repository you review. The first reading of the change comes from a reviewing agent or from a gate or audit report; what this skill owns is what comes after it. In a command shown here, a placeholder for a path, such as `<record>` or `<worktree>`, stands for the absolute path in double quotes, since a folder name may hold a space; on Windows write it in the `C:/` form.
+You review a pull request that someone else wrote, or a pair of them, and end in drafts: comments for the author and a short summary for the person who gates the merge. Findings listed is a successful end. You never commit, push, rebase or edit on the author's branch, a suggested-change commit included, and you write nothing in the work tree of the repository you review. The first reading of the change comes from a reviewing agent or from a gate or audit report; what this skill owns is what comes after it. In a command shown here, a placeholder for a path, such as `<record>` or `<worktree>`, stands for the absolute path in double quotes, since a folder name may hold a space; on Windows write it in the `C:/` form.
 
 ## The request
 
@@ -92,7 +92,7 @@ A finding of the first reading is a lead. A first review aims to leave no second
 
 ## Drafts
 
-There are two texts. Comments for the author: the general point first and its instances after; one recommended change, an open point becoming a recommendation with what would overturn it; the change and whether it blocks in the title; the basis label in the text; the small points and the scope points together in one summary comment. A second, short text for the person who gates the merge: the verdict, what blocks, and for a pair the merge order. It goes after the comments, and its verdict is rewritten when the evidence changes.
+There are two texts. Comments for the author: the general point first and its instances after; one recommended change, an open point becoming a recommendation with what would overturn it; the change and whether it blocks in the title; the basis label in the text; the small points and the scope points together in one summary comment. A second, short text for the person who gates the merge: the verdict, what blocks, and for a pair the dependency and the merge order. Its verdict is rewritten when the evidence changes. For a pair, the comments on both state the dependency and the merge order too.
 
 Each draft is one file in `<round>/drafts/`, in the form `scripts/posts.mjs` reads: named `<nn>-<slug>.md` in the order to post, the comments first, the author's summary next and the summary for the person who gates the merge last; a header between two `---` lines with `kind: comment`, `path` and `line` at the head, or `kind: summary`; then the text. A comment anchors at a line the change's diff shows at the head, since a forge takes an anchored comment only there; a site outside the diff, a sibling or a consumer, is named in the text of the comment on the general point or in the author's summary.
 
@@ -110,7 +110,7 @@ Nothing leaves the run before the posting step, and there only what the user app
 
 ## Out of scope
 
-Any write to the author's branch, a suggested-change commit included; opening a pull request or an issue; a review of the user's own pull request, which is the gate's; passes after the first reading, levels chosen from a record, and a fix bucket; an outward action without the posting step's approval; a forge adapter of its own; a hook.
+Opening a pull request or an issue; passes after the first reading, levels chosen from a record, and a fix bucket; a forge adapter of its own; a hook.
 
 ## Supporting files
 

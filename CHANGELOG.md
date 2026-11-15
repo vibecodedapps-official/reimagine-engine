@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.14 - 2026-11-14
+
+- In the local profile, what a layer's text is stands in `local.md` alone, and what goes in `machine.md` stands in `placement.md` alone, which now names a path of this machine. Each file held both rules and the two differed, so a run could follow either.
+
 ## loop 0.1.30 - 2026-11-14
 
 - The build brief names the instruction sources by the skill's own rule, and that the `code-review` skill takes no request text stands in the skill alone. Both stood again in step files that a run reads after the skill.

@@ -36,9 +36,12 @@ test('R116, R118: every gh command that posts a body passes it with --body-file 
     }
   }
   assert.ok(shown >= 10, `only ${shown} gh commands found`);
-  const create = PUBLISH.match(/`(gh pr create --title [^`]+)`/)?.[1];
-  assert.notEqual(create, undefined, 'Step 7.2 shows no gh pr create');
-  assert.ok(create.includes('--base <base>'), 'gh pr create does not name --base <base>');
+  // Step 7.2 opens the pull request, and the skill and the report give the command to a user who opens it by hand.
+  for (const file of ['steps/7-publish.md', 'SKILL.md', 'report.md']) {
+    const creates = [...read(file).matchAll(/`(gh pr create --title [^`]+)`/g)].map((m) => m[1]);
+    assert.ok(creates.length > 0, `${file} shows no gh pr create`);
+    for (const create of creates) assert.ok(create.includes('--base <base>'), `${file} shows ${create} without --base <base>`);
+  }
 });
 
 test('R56: the workflow files Step 7.2 lists for the deploy judgment come from ls-tree with --full-tree, one folder deep, a listing the skill pre-approves', () => {

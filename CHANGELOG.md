@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## review 0.1.3 - 2026-11-15
+
+- The first reading is also asked for weak tests of the change and for breaks of the conventions its brief carries, and before any draft each test the change adds or alters is read for whether it would fail with the change it guards undone. The brief asked for correctness bugs only, and the proof that a test fails with the change undone covered only a test the reviewer hands to the author.
+- The run reads the pull request's title and body, keeps them in the record, and holds each claim they make against the change, at a follow-up against the new head and once more before a post. No step read the description, and on GitHub it was never fetched. A claim the change contradicts is a finding and goes in the author's summary, and evidence a description must carry is asked for only where the team's conventions require it.
+- The title and body are treated as the author's text, as the head is: an instruction in them is reported and never followed.
+
 ## guard 0.1.5 - 2026-11-15
 
 - `/guard add <path> ask` has the host ask before every push, pull request and comment aimed at that repository, through a new hook that reads each shell and MCP call before it runs. A push and a new pull request in a listed repository ran with no question, and no setting made one repository ask.

@@ -1030,8 +1030,12 @@ if [ -n "$win_t" ]; then
 	bgstart "$root/c15" 'command\tsh\nrun\ttests/test_slow.sh\ntimeout\t60\n'
 	unset REVERT_TESTS_DEADLINE
 	bgdone 0
+	# The first line follows a listing that found a step of the run. A test file that has
+	# started gives one; a deadline that lands in the setup before it may find none.
 	printf 'revert-tests: cannot end a process tree by id; a step of the run can hold off its end\nrevert-tests: stopped at the deadline of 4 seconds\n' > "$tmp/exp"
-	cmp -s "$tmp/exp" "$tmp/res.err" || mismatch "$case_id: .err is [$(tr '\n' '|' < "$tmp/res.err")]"
+	printf 'revert-tests: stopped at the deadline of 4 seconds\n' > "$tmp/exp.setup"
+	cmp -s "$tmp/exp" "$tmp/res.err" || { [ ! -s "$RT_PIDS/slow" ] && cmp -s "$tmp/exp.setup" "$tmp/res.err"; } ||
+		mismatch "$case_id: .err is [$(tr '\n' '|' < "$tmp/res.err")]"
 	waitrun
 	checkleft
 	fails 'revert-tests: stopped at the deadline of 4 seconds'

@@ -40,7 +40,7 @@ reimagine-engine/
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | twelve sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/resume.mjs`, `scripts/split.mjs` | none | own |
-| primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold`, prose "turn this into a skill", "we keep doing this", "add this to the project instructions", "check the instruction files" | `hooks/drift.sh`, `hooks/notice.sh`, `scripts/primer.mjs` | PreToolUse `Bash\|PowerShell` and `Edit\|Write\|NotebookEdit`; SessionStart | own |
+| primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold` | `hooks/drift.sh`, `hooks/notice.sh`, `scripts/primer.mjs` | PreToolUse `Bash\|PowerShell` and `Edit\|Write\|NotebookEdit`; SessionStart | own |
 | guard | the auto mode classifier's entries for listed repositories | `/guard` | `scripts/guard.mjs` | PermissionDenied; SessionStart `startup` | own |
 | review | the review of someone else's pull request | `/review:run` (the skill itself), prose "reimagine review" | `scripts/posts.mjs` | none | own |
 
@@ -491,7 +491,7 @@ Manifest:
 }
 ```
 
-The skill's description names "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files" (verified: a description's phrases invoked a skill in 2 of 2 runs, decision 84). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, `ledger.mjs`, which keeps the fold-back ledger, and `transcripts.mjs`, which reads the session files.
+The skill sets `disable-model-invocation: true`, so only `/primer` starts it (decision 318). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, `ledger.mjs`, which keeps the fold-back ledger, and `transcripts.mjs`, which reads the session files.
 
 ### Shapes and caps
 
@@ -515,7 +515,7 @@ Imports: the hub holds none but `@AGENTS.md`; a rule or skill names a `docs/` fi
 - `adopt`, when instruction or documentation files exist but there is no hub of the shape above, or the hub holds a `## Spokes` index. It inventories every instruction and documentation file, other tools' rule files listed and left alone; plans; asks once; then commits moves first, each move commit changing no content and repairing documentation links, and rewrites after. A pointer whose condition is a file pattern becomes a path-scoped rule, one whose condition is a task becomes a skill, one whose condition is a directory becomes a nested `CLAUDE.md`; a procedure in any instruction file becomes a skill; a topic section every task needs becomes an unscoped rule; a long document stays under `docs/` with one sentence in the hub; agent content leaves `README.md`; a statement kept is checked against the code. A repo-docs repository converts in one run, which is the migration. The second run reads as maintain and changes nothing.
 - `maintain`, when the hub has the shape. Three passes feed one plan and one question. Verify: what the hook denies on, each command named in a manifest, script or workflow, each statement true of the files it covers, each skill's commands and files present, duplicates and lost procedures reported, an oversized skill split; the report names `/doctor prompt-audit` for contradictions and stale models and never calls it (decision 77). Promote: auto memory candidates by type. Propose: skill candidates with their evidence. With nothing to change it prints `primer: no drift` and the reported items.
 
-Every write is a documentation file; code, configuration, settings, CI, manifests, `CLAUDE.local.md`, ignored files and the memory directory are never edited, except that promote deletes a note the user approved for deletion. Commits follow the repository's convention, else `docs(primer): <subject>`, with the body opening `Instruction-file <mode> pass, <date>.`; the drift hook runs on each.
+Every write is a documentation file; code, configuration, settings, CI, manifests, `CLAUDE.local.md`, ignored files and the memory directory are never edited, except that promote deletes a note the user approved for deletion. Commits follow the repository's convention, else `docs: <subject>`, with the body opening `Instruction-file <mode> pass, <date>.`; the drift hook runs on each.
 
 ### Proposals
 

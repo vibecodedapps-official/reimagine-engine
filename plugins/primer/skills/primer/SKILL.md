@@ -1,7 +1,8 @@
 ---
 name: primer
-description: 'Use when the user says "turn this into a skill", "we keep doing this", "add this to the project instructions" or "check the instruction files", or runs /primer. Keeps the CLAUDE.md, rules and skills of a repository in the forms Claude Code loads.'
-argument-hint: "[init | adopt | maintain]"
+description: 'Keeps the CLAUDE.md, rules and skills of a repository in the forms Claude Code loads. Run /primer alone, with a mode, or with one item to record, such as a checklist just run.'
+argument-hint: "[init | adopt | maintain | one item to record]"
+disable-model-invocation: true
 allowed-tools:
   - Read
   - Grep
@@ -21,7 +22,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 
 ## Choose the mode
 
-- The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain> (<one-line reason>)`, with no text before it but the profile question, and the second is `primer: profile <shared|local>`.
+- The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain> (<one-line reason>)`, with no text before it but the profile question, and the second is `primer: profile <shared|local>`. A reply that reports a stop in place of a pass still opens with both lines.
 - The profile: a hub whose line 1 is the marker is `shared`; else the `profile:` line of `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status` names it. With none, the reply is only one question, with no default: `shared`, instruction files in the work tree, committed, or `local`, the context in a store outside the repository that a hook loads, with nothing written or committed in the work tree; for `shared`, also whether the repository is the user's own. The question names the run that records the answer, `map --add --profile <shared|local>` with `--own <true|false>` for `shared`, by the same script; run it on the answer. Without an answer write nothing.
 - A `local` run reads `local.md` in this skill's directory before the mode line and follows it where it differs from this file.
 - Find files with `git ls-files`, `git ls-files --others --exclude-standard` (untracked, not ignored) and `git ls-files --others --ignored --exclude-standard` (ignored). The mode is chosen from the files on disk, ignored ones included.
@@ -29,7 +30,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 - A mode named after the command (`/primer adopt`) forces it. A forced `init` never writes over an existing `CLAUDE.md` or `AGENTS.md`: say so and stop.
 - Otherwise find the hub: the root `CLAUDE.md`; the root `AGENTS.md` when the root `CLAUDE.md` is exactly `@AGENTS.md` plus at most one newline; the root `AGENTS.md` when there is no root `CLAUDE.md`. Read these files from disk, never from the copy loaded at session start, which drops HTML comments, the marker included. Then, in order: the hub's line 1 is exactly `<!-- primer -->` and no line of it is exactly `## Spokes`: `maintain`. Else any `CLAUDE.md` or `AGENTS.md` exists at any depth, `.claude/CLAUDE.md` included: `adopt`. Else: `init`.
 - A full `init` run follows `init.md` and a full `adopt` run `adopt.md`, in this skill's directory: read the one the mode names right after the mode line, which is its step 1. `maintain` follows Maintain below.
-- When one of the four phrases invoked the skill for one item (a checklist just run, a fact to record, a memory note), the mode line's reason names the item, and the reply runs the proposal of that item alone (see Proposals), with no other pass. On its yes, write it; `adopt` and `maintain` commit it, and `init` leaves it uncommitted.
+- When the text after the command names one item (a checklist just run, a fact to record, a memory note), the mode line's reason names the item, and the reply runs the proposal of that item alone (see Proposals), with no other pass. On its yes, write it; `adopt` and `maintain` commit it, and `init` leaves it uncommitted.
 
 ## Every mode
 
@@ -43,7 +44,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 ## Commits
 
 - `adopt`, and `maintain` when it has changes, print a plan that lists every commit, ask once, and make those commits. One yes covers the listed commits. `maintain` with nothing to change writes nothing.
-- A commit follows the repository's own commit convention when its instruction files name one, else `docs(primer): <subject>` in lowercase. The body's first line is `Instruction-file <mode> pass, <YYYY-MM-DD>.`, followed by why. Where `status` shows `own false`, the fallback is `docs: <subject>`. A commit message never names a model, an agent or a tool. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
+- A commit follows the repository's own commit convention when its instruction files name one, else `docs: <subject>` in lowercase. The body's first line is `Instruction-file <mode> pass, <YYYY-MM-DD>.`, followed by why. A commit message never names a model, an agent or a tool. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
 - Stage only the paths the plan names, by path. Never push, amend, or pass `--no-verify`.
 - When the drift hook denies a commit, fix what its findings name and commit again; never route around it. When it advises a recheck, recheck the files it names before the next commit.
 

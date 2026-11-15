@@ -431,11 +431,14 @@ describe('staged', () => {
   });
 
   test('an error of its own prints a deny that gives the error and exits 2', () => {
-    const cfg = config({ version: 1, repos: 'none' });
+    const cfg = config(local());
+    write(cfg.own, 'config.json', '{');
     const r = run(['staged'], { input: input('git add CLAUDE.md', base), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
-    const reason = `primer: the staging check failed, so the call is denied: ${join(cfg.store, 'map.json')} is not a primer map`;
+    const reason = `primer: the staging check failed, so the call is denied: ${join(cfg.own, 'config.json')} is not a primer configuration`;
     assert.deepEqual([r.status, r.stdout, r.stderr],
       [2, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`, '']);
+    const other = run(['staged'], { input: input('git log --grep commit', base), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.deepEqual([other.status, other.stdout], [0, '']);
   });
 
   test('an entry recorded while the repository had no remote still matches after one is added', () => {

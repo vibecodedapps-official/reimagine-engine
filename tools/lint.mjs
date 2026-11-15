@@ -439,10 +439,7 @@ function skillFailures(ctx) {
     }
   }
 
-  const primer = String(frontmatter(ctx.text(PRIMER_SKILL)).get('description') ?? '');
-  for (const phrase of ['turn this into a skill', 'we keep doing this', 'add this to the project instructions', 'check the instruction files']) {
-    if (!primer.includes(phrase)) out.push(`${PRIMER_SKILL}: description does not name "${phrase}"`);
-  }
+  if (frontmatter(ctx.text(PRIMER_SKILL)).get('disable-model-invocation') !== 'true') out.push(`${PRIMER_SKILL}: frontmatter lacks disable-model-invocation: true`);
 
   for (const file of ctx.files.filter((f) => /^(?:plugins\/[^/]+|\.claude)\/skills\/[^/]+\/SKILL\.md$/.test(f))) {
     if (/[<>]/.test(String(frontmatter(ctx.text(file)).get('description') ?? ''))) {

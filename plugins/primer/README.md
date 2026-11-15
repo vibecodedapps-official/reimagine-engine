@@ -27,7 +27,13 @@ Name a mode to force it:
 /primer adopt
 ```
 
-The skill also answers to "turn this into a skill", "we keep doing this", "add this to the project instructions" and "check the instruction files".
+Add one item after the command to record it alone, such as a checklist you just ran:
+
+```
+/primer turn this checklist into a skill
+```
+
+Only the command starts the skill; Claude Code does not start it from what you say.
 
 Run `/primer:fold` for a read-only report of where the current Claude Code documentation describes a practice or mechanism the repository could fold in, each item with the page, the file and the destination; it writes nothing.
 
@@ -88,11 +94,11 @@ Before Claude Code edits a file in a repository other than the one the session s
 On its first run in a repository whose hub has no `<!-- primer -->` marker, `/primer` asks once which profile applies, with no default, and records the answer:
 
 - `shared`: everything above. Instruction files live in the work tree and are committed.
-- `local`: nothing is written or committed in the work tree. The repository's context lives in a store outside it and reaches each session through a SessionStart hook.
+- `local`: nothing is written or committed in the work tree. The repository's context lives in a store outside it and reaches each session through a SessionStart hook. Instruction files and a `.claude/settings.json` that the team tracks are read and never written; what you add to them goes in the store, and a setting of your own is proposed for `.claude/settings.local.json`.
 
 The store is `~/.claude/reimagine-primer/store/` (under `$CLAUDE_CONFIG_DIR` when set), or the directory the `store` key of `reimagine-primer/config.json` names, such as one you keep under version control. It holds `map.json`, which records each repository's profile and group, `shared.md` for every mapped repository and `groups/<group>.md` for one group of sibling repositories. `reimagine-primer/machine.md` holds what belongs to this machine alone. `/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 5-second limit each show a warning at session start. In a `local` repository the loader also gives the notice above. `scripts/primer.mjs measure` prints each mapped repository's context string as emitted against the cap, and `measure --with <file> <layer>` the size before and after a proposed layer, which `/primer` shows before it proposes an addition.
 
-In a `local` repository, the drift hook hands each `git add` and `git commit` to a staging check, which denies one that would stage or commit `CLAUDE.md`, `CLAUDE.local.md` or `AGENTS.md` at any depth, anything under `.claude/` or `.reimagine/`, `.reimagine.json`, `.mcp.json`, or a `.gitignore` line that names one of them, unless the upstream's default branch already tracks it. A command it cannot resolve counts as staging every file git does not ignore; the `info/exclude` lines `/primer` offers keep the agent files out of that. The check reads `git add`, `git stage` and `git commit` as a session ordinarily writes them, and it guards against a slip rather than closing every way in: a git alias, an `eval`, a script, and a subcommand held in a variable are not read. Where it cannot tell which repository a command runs in, it checks every `local` repository of the map, so a deny may name a repository other than the one you are in. Where `node` or `sh` is missing, the check cannot run and the call goes through.
+In a `local` repository, the drift hook hands each `git add` and `git commit` to a staging check, which denies one that would stage or commit `CLAUDE.md`, `CLAUDE.local.md` or `AGENTS.md` at any depth, anything under `.claude/` or `.reimagine/`, `.reimagine.json`, `.mcp.json`, or a `.gitignore` line that names one of them, unless the upstream's default branch already tracks it. The names count in any letter case. A command it cannot resolve counts as staging every file git does not ignore; the `info/exclude` lines `/primer` offers keep the agent files out of that. The check reads `git add`, `git stage` and `git commit` as a session ordinarily writes them, and it guards against a slip rather than closing every way in: a git alias, an `eval`, a script, and a subcommand held in a variable are not read. A command handed to `pwsh`, `powershell` or `cmd` is not read either, and counts as unresolved when it names an add or a commit. Where it cannot tell which repository a command runs in, it checks every `local` repository of the map, so a deny may name a repository other than the one you are in. While `map.json` cannot be read, it denies every `git add` and `git commit`, naming the file, and passes other commands. Where `node` or `sh` is missing, the check cannot run and the call goes through.
 
 ## Copies and transcripts
 

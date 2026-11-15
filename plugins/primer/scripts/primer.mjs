@@ -434,18 +434,27 @@ function mapVerb(c, [op, ...args]) {
 // script cannot resolve, a brace expansion among them, git a command substitution that stages or commits with git. Null for a quote
 // left open or a process substitution outside quotes. A here-document ends the list, which then carries lost, and hidden when the
 // text from there on names a git add, stage or commit, so the calls before it keep their directories. A backtick outside quotes
-// separates commands in sh, so what a substitution runs is read as a command of its own.
+// separates commands in sh, so what a substitution runs is read as a command of its own. In PowerShell a here-string, from @' or @"
+// at the end of a line to the same quote and @ at the start of a line, is one word where it starts a word and nothing is joined to
+// its closer, and null elsewhere; unless a git call takes it, it hides what its text names, as a here-document does.
+const hides = (t) => /\bgit(\.exe)?\b[^\n]*\b(add|stage|commit)\b/i.test(t.replace(/[\\`^]\r?\n/g, ' '));
 function commands(s, ps) {
   const out = [];
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = false;
   const end = () => {
-    if (inw && !skip) words.push({ w: cur, bad, git: sub && /(?:\$\(|`|[;&|])\s*git\b[^)`]*\b(add|stage|commit)\b/.test(cur) });
+    if (inw && !skip) words.push({ w: cur, bad, git: sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\b(add|stage|commit)\b/.test(cur) });
     [skip, cur, inw, bad, sub] = [skip && !inw, '', false, false, false];
   };
   const cut = () => { end(); if (words.length) out.push(words); words = []; };
   for (let i = 0; i < s.length; i++) {
-    const ch = s[i], nx = s[i + 1];
-    if (ch === "'") {
+    const ch = s[i], nx = s[i + 1], here = ps && ch === '@' && /^(['"])[ \t]*\r?\n/.exec(s.slice(i + 1));
+    if (here) {
+      const open = i + here[0].length, j = s.indexOf(`\n${here[1]}@`, open), text = s.slice(open + 1, Math.max(j, open + 1)).replace(/\r$/, '');
+      if (j < 0 || inw || !/^[\s;|&)}]?$/.test(s.slice(j + 3, j + 4))) return null;
+      if (!/^git(\.exe)?$/.test(base(words[0]?.w ?? '')) && hides(text)) out.lost = out.hidden = true;
+      if (here[1] === '"' && text.includes('$')) [bad, sub] = [true, sub || text.includes('$(')];
+      [cur, i, inw] = [cur + text, j + 2, true];
+    } else if (ch === "'") {
       const j = s.indexOf("'", i + 1);
       if (j < 0) return null;
       [cur, i, inw] = [cur + s.slice(i + 1, j), j, true];
@@ -464,7 +473,7 @@ function commands(s, ps) {
     } else if (ch === '#' && !inw) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (ch === '<' || ch === '>') {
       if (nx === '(') return null;
-      if (ch === '<' && nx === '<') { cut(); [out.lost, out.hidden] = [true, /\bgit(\.exe)?\b[^\n]*\b(add|stage|commit)\b/i.test(s.slice(i))]; return out; }
+      if (ch === '<' && nx === '<') { cut(); [out.lost, out.hidden] = [true, out.hidden || hides(s.slice(i))]; return out; }
       if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
       end();
       while ('>&|'.includes(s[i + 1] ?? 'x')) i++;
@@ -540,6 +549,8 @@ function analyze(words, st) {
     const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1);
     if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) st.calls.push({ sub, dir, args });
   } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = st.hidden = true;
+  // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
+  else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
 }
 
 const COMMIT_VALUE = new Set(['message', 'file', 'reuse-message', 'reedit-message', 'fixup', 'squash', 'author', 'date', 'template', 'cleanup', 'trailer']);
@@ -575,7 +586,7 @@ function planOf(c, { sub, dir, args }, top) {
       }
     }
   }
-  const run = (...a) => git(c, dir, a), whole = sub === 'add' || opts.some((o) => o !== '--amend') || specs.length > 0;
+  const run = (...a) => git(c, dir, a), whole = sub === 'add' || opts.some((o) => o !== '--amend') || specs.length > 0, known = (...a) => run('ls-files', '--error-unmatch', ...a, '--', ...specs).status === 0;
   let r, paths;
   if (sub === 'add') {
     if ((r = run('-c', 'core.quotepath=off', 'add', '--dry-run', ...opts, '--', ...specs)).status !== 0) return null;
@@ -585,7 +596,8 @@ function planOf(c, { sub, dir, args }, top) {
     if ((r = run('diff', '--cached', '--name-only', '--diff-filter=d', '-z')).status !== 0) return null;
     paths = r.stdout.split('\0').filter(Boolean);
   } else {
-    if ((r = run('commit', '--dry-run', '--porcelain', '-z', ...opts, '--', ...specs)).status > 1) return null;
+    // Status 1 is nothing to commit, or a path that neither the index nor HEAD holds, which leaves the commit unknown.
+    if ((r = run('commit', '--dry-run', '--porcelain', '-z', ...opts, '--', ...specs)).status > 1 || (r.status === 1 && specs.length && !known('--with-tree=HEAD') && !known())) return null;
     paths = records(r.stdout).filter((x) => !' ?!D'.includes(x.xy[0])).map((x) => x.path);
   }
   return { paths, ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: (whole ? readText(join(top, f)) : '') + (sub === 'commit' ? `\n${blob(c, dir, `:${f}`)}` : ''), was: blob(c, dir, sub === 'add' ? `:${f}` : `HEAD:${f}`) })) };
@@ -598,6 +610,7 @@ function records(text) {
   return out;
 }
 
+// A name counts in any letter case: the host loads claude.md where the file system ignores case, and the name shows what the profile hides.
 const isAgent = (p) => { const s = p.toLowerCase().split('/'); return AGENT_NAMES.has(s.at(-1)) || s.some((x) => AGENT_DIRS.has(x)); };
 const namesAgent = (l) => !l.startsWith('#') && l.replace(/^!/, '').toLowerCase().split('/').some((x) => AGENT_NAMES.has(x) || AGENT_DIRS.has(x));
 
@@ -635,14 +648,16 @@ function verdict(c, repo, plan, parts = []) {
 
 const deny = (reason) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } });
 function staged(c, input) {
-  const own = join(configOf(c, input), 'reimagine-primer');
-  if (!existsSync(own)) return [];
-  const map = loadMap(places(c, own).map), command = input.tool_input?.command;
-  if (typeof command !== 'string' || !map.repos.some((e) => e.profile === 'local')) return [];
+  const own = join(configOf(c, input), 'reimagine-primer'), command = input.tool_input?.command;
+  if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage)/.test(command)) return [];
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;
   const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false };
   scan(command, ps, st);
   if (!st.calls.length && !st.hidden) return [];
+  const path = places(c, own).map, map = (() => { try { return loadMap(path); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
+  if (!map) return [deny(`primer: ${path} is not a primer map, so the staging check cannot tell which repositories have the local profile and denies every git add `
+    + 'and git commit; restore the file from a copy or from the store\'s history, or correct it to the form primer map writes')];
+  if (!map.repos.some((e) => e.profile === 'local')) return [];
   if (st.hidden || st.calls.some((x) => !isDir(x.dir))) st.lost = st.far = true;
   const one = st.calls.length === 1 && !st.lost ? st.calls[0] : null, dirs = new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd]);
   // Where a directory is unknown the call may run in any local repository, so each one the map holds is checked too.

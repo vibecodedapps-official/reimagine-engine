@@ -32,7 +32,7 @@ const sourceFor = (remotes) => `**Source control**: The trusted repo and its rem
 const mergeFor = (remotes) => `Owner-reviewed merges: merging a pull request in ${remotes}, when the user's own message names that pull request and asks for the merge; the user reviews their own pull requests in these repositories. (reimagine guard)`;
 const CHECK = "guard: the host's effective configuration holds every guard entry once";
 const PLAN_CHECK = "check: the dry run's effective configuration holds every guard entry once";
-const FORMS = 'plan takes one of --add <path> [--merge] [--reads], --drop <path or remote> or --clear; nothing else is accepted';
+const FORMS = 'plan takes one of --add <path> [--merge] [--reads] [--ask], --drop <path or remote> or --clear; nothing else is accepted';
 
 const dirs = [];
 after(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
@@ -565,7 +565,7 @@ test('R340: a path outside a git work tree, and a drop of an unknown entry, are 
 
 test('R340: argument errors are refused before any claude call', () => {
   const w = world();
-  for (const argv of [['plan', '--add'], ['plan', '--add', 'x', '--clear'], ['plan', '--add', 'x', '--drop', 'y'], ['plan', '--merge'], ['plan', '--reads'], ['plan', '--drop', 'x', '--reads'], ['plan', '--clear', '--reads'], ['plan', '--drop', 'x', '--merge'], ['plan', '--clear', '--merge'], ['plan', 'bogus'], ['plan', '--drop', '--clear']]) noCall(w, argv, FORMS);
+  for (const argv of [['plan', '--add'], ['plan', '--add', 'x', '--clear'], ['plan', '--add', 'x', '--drop', 'y'], ['plan', '--merge'], ['plan', '--reads'], ['plan', '--drop', 'x', '--reads'], ['plan', '--clear', '--reads'], ['plan', '--drop', 'x', '--merge'], ['plan', '--clear', '--merge'], ['plan', '--ask'], ['plan', '--drop', 'x', '--ask'], ['plan', '--clear', '--ask'], ['plan', 'bogus'], ['plan', '--drop', '--clear']]) noCall(w, argv, FORMS);
   noCall(w, ['apply', 'x'], 'apply takes the id on the plan: line of the plan it writes');
   noCall(w, ['status', 'x'], 'status takes no arguments');
   noCall(w, ['list', 'x'], 'list takes no arguments');
@@ -992,14 +992,18 @@ test('R341: session-start uses the remotes the list records, runs no config chec
   assert.deepEqual([read(w.settings), read(w.list), readdirSync(w.data).sort()], before);
 });
 
-test('R341: session-start prints nothing and runs no claude for a missing, empty or unreadable list', () => {
+test('R341: session-start prints nothing and runs no claude for a missing or empty list', () => {
   const w = repoWorld();
   assert.deepEqual(sessionStart(w), []);
   writeFileSync(w.list, '{"version":1,"repos":[]}\n');
   assert.deepEqual(sessionStart(w), []);
-  rmSync(w.list);
+  assert.deepEqual(w.calls, []);
+});
+
+test('R341: session-start names a list path that cannot be read as a file, with no claude call', () => {
+  const w = repoWorld();
   mkdirSync(w.list);
-  assert.deepEqual(sessionStart(w), []);
+  assert.deepEqual(sessionStart(w).map((l) => JSON.parse(l)), [{ systemMessage: `guard: ${w.list} cannot be read, so guard asks before every push and every gh and az repos write; correct it or run /guard` }]);
   assert.deepEqual(w.calls, []);
 });
 
@@ -1100,4 +1104,64 @@ test('R339: the settings reads entry is written only while a repository is liste
   assert.deepEqual(w.run('list'), [`${w.repo.top} ${NA} reads`]);
   const off = change(w, '--add', w.repo.path);
   assert.deepEqual(off.plan.slice(2), ['state: stale', `repository: ~ ${w.repo.top} (${NA})`, `entry: - allow: ${A2}`, PLAN_CHECK, 'change: ready']);
+});
+
+test('R340: --ask sets ask on the entry, written only when set, and a change of the flag alone plans and applies', () => {
+  const w = world();
+  const app = repo(w, 'app', [RA]);
+  const lib = repo(w, 'lib', [RB1]);
+  const on = change(w, '--add', app.path, '--ask');
+  assert.deepEqual(on.plan.slice(2, 4), ['state: absent', `repository: + ${app.top} (${NA}) ask`]);
+  change(w, '--add', lib.path);
+  assert.equal(read(w.list), `{\n  "version": 1,\n  "repos": [\n    {\n      "path": "${app.top}",\n      "remotes": [\n        "${NA}"\n      ],\n      "merge": false,\n      "ask": true\n    },\n    {\n      "path": "${lib.top}",\n      "remotes": [\n        "${NB1}"\n      ],\n      "merge": false\n    }\n  ]\n}\n`);
+  assert.deepEqual(w.run('list'), [`${app.top} ${NA} ask`, `${lib.top} ${NB1}`]);
+  const settings = read(w.settings);
+  assert.deepEqual(w.run('plan', '--add', lib.path, '--merge', '--reads', '--ask').slice(3, 4), [`repository: ~ ${lib.top} (${NB1}) merge reads ask`]);
+  const only = w.run('plan', '--add', lib.path, '--ask');
+  assert.deepEqual(only, [`target: ${w.settings}`, `list: ${w.list}`, 'state: stale', `repository: ~ ${lib.top} (${NB1}) ask`, PLAN_CHECK, 'change: ready']);
+  w.now = new Date(w.now.getTime() + 1000);
+  assert.deepEqual(w.run('apply'), [`guard: wrote ${w.list}`, CHECK]);
+  assert.equal(read(w.settings), settings);
+  assert.deepEqual(JSON.parse(read(w.list)).repos.map((r) => r.ask), [true, true]);
+  assert.equal(w.run('status')[0], `state: current ${w.settings}`);
+  assert.deepEqual(sessionStart(w), []);
+});
+
+test('R341: session-start names a missing list when the settings file holds guard entries, with no claude call, and not when no one attends', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  rmSync(w.list);
+  w.calls.length = 0;
+  const lines = sessionStart(w);
+  assert.equal(lines.length, 1);
+  assert.ok(lines[0].startsWith('{"systemMessage":"guard: '));
+  assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: ${w.settings} holds guard's entries but ${w.list} is missing, so guard asks before every push and every gh and az repos write; run /guard, or put a copy of the list file beside that settings file` });
+  assert.deepEqual(w.calls, []);
+  assert.deepEqual(main(['session-start', w.data], { env: { ...w.env, CLAUDE_CODE_SESSION_ATTENDED: '0' }, now: w.now, home: w.home, cwd: w.work, claude: w.claude }), []);
+  writeFileSync(w.settings, '{"autoMode":{"allow":["$defaults"]}}\n');
+  assert.deepEqual(sessionStart(w), []);
+});
+
+test('R341: session-start names a list file that is not a guard list, with no claude call, and not when no one attends', () => {
+  const w = repoWorld();
+  for (const text of ['{', '{"version":2,"repos":[]}', `{"version":1,"repos":[{"path":"x","remotes":[],"merge":false,"ask":"yes"}]}`]) {
+    writeFileSync(w.list, text);
+    const lines = sessionStart(w);
+    assert.equal(lines.length, 1, text);
+    assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: ${w.list} cannot be read, so guard asks before every push and every gh and az repos write; correct it or run /guard` });
+  }
+  assert.deepEqual(w.calls, []);
+  assert.deepEqual(main(['session-start', w.data], { env: { ...w.env, CLAUDE_CODE_SESSION_ATTENDED: '0' }, now: w.now, home: w.home, cwd: w.work, claude: w.claude }), []);
+});
+
+test('R340: --drop of a repository listed with ask takes it and its flag off the list', () => {
+  const w = world();
+  const app = repo(w, 'app', [RA]);
+  const lib = repo(w, 'lib', [RB1]);
+  change(w, '--add', app.path, '--ask');
+  change(w, '--add', lib.path, '--ask');
+  const { plan } = change(w, '--drop', app.path);
+  assert.deepEqual(plan.slice(2, 4), ['state: stale', `repository: - ${app.top} (${NA})`]);
+  assert.equal(read(w.list), `{\n  "version": 1,\n  "repos": [\n    {\n      "path": "${lib.top}",\n      "remotes": [\n        "${NB1}"\n      ],\n      "merge": false,\n      "ask": true\n    }\n  ]\n}\n`);
+  assert.deepEqual(w.run('list'), [`${lib.top} ${NB1} ask`]);
 });

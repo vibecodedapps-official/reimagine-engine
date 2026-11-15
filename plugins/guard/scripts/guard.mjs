@@ -3,10 +3,10 @@
 // file. Usage: node guard.mjs <verb> <dataDir> [args]
 //   status   print the state of the entries and the size of the list; writes nothing
 //   list     print the repositories in the list
-//   plan     show the change and save it under an id; takes --add <path> [--merge] [--reads], --drop <path or remote> or --clear
+//   plan     show the change and save it under an id; takes --add <path> [--merge] [--reads] [--ask], --drop <path or remote> or --clear
 //   apply    takes that id: write the saved change (a backup first), then check the host's effective configuration
 //   denials  print the classifier denials the PermissionDenied hook recorded
-//   session-start  the startup hook: one notice line when the entries are stale; writes nothing
+//   session-start  the startup hook: one notice line when the entries are stale or the list cannot be used; writes nothing
 //   denied   the hook itself: reads a hook input on stdin and appends one line to the denials file
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -24,7 +24,7 @@ const DENIALS_FILE = 'denials.jsonl';
 const DENIALS_MAX = 256 * 1024, DENIALS_KEEP = 100;
 const NO_ID = 'apply takes the id on the plan: line of the plan it writes';
 const LISTS = ['environment', 'allow', 'soft_deny', 'hard_deny'];
-const FORMS = 'plan takes one of --add <path> [--merge] [--reads], --drop <path or remote> or --clear; nothing else is accepted';
+const FORMS = 'plan takes one of --add <path> [--merge] [--reads] [--ask], --drop <path or remote> or --clear; nothing else is accepted';
 const GUARD_LABELS = [['trusted repo', 'Trusted repo'], ['source control', 'Source control']];
 const ALLOW_OWN = `User's own repositories: pushing a branch to a repository listed under Source control, opening a pull request there, and editing the title or description of, or commenting on, a pull request there that the user's own message asked to work on, one this session did not open included. A body given on stdin, or in a file that the agent or its subagents wrote in this session, counts as derived from this transcript.${MARK}`;
 const ALLOW_READS = `Settings reads: reading Claude Code settings files, the settings.json in the configuration directory and a listed repository's .claude/settings.json or .claude/settings.local.json, to inspect or verify configuration is not credential exploration, as long as no value read leaves the machine.${MARK}`;
@@ -141,13 +141,26 @@ function parseList(path, file, platform) {
   try { if (file.text !== null && !file.bad) v = JSON.parse(file.text); } catch {}
   if (file.text === null) return [];
   const ok = v && v.version === 1 && Array.isArray(v.repos) && v.repos.every((r) => r && typeof r.path === 'string' && typeof r.merge === 'boolean'
-    && (r.reads === undefined || typeof r.reads === 'boolean') && Array.isArray(r.remotes) && r.remotes.every((x) => typeof x === 'string'));
+    && [r.reads, r.ask].every((f) => f === undefined || typeof f === 'boolean') && Array.isArray(r.remotes) && r.remotes.every((x) => typeof x === 'string'));
   if (!ok) stop('malformed', `${path} is not a guard list`);
-  return v.repos.map((r) => entry(r.path, r.remotes, r.merge, r.reads)).sort(byPath(platform));
+  return v.repos.map((r) => entry(r.path, r.remotes, r.merge, r.reads, r.ask)).sort(byPath(platform));
 }
-// One repository of the list; reads is written only when set, so a list from before the flag keeps its bytes.
-const entry = (path, remotes, merge, reads) => ({ path, remotes, merge, ...(reads ? { reads: true } : {}) });
-const flags = (x) => `${x.merge ? ' merge' : ''}${x.reads ? ' reads' : ''}`;
+// One repository of the list; reads and ask are written only when set, so a list from before a flag keeps its bytes.
+const entry = (path, remotes, merge, reads, ask) => ({ path, remotes, merge, ...(reads ? { reads: true } : {}), ...(ask ? { ask: true } : {}) });
+const flags = (x) => `${x.merge ? ' merge' : ''}${x.reads ? ' reads' : ''}${x.ask ? ' ask' : ''}`;
+// The repositories of a list text, or null when it is not a guard list.
+export const readList = (text, platform) => { try { return parseList('', { text }, platform); } catch { return null; } };
+// What the ask hook and the startup notice say while the list cannot be used.
+const BROKEN = 'so guard asks before every push and every gh and az repos write';
+export const unreadable = (list) => `guard: ${list} cannot be read, ${BROKEN}; correct it or run /guard`;
+export const missing = (path, list) => `guard: ${path} holds guard's entries but ${list} is missing, ${BROKEN}; run /guard, or put a copy of the list file beside that settings file`;
+// Whether a settings text holds an autoMode entry guard wrote; a text that does not parse is searched for one.
+export function marked(text) {
+  if (typeof text !== 'string' || !text.includes(MARK)) return false;
+  let auto;
+  try { auto = JSON.parse(text.replace(/^\uFEFF/, '')).autoMode; } catch { return text.includes(`${MARK}"`); }
+  return ['environment', 'allow'].some((k) => Array.isArray(auto?.[k]) && auto[k].some((e) => typeof e === 'string' && isMarked(e)));
+}
 const serialize = (repos) => `${JSON.stringify({ version: 1, repos }, null, 2)}\n`;
 
 // The settings file as the scanner sees it: where each top-level member starts and ends.
@@ -333,7 +346,7 @@ function render(auto, repos, defs, state) {
   };
 }
 
-function locate(env, home) {
+export function locate(env, home) {
   const dir = env.CLAUDE_CONFIG_DIR || join(home, '.claude');
   const logical = join(dir, 'settings.json');
   return { path: existsSync(logical) && lstatSync(logical).isSymbolicLink() ? realpathSync(logical) : logical, list: join(dir, LIST_FILE) };
@@ -345,7 +358,7 @@ function parseRequest(verb, rest) {
     if (rest.length) refuse(`${verb} takes no arguments`);
     return null;
   }
-  let req = null, merge = false, reads = false;
+  let req = null, merge = false, reads = false, ask = false;
   const set = (r) => { if (req) refuse(FORMS); req = r; };
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
@@ -356,10 +369,11 @@ function parseRequest(verb, rest) {
     } else if (a === '--clear') set({ kind: 'clear' });
     else if (a === '--merge') merge = true;
     else if (a === '--reads') reads = true;
+    else if (a === '--ask') ask = true;
     else refuse(FORMS);
   }
-  if ((merge || reads) && req?.kind !== 'add') refuse(FORMS);
-  return req && { ...req, merge, reads };
+  if ((merge || reads || ask) && req?.kind !== 'add') refuse(FORMS);
+  return req && { ...req, merge, reads, ask };
 }
 
 // The list after an add, drop or clear; refuses before any claude call.
@@ -371,7 +385,7 @@ function change(old, req, c) {
     let remotes = [];
     try { remotes = remotesOf(c.env, top); } catch {}
     if (!remotes.length) refuse(`${top} has no remote; guard trusts a repository by its remotes`);
-    return [...old.filter((x) => key(x.path, c.platform) !== key(top, c.platform)), entry(top, remotes, req.merge, req.reads)].sort(byPath(c.platform));
+    return [...old.filter((x) => key(x.path, c.platform) !== key(top, c.platform)), entry(top, remotes, req.merge, req.reads, req.ask)].sort(byPath(c.platform));
   }
   const given = resolve(c.cwd, req.value), paths = [slash(given)], remotes = [req.value, normalizeRemote(req.value)];
   try { paths.push(slash(git(c.env, given, ['rev-parse', '--show-toplevel']).trim())); } catch {}
@@ -592,13 +606,20 @@ function run(verb, request, c) {
   return [...head, ...r.lines, "check: the dry run's effective configuration holds every guard entry once", `plan: ${id}`, 'change: ready'];
 }
 
-// The startup notice: one systemMessage line when listed repositories leave the entries stale. It uses the remotes the list
-// records, runs no config check, and prints nothing for any other state or any error. A session no one attends, which the host
-// marks with that flag, gets no check.
+// The startup notice: one systemMessage line when listed repositories leave the entries stale, when the list file is not a
+// guard list, or when the settings file holds guard's entries and the list is gone. It uses the remotes the list records, runs
+// no config check, and prints nothing for any other state or any error. A session no one attends, which the host marks with
+// that flag, gets no check.
 function sessionStart(c) {
   if (c.env.CLAUDE_CODE_SESSION_ATTENDED === '0') return [];
-  const { list } = locate(c.env, c.home);
-  if (!parseList(list, readFile(list), c.platform).length) return [];
+  const { path, list } = locate(c.env, c.home);
+  const notice = (text) => [JSON.stringify({ systemMessage: text })];
+  let file;
+  try { file = readFile(list); } catch { return notice(unreadable(list)); }
+  if (file.text === null) return marked(readFile(path).text) ? notice(missing(path, list)) : [];
+  let repos;
+  try { repos = parseList(list, file, c.platform); } catch (e) { if (e instanceof Stop) return notice(unreadable(list)); throw e; }
+  if (!repos.length) return [];
   const r = inspect({ ...c, recorded: true, timeout: 20000 }, null, false);
   return r.state === 'stale' ? [JSON.stringify({ systemMessage: `guard: the auto mode entries in ${r.t.path} are stale; run /guard to update them` })] : [];
 }

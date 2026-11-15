@@ -129,11 +129,11 @@ result's text, approver and time; a `result_file` result's text is its copy
    `<run dir>/tmp/head-<bundle>.json`, never to a file under `forge/`, and compare its
    `headRefOid` with the `headRefOid` of `forge/<bundle>/pr.json`, the head stage 1 read,
    which for a `working-tree` bundle is not the commit step 1c built; a read that fails
-   stops nothing and gives `not read again`, and so does a `file:` pull request, which has
-   no read of a forge to repeat. When a head moved, the header's `heads:` line says so,
-   and every text the orchestrator drafts for a ticket or a pull request, in section 7,
-   in the part of section 8 it writes and in `work-items.jsonl`, names the commit its
-   evidence was checked at, never the newer one; `08-decisions.md` is copied by
+   stops nothing, a `file:` pull request has no read to repeat, and the header's `heads:`
+   line gives each bundle as `report.md`, "Body", says. When a head moved, every text the
+   orchestrator drafts for a ticket or a pull request, in section 7, in the part of
+   section 8 it writes and in `work-items.jsonl`, follows `common.md` hard rule 3;
+   `08-decisions.md` is copied by
    `report.sh parts` as its entries were written, and the `heads:` line stands for it.
    The twelve sections:
    1. **Verdict**, from steps 4 and 5, then the `next:` block of step 14.

@@ -273,9 +273,8 @@ A run record.
 - Brief errata: each line of the stage 5 entry's `brief_errata`, as the adversaries
   wrote it.
 - Refused calls: the number of calls on the refused lines of every agent output file, a
-  top-up's included and a `.pre-topup.md` copy left out (`common.md`, "Output contract"),
-  then each distinct call with the agents it was refused to; or `none refused`. An output
-  with no refused line is named. A refused read is something that agent did not see.
+  top-up's included (`common.md`, "Output contract"), then each distinct call with the
+  agents it was refused to; or `none refused`. An output with no refused line is named.
 - Outward trace, from the pass files and stage entries, so it shows even when pass two
   failed or never ran: each scope whose trace is `not assessed`; each `not traced:`
   symbol; each entry with result `incomplete`; each entry cut to `(<k> of <n> checked)`,

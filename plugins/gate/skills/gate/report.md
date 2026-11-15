@@ -2,7 +2,7 @@
 
 Fill every section from the record, `passes.json`, `findings.json` and the saved reviews, never from memory. A run's passes are those whose `run` is its number. Every section is present, and an empty one says `none`.
 
-With a record, write the report to `report.md` in it, as `record.md`, Write discipline, says, and print the same text. A run that ended before the record existed writes no file and prints the reading block and then the report in one last message, naming the preflight item that failed and its fix, or each target that did not resolve and why. A headless caller sees only the last message, so the header alone must let a reader find the record.
+With a record, write the report to `report.md` in it, as `record.md`, Write discipline, says, and print the same text. With no record, the report names the preflight item that failed and its fix, or each target that did not resolve and why. A headless caller sees only the last message, so the header alone must let a reader find the record.
 
 The report may name models, agents and tools, because it stays in the record. It is the only place the run's findings, checks, commits and verdict are written for a reader.
 
@@ -63,7 +63,7 @@ Commits and pushes. Each commit of the run with its full sha and subject, and wh
 
 Open findings. For `unconverged`, each open finding by file and summary (`steps/3-next.md`, Decide), and the cap or failure that ended the run, by name. A `budget` cap is named as the next pass not started because the run budget could not hold it.
 
-Blocked or stopped. What is blocked, or the question with both positions; where the work is: the branch, the pull request link, the head and the paths left as they are; what would unblock it; and the exact commands in order, ending with the request that runs the gate again, such as `/gate PR <n>`. A budget that ran out is given with its value. A check still failing after three fixes is named here and under Checks.
+Blocked or stopped. What is blocked, or the question with both positions; where the work is: the branch, the pull request link, the head and the paths left as they are; what would unblock it; and the exact commands in order, ending with the request that runs the gate again, such as `/gate PR <n>`. A budget that ran out is given with its value. A check still failing after three fixes is named here and under Checks. When a fix round's edits stay in the tree, the commands give both ways to the clean tree the next run needs: keeping them, the check by hand, `git add -- <path>` per path, the commit and the push; or dropping them, `git checkout -- <path>` per tracked path and `rm -- <path>` per new file, and the pass repeats from its saved reviews. A kept commit, or a `.reimagine.json` committed and pushed to raise `gate.timeouts.check` after a check past its budget, starts a new sequence.
 
 Log. Each review with its slug, models, duration, cost, denial count and notes, the notes as the reviewer wrote them; each repair of a `match`; each reader call with its batch's size and whether it was retried; each implementer call with its group's files, its `duration_ms` and the `date` outputs kept around it; each late notice; and the elapsed time against the run budget.
 

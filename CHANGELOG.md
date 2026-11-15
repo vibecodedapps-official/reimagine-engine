@@ -2,6 +2,35 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## review 0.1.2 - 2026-11-14
+
+- In a first review of a pair, the comments on both pull requests state the dependency and the merge order, as a follow-up's already did. The rule stood only in the follow-up file.
+- A draft changed after it was shown is shown and recorded again, by the skill's one sentence. The posting file said in three places that such a draft is shown again and in none that it is recorded again, which the posting step checks before it posts.
+- Out of scope lists only what the skill says nowhere else, and the round and the order of the drafts are each given once. The repeats stood in files a run reads after the skill.
+- The reviewing agent of a first reading is called once, at the model an instruction file sets for reviews, else the session's own. A session whose instruction files set a lower tier for reviews started it at that tier and again at the session's model, and kept the second reading. The leak check before a post takes the names of the agent's model beside the session's.
+- The session user is read on GitHub only. For an export the read was a `gh` call to a host that is not GitHub.
+
+## primer 0.1.14 - 2026-11-14
+
+- In the local profile, what a layer's text is stands in `local.md` alone, and what goes in `machine.md` stands in `placement.md` alone, which now names a path of this machine. Each file held both rules and the two differed, so a run could follow either.
+
+## loop 0.1.30 - 2026-11-14
+
+- The build brief names the instruction sources by the skill's own rule, and that the `code-review` skill takes no request text stands in the skill alone. Both stood again in step files that a run reads after the skill.
+- The `gh pr create` a `prepared` run prints names `--base <base>`, and the list for a host without `gh` names the source and the target branch. A pull request opened by hand after a run on another base would go to the default branch.
+
+## gate 0.1.21 - 2026-11-14
+
+- A report that ends `blocked` with a fix round's edits left in the work tree gives the commands that keep them and the commands that drop them, and says what the next run does after each. After a check past its budget it names `gate.timeouts.check`, and the README says to set that key to hold the slowest check and lists the ending under `blocked`. A check stopped at its budget left the fixes uncommitted, the next run ended `blocked` on the dirty tree, and nothing said how to go on.
+- A run with no record is described in one place, and a brief names the instruction files by the rule of Approval scope. The repeats stood in files a run already reads.
+- The README says `timeouts.review` holds a reading and one run of each check, since a review may run the checks itself and one past its budget ends the run `unconverged`.
+
+## audit 0.1.32 - 2026-11-14
+
+- `/audit:handoff` removes a trailing `-` from the branch slug, as the loop and the gate do. For a branch whose slug ends in `-`, such as a long name cut at a separator, it looked for the loop's record under another name, found none, and wrote the handoff without the plan, the review log and the commit lines.
+- Stage 7's rule that a recommended change names every site also bars a word such as "several", as the merger's own rule does.
+- The agent definitions no longer restate the refused line, stage 8 names the rule on a head that moved and the `heads:` values in place of restating them, and the report's Refused calls line no longer repeats how it is gathered. Each stood in a file its reader already holds, and three of the copies had come to differ from it.
+
 ## rules 0.1.32 - 2026-11-14
 
 - A fourth Tests item says a test of prose written for an agent checks only what the host, a script or another file reads, and that a run or a review checks the rest. A test that asserts a sentence of a skill meets the two items that ask for tests, on literal expected values and on a test for a behavior change, and suites built that way came to pin hundreds of sentences: a cut or a reworded line moved a test, and a pin could not tell a rule that held from one that had only kept its wording. An installed block reads `stale` once.

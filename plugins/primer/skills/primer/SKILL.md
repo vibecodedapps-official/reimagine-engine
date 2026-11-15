@@ -22,7 +22,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 
 ## Choose the mode
 
-- The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain> (<one-line reason>)`, with no text before it but the profile question, and the second is `primer: profile <shared|local>`.
+- The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain> (<one-line reason>)`, with no text before it but the profile question, and the second is `primer: profile <shared|local>`. A reply that reports a stop in place of a pass still opens with both lines.
 - The profile: a hub whose line 1 is the marker is `shared`; else the `profile:` line of `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status` names it. With none, the reply is only one question, with no default: `shared`, instruction files in the work tree, committed, or `local`, the context in a store outside the repository that a hook loads, with nothing written or committed in the work tree; for `shared`, also whether the repository is the user's own. The question names the run that records the answer, `map --add --profile <shared|local>` with `--own <true|false>` for `shared`, by the same script; run it on the answer. Without an answer write nothing.
 - A `local` run reads `local.md` in this skill's directory before the mode line and follows it where it differs from this file.
 - Find files with `git ls-files`, `git ls-files --others --exclude-standard` (untracked, not ignored) and `git ls-files --others --ignored --exclude-standard` (ignored). The mode is chosen from the files on disk, ignored ones included.

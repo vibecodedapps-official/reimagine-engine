@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.30 - 2026-11-14
+
+- The build brief names the instruction sources by the skill's own rule, and that the `code-review` skill takes no request text stands in the skill alone. Both stood again in step files that a run reads after the skill.
+- The `gh pr create` a `prepared` run prints names `--base <base>`, and the list for a host without `gh` names the source and the target branch. A pull request opened by hand after a run on another base would go to the default branch.
+
 ## gate 0.1.21 - 2026-11-14
 
 - A report that ends `blocked` with a fix round's edits left in the work tree gives the commands that keep them and the commands that drop them, and says what the next run does after each. After a check past its budget it names `gate.timeouts.check`, and the README says to set that key to hold the slowest check and lists the ending under `blocked`. A check stopped at its budget left the fixes uncommitted, the next run ended `blocked` on the dirty tree, and nothing said how to go on.

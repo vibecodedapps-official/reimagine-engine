@@ -14,7 +14,8 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
 ## Mode
 
 - `init` while the store holds no layer for the repository's group, `maintain` after; `adopt` does not run.
-- Instruction files the upstream tracks are the repository's own: read them, never rewrite them. A root instruction file git ignores is the user's own and does not stop the run.
+- Instruction files the upstream tracks are the repository's own, nested `CLAUDE.md` and `AGENTS.md` files, rules, skills and `.claude/settings.json` among them: read them, never write them, and propose no line that one of them states. A root instruction file git ignores is the user's own and does not stop the run.
+- An addition of the user's to what a tracked file covers is placed as the local profile section of `placement.md` says, and its line or its pointer names the directory or the files it covers, since a layer loads in every session there and never by path. A setting wanted beside a tracked `.claude/settings.json` is proposed for `.claude/settings.local.json` by placement item 2, never written, and the staging check keeps that file out of a commit.
 - `init` reads the repository as `init.md` step 2 does and proposes the group layer in the skill form of Proposals, with the first line `<n>. Layer <file>` and a `Writes:` line naming the file.
 - `maintain` verifies each layer's statements as Maintain step 2 verifies instruction files, and proposes each fix as a write to the layer that holds it.
 

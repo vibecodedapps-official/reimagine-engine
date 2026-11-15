@@ -8,7 +8,7 @@ allowed-tools: Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/rules.mjs" *)
 
 # /rules
 
-Manage the house rules block in the user's `CLAUDE.md`. Only the script writes. You never edit `CLAUDE.md` or any settings file yourself, and you never use the Edit or Write tool on them. You run the script, show its output, and ask before each change.
+Manage the house rules block in the user's `CLAUDE.md`. Only the script writes `CLAUDE.md`. You never edit `CLAUDE.md` or any settings file yourself, and you never use the Edit or Write tool on them. You run the script, show its output, and ask before each change.
 
 The arguments:
 
@@ -62,6 +62,8 @@ If a command prints a line that starts with `rules:` and exits with an error, sh
 Show the output of each `apply` and `decline` verbatim in a fenced code block.
 
 ## Step 3: always last
+
+Unless the argument is `--remove`, if `rules-outbound.txt` is missing from `$CLAUDE_CONFIG_DIR`, else `~/.claude`, ask once whether to create the outbound list, which the plugin's hook checks commits, pushes and forge posts against, and show its starter lines in the question: `Claude`, `Anthropic`, each model family name you know, and `reimagine`. On a yes, write it with the Write tool: those lines, then each string the user names, one per line.
 
 Print how to select the output style:
 

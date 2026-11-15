@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.33 - 2026-11-15
+
+- A hook denies a commit, a push or a forge post whose text holds a string listed in `rules-outbound.txt` in the config folder, and does nothing until that file exists. Nothing checked a commit message, a pull request body or a comment for a name the user wants kept out of a repository's history and off its forge; the rule stood as prose only. `/rules` offers to write the list, and the README says what is read and what is not.
+
 ## guard 0.1.4 - 2026-11-15
 
 - The wait between tries for the lock is passed to the script's `main` by its caller, and a run passes none and waits as before. The test of a held lock slept through all 200 tries, about 10 seconds.

@@ -76,7 +76,7 @@ After the block, read `steps/0-preflight.md`, or with no target resolved `steps/
 Invoking this skill by name approves, for this run only, fix commits on each target's branch and pushing that branch. Nothing else is approved: no branch, no pull request, no comment, no body edit, no ticket comment and no issue.
 
 1. Instruction files win. Before changing anything, read the user's instruction files, the repository's, those of each folder above its root, and `.reimagine.json`. Record every ask-first rule, and prompt for any approved action a rule covers. Every brief the run sends, a reader's, an implementer's or the stand-in's request, names by path each of these files and each file a context loader names as its source that bears on its question, and quotes a convention the session holds from no file, such as a table the user gave in the request, since an agent knows only its brief and what the host loads for it. A child session that reviews is started with the review command alone and loads the instruction files itself, so such a convention is applied to its findings at triage.
-2. Always ask before a force push, `--no-verify`, a merge, rebase, amend or reset, anything that deploys, a push that triggers a deploy, a change to repository settings and a new issue.
+2. Always ask before a force push, `--no-verify`, a merge, rebase, amend or reset, anything that deploys, a push that triggers a deploy, a target's first push to a host not known to be GitHub unless `ask-push` is `false`, a change to repository settings and a new issue.
 3. A denial is final. What the user or the permission mode denies is never retried and never done another way. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A denied check is recorded as denied, and the next one runs.
 4. The gate never stashes, resets, cleans or forces, and never stages anything under `.reimagine/`.
 
@@ -117,6 +117,7 @@ With "no fixes" the run makes pass 1 only: the review and the triage run, nothin
     "parallel": 3,
     "max-passes": 4,
     "budget": 120,
+    "ask-push": true,
     "timeouts": { "subagent": 20, "review": 30, "check": 15 },
     "models": { "implementer": "sonnet", "reader": "sonnet", "reviewer": "opus", "fallback-reviewer": "opus" }
   }
@@ -127,6 +128,7 @@ With "no fixes" the run makes pass 1 only: the review and the triage run, nothin
 - `parallel`: the reviews of one pass that run at once. Each is a model session of its own, so a machine short of memory lowers it.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
+- `ask-push`: on a host that is not known to be GitHub, where no file shows a deploy, the run asks before each target's first push. Only `false` drops the question.
 - `timeouts`: the minutes of each implementer call (`subagent`), each review (`review`) and each check (`check`). A key absent here takes the root `timeouts` value of the same name, then the default.
 - `models`: the model of each role, one of `sonnet`, `opus`, `haiku` and `fable`. The reviewer's is never the root `models` key, which is the loop's.
 

@@ -241,6 +241,16 @@ describe('primer drift hook', () => {
       assert.equal(await run('cd "C:\\work\\"; git commit -m x', broken, { tool: 'PowerShell' }), deny(brokenFinding));
     });
 
+    test('PowerShell reads a here-string as one word, so an apostrophe in it hides no commit and its lines are no commands', async () => {
+      assert.equal(await run("Set-Content x @'\nit's\n'@; git commit -m y", broken, { tool: 'PowerShell' }), deny(brokenFinding));
+      assert.equal(await run("git commit -m @'\nfix: don't drop the map\n'@", broken, { tool: 'PowerShell' }), deny(brokenFinding));
+      assert.equal(await run('git commit -m @"\r\nfix: don\'t\r\n"@', broken, { tool: 'PowerShell' }), deny(brokenFinding));
+      assert.equal(await run("Set-Content x @'\nit's\ngit commit -m x\n'@", broken, { tool: 'PowerShell' }), '');
+      assert.equal(await run("cat x @'\nit's\n'@; git commit -m y", broken), '');
+      assert.equal(await run("$m=@'\nit's\n'@; git commit -m $m", broken, { tool: 'PowerShell' }), deny(brokenFinding));
+      assert.equal(await run('Write-Output @"\na`tb\ngit commit -m x\n"@', broken, { tool: 'PowerShell' }), '');
+    });
+
     test('PowerShell reads a backtick before a quote as a literal quote', async () => {
       assert.equal(await run('echo "a`"b"; git commit -m x', broken, { tool: 'PowerShell' }), deny(brokenFinding));
     });
@@ -681,6 +691,7 @@ describe('primer drift hook', () => {
     const lead = (dir) => `${slash(dir)} has the local profile, which keeps agent files out of its history; `;
     const unresolved = 'the command cannot be resolved, so it counts as staging every file git does not ignore; ';
     const both = '.claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold';
+    const decided = (out) => (out ? JSON.parse(out).hookSpecificOutput : {});
 
     test('staging and committing everything in one command is denied, as a command that cannot be resolved', async () => {
       const dir = await clone();
@@ -844,13 +855,89 @@ describe('primer drift hook', () => {
       rmSync(join(dir, '.claude/settings.local.json'));
       assert.equal(await check('git add src && git commit -m x', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
     });
-    test('a map that cannot be read denies in the script\'s own words', async () => {
+    test('a map that cannot be read denies a git add or commit, naming the map, and passes any other command', async () => {
       const dir = await clone();
       const bad = join(base, 'bad-map-config');
       write(bad, 'reimagine-primer/store/map.json', '{');
-      const reason = `primer: the staging check failed, so the call is denied: ${join(bad, 'reimagine-primer', 'store', 'map.json')} is not a primer map`;
-      assert.equal(await check('git commit -m x', dir, { env: { CLAUDE_CONFIG_DIR: bad } }),
-        `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`);
+      const reason = `primer: ${join(bad, 'reimagine-primer', 'store', 'map.json')} is not a primer map, so the staging check cannot tell which repositories have the local profile `
+        + 'and denies every git add and git commit; restore the file from a copy or from the store\'s history, or correct it to the form primer map writes';
+      for (const command of ['git commit -m x', 'git add src/a.ts']) {
+        assert.deepEqual(decided(await check(command, dir, { env: { CLAUDE_CONFIG_DIR: bad } })), { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason }, command);
+      }
+      for (const command of ['git log --grep commit', 'echo "a commit note" > notes.txt']) {
+        assert.equal(await check(command, dir, { env: { CLAUDE_CONFIG_DIR: bad } }), '', command);
+      }
+    });
+    test('a PowerShell here-string message with an apostrophe leaves the commit resolved', async () => {
+      const dir = await clone();
+      await git(dir, 'add', 'src/a.ts');
+      for (const command of ["git commit -m @'\nfix: don't drop the map\n'@", 'git commit -m @"\nfix: don\'t drop the map\n"@']) {
+        assert.equal(await check(command, dir, { tool: 'PowerShell' }), '', command);
+      }
+      assert.equal(await check('git commit -m @"\n$(git add -A)\n"@', dir, { tool: 'PowerShell' }), deny(lead(dir) + unresolved + 'the call would add ' + both));
+      await git(dir, 'add', 'CLAUDE.md');
+      assert.equal(await check("git commit -m @'\nfix: don't and won't\n'@", dir, { tool: 'PowerShell' }),
+        deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+    });
+    test('a PowerShell here-string that runs no git command passes, apostrophe and all', async () => {
+      const dir = await clone();
+      assert.equal(await check("Set-Content notes.txt @'\nit's a commit note\n'@", dir, { tool: 'PowerShell' }), '');
+    });
+    test('a here-string whose text may run, or that PowerShell reads another way, leaves the command unresolved', async () => {
+      const dir = await clone();
+      await git(dir, 'add', 'src/a.ts');
+      const reason = deny(lead(dir) + unresolved + 'the call would add ' + both);
+      for (const command of [
+        "@'\ngit add -A\ngit commit -m \"fix: don't drop\"\n'@ | sh",
+        'git commit -m @"\nmsg $(& "git" add -A)\n"@',
+        "git commit -m @'\nfix: don't\n'@CLAUDE.md",
+        "$m=@'\nfix: don't drop the map\n'@\ngit add -A\ngit commit -m @'\nwon't happen\n'@",
+        "echo x,@'\nit's\n'@; git add -A; git commit -m y # don't",
+        "Write-Output $m=@'\nit's\ngit add -A\n'@ # '",
+        "& $m=@'\nit's\ngit add -A\n'@ # '",
+        "Write-Output @'\ngit add -A\n'@ | sh",
+        "$m = @'\n# it's\ngit add -A\n'@; $m | sh",
+        "@'\n# it's\ngit \\\nadd -A\n'@ | sh",
+        "pwsh -c @'\n# it's\ngit `\nadd -A\n'@",
+      ]) assert.equal(await check(command, dir, { tool: 'PowerShell' }), reason, command);
+    });
+    test('a here-string handed to a git call the script reads is its message, whatever it names', async () => {
+      const dir = await clone();
+      await git(dir, 'add', 'src/a.ts');
+      assert.equal(await check("git commit -m @'\nfix: run git add before the build, don't skip it\n'@", dir, { tool: 'PowerShell' }), '');
+    });
+    test('a command handed to PowerShell or cmd that names an add or a commit counts as one out of sight', async () => {
+      const dir = await clone();
+      const reason = deny(lead(dir) + unresolved + 'the call would add ' + both);
+      for (const command of ['pwsh -NoProfile -c "git add -A"', 'powershell.exe -Command "git commit -am x"', 'cmd /c git add -A']) {
+        assert.equal(await check(command, dir), reason, command);
+      }
+      assert.equal(await check('pwsh -c "Get-Content commit.txt"', dir), '');
+    });
+    test('the word commit outside the command does not bring an unreadable command to the check', async () => {
+      const dir = await clone();
+      assert.equal(await check("printf %s 'x", dir, { description: 'commit the notes' }), '');
+    });
+    test('a commit whose pathspecs git does not know counts as staging every file git does not ignore', async () => {
+      const dir = await clone();
+      await git(dir, 'add', 'CLAUDE.md');
+      for (const command of ['git commit -m x -- nomatch', 'git commit -m fix: and more']) {
+        assert.equal(await check(command, dir), deny(lead(dir) + unresolved + 'the call would add ' + both), command);
+      }
+    });
+    test('a commit of a known path with nothing to commit passes beside an untracked agent file', async () => {
+      const dir = await clone();
+      assert.equal(await check('git commit AGENTS.md -m x', dir), '');
+    });
+    test('an agent file name in another letter case is denied where core.ignorecase is false too', async () => {
+      const dir = await clone();
+      write(dir, '.git/info/exclude', 'CLAUDE.md\n.claude/\n');
+      rmSync(join(dir, 'CLAUDE.md'));
+      write(dir, 'claude.md', '# Mine\n');
+      await git(dir, 'config', 'core.ignorecase', 'false');
+      assert.equal(await check('git add claude.md', dir), deny(lead(dir) + 'the call would add claude.md, which refs/remotes/origin/HEAD does not hold'));
+      write(dir, '.gitignore', 'node_modules/\nClaude.md\n');
+      assert.equal(await check('git add .gitignore', dir), deny(lead(dir) + 'the call would add the line Claude.md in .gitignore, which names an agent file'));
     });
     test('the check leaves the index and the work tree byte for byte as they were', async () => {
       const dir = await clone();

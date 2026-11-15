@@ -163,11 +163,24 @@ function analyze(str, nw,    a, i, j, k, w, t, cmd, base, dir, edir, hasc) {
 	}
 }
 
-function split_commands(s,    i, n, c, e, st, cur, inw, cmd, nw, dq) {
+function split_commands(s,    i, n, c, e, st, cur, inw, cmd, nw, dq, q, p, k) {
 	n = length(s)
 	st = 0; cur = ""; inw = 0; cmd = ""; nw = 0; dq = ""
 	for (i = 1; i <= n; i++) {
 		c = substr(s, i, 1)
+		# A PowerShell here-string, from @ and a quote that end a line to that quote and @ at the start of a line, is one word,
+		# where it starts a word or follows the = of a variable that starts a command.
+		q = substr(s, i + 1, 1)
+		if (st == 0 && ps == 1 && c == "@" && (q == "\047" || q == "\"") && (!inw || (nw == 0 && cur ~ /^\$[A-Za-z_][A-Za-z0-9_:]*=$/)) && match(substr(s, i + 2), /^[ \t]*\n/)) {
+			p = i + 1 + RLENGTH
+			k = index(substr(s, p), "\n" q "@")
+			dq = k ? substr(s, p + 1, k - 2) : substr(s, p + 1)
+			i = k ? p + k + 1 : n
+			cur = cur dq
+			inw = 1
+			if (q == "\"" && index(dq, "$(")) split_commands(dq)
+			continue
+		}
 		if (st == 1) {
 			if (c == "\047") st = 0
 			else cur = cur c

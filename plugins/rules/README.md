@@ -10,6 +10,7 @@ House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept curren
 - The skill `/rules:refactor`, which you invoke yourself. It reviews a repository against the house rules and the repository's own instruction files and, on your yes, writes one ticket file per bundle to the repository's ignored scratch directory, else to the plugin's data directory.
 - The skill `/rules:handoff-prompt`, which also answers a plain request for a handoff prompt. It writes a prompt that carries this session's work to a later one, from a summary of a discussion or a single idea, for you to paste. It writes no file.
 - The skill `/rules:draft`, which a session reaches on its own when it writes a message for someone else. It checks the finished draft before you first see it: it strikes detail no reader acts on, verifies what the draft states, and keeps its notes for you outside the draft.
+- The outbound check, a hook that denies a commit, a push or a forge post holding a string you listed. It does nothing until the list exists (see Outbound check).
 
 The plugin never edits `settings.json`.
 
@@ -48,6 +49,18 @@ A draft for someone else, such as a reply, a ticket comment or an email, is chec
 The house rules have every session log what it learned about its rules and context: a rule or fact that was missing, a rule that was loaded and missed, and a rule that visibly worked. Each entry goes in a file named for the date in `feedback/` under `$CLAUDE_CONFIG_DIR`, else under `~/.claude`, and ends with a `Recommended` section. The session changes no rule to fix what it logged unless you ask.
 
 That directory is outside every repository, so a session in the default permission mode asks before its first write there. The permission rule that allows the write is yours to add. The plugin ships no reader of the logs: they are yours to read.
+
+## Outbound check
+
+A hook runs before each Bash, PowerShell and MCP tool call and denies a commit, a push or a forge post whose text holds a string you listed. It is off until the list exists: `rules-outbound.txt` under `$CLAUDE_CONFIG_DIR`, else under `~/.claude`. `/rules` offers to write it with starter lines; you can also write it yourself.
+
+- One string per line, matched as a whole word with case ignored. Blank lines and lines that start with `#` are ignored.
+- `allow: <phrase>` takes the phrase out of the text before the search, so a team that tracks `CLAUDE.md` can list `claude` and allow `CLAUDE.md`.
+- `check: diff` also reads the added lines of the commits a push sends. It is off by default.
+
+What is read: the whole command of a `git commit`, `git merge` or `git tag` and of any `gh`, `az` or `glab` call, with each file it names as a message or a body, `$(cat <file>)` and a `<` redirect included; at a `git push`, the messages of the commits on any local branch that no remote-tracking branch holds yet, so a commit on a branch you are not pushing is denied too; and every string value an MCP tool is given. A path the hook resolved to a file or a folder is not searched where no quote and no line break comes before it in the command, since it stays on your machine. After a quoted argument it is searched like any other text, so where a scratch folder's name holds a listed string, put the file option first or add an `allow:` line for the folder's name. A message file named after `-F`, `--file`, `--body-file`, `--notes-file` or `--input` that cannot be read, or a diff that cannot be read, gives a warning and the call goes ahead, as does any error of the hook itself. A denial names the string, where it was found and the list file.
+
+Not covered: a commit, push or post made by a script the session runs, though a commit made that way is still read at a typed push; a message read from a file by a command other than `cat`, `Get-Content` or a redirect; a commit and a push typed in one call, where only the command and the files it names are read; calls the host makes itself; a tag's message at a push; and a commit another remote already holds. A read through `gh` or an MCP tool whose text holds a listed string is denied too.
 
 ## What the block looks like
 

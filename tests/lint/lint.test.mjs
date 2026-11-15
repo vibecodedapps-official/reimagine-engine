@@ -212,6 +212,15 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'rules');
   });
 
+  negative('R405: outbound.mjs over the 300-line budget', (dir) => {
+    put(dir, 'plugins/rules/scripts/outbound.mjs', '// x\n'.repeat(301));
+    bump(dir, 'rules');
+  }, 1, ['plugins/rules/scripts/outbound.mjs: 301 lines, over the 300-line budget']);
+  positive('R405: outbound.mjs at 300 lines passes', (dir) => {
+    put(dir, 'plugins/rules/scripts/outbound.mjs', '// x\n'.repeat(300));
+    bump(dir, 'rules');
+  });
+
   negative('R334: guard.mjs over the 700-line budget', (dir) => {
     put(dir, 'plugins/guard/scripts/guard.mjs', '// x\n'.repeat(701));
     bump(dir, 'guard');
@@ -541,14 +550,22 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'rules');
   }, 1, ['plugins/rules/output-styles/concise-plain.md: keep-coding-instructions is not true']);
 
-  negative('R8: plugins/rules/hooks/hooks.json: not the SessionStart startup shape', (dir) => {
+  negative('R8: plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape', (dir) => {
     edit(dir, 'plugins/rules/hooks/hooks.json', '"startup"', '"resume"');
     bump(dir, 'rules');
-  }, 1, ['plugins/rules/hooks/hooks.json: not the SessionStart startup shape']);
-  negative('R8: plugins/rules/hooks/hooks.json: not the SessionStart startup shape (missing)', (dir) => {
+  }, 1, ['plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape']);
+  negative('R405: plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape (matcher)', (dir) => {
+    edit(dir, 'plugins/rules/hooks/hooks.json', '"Bash|PowerShell|mcp__.*"', '"Bash|PowerShell"');
+    bump(dir, 'rules');
+  }, 1, ['plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape']);
+  negative('R405: plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape (PreToolUse without onFailure)', (dir) => {
+    edit(dir, 'plugins/rules/hooks/hooks.json', ',\n            "onFailure": "continue"', '');
+    bump(dir, 'rules');
+  }, 1, ['plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape']);
+  negative('R8: plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape (missing)', (dir) => {
     rmSync(join(dir, 'plugins/rules/hooks/hooks.json'));
     bump(dir, 'rules');
-  }, 1, ['plugins/rules/hooks/hooks.json: not the SessionStart startup shape']);
+  }, 1, ['plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape']);
   negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', '"Bash|PowerShell"', '"Bash"');
     bump(dir, 'primer');

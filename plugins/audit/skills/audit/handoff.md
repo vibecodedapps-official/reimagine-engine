@@ -200,8 +200,9 @@ tracked file, commits, pushes or posts to a forge. Scripts run as
    else:
    - a loop record under `.reimagine/loop/<branch-slug>/` in the primary repository
      when one exists, where `<branch-slug>` is the branch lowercased with every run of
-     characters outside `[a-z0-9]` turned into `-`, at most 60 characters, and the
-     branch in its `steps.json` equals the session's branch: `inputs.md` (each ticket
+     characters outside `[a-z0-9]` turned into `-`, at most 60 characters, then trailing
+     `-` removed, and the branch in its `steps.json` equals the session's branch:
+     `inputs.md` (each ticket
      as fetched), `plan.md` with its review log (the options offered and the answers
      given), `run.md` (the commit lines and the checks that ran), and its `handoff.md`
      when present, which this procedure checks against git, never copies blind;

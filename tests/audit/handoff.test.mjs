@@ -25,6 +25,26 @@ test('R137: the audit looks for the loop\'s record where the loop keeps it, and 
   assert.ok(clauses.some((c) => c.includes('`steps.json`') && /\bbranch\b(?!-)/.test(c)), 'the audit does not name the branch key where it names steps.json');
 });
 
+// The parts of the rule that makes a branch slug, read from the sentence of a file that names `<branch-slug>` and the
+// characters a slug keeps. The loop keeps its record under the slug and the audit looks for it there, so the rules agree.
+const slugRule = (text) => {
+  const sentence = text.replace(/\s+/g, ' ').split(/\. (?=[A-Z`])/).find((s) => s.includes('<branch-slug>') && s.includes('`[a-z0-9]`'));
+  if (sentence === undefined) return null;
+  return {
+    lowercase: /lowercase/.test(sentence),
+    cap: sentence.match(/(\d+) characters/)?.[1],
+    trailing: /trailing `-` removed/.test(sentence),
+    cutFirst: sentence.indexOf(' characters') < sentence.indexOf('trailing'),
+  };
+};
+
+test('R137: the audit, the loop and the gate make a branch slug by the same rule', () => {
+  const rule = { lowercase: true, cap: '60', trailing: true, cutFirst: true };
+  assert.deepEqual(slugRule(AUDIT), rule, 'the audit handoff');
+  assert.deepEqual(slugRule(read('../../plugins/loop/skills/run/SKILL.md')), rule, 'the loop skill');
+  assert.deepEqual(slugRule(read('../../plugins/gate/skills/gate/SKILL.md')), rule, 'the gate skill');
+});
+
 // The decided_by table: its "- `decided_by`" line and the indented lines under it.
 const decidedByTable = (text) => {
   const lines = text.split(/\r?\n/);

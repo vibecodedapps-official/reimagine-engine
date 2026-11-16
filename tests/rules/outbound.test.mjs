@@ -385,6 +385,41 @@ test('R405: a command that holds a post: phrase is read as a forge post, with th
   none(w.shell('node tools/other.mjs --body "by zqxlisted"'));
 });
 
+test('R405: a text that names git on one line and a subcommand on another is no post, and a commit in each typed form is one', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const write = (text) => `python - <<'EOF'\nopen('notes.md', 'a').write("""${text}""")\nEOF`;
+  none(w.shell(write('zqxlisted 2.1.\nShell: Git Bash through the tool.\nThe run made one commit.\n')));
+  none(w.shell(write('zqxlisted 2.1.\nShell: Git Bash through the tool.\nThe release has a tag, after the merge.\n')));
+  none(w.shell("Add-Content notes.md @'\nzqxlisted 2.1.\nShell: Git Bash.\nOne commit.\n'@", 'PowerShell'));
+  for (const [command, tool] of [
+    ['git -C sub commit -m "by zqxlisted"'],
+    ['git -c "user.name=a;b" commit -m "by zqxlisted"'],
+    ['git -c "user.name=a & b" commit -m "by zqxlisted"'],
+    ['git.exe commit -m "by zqxlisted"'],
+    ['git \\\n  commit -m "by zqxlisted"'],
+    ['git \\\r\n  commit -m "by zqxlisted"'],
+    ['git `\n  commit -m "by zqxlisted"', 'PowerShell'],
+    ['$g=\'git\'\n& $g commit -m "by zqxlisted"', 'PowerShell'],
+    ['c=commit\ngit $c -m "by zqxlisted"'],
+    ['GIT_AUTHOR_NAME=x git commit -m "by zqxlisted"'],
+    ['git merge --no-ff -m "by zqxlisted" side'],
+    ['git tag -a v1 -m "by zqxlisted"'],
+    ['git commit-tree -m "by zqxlisted" HEAD^{tree}'],
+    ['bash -c "git commit -m \'by zqxlisted\'"'],
+    ['echo "commit -m zqxlisted" | xargs git'],
+  ]) denied(w.shell(command, tool), 'zqxlisted', 'the command', w);
+});
+
+test('R405: a denial for a command says what made the command a post', () => {
+  const w = world();
+  w.list('zqxlisted', 'post: tools/send.mjs');
+  const reason = (command) => w.shell(command).reason;
+  assert.equal(reason('git -C sub Commit -m "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "git" and "commit" and so is read as a post`);
+  assert.equal(reason('echo "zqxlisted ran gh once" >> notes.md'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "gh" and so is read as a post`);
+  assert.equal(reason('node tools/send.mjs --body "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds the post: phrase "tools/send.mjs" and so is read as a post`);
+});
+
 test('R405: the Bash tool on Windows names a file in the MSYS form, which is read', { skip: process.platform !== 'win32' && 'the MSYS form exists on Windows only' }, () => {
   const w = world();
   writeFileSync(join(w.work, 'msg.txt'), 'zqxlisted\n');

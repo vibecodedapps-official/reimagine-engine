@@ -125,6 +125,18 @@ const warn = (text) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'Pr
 const TEXT = ['commit', 'commit-tree', 'merge', 'tag'], FORGE = ['gh', 'az', 'glab'];
 // git push in one simple command, but not git stash push.
 const PUSH = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?![${EDGE}])[^|;&\n]*?\s(?<!stash\s+)push(?![${EDGE}])`, 'i');
+// What makes a command a forge post, as the denial names it, or null. git and a subcommand count where one line holds
+// both, a line continued with a backslash or a backtick being one, so a text that names git and holds the word on
+// another line is no post; beside a $ they count anywhere in the command, since a variable may hold either.
+function postWord(command, list) {
+  const lines = command.includes('$') ? [command] : command.replace(/[\\`]\r?\n/g, ' ').split('\n');
+  const sub = lines.map((l) => (has(l, 'git') ? TEXT.find((w) => has(l, w)) : undefined)).find(Boolean);
+  if (sub) return `"git" and "${sub}"`;
+  const forge = FORGE.find((w) => has(command, w));
+  if (forge) return `"${forge}"`;
+  const phrase = list.post.find((p) => flat(command).includes(p));
+  return phrase === undefined ? null : `the post: phrase "${phrase}"`;
+}
 
 // The output lines for one hook input: a deny on the first hit, else one warning that names what could not be read.
 export function check(input, list, path, { home, platform, tmp = tmpdir() }) {
@@ -149,9 +161,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir() }) {
     }
     return resolve(base, p);
   };
-  const posts = (has(command, 'git') && TEXT.some((w) => has(command, w))) || FORGE.some((w) => has(command, w))
-    || list.post.some((p) => flat(command).includes(p));
-  const pushes = PUSH.test(command);
+  const why = postWord(command, list), posts = why !== null, pushes = PUSH.test(command);
   if (!posts && !pushes) return [];
   // A path the hook resolved stays on the machine, so it is left out of the search: a scratch folder may hold a listed
   // name. Only where no quote and no line break comes before it: after one, the path may be a message's own text,
@@ -175,7 +185,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir() }) {
     }
     // Searched again with a joined short option such as -mtext split, so the option's letter does not hide a word.
     const sent = without(command, kept);
-    texts.unshift({ where: 'the command', text: `${sent}\n${sent.replace(/(?<=^|\s)-([A-Za-z])(?=[^\s=-])/g, '-$1 ')}` });
+    texts.unshift({ where: `the command, which holds ${why} and so is read as a post`, text: `${sent}\n${sent.replace(/(?<=^|\s)-([A-Za-z])(?=[^\s=-])/g, '-$1 ')}` });
   }
   const first = hit(texts);
   if (first) return first;

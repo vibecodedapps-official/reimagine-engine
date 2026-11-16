@@ -11,7 +11,7 @@ Keeps a repository's project instructions in the forms Claude Code loads: a shor
 
 ## Requirements
 
-Git. On Windows, Git for Windows: the hooks run under its `sh`. Node 22 or later: the loader's SessionStart entry starts `scripts/primer.mjs` in every session, whatever the profile, and the `local` profile's staging check, the reach hook, the ledger of `scripts/ledger.mjs`, the copy check and the transcript reader of `scripts/transcripts.mjs` run on it. No `jq`.
+Git. On Windows, Git for Windows: the hooks run under its `sh`. Node 22 or later: the loader's SessionStart entry starts `scripts/primer.mjs` in every session, whatever the profile, and the `local` profile's staging check of `scripts/staged.mjs`, the reach hook, the ledger of `scripts/ledger.mjs`, the copy check and the transcript reader of `scripts/transcripts.mjs` run on it. No `jq`.
 
 ## Use
 
@@ -77,7 +77,7 @@ primer: auto memory has 2 notes since the last review; run /primer
 
 `/primer` in `maintain` mode reviews them and records the review, after which the line goes until new notes arrive. Without the marker the notice says nothing. It never writes a file.
 
-The notice also counts the feedback logs that the house rules have each session write under `~/.claude/feedback/` (under `$CLAUDE_CONFIG_DIR` when set) and that changed since the last fold-back review, in every repository, since the logs belong to none:
+The notice also counts the feedback logs under `~/.claude/feedback/` (under `$CLAUDE_CONFIG_DIR` when set) that changed since the last fold-back review. The house rules have each session write there unless loaded context names another log, which primer does not read. It counts them in every repository, since the logs belong to none:
 
 ```
 primer: auto memory has 2 notes and 1 feedback logs since the last review; run /primer
@@ -102,7 +102,7 @@ In a `local` repository, the drift hook hands each `git add` and `git commit` to
 
 ## Copies and transcripts
 
-A copy of context text kept in a second place is declared with `scripts/primer.mjs copies --add <copy> <source>`, which keeps a snapshot of the source and the copy's digest in the store; `copies --ported <copy>` takes both again after a port. `status` and `copies` report each copy as `current`, `source changed` with the source's diff from the snapshot, `copy changed` or `both changed`. `copies --spans` lists the runs of at least three lines that are not blank which two layers or documents share, longest first, as candidates for one home. The script ports nothing.
+A copy of context text kept in a second place is declared with `scripts/primer.mjs copies --add <copy> <source>`, which keeps a snapshot of the source and the copy's digest in the store, once for each source where the copy has more than one; `copies --ported <copy>` takes them again after a port. `status` and `copies` report each copy as `current`, `source changed` with the source's diff from the snapshot, `copy changed` or `both changed`. `copies --spans` lists the runs of at least three lines that are not blank which two layers or documents share, longest first, as candidates for one home. The script ports nothing.
 
 `scripts/transcripts.mjs [--repo <dir>] [--from <YYYY-MM-DD>] [--to <YYYY-MM-DD>]` lists your own messages from the session files under `~/.claude/projects/` for every work tree of a repository and a span of days in UTC, with no model call. Claude Code documents that format as internal, so the reader skips a line it cannot read and prints the share it skipped. It counts nothing.
 

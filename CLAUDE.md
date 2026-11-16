@@ -8,7 +8,7 @@ One repository and one marketplace, `reimagine-engine`, holding seven Claude Cod
 - `npm test`: runs the node:test suites under `tests/`.
 - `npm run test:<area>`: runs one directory's suites, for `rules`, `loop`, `audit`, `primer`, `gate`, `guard`, `review`, `lint` and `release`.
 - `npm run lint`: the repository rules of R219 and R220; set `LINT_DENY_TOKENS` to a comma-separated list in its environment to check for those tokens too.
-- A commit runs the area scripts that cover what it touched; `npm test` and `npm run lint` with `LINT_DENY_TOKENS` set run once per pull request before its push, and CI runs the whole suite on every push to `main` and every pull request.
+- A change runs `npm run lint` with `LINT_DENY_TOKENS` set and the area scripts that cover what it touched, once, before its push; CI runs the whole suite on every push to `main` and every pull request.
 
 ## Constraints
 

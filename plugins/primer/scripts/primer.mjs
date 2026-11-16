@@ -98,8 +98,17 @@ export function loadMap(path) {
   return v;
 }
 
-export const match = (map, repo, platform) => map.repos.find((e) => e.remotes.some((r) => repo.remotes.includes(r))
-  || ((!repo.remotes.length || !e.remotes.length) && keyOf(e.path, platform) === keyOf(repo.root, platform)));
+// What two written forms of one remote share: Azure's older hosts read as dev.azure.com, and no letter case.
+const formOf = (remote) => {
+  const m = remote.match(/^vs-ssh\.visualstudio\.com\/v3\/([^/]+)\/([^/]+)\/([^/]+)$/i)
+    ?? remote.match(/^([^/.]+)\.visualstudio\.com\/(?:DefaultCollection\/)?([^/]+)\/_git\/([^/]+)$/i);
+  return (m ? `dev.azure.com/${m[1]}/${m[2]}/_git/${m[3]}` : remote).toLowerCase();
+};
+export const match = (map, repo, platform) => {
+  const forms = repo.remotes.map(formOf);
+  return map.repos.find((e) => e.remotes.some((r) => forms.includes(formOf(r)))
+    || ((!repo.remotes.length || !e.remotes.length) && keyOf(e.path, platform) === keyOf(repo.root, platform)));
+};
 const under = (map, root, platform) => map.roots.find((d) => `${keyOf(root, platform)}/`.startsWith(`${keyOf(d, platform)}/`));
 const shown = (e) => `group ${e.group}, profile ${e.profile}, ${e.remotes.length ? `remotes ${e.remotes.join(', ')}` : `path ${e.path}`}`;
 

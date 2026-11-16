@@ -83,4 +83,27 @@ describe('staged', () => {
     assert.deepEqual([r.status, r.stdout],
       [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
   });
+
+  test('R386: a clone under another host form or letter case of its remote matches the entry', () => {
+    const denies = (name, remote, cfg) => {
+      const dir = repo(name, remote);
+      write(dir, 'CLAUDE.md', '# x\n');
+      const r = run(input('git add CLAUDE.md', dir), cfg);
+      const reason = `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; `
+        + "the call would add CLAUDE.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read)";
+      assert.deepEqual([r.status, r.stdout],
+        [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`], remote);
+    };
+    const now = config([{ remotes: ['dev.azure.com/zz-org/zz-proj/_git/zz-svc'], path: 'unused', group: 'svc', profile: 'local' }]);
+    denies('forms-1', 'https://zz-org.visualstudio.com/zz-proj/_git/zz-svc', now);
+    denies('forms-2', 'https://zz-org.visualstudio.com/DefaultCollection/zz-proj/_git/zz-svc', now);
+    denies('forms-3', 'zz-org@vs-ssh.visualstudio.com:v3/zz-org/zz-proj/zz-svc', now);
+    denies('forms-4', 'https://dev.azure.com/ZZ-Org/zz-proj/_git/ZZ-svc', now);
+    const old = config([{ remotes: ['zz-org.visualstudio.com/zz-proj/_git/zz-svc'], path: 'unused', group: 'svc', profile: 'local' }]);
+    denies('forms-5', 'git@ssh.dev.azure.com:v3/zz-org/zz-proj/zz-svc', old);
+    const dir = repo('forms-6', 'https://zz-org.visualstudio.com/zz-proj/_git/zz-other');
+    write(dir, 'CLAUDE.md', '# x\n');
+    const r = run(input('git add CLAUDE.md', dir), now);
+    assert.deepEqual([r.status, r.stdout], [0, '']);
+  });
 });

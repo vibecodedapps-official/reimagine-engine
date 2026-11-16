@@ -20,8 +20,8 @@ export const CAP = 10000;
 const LAYERS = ['shared', 'group', 'machine'];
 const PROFILES = ['shared', 'local'];
 const GROUP = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-const FORMS = 'map takes --add with --profile shared|local [--own true|false] [--group <name>] or --root <dir>, --set with any of '
-  + '--profile, --own, --group and --root or with --store <path> alone, or --drop [--root <dir>]; nothing else is accepted';
+const FORMS = 'map takes --add with --profile shared|local [--group <name>] or --root <dir>, --set with any of '
+  + '--profile, --group and --root or with --store <path> alone, or --drop [--root <dir>]; nothing else is accepted';
 
 export class Refusal extends Error {}
 class Unknown extends Error {}
@@ -90,14 +90,17 @@ export function loadMap(path) {
   if (v === undefined) return { version: 1, repos: [], roots: [] };
   const ok = v && v.version === 1 && Array.isArray(v.roots) && v.roots.every((r) => typeof r === 'string') && Array.isArray(v.repos)
     && v.repos.every((r) => r && Array.isArray(r.remotes) && r.remotes.every((x) => typeof x === 'string') && typeof r.path === 'string'
-      && typeof r.group === 'string' && GROUP.test(r.group) && PROFILES.includes(r.profile) && (r.own === null || typeof r.own === 'boolean'));
-  return ok ? v : refuse(`${path} is not a primer map`);
+      && typeof r.group === 'string' && GROUP.test(r.group) && PROFILES.includes(r.profile));
+  if (!ok) refuse(`${path} is not a primer map`);
+  // An older map holds an own key in each entry, which nothing reads; the next write leaves it out.
+  for (const r of v.repos) delete r.own;
+  return v;
 }
 
 export const match = (map, repo, platform) => map.repos.find((e) => e.remotes.some((r) => repo.remotes.includes(r))
   || ((!repo.remotes.length || !e.remotes.length) && keyOf(e.path, platform) === keyOf(repo.root, platform)));
 const under = (map, root, platform) => map.roots.find((d) => `${keyOf(root, platform)}/`.startsWith(`${keyOf(d, platform)}/`));
-const shown = (e) => `group ${e.group}, profile ${e.profile}, own ${e.own ?? 'unset'}, ${e.remotes.length ? `remotes ${e.remotes.join(', ')}` : `path ${e.path}`}`;
+const shown = (e) => `group ${e.group}, profile ${e.profile}, ${e.remotes.length ? `remotes ${e.remotes.join(', ')}` : `path ${e.path}`}`;
 
 // Each layer of an entry as it is emitted: a line naming the layer and its file, the text, and a canary line holding the first
 // eight hex characters of the SHA-256 of the file's bytes. An empty or missing layer has no text. swap gives one file other bytes.
@@ -392,28 +395,25 @@ function mapVerb(c, [op, ...args]) {
     const [a, v] = [args[i], args[++i]];
     if (v === undefined || v.startsWith('--') || (op === '--drop' && a !== '--root')) refuse(FORMS);
     if (a === '--profile') o.profile = PROFILES.includes(v) ? v : refuse(`--profile takes shared or local, not ${v}`);
-    else if (a === '--own') o.own = v === 'true' ? true : v === 'false' ? false : refuse(`--own takes true or false, not ${v}`);
     else if (a === '--group') o.group = GROUP.test(v) ? v : refuse(`--group takes letters, digits, ., _ and -, starting with a letter or digit, not ${v}`);
     else if (a === '--root') o.roots.push(slash(real(resolve(c.cwd, tilde(v, c.home)))));
     else if (a === '--store' && op === '--set') o.store = isAbsolute(v) || /^~[\\/]/.test(v) ? v : refuse(`--store takes an absolute or ~/ path, not ${v}`);
     else refuse(FORMS);
   }
-  const fields = ['profile', 'own', 'group'].some((k) => k in o);
+  const fields = ['profile', 'group'].some((k) => k in o);
   if (op === '--add' ? (!fields && !o.roots.length) || (fields && !o.profile) : op === '--set' && (o.store ? fields || o.roots.length : !fields && !o.roots.length)) refuse(FORMS);
-  if (op === '--add' && o.profile === 'shared' && o.own === undefined) refuse('--add --profile shared takes --own true or --own false');
   const out = [];
   if (fields || (op === '--drop' && !o.roots.length)) {
     const repo = repoOf(c, c.cwd) ?? refuse(`${slash(c.cwd)} is in no git work tree`), at = map.repos.indexOf(match(map, repo, c.platform));
     if (op === '--add') {
       if (at >= 0) refuse(`this repository is already mapped (${shown(map.repos[at])}); use --set`);
       const name = (repo.remotes[0] ?? repo.root).split('/').at(-1).replace(/[^A-Za-z0-9._-]/g, '-').replace(/^[^A-Za-z0-9]+/, '') || 'repository';
-      map.repos.push({ remotes: repo.remotes, path: repo.root, group: o.group ?? name, profile: o.profile, own: o.own ?? null });
+      map.repos.push({ remotes: repo.remotes, path: repo.root, group: o.group ?? name, profile: o.profile });
       out.push(`repo: + ${shown(map.repos.at(-1))}`);
     } else if (at < 0) refuse('this repository has no entry in the map; use --add');
     else if (op === '--drop') out.push(`repo: - ${shown(map.repos.splice(at, 1)[0])}`);
     else {
-      for (const k of ['profile', 'own', 'group']) if (k in o) map.repos[at][k] = o[k];
-      if (map.repos[at].profile === 'shared' && map.repos[at].own === null) refuse('--set --profile shared takes --own true or --own false');
+      for (const k of ['profile', 'group']) if (k in o) map.repos[at][k] = o[k];
       out.push(`repo: ~ ${shown(map.repos[at])}`);
     }
   }

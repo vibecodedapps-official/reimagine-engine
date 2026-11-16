@@ -37,7 +37,7 @@ const config = (repos) => {
   write(own, 'store/map.json', JSON.stringify({ version: 1, repos, roots: [] }));
   return { dir, own };
 };
-const APP = { remotes: ['example.invalid/team/app'], path: 'unused', group: 'app', profile: 'local', own: null };
+const APP = { remotes: ['example.invalid/team/app'], path: 'unused', group: 'app', profile: 'local' };
 const input = (command, cwd) => JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd });
 const run = (text, cfg) => spawnSync(process.execPath, [SCRIPT], { cwd: base, env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, input: text, encoding: 'utf8' });
 
@@ -74,7 +74,7 @@ describe('staged', () => {
 
   test('an entry recorded while the repository had no remote still matches after one is added', () => {
     const dir = repo('staged-remote-later');
-    const cfg = config([{ remotes: [], path: slash(dir), group: 'staged-remote-later', profile: 'local', own: null }]);
+    const cfg = config([{ remotes: [], path: slash(dir), group: 'staged-remote-later', profile: 'local' }]);
     git(dir, 'remote', 'add', 'origin', 'https://example.invalid/team/later.git');
     write(dir, 'CLAUDE.md', '# x\n');
     const r = run(input('git add CLAUDE.md', dir), cfg);

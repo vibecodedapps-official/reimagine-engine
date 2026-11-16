@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.17 - 2026-11-16
+
+- The fold-back review writes its stamp to `.reviewed` beside the feedback logs, and the notice reads it there. The stamp was in the plugin data directory, which two config folders can share, so a review under one marked the logs of the other reviewed and its notice never counted them. A stamp written before is still read where the new one is absent, so logs it hid stay hidden until `reviewed/feedback` is removed from the plugin data directory.
+
 ## primer 0.1.16 - 2026-11-16
 
 - The first run in a `shared` repository no longer asks whether the repository is your own, and `map` takes no `--own`. Nothing read the answer. A map that holds it still loads, and the next write leaves it out.

@@ -553,6 +553,7 @@ A repository has one of two profiles, picked once by the user on primer's first 
   docs/                documents a layer points to, read on demand
   ledger.jsonl         one line per feedback item
 <config>/feedback/     the dated logs the house rules have every session write, unless loaded context names a log for these entries (requirement 362)
+  .reviewed            the stamp of the last fold-back review (requirement 397)
 ```
 
 A repository matches a map entry by a remote, written `host/path` as guard writes it, else by its main work tree's root, found from the git common directory as the notice finds it; so every worktree matches as its repository does (requirement 386, decision 292). The store may be a directory the user versions, which is why the machine's own layer sits outside it. Only `primer.mjs` writes the map and `config.json`; the skill writes a layer or a document on a yes that names the file.

@@ -274,6 +274,21 @@ describe('leak', () => {
     expect(run('leak', '--user', 'alice', a), 1, [`leak ${a} user`]);
   });
 
+  test('R379: the assistant\'s name and its maker\'s are looked for with no string given for them', () => {
+    const [a, b, c, d] = draftsOf({
+      '01-a.md': summary('Co-Authored-By: Claude <noreply@anthropic.com>'),
+      '02-b.md': summary('Generated with claude-code'),
+      '03-c.md': summary('As Anthropic says of it'),
+      '04-d.md': summary('The claudette and anthropics spellings stay clean'),
+    });
+    expect(run('leak', '--user', 'al', a, b, c, d), 1, [
+      `leak ${a} assistant`,
+      `leak ${b} assistant`,
+      `leak ${c} assistant`,
+      `clean ${d}`,
+    ]);
+  });
+
   const refusal = (title, args, line) => test(title, () => expect(run('leak', ...args), 1, [line]));
   refusal('refuses an unknown kind', ['--path', 'x', 'a.md'], 'posts: unknown option --path; the kinds are home, user, host, record, worktree, model, plugin');
   refusal('refuses a kind with no string', ['--user'], 'posts: --user needs a string');

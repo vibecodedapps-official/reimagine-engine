@@ -7,7 +7,8 @@
 //   status   the working directory's entry, profile, layers and delivery checks, and each declared copy; writes nothing
 //   measure  every mapped repository's context string as emitted; --with <file> <layer> measures a proposed layer; writes nothing
 //   map      prints the map; --add, --set and --drop change it for the working directory's repository
-//   copies   each declared copy against its source's snapshot; --add <copy> <source> and --ported <copy> record one;
+//   copies   each declared copy against its source's snapshot; --add <copy> <source> records one source of a copy, and
+//            --ported <copy> every source of it;
 //            --spans lists the runs of lines two layers or documents share, and writes nothing
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -252,7 +253,7 @@ function copiesOf(c, p) {
   const inside = (f, d) => k(f).startsWith(`${k(d)}/`) && slash(f).slice(k(d).length + 1);
   const held = (f) => inside(f, p.store) || (inside(f, c.home) ? `~/${inside(f, c.home)}` : slash(f));
   const real = (h) => (h.startsWith('~/') ? join(c.home, h.slice(2)) : isAbsolute(h) ? h : join(p.store, h));
-  return { path, v, held, real, snap: (x) => join(p.store, 'copies', x.id), find: (f) => v.copies.find((x) => k(x.copy) === k(held(f))) };
+  return { path, v, held, real, snap: (x) => join(p.store, 'copies', x.id), all: (f) => v.copies.filter((x) => k(x.copy) === k(held(f))) };
 }
 
 // One copy's state, by bytes: the source against its snapshot and the copy against its digest, with the source's diff from the
@@ -273,22 +274,27 @@ function copiesVerb(c, [op, ...args]) {
   if (op === '--spans') return args.length ? refuse(COPIES) : spans(p);
   const rec = copiesOf(c, p), file = (f) => (statSync(at(f), { throwIfNoEntry: false })?.isFile() ? at(f) : refuse(`${at(f)} is not a file`));
   if (op === undefined) return [`copies: ${rec.path} (${rec.v.copies.length} declared)`, ...rec.v.copies.flatMap((x) => copyLines(c, rec, x))];
-  // --ported takes a path to the copy's file, else the copy as status prints it: one inside the store is relative to the store.
-  let x, sign = '~';
+  // A copy has one record for each of its sources. --ported takes a path to the copy's file, else the copy as status prints it:
+  // one inside the store is relative to the store.
+  let xs, sign = '~';
   if (op === '--add' && args.length === 2) {
     const [copy, source] = args.map(file);
     if (keyOf(copy, c.platform) === keyOf(source, c.platform)) refuse('a copy and its source are two files');
-    if (rec.find(copy)) refuse(`${rec.find(copy).id} already declares ${slash(copy)}; after a port, use --ported`);
-    x = { id: `C${rec.v.copies.reduce((n, y) => Math.max(n, Number(y.id.slice(1))), 0) + 1}`, copy: rec.held(copy), source: rec.held(source), digest: '' };
-    rec.v.copies.push(x);
+    const same = rec.all(copy).find((y) => keyOf(y.source, c.platform) === keyOf(rec.held(source), c.platform));
+    if (same) refuse(`${same.id} already declares ${slash(copy)}; after a port, use --ported`);
+    xs = [{ id: `C${rec.v.copies.reduce((n, y) => Math.max(n, Number(y.id.slice(1))), 0) + 1}`, copy: rec.held(copy), source: rec.held(source), digest: '' }];
+    rec.v.copies.push(xs[0]);
     sign = '+';
-  } else if (op === '--ported' && args.length === 1) x = rec.find(at(args[0])) ?? rec.v.copies.find((y) => y.copy === args[0]) ?? refuse(`${slash(at(args[0]))} is not a declared copy`);
-  else refuse(COPIES);
-  const src = readBuf(rec.real(x.source)) ?? refuse(`${rec.real(x.source)} cannot be read`), cp = readBuf(rec.real(x.copy)) ?? refuse(`${rec.real(x.copy)} cannot be read`);
-  x.digest = createHash('sha256').update(cp).digest('hex');
-  writeAtomic(rec.snap(x), src);
+  } else if (op === '--ported' && args.length === 1) {
+    xs = rec.all(at(args[0]));
+    if (!xs.length) xs = rec.v.copies.filter((y) => y.copy === args[0]);
+    if (!xs.length) refuse(`${slash(at(args[0]))} is not a declared copy`);
+  } else refuse(COPIES);
+  const srcs = xs.map((x) => readBuf(rec.real(x.source)) ?? refuse(`${rec.real(x.source)} cannot be read`)), cp = readBuf(rec.real(xs[0].copy)) ?? refuse(`${rec.real(xs[0].copy)} cannot be read`);
+  xs.forEach((x, i) => { x.digest = createHash('sha256').update(cp).digest('hex'); writeAtomic(rec.snap(x), srcs[i]); });
   writeAtomic(rec.path, `${JSON.stringify(rec.v, null, 2)}\n`);
-  return [`primer: wrote ${rec.path} and ${rec.snap(x)}`, `${sign} ${copyLines(c, rec, x)[0]}`];
+  const snaps = xs.map(rec.snap);
+  return [`primer: wrote ${[rec.path, ...snaps.slice(0, -1)].join(', ')} and ${snaps.at(-1)}`, ...xs.map((x) => `${sign} ${copyLines(c, rec, x)[0]}`)];
 }
 
 // The runs of consecutive lines two layers or documents share, trimmed of blank lines at either end and holding at least SPAN

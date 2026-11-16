@@ -302,6 +302,24 @@ describe('copies', () => {
     assert.equal(run(['copies', '--ported', 'groups/app.md'], at).stdout.split('\n')[1], `~ copy C2 ${slash(join(plain, 'groups', 'app.md'))} of shared.md: current`);
   });
 
+  test('a copy with a second source gets a record for each, and a port records every source', () => {
+    const cfg = config(local(), { shared: SOURCE, group: GROUP });
+    const copy = join(base, `two-source-copy-${++seq}.md`), at = { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };
+    const shared = join(cfg.store, 'shared.md'), group = join(cfg.store, 'groups', 'app.md'), record = join(cfg.store, 'copies.json');
+    writeFileSync(copy, 'Rule one.\n');
+    assert.equal(run(['copies', '--add', copy, shared], at).stdout.split('\n')[1], `+ copy C1 ${slash(copy)} of shared.md: current`);
+    assert.equal(run(['copies', '--add', copy, group], at).stdout, `primer: wrote ${record} and ${join(cfg.store, 'copies', 'C2')}\n+ copy C2 ${slash(copy)} of groups/app.md: current\n`);
+    assert.equal(run(['copies', '--add', copy, group], at).stdout, `primer: C2 already declares ${slash(copy)}; after a port, use --ported\n`);
+    write(cfg.store, 'groups/app.md', 'The app group builds with npm run build:all.\n');
+    writeFileSync(copy, 'Rule one.\nBuilds with npm run build:all.\n');
+    assert.equal(run(['copies'], at).stdout, [`copies: ${record} (2 declared)`, `copy C1 ${slash(copy)} of shared.md: copy changed`, `copy C2 ${slash(copy)} of groups/app.md: both changed`,
+      '  @@ -1 +1 @@', '  -The app group builds with npm run build.', '  +The app group builds with npm run build:all.', ''].join('\n'));
+    assert.equal(run(['copies', '--ported', copy], at).stdout,
+      `primer: wrote ${record}, ${join(cfg.store, 'copies', 'C1')} and ${join(cfg.store, 'copies', 'C2')}\n~ copy C1 ${slash(copy)} of shared.md: current\n~ copy C2 ${slash(copy)} of groups/app.md: current\n`);
+    const digest = '4c2b847935b20ad2b6667130db947bba06906a1bd4038247edccdf099cee5c02';
+    assert.deepEqual(JSON.parse(readFileSync(record, 'utf8')).copies.map((x) => [x.id, x.source, x.digest]), [['C1', 'shared.md', digest], ['C2', 'groups/app.md', digest]]);
+  });
+
   test('each form copies does not take is refused with one line and writes nothing', () => {
     const cfg = config(local(), { shared: SOURCE, group: GROUP });
     const shared = join(cfg.store, 'shared.md'), group = join(cfg.store, 'groups', 'app.md'), record = join(cfg.store, 'copies.json');

@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.32 - 2026-11-16
+
+- The plan states the effect of each input's change, on the people who use the product and on whatever already exists and depends on the changed behavior, and the plan review is asked what a statement leaves out and what it claims that the plan would not produce. The plan held scope, criteria and buildable status and nothing on effect, and the first text on what a change does for a ticket's readers was written at publication.
+
 ## primer 0.1.17 - 2026-11-16
 
 - The fold-back review writes its stamp to `.reviewed` beside the feedback logs, and the notice reads it there. The stamp was in the plugin data directory, which two config folders can share, so a review under one marked the logs of the other reviewed and its notice never counted them. A stamp written before is still read where the new one is absent, so logs it hid stay hidden until `reviewed/feedback` is removed from the plugin data directory.

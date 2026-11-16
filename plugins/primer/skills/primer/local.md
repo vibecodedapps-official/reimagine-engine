@@ -25,9 +25,9 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
 - `map.json` and `config.json` change only through the same script's `map` verb: show the exact command and the change it makes, run it on a yes, and never edit either file by hand. `map --set --group <name>` puts sibling repositories in one group; `map --add --root <dir>` lists a directory whose repositories the user expects to be mapped, so an unmapped one there gets a warning at start; `map --set --store <path>`, given alone, names a store kept elsewhere, by an absolute or `~/` path.
 - The review stamp of Maintain step 3 is written as before.
 
-## Once per repository
+## Beside the plan
 
-- As its own question, offer the lines below for `info/exclude` under the repository's common directory (`git rev-parse --git-common-dir`), which git never shares. On a yes, append them; where the host refuses that write, show them for the user to add; a no leaves it. Without them, a `git add` or `git commit` the staging check cannot resolve is denied while an agent file is in the work tree.
+- Read `info/exclude` under the repository's common directory (`git rev-parse --git-common-dir`), which git never shares. Where it holds every line below, make no offer; else offer the missing ones, as its own question. On a yes, append them; where the host refuses that write, show them for the user to add; a no leaves it, and the next run offers them again. Without them, a `git add` or `git commit` the staging check cannot resolve is denied while an agent file is in the work tree.
 
   ```
   CLAUDE.md

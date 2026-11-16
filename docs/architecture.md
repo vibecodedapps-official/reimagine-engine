@@ -471,9 +471,10 @@ plugins/primer/
                                    SessionStart startup -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"
                                    SessionStart -> node primer.mjs session-start all, one entry, no matcher, timeout 10
                                    PreToolUse Edit|Write|NotebookEdit -> node primer.mjs reach, timeout 10, onFailure continue
-  hooks/drift.sh                   the commit check; hands a `git add` or `git commit` in a `local` repository to primer.mjs staged
+  hooks/drift.sh                   the commit check; hands a `git add` or `git commit` in a `local` repository to staged.mjs
   hooks/notice.sh                  one line when auto memory or the feedback logs have unreviewed entries
-  scripts/primer.mjs               session-start <layer> | staged | reach | status | measure | map | copies
+  scripts/primer.mjs               session-start <layer> | reach | status | measure | map | copies
+  scripts/staged.mjs               the staging check of the `local` profile, started by drift.sh with the hook's input
   scripts/ledger.mjs               the fold-back ledger in the store: list | --add | --seen | --worked | --set
   scripts/transcripts.mjs          the user's own messages from the session files, for a repository and a span of days
 ```
@@ -491,7 +492,7 @@ Manifest:
 }
 ```
 
-The skill sets `disable-model-invocation: true`, so only `/primer` starts it (decision 318). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, `ledger.mjs`, which keeps the fold-back ledger, and `transcripts.mjs`, which reads the session files.
+The skill sets `disable-model-invocation: true`, so only `/primer` starts it (decision 318). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, `staged.mjs`, which is that profile's staging check, `ledger.mjs`, which keeps the fold-back ledger, and `transcripts.mjs`, which reads the session files.
 
 ### Shapes and caps
 
@@ -546,7 +547,7 @@ A repository has one of two profiles, picked once by the user on primer's first 
   config.json          {"store": "<path>"}, optional
   machine.md           the layer of this machine: people, dates, paths; never in the store
 <store>/               the directory config.json names, else <config>/reimagine-primer/store/
-  map.json             {"version": 1, "repos": [{"remotes", "path", "group", "profile", "own"}], "roots": ["<path>"]}
+  map.json             {"version": 1, "repos": [{"remotes", "path", "group", "profile"}], "roots": ["<path>"]}
   shared.md            the layer of every mapped repository
   groups/<group>.md    the layer of one group of sibling repositories
   docs/                documents a layer points to, read on demand
@@ -562,7 +563,7 @@ Host facts the profile rests on, read from the hooks, memory, sub-agents and ses
 
 In a `local` repository one SessionStart entry runs `primer.mjs session-start all` and prints the three layers as one `additionalContext` string under the host's cap; an entry for each layer, each with the cap to itself, waits for a string over the cap (decision 293, requirement 388). On the source `resume` the entry prints no string, since a resumed session still holds the one its start was given. Each layer in the string opens with one line that names the layer and its file and closes with a canary taken from the layer's digest; a fresh session asked for the canary answers with the value `primer.mjs status` prints, which is the check that the whole string arrived. The loader measures the string as emitted and warns at every start while it is over the cap, warns when a repository under a listed root has no entry, gives its `git` calls 5 s between them, inside the entry's timeout, emits no layer and reports `unknown` when they run out, and skips its checks and warnings in a subagent and in a session no one attends while still loading the layers (requirement 389).
 
-Two more hooks carry the profile. The drift hook's entry hands a `git add` or `git commit` to `primer.mjs staged`, which in a `local` repository denies a call that would stage an agent file the upstream does not track, or an ignore line that names one (requirement 391, decision 294). The hook is POSIX sh and cannot read the map, so it hands those two commands to the script wherever primer's own directory exists, whatever the hub's first line, and the script answers only for a `local` repository. A command it cannot resolve is taken to stage every file git does not ignore, an error inside the script denies, and a missing `sh` or `node` lets the call through; the entry stays one process for every other shell call. A PreToolUse entry on file edits runs `primer.mjs reach`, which is silent inside the session's own repository and, on the first edit in another, gives that repository's layers or names its instruction files (requirement 395).
+Two more hooks carry the profile. The drift hook's entry hands a `git add` or `git commit` to `staged.mjs`, which in a `local` repository denies a call that would stage an agent file the upstream does not track, or an ignore line that names one (requirement 391, decision 294). The hook is POSIX sh and cannot read the map, so it hands those two commands to the script wherever primer's own directory exists, whatever the hub's first line, and the script answers only for a `local` repository. A command it cannot resolve is taken to stage every file git does not ignore, an error inside the script denies, and a missing `sh` or `node` lets the call through; the entry stays one process for every other shell call. A PreToolUse entry on file edits runs `primer.mjs reach`, which is silent inside the session's own repository and, on the first edit in another, gives that repository's layers or names its instruction files (requirement 395).
 
 ### Budget, placement and fold-back
 

@@ -130,7 +130,8 @@ function frontOf(text) {
 }
 
 // The notice of notice.sh for a local repository, which has no hub: the auto memory notes of type feedback or project modified
-// after the stamp, and the feedback logs under <config>/feedback/ modified after theirs, each counting in full without a stamp.
+// after the stamp, and the feedback logs under <config>/feedback/ modified after theirs, .reviewed beside them or else
+// reviewed/feedback in the data directory, each counting in full without a stamp.
 function notice(c, input, data, repo) {
   const config = configOf(c, input), win = c.platform === 'win32', cwd = slash(isDir(input.cwd) ? input.cwd : c.cwd);
   const tp = typeof input.transcript_path === 'string' ? slash(input.transcript_path) : '', sdir = tp && dirname(tp), key = repo.root.replace(/[^A-Za-z0-9]/g, '-');
@@ -145,7 +146,7 @@ function notice(c, input, data, repo) {
     break;
   }
   memory ??= sdir && c.env.CLAUDE_CODE_PROJECT_DIR_NAME && basename(sdir) === c.env.CLAUDE_CODE_PROJECT_DIR_NAME ? `${sdir}/memory` : join(sdir ? dirname(sdir) : join(config, 'projects'), key, 'memory');
-  const stamp = (name) => { const f = data && join(data, 'reviewed', name); return f && existsSync(f) ? f : null; };
+  const file = (f) => (statSync(f, { throwIfNoEntry: false })?.isFile() ? f : null), stamp = (name) => (data ? file(join(data, 'reviewed', name)) : null);
   const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0], seen = new Set();
   let n = 0, m = 0;
   for (const l of readText(join(memory, 'MEMORY.md')).split('\n').map((x) => x.replace(/\r$/, ''))) {
@@ -155,7 +156,7 @@ function notice(c, input, data, repo) {
     const fm = frontOf(readText(join(memory, name)));
     if (['feedback', 'project'].includes(fm.type) && (noted === null || (fm.modified && fm.modified > since))) n++;
   }
-  const logs = join(config, 'feedback'), after = stamp('feedback') ? statSync(stamp('feedback')).mtimeMs : -Infinity;
+  const logs = join(config, 'feedback'), mark = file(join(logs, '.reviewed')) ?? stamp('feedback'), after = mark ? statSync(mark).mtimeMs : -Infinity;
   try { for (const e of readdirSync(logs, { withFileTypes: true })) if (e.isFile() && !e.name.startsWith('.') && statSync(join(logs, e.name)).mtimeMs > after) m++; } catch {}
   const what = n && m ? `auto memory has ${n} notes and ${m} feedback logs` : n ? `auto memory has ${n} notes` : `${m} feedback logs`;
   return n || m ? `primer: ${what} since the last review; run /primer` : null;

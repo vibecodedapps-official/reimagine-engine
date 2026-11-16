@@ -127,7 +127,7 @@ test('every script command the skill files show names a script that exists, a ve
 test('R256, R257 and R397: the stamps the skill writes are the ones the notice hook reads', () => {
   for (const [written, held] of [
     ['`${CLAUDE_PLUGIN_DATA}/reviewed/<key>`', '"$CLAUDE_PLUGIN_DATA/reviewed/$key"'],
-    ['`${CLAUDE_PLUGIN_DATA}/reviewed/feedback`', '"$CLAUDE_PLUGIN_DATA/reviewed/feedback"'],
+    ['`<config>/feedback/.reviewed`', '"${projects%/*}/feedback/.reviewed"'],
   ]) {
     assert.ok(SKILL.includes(written), `SKILL.md does not name ${written}`);
     assert.ok(NOTICE.includes(held), `notice.sh does not read ${held}`);

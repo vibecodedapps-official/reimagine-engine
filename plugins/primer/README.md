@@ -83,7 +83,7 @@ The notice also counts the feedback logs under `~/.claude/feedback/` (under `$CL
 primer: auto memory has 2 notes and 1 feedback logs since the last review; run /primer
 ```
 
-The fold-back review in `maintain` checks each logged item's evidence, then its worth and placement, and asks once about what it would fold, hold or reject. `scripts/ledger.mjs` keeps one line per item in `ledger.jsonl` in the store, with its status and how often it was seen, so a held item that comes up again returns with its count, and a later item that matches a folded rule counts as that rule's failure.
+The fold-back review in `maintain` checks each logged item's evidence, then its worth and placement, and asks once about what it would fold, hold or reject. `scripts/ledger.mjs` keeps one line per item in `ledger.jsonl` in the store, with its status and how often it was seen, so a held item that comes up again returns with its count, and a later item that matches a folded rule counts as that rule's failure. The review ends by writing `.reviewed` in the logs' folder, so two config folders that share one plugins folder each keep their own review time.
 
 ## Reach hook
 

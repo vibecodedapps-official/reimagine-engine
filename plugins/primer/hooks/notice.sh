@@ -5,8 +5,8 @@
 # the autoMemoryDirectory key of the local, project and user settings files, the auto memory
 # index MEMORY.md (by default <config>/projects/<key>/memory/), the topic files it lists, and
 # the review stamp $CLAUDE_PLUGIN_DATA/reviewed/<key>, and the feedback logs of <config>/feedback/
-# with their stamp $CLAUDE_PLUGIN_DATA/reviewed/feedback; never writes a file. Prints at most one
-# JSON object and always exits 0:
+# with their stamp <config>/feedback/.reviewed, or without it $CLAUDE_PLUGIN_DATA/reviewed/feedback;
+# never writes a file. Prints at most one JSON object and always exits 0:
 #   notice:  the count of listed feedback or project notes modified after the stamp, and of logs
 #            modified after theirs, every one when there is no stamp, as a systemMessage that
 #            points at /primer
@@ -100,7 +100,9 @@ memory=${memory%/}
 # The feedback logs of <config>/feedback/ modified after their stamp, every one when there is none.
 m=0
 fstamp=
-if [ -n "$CLAUDE_PLUGIN_DATA" ] && [ -f "$CLAUDE_PLUGIN_DATA/reviewed/feedback" ]; then
+if [ -f "${projects%/*}/feedback/.reviewed" ]; then
+	fstamp=${projects%/*}/feedback/.reviewed
+elif [ -n "$CLAUDE_PLUGIN_DATA" ] && [ -f "$CLAUDE_PLUGIN_DATA/reviewed/feedback" ]; then
 	fstamp=$CLAUDE_PLUGIN_DATA/reviewed/feedback
 fi
 for f in "${projects%/*}/feedback"/*; do

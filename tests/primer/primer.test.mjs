@@ -643,6 +643,33 @@ describe('the notice', () => {
     cpSync(join(memory, 'memory', 'MEMORY.md'), join(cfg.dir, 'projects', key, 'memory', 'MEMORY.md'));
   });
 
+  test('the stamp beside the logs is one config folder\'s own, and the one in the data folder is read only without it', () => {
+    const t = 1793491200, data = join(base, `notice-data-${++seq}`), a = config(local()), b = config(local());
+    const put = (c, name, at) => { write(c.dir, `feedback/${name}`, '# Log\n'); utimesSync(join(c.dir, 'feedback', name), at, at); };
+    const from = (c) => both(data, { transcript_path: join(c.dir, 'projects', key, 'test.jsonl') });
+    const one = message('primer: 1 feedback logs since the last review; run /primer');
+    put(a, '2026-11-01.md', t);
+    put(b, '2026-11-01.md', t);
+    stamps(data, {});
+    put(a, '.reviewed', t + day);
+    assert.deepEqual(from(a), ['', '']);
+    assert.deepEqual(from(b), [one, one]);
+    stamps(data, { logs: t + day });
+    assert.deepEqual(from(b), ['', '']);
+    put(a, '2026-11-03.md', t + 2 * day);
+    stamps(data, { logs: t + 3 * day });
+    assert.deepEqual(from(a), [one, one]);
+    put(b, '2026-11-03.md', t + 2 * day);
+    put(b, '.reviewed', t + 3 * day);
+    stamps(data, { logs: t + day });
+    assert.deepEqual(from(b), ['', '']);
+    const c = config(local());
+    put(c, '2026-11-01.md', t);
+    mkdirSync(join(c.dir, 'feedback', '.reviewed'));
+    stamps(data, {});
+    assert.deepEqual(from(c), [one, one]);
+  });
+
   test('the loader gives no notice on a later source or in a session no one attends', () => {
     const data = join(base, `notice-data-${++seq}`);
     stamps(data, {});

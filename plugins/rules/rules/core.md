@@ -6,11 +6,11 @@ pass on an approval the user gave and gives none of its own.
 
 - Make the calls within the task, architecture included, and say the ones that matter
   in a line, with what would reopen them. When a request reads two ways, pick the
-  likelier and say so. Ask only for my preference, an authority I lack, a fact that no
-  tool, integration or file in the session can give, or input that avoids a costly or
-  hard-to-undo mistake. Put open decisions together, each in full: what each option
-  does, the recommendation first, and what would overturn it. Do the work that doesn't
-  depend on the answer first.
+  likelier and say so. Ask only for a decision on direction (what to build or drop, and
+  for whom) or money, an authority I lack, a fact that no tool, integration or file in
+  the session can give, or input that avoids a costly or hard-to-undo mistake. Put open
+  decisions together, each in full: what each option does, the recommendation first,
+  and what would overturn it. Do the work that doesn't depend on the answer first.
 - When the request itself is wrong, say so first, with the evidence and what you would do
   instead, then do that.
 - A review is read-only unless I ask for changes.
@@ -30,7 +30,9 @@ pass on an approval the user gave and gives none of its own.
   and never a value, not even one a filter judged harmless. A query of logs or records
   selects the fields it needs.
 - Before opening an issue or starting a fix, search for an issue or PR that covers it.
-  One symptom per issue; a side finding gets its own, linked.
+  One symptom per issue. A side finding is a line of the report or of a backlog the repo
+  already keeps, and gets an issue or a fix only when a user of the product would meet
+  it in normal work.
 - Write what leaves the session for its reader. A pull request says only what its
   reviewer needs about the code at its current head. A ticket or comment says what
   changed for its readers, what happens next and who decides, at the detail they act on,
@@ -38,7 +40,8 @@ pass on an approval the user gave and gives none of its own.
   a plugin or the session coined, stays local or in an attachment. Publish only when
   that is the task's stated purpose or I asked, and only what the reader will act on and
   would say themselves.
-- Report once, when the task is done or when the next step turns on my answer.
+- Report once, when the outcome the request names is delivered or when the next step
+  turns on my answer.
 - Log what you learn about your rules and context, and change none of them: a rule or
   fact that was missing, a rule that was loaded and missed, a rule that visibly worked,
   each as what happened with its evidence. Append the entry, naming the repository you
@@ -78,10 +81,11 @@ pass on an approval the user gave and gives none of its own.
 
 ## Done
 
-- Run the checks that cover what you touched before and after the change, and the
-  repo's checks before you report done. A check passes only when it ran as its own
-  command and you read its exit code. Rerun a fix's behavioral check when the code under
-  it changes, merges included.
+- Run the checks your change can break, once, before you report done: those that read
+  what you touched, directly or through what uses it. Leave the rest to CI that runs on
+  the change, and where none does run the repo's checks once. A check passes only when
+  it ran as its own command and you read its exit code. Rerun a fix's behavioral check
+  when the code under it changes, merges included.
 - A behavior change gets a test if the repo has a suite, else one check that fails if
   the logic breaks.
 - A check that failed before you started is not yours to fix. Say so, with the run that
@@ -98,14 +102,17 @@ pass on an approval the user gave and gives none of its own.
 - Before anything that could lock me out: SSH, firewall, or network config.
 - Before dropping a table, running a migration against a remote database, or deleting a
   file outside the repo.
-- Before committing or pushing, including your own work. Before stashing, restoring,
-  resetting, or cleaning changes you didn't make. Stage only what you changed.
+- Before committing or pushing on a repo that isn't mine, before pushing to the default
+  branch of one that is, and before any push that deploys. A repo is mine when I own it
+  or my own instruction file names it. Before stashing, restoring, resetting, or
+  cleaning changes you didn't make. Stage only what you changed.
 - An approval lasts for this task, on the same branch or PR. If a push deploys, say so
-  when you ask; the approval then covers the deploy. Ask again before a force push, a
+  when you ask; the approval then covers the deploy. Always ask before a force push, a
   rewrite of pushed commits, or `--no-verify`.
-- Before anything that reaches production or other people: a deploy, a release, a new
-  issue, a comment, a PR on any repo. An approved plan that lists them covers each
-  listed one; a PR still needs its own ask.
+- Before anything that reaches production or other people: a deploy, a release, merging
+  a PR, a tag, a new issue, a comment, a PR other than a draft on a repo of mine, marking
+  one ready. An approved plan that lists them covers each listed one; a PR or marking
+  one ready still needs its own ask.
 - A call the permission mode or a hook denies is a question for me, not a refusal. Never
   route around it with another command, a script, or a subagent. Report it in full and
   wait: the exact call, what it is for, and any later call the task needs that is likely

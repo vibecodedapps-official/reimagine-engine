@@ -23,7 +23,7 @@ const plan = (text, more = {}) => planTarget({ text, version: '9.9.9', texts: TE
 // The current block for core on LF, as this file's fake texts render it.
 const CORE_LF = `${begin('core', 'blank', 'cb477dddc15de845', '9.9.9')}\nC1\nC2\n${END}\n`;
 // The digest of the shipped body for options core, as the script printed it.
-const SHIPPED_CORE_DIGEST = 'ab408cb5357cd013';
+const SHIPPED_CORE_DIGEST = 'e2aa6a36d3a795cf';
 
 // The shipped version, read from the manifest here so a release moves no literal in this file.
 const SHIPPED_VERSION = JSON.parse(readFileSync(new URL('../../plugins/rules/.claude-plugin/plugin.json', import.meta.url), 'utf8')).version;
@@ -42,8 +42,8 @@ test('R25: the block version is the version in the manifest of the plugin root',
 
 test('R18: the shipped body has a fixed digest for options core and for options core,windows', () => {
   const texts = loadTexts();
-  assert.equal(plan(null, { texts, options: ['core'] }).digest, 'ab408cb5357cd013');
-  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '035a7fc92af3905b');
+  assert.equal(plan(null, { texts, options: ['core'] }).digest, 'e2aa6a36d3a795cf');
+  assert.equal(plan(null, { texts, options: ['core', 'windows'], platform: 'win32' }).digest, '224547712deb7dc5');
 });
 
 test('R18: the Windows paragraph is in the block only when the windows option is', () => {
@@ -69,7 +69,7 @@ test('R21: the Ask first section holds its eight items', () => {
     ['item', 'Before changing a repo'],
     ['item', 'Before anything that could'],
     ['item', 'Before dropping a table,'],
-    ['item', 'Before committing or pushing,'],
+    ['item', 'Before committing or pushing'],
     ['item', 'An approval lasts for'],
     ['item', 'Before anything that reaches'],
     ['item', 'A call the permission'],
@@ -1326,11 +1326,11 @@ test('R34: a current block reports the copies and the gate beside it, even when 
   const keep = (out) => out.filter((l) => /^(state|note|change|recommend)/.test(l));
   assert.deepEqual(keep(s.run('plan', ['--adopt'])), ['state: current',
     'note: 1 of 35 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 122 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 129 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
   assert.deepEqual(keep(s.run('plan')), ['state: current',
     'note: 1 of 35 rules are also present outside the block, duplicating it',
-    'note: adopt leaves this file alone because line 122 holds Markdown it does not handle; trim the copy by hand, then run /rules',
+    'note: adopt leaves this file alone because line 129 holds Markdown it does not handle; trim the copy by hand, then run /rules',
     'change: none']);
 }));
 
@@ -1349,7 +1349,7 @@ test('R34: a current block with an import holding every rule names the import; a
   s.run('plan');
   s.run('apply');
   put(s.claude, `${readFileSync(s.claude, 'latin1')}\n@shared.md\n`);
-  assert.ok(s.run('plan').includes('note: line 118: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
+  assert.ok(s.run('plan').includes('note: line 125: @shared.md imports a file that holds 35 of 35 rules; it is left as it is'));
   put(s.claude, `${SHIPPED['core.md']}\nUse a | b\n`);
   const gated = s.run('plan');
   assert.ok(gated.includes('recommend: decline'));

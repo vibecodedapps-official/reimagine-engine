@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.34 - 2026-11-16
+
+- Concise Plain 4.17. A reply that reports work or leaves something open ends with closing lines: the next step, what waits on your answer numbered with one line on what a bare "yes" accepts, and any other open item with a pick or with whose it is to decide. Answers to replies that left decisions open often pasted the reply's lines back to say which decision they meant, and the next step was often in the reply but not at its end. The lines hold nothing the reply said earlier but the next step, come after the list of files made, and a plain answer has none.
+- The Drafts sentence on a source the draft names is cut from the style, since the `draft` skill's check strikes a sentence that restates one, and the chat block keeps it. "Background after." is cut from the lead bullet, which "Lead with" already says.
+
 ## gate 0.1.22 - 2026-11-15
 
 - On a host the gate cannot tell is GitHub, the run asks once before each target's first push, and `"ask-push": false` in the `gate` key drops the question. The deploy judgment reads only the workflow files under `.github/workflows`, so on any other host no push asked. With nobody to answer, the run stops at the question with its fix committed and not pushed.

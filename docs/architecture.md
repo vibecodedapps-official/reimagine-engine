@@ -171,7 +171,7 @@ The outbound check is `outbound.mjs`, a PreToolUse hook on `Bash|PowerShell|mcp_
 
 ### Draft skill
 
-The style holds what shapes every reply; `skills/draft/SKILL.md` holds what applies only while a message to someone else is drafted, and the style names it in one sentence (requirements 363 and 366). The skill is a check on the finished text, run by the session before the draft is first shown: it strikes what no named reader acts on, what is the sender's to settle and what restates a named source, verifies what the sender has not checked, and keeps the owner's notes outside the draft; it never adds detail (requirement 364). An email draft is one HTML file in the scratch directory and no draft is kept in two formats (requirement 365). The check is a skill and not more style text because the rules that failed were loaded when they failed (decision 282).
+The style holds what shapes every reply; `skills/draft/SKILL.md` holds what applies only while a message to someone else is drafted, and the style names it in one sentence (requirements 363 and 366). The skill is a check on the finished text, run by the session before the draft is first shown or published: it strikes what no named reader acts on, what is the sender's to settle and what restates a named source, verifies what the sender has not checked, and keeps the owner's notes outside the draft; it never adds detail (requirement 364). An email draft is one HTML file in the scratch directory and no draft is kept in two formats (requirement 365). The check is a skill and not more style text because the rules that failed were loaded when they failed (decision 282).
 
 ### Refactor
 

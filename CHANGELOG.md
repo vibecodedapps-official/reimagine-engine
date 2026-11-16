@@ -18,6 +18,9 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 - A line `post: <phrase>` in the outbound list has any command that holds the phrase read as a forge post: its text and the files it names. A post made by a script or a plain HTTP call was not read, so where posts go through one the check covered commits and pushes and few posts. A text the script builds by itself is still not read.
 - The README says the list belongs to one config folder. A session started under another had no check, and nothing said so.
+- A command is taken for a commit, a merge or a tag only where one line holds `git` and that word, or where it holds both and a `$`. A command that only wrote a local file was denied when its text named `git` on one line and held `commit` or `tag` on another.
+- A denial for a command says what made the command a post: `git` and the subcommand, the forge program, or the `post:` phrase. The reason named the listed string and not why a local write had been read.
+- Concise Plain 4.18. A draft is checked with `/rules:draft` before it is first shown or published. A message you ask to have published at once is never shown first, and the check was timed to the showing.
 
 ## rules 0.1.36 - 2026-11-16
 

@@ -365,9 +365,24 @@ test('R405: check: diff reads the added lines of the commits about to leave, and
   none(w.shell('git push', 'Bash', dir));
 });
 
-test('R405: parseList keeps strings, allow phrases and the diff switch apart', () => {
-  assert.deepEqual(parseList('\uFEFF# c\r\nalpha\r\n  allow: Alpha.md  \r\n\r\ncheck: diff\r\nallow:\r\nbeta gamma\n'),
-    { strings: ['alpha', 'beta gamma'], allow: ['Alpha.md'], diff: true });
+test('R405: parseList keeps strings, allow phrases, post phrases and the diff switch apart', () => {
+  assert.deepEqual(parseList('\uFEFF# c\r\nalpha\r\n  allow: Alpha.md  \r\n\r\ncheck: diff\r\nallow:\r\npost: Tools\\Send.mjs\r\npost:\r\nbeta gamma\n'),
+    { strings: ['alpha', 'beta gamma'], allow: ['Alpha.md'], post: ['tools/send.mjs'], diff: true });
+});
+
+test('R405: a command that holds a post: phrase is read as a forge post, with the files it names', () => {
+  const w = world();
+  writeFileSync(join(w.work, 'body.md'), 'zqxlisted in the body\n');
+  writeFileSync(join(w.work, 'clean.md'), 'a clean body\n');
+  w.list('zqxlisted');
+  none(w.shell('node tools/send.mjs --pr 7 --body "by zqxlisted"'));
+  none(w.shell('node tools/send.mjs --pr 7 --body-file body.md'));
+  w.list('zqxlisted', 'post: Tools/Send.mjs');
+  denied(w.shell('node tools/send.mjs --pr 7 --body "by zqxlisted"'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --pr 7 --body-file body.md'), 'zqxlisted', `the file ${join(w.work, 'body.md')}`, w);
+  denied(w.shell('node .\\tools\\send.mjs --pr 7 --body-file "body.md"', 'PowerShell'), 'zqxlisted', `the file ${join(w.work, 'body.md')}`, w);
+  none(w.shell('node tools/send.mjs --pr 7 --body-file clean.md'));
+  none(w.shell('node tools/other.mjs --body "by zqxlisted"'));
 });
 
 test('R405: the Bash tool on Windows names a file in the MSYS form, which is read', { skip: process.platform !== 'win32' && 'the MSYS form exists on Windows only' }, () => {

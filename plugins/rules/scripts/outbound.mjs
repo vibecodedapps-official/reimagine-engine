@@ -24,13 +24,18 @@ export function decode(buf) {
   return buf.toString('utf8');
 }
 
-// One string per line; blank lines and # lines are ignored; "allow: <phrase>" exempts a phrase; "check: diff" reads diffs.
+// A phrase is compared in lower case with its backslashes turned, so one spelling of a script's path is enough.
+const flat = (s) => s.toLowerCase().replaceAll('\\', '/');
+
+// One string per line; blank lines and # lines are ignored; "allow: <phrase>" exempts a phrase; "check: diff" reads diffs;
+// "post: <phrase>" has a command that holds the phrase read as a forge post.
 export function parseList(text) {
-  const list = { strings: [], allow: [], diff: false };
+  const list = { strings: [], allow: [], post: [], diff: false };
   for (const raw of (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).split(/\r?\n/)) {
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
     if (line.startsWith('allow:')) { if (line.slice(6).trim()) list.allow.push(line.slice(6).trim()); }
+    else if (line.startsWith('post:')) { if (line.slice(5).trim()) list.post.push(flat(line.slice(5).trim())); }
     else if (line === 'check: diff') list.diff = true;
     else list.strings.push(line);
   }
@@ -144,7 +149,8 @@ export function check(input, list, path, { home, platform, tmp = tmpdir() }) {
     }
     return resolve(base, p);
   };
-  const posts = (has(command, 'git') && TEXT.some((w) => has(command, w))) || FORGE.some((w) => has(command, w));
+  const posts = (has(command, 'git') && TEXT.some((w) => has(command, w))) || FORGE.some((w) => has(command, w))
+    || list.post.some((p) => flat(command).includes(p));
   const pushes = PUSH.test(command);
   if (!posts && !pushes) return [];
   // A path the hook resolved stays on the machine, so it is left out of the search: a scratch folder may hold a listed

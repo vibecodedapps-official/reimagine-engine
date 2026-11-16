@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.16 - 2026-11-16
+
+- The first run in a `shared` repository no longer asks whether the repository is your own, and `map` takes no `--own`. Nothing read the answer. A map that holds it still loads, and the next write leaves it out.
+- `copies --add` takes a second source for a copy that is already declared, and `copies --ported` records every source of the copy. A copy ported from two files could record one, so a change to the other went unreported.
+- The staging check runs from `scripts/staged.mjs`, which the drift hook starts. `primer.mjs` was at its line budget and no verb could change. The check denies and allows as before, and `primer.mjs` has no `staged` verb.
+- The README says the notice counts the feedback logs under the config folder alone. Since rules 0.1.35 an entry can go to a log that loaded context names, and primer does not read that one.
+
 ## rules 0.1.35 - 2026-11-16
 
 - The logging item of the house rules has an entry name the repository the session worked in. Every session shares one daily file, and no entry said where it came from. An installed block reads `stale` once; run `/rules` to take the new text.

@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.35 - 2026-11-16
+
+- The logging item of the house rules has an entry name the repository the session worked in. Every session shares one daily file, and no entry said where it came from. An installed block reads `stale` once; run `/rules` to take the new text.
+- The item puts the log in "your host's user config folder" and names no variable or folder, so the rule can be copied into another tool's instructions. For Claude Code the folder is the same as before, and the plugin's README names it.
+- Where loaded context names a log for these entries, the entry goes there instead. A session with such a log held two rules for one finding.
+- The root README says how to propose a change to a plugin: an issue that carries what a log entry recommends for the house rules. Primer has a proposal for a block that a plugin manages say how a change is proposed to the plugin, and nothing said how.
+
 ## rules 0.1.34 - 2026-11-16
 
 - Concise Plain 4.17. A reply that reports work or leaves something open ends with closing lines: the next step, what waits on your answer numbered with one line on what a bare "yes" accepts, and any other open item with a pick or with whose it is to decide. Answers to replies that left decisions open often pasted the reply's lines back to say which decision they meant, and the next step was often in the reply but not at its end. The lines hold nothing the reply said earlier but the next step, come after the list of files made, and a plain answer has none.

@@ -85,6 +85,10 @@ Run `/rules --remove` first if you want the block out of your `CLAUDE.md`; it gi
 
 The audit keeps its run registry in the plugin data directory; delete it by hand if you want it gone. Guard leaves the copies that each change to an existing settings file made, named like that file with `.reimagine-backup-<YYYYMMDDHHMMSS>` added (the name of its target, when `settings.json` is a symbolic link), beside it, and the list file `reimagine-guard.json` while the list still holds a repository; delete them by hand if you want them gone. Review leaves, in each clone it reviewed, the refs under `refs/reimagine/review/` and the entry of its scratch worktree, unless the commands a run listed removed them; `git update-ref -d <ref>` for each ref that `git for-each-ref refs/reimagine/review` lists, and `git worktree prune`, remove them by hand.
 
+## Propose a change
+
+To propose a change to a plugin, open an issue on this repository. For a house rule, take the `Recommended` section of the feedback log entry that led to it, read the observations it recommends for the house rules, and take out any repository name or path before you paste them. Nothing is sent for you, and the plugins ship no telemetry.
+
 ## Development
 
 Node 22 or later, no dependencies. `npm test` runs the suites under `tests/`; `npm run lint` runs the repository rules in `tools/lint.mjs`. CI runs both on ubuntu, macOS and Windows, runs the audit's awk suites again under mawk, and validates every manifest with a pinned Claude Code version.

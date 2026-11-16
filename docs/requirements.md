@@ -11,7 +11,7 @@ Each requirement ends with how it is checked:
 
 A requirement that rests on a spike names the spike in decisions.md. If a later run of that spike fails, the requirement is amended before the change that depends on it merges.
 
-Numbers are never reused, and 19, 20, 70, 119, 197 to 212, 232 to 236, 269, 280, 284, 314, 319, 321, 325, 345, 360 and 396 are not in use.
+Numbers are never reused, and 19, 20, 70, 119, 197 to 212, 232 to 236, 269, 280, 284, 314, 319, 321, 325, 345, 360, 396 and 408 are not in use.
 
 ## Suite
 
@@ -35,7 +35,6 @@ Numbers are never reused, and 19, 20, 70, 119, 197 to 212, 232 to 236, 269, 280,
 17. **Windows and POSIX.** Every test and script runs on ubuntu, macOS and Windows with Git for Windows, and the awk-using audit scripts also run on mawk. Check: test (CI matrix).
 402. **Tests of prose.** No test asserts a sentence of a plugin's prose. A literal stays only where the host, a script or another file reads it, or where its loss would let a run do harm; a rule that files or scripts must agree on gets a check of that agreement; what only a run can show goes to an eval case or to the acceptance item whose expected result names it; the rest is review (decisions 239, 254 and 269). Check: review.
 403. **One home.** Each instruction of a plugin's prose has one home, and another file repeats it only for a reader that does not load the home (decisions 253 and 268). This binds text written from now on; the copies those decisions kept stay. Check: review.
-408. **Specified ahead of the build.** Requirement 409 and the sentences on an input's effect in requirements 66 and 99 describe a state that no change has built yet (decision 280). The change that builds them takes this item out, and its number goes to the list of numbers not in use; the loop version that carries them is released after the comparison of decision 332 is read. Until then the loop's files and its tests say what is built. Check: review.
 
 ## House rules: the `rules` plugin
 

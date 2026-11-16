@@ -46,7 +46,7 @@ A draft for someone else, such as a reply, a ticket comment or an email, is chec
 
 ## Feedback log
 
-The house rules have every session log what it learned about its rules and context: a rule or fact that was missing, a rule that was loaded and missed, and a rule that visibly worked. Each entry goes in a file named for the date in `feedback/` under `$CLAUDE_CONFIG_DIR`, else under `~/.claude`, and ends with a `Recommended` section. The session changes no rule to fix what it logged unless you ask.
+The house rules have every session log what it learned about its rules and context: a rule or fact that was missing, a rule that was loaded and missed, and a rule that visibly worked. Each entry names the repository the session worked in, goes in a file named for the date in `feedback/` in the host's user config folder, which for Claude Code is `$CLAUDE_CONFIG_DIR`, else `~/.claude`, and ends with a `Recommended` section. Where loaded context names a log for these entries, the entry goes there instead. The session changes no rule to fix what it logged unless you ask.
 
 That directory is outside every repository, so a session in the default permission mode asks before its first write there. The permission rule that allows the write is yours to add. The plugin ships no reader of the logs: they are yours to read.
 

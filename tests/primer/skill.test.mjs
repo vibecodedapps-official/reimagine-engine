@@ -135,7 +135,7 @@ test('R256, R257 and R397: the stamps the skill writes are the ones the notice h
 });
 
 test('R390 and R391: the info/exclude lines local.md offers are the agent files the staging check knows, as git reads them', () => {
-  const set = (name) => new RegExp(`const ${name} = new Set\\(\\[([^\\]]+)\\]\\)`).exec(SOURCE['primer.mjs'])?.[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')) ?? [];
+  const set = (name) => new RegExp(`const ${name} = new Set\\(\\[([^\\]]+)\\]\\)`).exec(SOURCE['staged.mjs'])?.[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')) ?? [];
   const known = [...set('AGENT_NAMES'), ...set('AGENT_DIRS')].sort();
   assert.equal(known.length, 7);
   const fence = /\n  ```\n((?:  \S+\n)+)  ```\n/.exec(LOCAL)?.[1] ?? '';

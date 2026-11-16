@@ -233,7 +233,7 @@ describe('status', () => {
 
   test('status takes no arguments, and an unknown verb is refused', () => {
     assert.deepEqual([run(['status', 'x']).status, run(['status', 'x']).stdout], [1, 'primer: status takes no arguments\n']);
-    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, staged, reach, status, measure, map or copies\n']);
+    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, reach, status, measure, map or copies\n']);
   });
 });
 
@@ -417,41 +417,6 @@ describe('map', () => {
     assert.deepEqual(m('--add', '--profile', 'local', '--group', '../x'), [1, 'primer: --group takes letters, digits, ., _ and -, starting with a letter or digit, not ../x\n']);
     assert.deepEqual(m('--set', '--store', 'relative'), [1, 'primer: --store takes an absolute or ~/ path, not relative\n']);
     assert.deepEqual(m('--set', '--profile', 'local'), [1, 'primer: this repository has no entry in the map; use --add\n']);
-  });
-});
-
-describe('staged', () => {
-  const input = (command, cwd) => JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd });
-  test('outside a local repository it prints nothing and exits 0', () => {
-    const cfg = config(local());
-    const dir = repo('staged-other', 'https://example.invalid/team/other.git');
-    write(dir, 'CLAUDE.md', '# x\n');
-    const r = run(['staged'], { input: input('git add CLAUDE.md', dir), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
-    assert.deepEqual([r.status, r.stdout], [0, '']);
-  });
-
-  test('an error of its own prints a deny that gives the error and exits 2', () => {
-    const cfg = config(local());
-    write(cfg.own, 'config.json', '{');
-    const r = run(['staged'], { input: input('git add CLAUDE.md', base), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
-    const reason = `primer: the staging check failed, so the call is denied: ${join(cfg.own, 'config.json')} is not a primer configuration`;
-    assert.deepEqual([r.status, r.stdout, r.stderr],
-      [2, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`, '']);
-    const other = run(['staged'], { input: input('git log --grep commit', base), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
-    assert.deepEqual([other.status, other.stdout], [0, '']);
-  });
-
-  test('an entry recorded while the repository had no remote still matches after one is added', () => {
-    const dir = repo('staged-remote-later');
-    const cfgDir = join(base, `map-config-${++seq}`);
-    run(['map', '--add', '--profile', 'local'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } });
-    git(dir, 'remote', 'add', 'origin', 'https://example.invalid/team/later.git');
-    write(dir, 'CLAUDE.md', '# x\n');
-    const r = run(['staged'], { input: input('git add CLAUDE.md', dir), extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } });
-    const reason = `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; `
-      + "the call would add CLAUDE.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read)";
-    assert.deepEqual([r.status, r.stdout],
-      [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
   });
 });
 

@@ -1,0 +1,86 @@
+// Runs plugins/primer/scripts/staged.mjs as a child process against throwaway repositories and a configuration directory of
+// its own, and holds its output and exit status to literals. The drift hook's suite holds what the check denies and allows.
+import { describe, test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const SCRIPT = fileURLToPath(new URL('../../plugins/primer/scripts/staged.mjs', import.meta.url));
+const slash = (p) => p.replaceAll('\\', '/');
+
+let base, env, seq = 0;
+
+const git = (cwd, ...args) => {
+  const r = spawnSync('git', ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'init.defaultBranch=main', ...args], { cwd, env, encoding: 'utf8' });
+  assert.equal(r.status, 0, `git ${args.join(' ')}\n${r.stderr}`);
+  return r.stdout;
+};
+const write = (dir, path, text) => {
+  mkdirSync(dirname(join(dir, path)), { recursive: true });
+  writeFileSync(join(dir, path), text);
+};
+const repo = (name, remote) => {
+  const dir = join(base, name);
+  write(dir, 'README.md', '# x\n');
+  git(dir, 'init', '-q');
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-q', '-m', 'init');
+  if (remote) git(dir, 'remote', 'add', 'origin', remote);
+  return dir;
+};
+// A configuration directory with primer's own directory and a map.
+const config = (repos) => {
+  const dir = join(base, `config-${++seq}`), own = join(dir, 'reimagine-primer');
+  write(own, 'store/map.json', JSON.stringify({ version: 1, repos, roots: [] }));
+  return { dir, own };
+};
+const APP = { remotes: ['example.invalid/team/app'], path: 'unused', group: 'app', profile: 'local', own: null };
+const input = (command, cwd) => JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd });
+const run = (text, cfg) => spawnSync(process.execPath, [SCRIPT], { cwd: base, env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, input: text, encoding: 'utf8' });
+
+before(() => {
+  base = realpathSync.native(mkdtempSync(join(tmpdir(), 'primer-staged-')));
+  const empty = join(base, 'empty.gitconfig');
+  writeFileSync(empty, '');
+  const home = join(base, 'home');
+  mkdirSync(home);
+  env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: empty, GIT_CEILING_DIRECTORIES: base, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(base, 'xdg') };
+  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'CLAUDE_CODE_SESSION_ATTENDED', 'CLAUDE_PLUGIN_DATA', 'CLAUDE_PROJECT_DIR', 'CLAUDE_CODE_PROJECT_DIR_NAME']) delete env[k];
+});
+after(() => rmSync(base, { recursive: true, force: true, maxRetries: 15, retryDelay: 100 }));
+
+describe('staged', () => {
+  test('outside a local repository it prints nothing and exits 0', () => {
+    const cfg = config([APP]);
+    const dir = repo('staged-other', 'https://example.invalid/team/other.git');
+    write(dir, 'CLAUDE.md', '# x\n');
+    const r = run(input('git add CLAUDE.md', dir), cfg);
+    assert.deepEqual([r.status, r.stdout], [0, '']);
+  });
+
+  test('an error of its own prints a deny that gives the error and exits 2', () => {
+    const cfg = config([APP]);
+    write(cfg.own, 'config.json', '{');
+    const r = run(input('git add CLAUDE.md', base), cfg);
+    const reason = `primer: the staging check failed, so the call is denied: ${join(cfg.own, 'config.json')} is not a primer configuration`;
+    assert.deepEqual([r.status, r.stdout, r.stderr],
+      [2, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`, '']);
+    const other = run(input('git log --grep commit', base), cfg);
+    assert.deepEqual([other.status, other.stdout], [0, '']);
+  });
+
+  test('an entry recorded while the repository had no remote still matches after one is added', () => {
+    const dir = repo('staged-remote-later');
+    const cfg = config([{ remotes: [], path: slash(dir), group: 'staged-remote-later', profile: 'local', own: null }]);
+    git(dir, 'remote', 'add', 'origin', 'https://example.invalid/team/later.git');
+    write(dir, 'CLAUDE.md', '# x\n');
+    const r = run(input('git add CLAUDE.md', dir), cfg);
+    const reason = `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; `
+      + "the call would add CLAUDE.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read)";
+    assert.deepEqual([r.status, r.stdout],
+      [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
+  });
+});

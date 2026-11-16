@@ -251,6 +251,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     put(dir, 'plugins/primer/scripts/ledger.mjs', '// x\n'.repeat(701));
     bump(dir, 'primer');
   }, 1, ['plugins/primer/scripts/ledger.mjs: 701 lines, over the 700-line budget']);
+  negative('R387: staged.mjs over the 700-line budget', (dir) => {
+    put(dir, 'plugins/primer/scripts/staged.mjs', '// x\n'.repeat(701));
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/scripts/staged.mjs: 701 lines, over the 700-line budget']);
   negative('R387: transcripts.mjs over the 700-line budget', (dir) => {
     put(dir, 'plugins/primer/scripts/transcripts.mjs', '// x\n'.repeat(701));
     bump(dir, 'primer');
@@ -730,6 +734,11 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
       if (basename(path) === 'ledger.mjs' || read(dir, path).includes('ledger.mjs')) rmSync(join(dir, path));
     }
   }, 1, ['plugins/primer/scripts/ledger.mjs: no test under tests/ names it']);
+  negative('R6: <path>: no test under tests/ names it (staged.mjs)', (dir) => {
+    for (const path of files(dir, 'tests/')) {
+      if (basename(path) === 'staged.mjs' || read(dir, path).includes('staged.mjs')) rmSync(join(dir, path));
+    }
+  }, 1, ['plugins/primer/scripts/staged.mjs: no test under tests/ names it']);
   negative('R6: <path>: no test under tests/ names it (transcripts.mjs)', (dir) => {
     for (const path of files(dir, 'tests/')) {
       if (basename(path) === 'transcripts.mjs' || read(dir, path).includes('transcripts.mjs')) rmSync(join(dir, path));

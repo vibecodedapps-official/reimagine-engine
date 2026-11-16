@@ -1,5 +1,5 @@
 // Runs the primer drift hook (plugins/primer/hooks/drift.sh) against throwaway repositories, one test per rule, and its hand-off to
-// the staging check of plugins/primer/scripts/primer.mjs.
+// the staging check of plugins/primer/scripts/staged.mjs.
 // The hook needs sh, git, awk and sed on PATH. Every repository lives under one temporary base that is removed at the end.
 // The groups whose cases build their own repository or only read a shared one run their cases concurrently.
 import { describe, test, before, after } from 'node:test';
@@ -676,7 +676,7 @@ describe('primer drift hook', () => {
         roots: [],
       }));
       broken = join(base, 'broken-plugin');
-      write(broken, 'scripts/primer.mjs', "throw new Error('broken');\n");
+      write(broken, 'scripts/staged.mjs', "throw new Error('broken');\n");
     });
     const clone = async (url = remote) => {
       const dir = join(base, `clone-${++seqs}`);

@@ -12,7 +12,7 @@
 #            paths and are not changed
 #   nothing: not a commit, no opted-in hub, or no finding
 # Where <config>/reimagine-primer exists, it first hands the stdin of a call whose text holds `commit`, or `git` before
-# `add` or `stage`, to `node scripts/primer.mjs staged` and prints what that prints; on any other exit status but a missing
+# `add` or `stage`, to `node scripts/staged.mjs` and prints what that prints; on any other exit status but a missing
 # node it denies. The hub's first line plays no part in that: the script reads the map and follows a change of directory.
 
 json=
@@ -37,9 +37,9 @@ case $json in
 *'"tool_name":"PowerShell"'* | *'"tool_name": "PowerShell"'*) ps=1 ;;
 esac
 
-# The staging check: where primer's own directory exists, primer.mjs decides, since it reads the map and follows a change
+# The staging check: where primer's own directory exists, staged.mjs decides, since it reads the map and follows a change
 # of directory, and a hub's marker does not say the profile. <config> is three levels above the transcript, else the
-# configuration directory variable, else ~/.claude, as primer.mjs finds it. A missing node lets the call through, as the
+# configuration directory variable, else ~/.claude, as staged.mjs finds it. A missing node lets the call through, as the
 # entry's onFailure does for a missing sh.
 config=$(printf '%s\n' "$json" | LC_ALL=C sed -n -E 's/^.*"transcript_path"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)".*$/\1/p' | LC_ALL=C sed -e 's/\\\\/\//g' -e 's/\\"/"/g')
 if [ -n "$config" ]; then
@@ -50,7 +50,7 @@ else
 	config=${CLAUDE_CONFIG_DIR:-${USERPROFILE:-$HOME}/.claude}
 fi
 if [ -d "$config/reimagine-primer" ] && command -v node >/dev/null 2>&1; then
-	staged=$(printf '%s\n' "$json" | node "${CLAUDE_PLUGIN_ROOT:-${0%/*}/..}/scripts/primer.mjs" staged 2>/dev/null)
+	staged=$(printf '%s\n' "$json" | node "${CLAUDE_PLUGIN_ROOT:-${0%/*}/..}/scripts/staged.mjs" 2>/dev/null)
 	st=$?
 	if [ "$st" -ne 0 ] && [ -z "$staged" ]; then
 		printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"primer: the staging check failed with exit status %s, so the call is denied"}}\n' "$st"

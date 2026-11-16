@@ -183,7 +183,7 @@ test('R363: the draft frontmatter names the skill and its description claims a m
   assert.ok(front.includes('name: draft'));
   const description = front.find((l) => l.startsWith('description:'));
   assert.ok(description, 'a description line exists');
-  assert.ok(description.includes('before it is first shown'));
+  assert.ok(description.includes('before it is first shown or published.'));
   assert.ok(description.includes('Use whenever this session writes a message that another person will read.'));
   assert.ok(description.includes('Not for a commit message or a code comment.'));
 });

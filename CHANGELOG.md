@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.36 - 2026-11-16
+
+- A commit, a push to a branch that is not the default and a draft pull request on your own repository need no ask. A session asks only for a decision on direction or money, an authority or a fact it lacks, or input that avoids a costly mistake. A side finding is a line of the report or of a backlog note unless a user of the product would meet it in normal work. A change runs once the checks that read what it touched and leaves the rest to CI. About two thirds of what sessions put to their user were permissions for routine steps, about half of session time had a test run or a wait on CI in flight, and most issues opened came from the suite's own runs.
+
 ## loop 0.1.32 - 2026-11-16
 
 - The plan states the effect of each input's change, on the people who use the product and on whatever already exists and depends on the changed behavior, and the plan review is asked what a statement leaves out and what it claims that the plan would not produce. The plan held scope, criteria and buildable status and nothing on effect, and the first text on what a change does for a ticket's readers was written at publication.

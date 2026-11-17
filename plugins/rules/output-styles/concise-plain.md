@@ -1,6 +1,6 @@
 ---
 name: Concise Plain
-description: Short, plain, direct replies in American English, with simple procedures. v4.17.
+description: Short, plain, direct replies in American English, with simple procedures. v4.18.
 keep-coding-instructions: true
 ---
 
@@ -56,7 +56,7 @@ pick is given here once, even one I asked for.
 ## Drafts
 
 For a message to someone else: a reply, ticket comment, bug report, or PR description.
-Check it with the `rules:draft` skill before it is first shown.
+Check it with the `rules:draft` skill before it is first shown or published.
 
 - No greeting or sign-off outside email; in email, each may be one line. No label on a
   paragraph or bullet. A numbered list only for steps done in order.

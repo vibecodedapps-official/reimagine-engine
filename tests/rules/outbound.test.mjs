@@ -4,9 +4,9 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { check, parseList } from '../../plugins/rules/scripts/outbound.mjs';
 
@@ -18,6 +18,8 @@ after(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true });
 const WHO = { GIT_AUTHOR_NAME: 'fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid', GIT_AUTHOR_DATE: '2026-11-01T12:00:00Z',
   GIT_COMMITTER_NAME: 'fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid', GIT_COMMITTER_DATE: '2026-11-01T12:00:00Z' };
 
+const GIT_KEYS = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_PREFIX', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT'];
+
 function world() {
   const root = realpathSync.native(mkdtempSync(join(tmpdir(), 'rules-outbound-')));
   dirs.push(root);
@@ -27,7 +29,7 @@ function world() {
   writeFileSync(gitConfig, '');
   w.env = { ...process.env, ...WHO, CLAUDE_CONFIG_DIR: w.config, HOME: w.home, USERPROFILE: w.home,
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: gitConfig, GIT_CEILING_DIRECTORIES: root };
-  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_PREFIX', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT']) delete w.env[k];
+  for (const k of GIT_KEYS) delete w.env[k];
   w.listFile = join(w.config, 'rules-outbound.txt');
   w.list = (...lines) => writeFileSync(w.listFile, lines.map((l) => `${l}\n`).join(''));
   w.git = (cwd, ...args) => execFileSync('git', ['-c', 'init.defaultBranch=main', '-c', 'core.autocrlf=false', '-c', 'commit.gpgsign=false', ...args],
@@ -63,6 +65,13 @@ function repo(w, name = 'repo') {
   w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'start');
   w.git(dir, 'push', '-q', '-u', 'origin', 'main');
   return dir;
+}
+
+// A call of check in this process starts git with the world's git environment, not the machine's.
+function inWorld(w, run) {
+  const keys = ['GIT_CONFIG_NOSYSTEM', 'GIT_CONFIG_GLOBAL', 'GIT_CEILING_DIRECTORIES', 'HOME', 'USERPROFILE', ...GIT_KEYS], saved = keys.map((k) => process.env[k]);
+  for (const k of keys) { if (w.env[k] === undefined) delete process.env[k]; else process.env[k] = w.env[k]; }
+  try { return run(); } finally { keys.forEach((k, i) => { if (saved[i] === undefined) delete process.env[k]; else process.env[k] = saved[i]; }); }
 }
 
 const HEREDOC = (line) => `git commit --allow-empty -m "$(cat <<'EOF'\n${line}\n\nsecond paragraph with "double" and 'single' quotes\nEOF\n)"`;
@@ -365,9 +374,188 @@ test('R405: check: diff reads the added lines of the commits about to leave, and
   none(w.shell('git push', 'Bash', dir));
 });
 
-test('R405: parseList keeps strings, allow phrases and the diff switch apart', () => {
-  assert.deepEqual(parseList('\uFEFF# c\r\nalpha\r\n  allow: Alpha.md  \r\n\r\ncheck: diff\r\nallow:\r\nbeta gamma\n'),
-    { strings: ['alpha', 'beta gamma'], allow: ['Alpha.md'], diff: true });
+// The git processes one run of the hook starts, counted from git's own event trace.
+function gitCalls(w, command, cwd) {
+  const trace = join(w.root, 'trace.json');
+  rmSync(trace, { force: true });
+  w.env.GIT_TRACE2_EVENT = trace;
+  try { none(w.shell(command, 'Bash', cwd)); } finally { delete w.env.GIT_TRACE2_EVENT; }
+  return readFileSync(trace, 'utf8').split('\n').filter((l) => l.includes('"event":"start"')).length;
+}
+
+test('R405: a push reads each folder with one git call, and a folder spelled two ways once', () => {
+  const w = world();
+  w.list('zqxlisted', 'check: diff');
+  const dir = repo(w), other = repo(w, 'other');
+  writeFileSync(join(dir, 'a.txt'), 'clean\n');
+  w.git(dir, 'add', 'a.txt');
+  w.git(dir, 'commit', '-q', '-m', 'add a');
+  assert.equal(gitCalls(w, 'git push', dir), 1);
+  assert.equal(gitCalls(w, `git -C "${dir}" push`, other), 2);
+  assert.equal(gitCalls(w, `git -C "${dir}" push`, `${dir}${sep}.`), 1);
+  // cd - names no folder.
+  assert.equal(gitCalls(w, `cd "${dir}" && cd - && git push`, other), 2);
+});
+
+test('R405: a push whose read runs past the hook\'s own limit is denied, with the folder and the limit named', () => {
+  const w = world();
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'clean');
+  const out = inWorld(w, () => check({ tool_name: 'Bash', tool_input: { command: 'git push' }, cwd: dir }, parseList('zqxlisted\n'), w.listFile, { home: w.home, platform: process.platform, limit: 1 }));
+  assert.deepEqual(out.map((l) => JSON.parse(l).hookSpecificOutput), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny',
+    permissionDecisionReason: `rules: the commits a push from ${dir} would send could not be read in 0.001 seconds, so the push was not checked against ${w.listFile}; run it again` }]);
+});
+
+test('R405: a push whose commits are read in time and searched past the limit is denied', () => {
+  const w = world();
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'clean');
+  // The clock stands still until git has returned, then jumps past the limit.
+  const ticks = [0, 0], now = () => (ticks.length ? ticks.shift() : 60000);
+  const out = inWorld(w, () => check({ tool_name: 'Bash', tool_input: { command: 'git push' }, cwd: dir }, parseList('zqxlisted\n'), w.listFile, { home: w.home, platform: process.platform, now }));
+  assert.deepEqual(out.map((l) => JSON.parse(l).hookSpecificOutput), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny',
+    permissionDecisionReason: `rules: the commits a push from ${dir} would send could not be read in 45 seconds, so the push was not checked against ${w.listFile}; run it again` }]);
+});
+
+test('R405: a folder or a file written through a variable of the environment is read, and a push that names a folder not found is denied', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'zqxlisted');
+  w.env.ZQX_ROOT = w.root;
+  delete w.env.ZQX_UNSET;
+  denied(w.shell('git -C "$ZQX_ROOT/repo" push'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('cd "${ZQX_ROOT}/repo" && git push'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git -C "$env:ZQX_ROOT/repo" push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('Set-Location "${env:ZQX_ROOT}/repo"; git push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  // A path that is a quoted part with more after it is read whole.
+  denied(w.shell('git -C "$ZQX_ROOT"/repo push'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('cd "$ZQX_ROOT"/repo && git push'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git -C "$env:ZQX_ROOT"/repo push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  // A folder named after another is found in it.
+  denied(w.shell(`cd "${w.root}" && cd repo && git push`), 'zqxlisted', 'commit ', w);
+  writeFileSync(join(w.root, 'body.txt'), 'by zqxlisted\n');
+  denied(w.shell('gh pr create --body-file "$ZQX_ROOT/body.txt"'), 'zqxlisted', `the file ${join(w.root, 'body.txt')}`, w);
+  denied(w.shell('gh pr create --title t --body-file "$ZQX_ROOT"/body.txt'), 'zqxlisted', `the file ${join(w.root, 'body.txt')}`, w);
+  // A variable after the first character of a path, the braced HOME and PWD of PowerShell in any letter case, and ~ with a backslash.
+  w.env.ZQX_NAME = 'repo';
+  w.env.ZQX_FILE = 'body.txt';
+  denied(w.shell(`git -C "${w.root}/$ZQX_NAME" push`), 'zqxlisted', 'commit ', w);
+  denied(w.shell('gh pr create --body-file "$ZQX_ROOT/$ZQX_FILE"'), 'zqxlisted', `the file ${join(w.root, 'body.txt')}`, w);
+  denied(w.shell('git -C "${PWD}/repo" push', 'PowerShell', w.root), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git -C "$pwd/repo" push', 'PowerShell', w.root), 'zqxlisted', 'commit ', w);
+  if (process.platform === 'win32') denied(w.shell('Set-Location ~\\..\\repo; git push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  // PWD is the folder the path is looked for in, so one after a cd is read there.
+  denied(w.shell(`cd "${w.root}" && git -C "$PWD/repo" push`), 'zqxlisted', 'commit ', w);
+  // Only where the home folder is not read from HOME (Windows) does the HOME of the environment differ from it.
+  w.env.HOME = w.root;
+  denied(w.shell('git -C "$HOME/repo" push'), 'zqxlisted', 'commit ', w);
+  w.env.HOME = w.home;
+  // A leading ~ follows the HOME of the environment under Bash and the home folder under PowerShell; home holds a folder of the name that is no repository.
+  mkdirSync(join(w.home, 'repo'));
+  const tilde = (tool) => inWorld(w, () => check({ tool_name: tool, tool_input: { command: 'cd ~/repo && git push' }, cwd: w.work }, parseList('zqxlisted\n'), w.listFile,
+    { home: w.home, platform: process.platform, env: { ...w.env, HOME: w.root } })).map((l) => JSON.parse(l).hookSpecificOutput);
+  const [tildeBash] = tilde('Bash');
+  assert.equal(tildeBash.permissionDecision, 'deny');
+  assert.ok(tildeBash.permissionDecisionReason.includes('"zqxlisted"') && tildeBash.permissionDecisionReason.includes('commit '), tildeBash.permissionDecisionReason);
+  assert.deepEqual(tilde('PowerShell'), []);
+  // A name after env: is the environment's, not the shell's own HOME or PWD.
+  w.env.HOME = w.root;
+  denied(w.shell('git -C "$env:HOME/repo" push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  w.env.HOME = w.home;
+  const lost = (value) => ({ decision: 'deny', reason: `rules: the folder ${value}, which the command names, was not found, so a push from it was not checked against ${w.listFile}; name it by a path that exists when the command is typed` });
+  assert.deepEqual(w.shell('git -C "$ZQX_UNSET/repo" push'), lost('$ZQX_UNSET/repo'));
+  assert.deepEqual(w.shell('git -C "$ZQX_UNSET"/repo push'), lost('$ZQX_UNSET/repo'));
+  assert.deepEqual(w.shell('git -C "$env:ZQX_UNSET/repo" push', 'PowerShell'), lost('$env:ZQX_UNSET/repo'));
+  delete w.env.PWD;
+  assert.deepEqual(w.shell('git -C "$env:PWD/repo" push', 'PowerShell', w.root), lost('$env:PWD/repo'));
+  assert.deepEqual(w.shell(`cd "${dir}x" && git push`), lost(`${dir}x`));
+  // A -C names a push folder only as an option of git itself.
+  none(w.shell('git log | grep -C 3 fix && git push'));
+  none(w.shell('make -C zqxbuild && git push'));
+  assert.deepEqual(w.shell('git -c core.quotepath=off -C "$ZQX_UNSET/repo" push'), lost('$ZQX_UNSET/repo'));
+  // A variable of the other shell is not this shell's, and a word after cd in a message names no folder of the command.
+  assert.deepEqual(w.shell('git -C "$ZQX_ROOT/repo" push', 'PowerShell'), lost('$ZQX_ROOT/repo'));
+  none(w.shell('git commit --allow-empty -m "the CD pipeline" && git push'));
+  // A name outside a quoted string is the command's own, also after a quoted folder or a quoted value in front of it.
+  delete w.env.R;
+  assert.deepEqual(w.shell(`cd '${w.work}' && git -C "$ZQX_UNSET/repo" push`), lost('$ZQX_UNSET/repo'));
+  assert.deepEqual(w.shell(`cd "${w.work}" && git -C "${dir}x" push`), lost(`${dir}x`));
+  assert.deepEqual(w.shell(`git -c "core.quotepath=off" -C "${dir}x" push`), lost(`${dir}x`));
+  // A quoted program name and a -c with a quoted value are git's own form.
+  assert.deepEqual(w.shell(`git -c "user.name=a b" -C "${dir}x" push`), lost(`${dir}x`));
+  assert.deepEqual(w.shell(`"git" -C "${dir}x" push`), lost(`${dir}x`));
+  assert.deepEqual(w.shell(`R="${dir}"; git -C "$R" push`), lost('$R'));
+  assert.deepEqual(w.shell(`$d = '${dir}'; git -C $d push`, 'PowerShell'), lost('$d'));
+  // Inside one, with each shell's escaped or doubled quote, it is a message's word.
+  none(w.shell('git commit --allow-empty -m "say \\"cd nowhere\\" twice" && git push'));
+  none(w.shell('git commit --allow-empty -m "say `"cd nowhere`" twice"; git push', 'PowerShell'));
+  none(w.shell("git commit --allow-empty -m 'it''s cd nowhere'; git push", 'PowerShell'));
+  none(w.shell('git commit --allow-empty -m "it\'s cd nowhere" && git push'));
+});
+
+test('R405: parseList keeps strings, allow phrases, post phrases and the diff switch apart', () => {
+  assert.deepEqual(parseList('\uFEFF# c\r\nalpha\r\n  allow: Alpha.md  \r\n\r\ncheck: diff\r\nallow:\r\npost: Tools\\Send.mjs\r\npost:\r\nbeta gamma\n'),
+    { strings: ['alpha', 'beta gamma'], allow: ['Alpha.md'], post: ['Tools\\Send.mjs'], diff: true });
+});
+
+test('R405: a command that holds a post: phrase is read as a forge post, with the files it names', () => {
+  const w = world();
+  writeFileSync(join(w.work, 'body.md'), 'zqxlisted in the body\n');
+  writeFileSync(join(w.work, 'clean.md'), 'a clean body\n');
+  w.list('zqxlisted');
+  none(w.shell('node tools/send.mjs --pr 7 --body "by zqxlisted"'));
+  none(w.shell('node tools/send.mjs --pr 7 --body-file body.md'));
+  w.list('zqxlisted', 'post: Tools/Send.mjs');
+  denied(w.shell('node tools/send.mjs --pr 7 --body "by zqxlisted"'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --pr 7 --body-file body.md'), 'zqxlisted', `the file ${join(w.work, 'body.md')}`, w);
+  denied(w.shell('node .\\tools\\send.mjs --pr 7 --body-file "body.md"', 'PowerShell'), 'zqxlisted', `the file ${join(w.work, 'body.md')}`, w);
+  none(w.shell('node tools/send.mjs --pr 7 --body-file clean.md'));
+  none(w.shell('node tools/other.mjs --body "by zqxlisted"'));
+});
+
+test('R405: a text that names git on one line and a subcommand on another is no post, and a commit in each typed form is one', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const write = (text) => `python - <<'EOF'\nopen('notes.md', 'a').write("""${text}""")\nEOF`;
+  none(w.shell(write('zqxlisted 2.1.\nShell: Git Bash through the tool.\nThe run made one commit.\n')));
+  none(w.shell(write('zqxlisted 2.1.\nShell: Git Bash through the tool.\nThe release has a tag, after the merge.\n')));
+  none(w.shell("Add-Content notes.md @'\nzqxlisted 2.1.\nShell: Git Bash.\nOne commit.\n'@", 'PowerShell'));
+  none(w.shell(write('Use git here,\ncommit by zqxlisted.\n')));
+  for (const [command, tool] of [
+    ['git -C sub commit -m "by zqxlisted"'],
+    ['git -c "user.name=a;b" commit -m "by zqxlisted"'],
+    ['git -c "user.name=a & b" commit -m "by zqxlisted"'],
+    ['git.exe commit -m "by zqxlisted"'],
+    ['git \\\n  commit -m "by zqxlisted"'],
+    ['git \\\r\n  commit -m "by zqxlisted"'],
+    ['git `\n  commit -m "by zqxlisted"', 'PowerShell'],
+    ["git @(\n  'commit', '-m', 'by zqxlisted'\n)", 'PowerShell'],
+    ["Start-Process git -ArgumentList @(\n 'commit','-m','by zqxlisted')", 'PowerShell'],
+    ['$g=\'git\'\n& $g commit -m "by zqxlisted"', 'PowerShell'],
+    ['c=commit\ngit $c -m "by zqxlisted"'],
+    ['GIT_AUTHOR_NAME=x git commit -m "by zqxlisted"'],
+    ['git merge --no-ff -m "by zqxlisted" side'],
+    ['git tag -a v1 -m "by zqxlisted"'],
+    ['git commit-tree -m "by zqxlisted" HEAD^{tree}'],
+    ['bash -c "git commit -m \'by zqxlisted\'"'],
+    ['echo "commit -m zqxlisted" | xargs git'],
+    ['xargs git <<EOF\ncommit -m "by zqxlisted"\nEOF'],
+    ["printf 'commit -m zqxlisted' |\n  xargs git"],
+  ]) denied(w.shell(command, tool), 'zqxlisted', 'the command', w);
+});
+
+test('R405: a denial for a command says what made the command a post', () => {
+  const w = world();
+  w.list('zqxlisted', 'post: tools/send.mjs');
+  const reason = (command) => w.shell(command).reason;
+  assert.equal(reason('git -C sub Commit -m "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "git" and "commit" and so is read as a post`);
+  assert.equal(reason('git tag -a v1 -m "zqxlisted commit notes"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "git" and "tag" and so is read as a post`);
+  assert.equal(reason('echo "commit -m zqxlisted" | xargs git'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "git" and "commit" and so is read as a post`);
+  assert.equal(reason('echo "zqxlisted ran gh once" >> notes.md'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "gh" and so is read as a post`);
+  assert.equal(reason('node tools/send.mjs --body "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds the post: phrase "tools/send.mjs" and so is read as a post`);
+  w.list('zqxlisted', 'post: Tools\\Send.mjs');
+  assert.equal(reason('node tools/send.mjs --body "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds the post: phrase "Tools\\Send.mjs" and so is read as a post`);
 });
 
 test('R405: the Bash tool on Windows names a file in the MSYS form, which is read', { skip: process.platform !== 'win32' && 'the MSYS form exists on Windows only' }, () => {

@@ -2,6 +2,28 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.18 - 2026-11-17
+
+- A clone matches its repository's map entry under any form of its remote: in any letter case, and with the older `visualstudio.com` hosts of Azure DevOps read as `dev.azure.com`. Such a clone was unmapped and loaded no layer, and in a `local` repository the staging check let a `git add` of an agent file through with no word. A form with no project segment is read too, and a clone takes the entry that holds its remote as written before one that holds another form of it, so a map with an entry for each form keeps each clone on its own.
+- The fold-back review records an item it holds or rejects in the ledger. Only the folds were recorded, so a held item never came back with its count and a rejected one came back as new.
+- `/primer` offers the `info/exclude` lines only while the file lacks one, and again at the next run after a no. It offered them at every run, with the lines in place too.
+- The README says primer's directory belongs to one config folder, and how a second folder names the first one's store. A session under the second folder loaded no layer and its commits were not checked.
+
+## review 0.1.4 - 2026-11-17
+
+- The leak check looks for the assistant's name and its maker's without being given them, and reports a hit as `assistant`, found where no letter touches either end of the name, so also where it is joined to `_` or a digit, as in a variable's name, while the other kinds keep their edges of no letter, digit or `_`. Run as the posting step has it, the check printed `clean` for a draft that held a co-author trailer or a "Generated with" line; on the export path, where you paste by hand, it is the only check. It prints one line per hit, with its kind, its line and the string as found, and a draft that holds a string of the reviewed repository's own goes ahead only once you have said of each hit by name that it is the repository's own; it printed only the kinds, so a yes for one string let through another hit of that kind.
+- The README says a push with `--mirror` or a `refs/*` refspec sends the refs a run leaves in the reviewed repository, and that a plain push, `--all` and `--tags` do not.
+
+## rules 0.1.37 - 2026-11-17
+
+- A line `post: <phrase>` in the outbound list has any command that holds the phrase read as a forge post: its text and the files it names. A post made by a script or a plain HTTP call was not read, so where posts go through one the check covered commits and pushes and few posts. A text the script builds by itself is still not read.
+- The README says the list belongs to one config folder. A session started under another had no check, and nothing said so.
+- A command is taken for a commit, a merge or a tag only where one line holds `git` and that word, or where it holds both and a `$` or `xargs`. A command that only wrote a local file was denied when its text named `git` on one line and held `commit` or `tag` on another.
+- A denial for a command says what made the command a post: `git` and the subcommand that comes first after `git`, else the first in the command, the forge program, or the `post:` phrase. The reason named the listed string and not why a local write had been read.
+- A push is read with one `git` call per folder, the hook has 60 seconds, and a push whose commits cannot be read in 45 of them is denied. With `check: diff` a push from a folder other than the call's own made four `git` calls; where each call is slow the hook passed its 10 seconds, and a hook stopped at its limit lets the push go ahead unchecked.
+- A folder or a file written through a variable of the environment is read, also where only part of the path is quoted as in `"$NAME"/repo`, a folder named after another, as in `cd a && cd b`, is found, and a push in a command that names a folder the hook cannot find is denied. A push from a folder written as `$env:NAME` or misspelled was not read, and nothing said so.
+- Concise Plain 4.18. A draft is checked with `/rules:draft` before it is first shown or published. A message you ask to have published at once is never shown first, and the check was timed to the showing.
+
 ## rules 0.1.36 - 2026-11-16
 
 - A commit, a push to a branch that is not the default and a draft pull request on your own repository need no ask. A session asks only for a decision on direction or money, an authority or a fact it lacks, or input that avoids a costly mistake. A side finding is a line of the report or of a backlog note unless a user of the product would meet it in normal work. A change runs once the checks that read what it touched and leaves the rest to CI. About two thirds of what sessions put to their user were permissions for routine steps, about half of session time had a test run or a wait on CI in flight, and most issues opened came from the suite's own runs.

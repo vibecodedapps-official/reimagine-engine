@@ -39,8 +39,11 @@
 // double quotes. Kinds: home, user, host, record, worktree, model, plugin; each may be given more than once. A string is
 // found in any case, where no letter, digit or _ touches either end. A path of home, record or worktree is looked for
 // without its trailing slashes, with its slashes turned the other way, and C:/x also as /c/x and /c/x as C:/x, so one
-// spelling is enough. It prints, per draft in the
-// order given, "clean <draft>" or "leak <draft> <kind>[,<kind>...]", and exits 1 when any draft leaks, else 0.
+// spelling is enough. The assistant's name and its maker's are looked for too, with no argument, as the kind assistant,
+// and are found where no letter touches either end. It prints, per draft in the order given, "clean <draft>" when it
+// holds none, else "leak <draft> <kind>[,<kind>...]" and under it a line "  <kind> line <n>: <string>" for each hit,
+// the string as the draft holds it, ordered by line, then kind, then place on the line. It exits 1 when any draft
+// leaks, else 0.
 //
 // A refusal prints one line "posts: <reason>" and exits 1, with nothing else printed.
 import { readdirSync, readFileSync, realpathSync } from 'node:fs';
@@ -50,6 +53,7 @@ import { pathToFileURL } from 'node:url';
 export const USAGE = 'usage: node posts.mjs compare <drafts directory> <threads file> | leak --<kind> <string>... <draft>...';
 export const KINDS = ['home', 'user', 'host', 'record', 'worktree', 'model', 'plugin'];
 const PATH_KINDS = ['home', 'record', 'worktree'];
+const ASSISTANT = ['Claude', 'Anthropic'];
 const NAME = /^\d{2}-[a-z0-9][a-z0-9-]*\.md$/;
 const HEADER_KEYS = ['kind', 'path', 'line', 'posted'];
 
@@ -193,14 +197,21 @@ export function parseLeak(args) {
 }
 
 export function leak(wanted, drafts, read = (p) => readText(p, 'the draft')) {
-  const patterns = wanted.map(({ kind, value }) => ({
-    kind,
-    re: new RegExp(`(?<![A-Za-z0-9_])(?:${spellings(kind, value).map(escape).join('|')})(?![A-Za-z0-9_])`, 'i'),
-  }));
-  return drafts.map((draft) => {
-    const text = read(draft);
-    const found = KINDS.filter((k) => patterns.some((p) => p.kind === k && p.re.test(text)));
-    return found.length ? `leak ${draft} ${found.join(',')}` : `clean ${draft}`;
+  const patterns = [...KINDS, 'assistant']
+    .map((kind) => ({ kind, strings: kind === 'assistant' ? ASSISTANT : wanted.filter((w) => w.kind === kind).flatMap((w) => spellings(kind, w.value)) }))
+    .filter(({ strings }) => strings.length)
+    .map(({ kind, strings }) => {
+      const longestFirst = [...new Set(strings)].sort((a, b) => b.length - a.length);
+      const edge = kind === 'assistant' ? 'A-Za-z' : 'A-Za-z0-9_';
+      return { kind, re: new RegExp(`(?<![${edge}])(?:${longestFirst.map(escape).join('|')})(?![${edge}])`, 'gi') };
+    });
+  return drafts.flatMap((draft) => {
+    const hits = lf(read(draft)).split('\n').flatMap((line, i) => patterns.flatMap(({ kind, re }) => (
+      [...line.matchAll(re)].map((m) => ({ kind, text: `  ${kind} line ${i + 1}: ${m[0]}` }))
+    )));
+    if (!hits.length) return [`clean ${draft}`];
+    const kinds = patterns.map((p) => p.kind).filter((k) => hits.some((h) => h.kind === k));
+    return [`leak ${draft} ${kinds.join(',')}`, ...hits.map((h) => h.text)];
   });
 }
 

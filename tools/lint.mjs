@@ -82,7 +82,7 @@ const FENCE = /^\s*```/;
 
 const ROOT_HOOKS = {
   hooks: {
-    PreToolUse: [{ matcher: 'Bash|PowerShell|mcp__.*', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/outbound.mjs'], timeout: 10, onFailure: 'continue' }] }],
+    PreToolUse: [{ matcher: 'Bash|PowerShell|mcp__.*', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/outbound.mjs'], timeout: 60, onFailure: 'continue' }] }],
     SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/rules.mjs', 'session-start', '${CLAUDE_PLUGIN_DATA}'] }] }],
   },
 };
@@ -454,7 +454,7 @@ function skillFailures(ctx) {
   const styleFm = frontmatter(style);
   if (style === null || styleFm.get('name') !== 'Concise Plain') out.push(`${STYLE}: name is not Concise Plain`);
   if (style !== null) {
-    if (!String(styleFm.get('description') ?? '').trim().endsWith('v4.17.')) out.push(`${STYLE}: description does not end in v4.17.`);
+    if (!String(styleFm.get('description') ?? '').trim().endsWith('v4.18.')) out.push(`${STYLE}: description does not end in v4.18.`);
     if (styleFm.get('keep-coding-instructions') !== 'true') out.push(`${STYLE}: keep-coding-instructions is not true`);
   }
   return out;

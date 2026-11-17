@@ -1,11 +1,11 @@
 ---
 name: draft
-description: 'Check a draft written for someone else, such as an email, a reply, a ticket or review comment, a bug report or a pull request description, before it is first shown. Use whenever this session writes a message that another person will read. Not for a commit message or a code comment.'
+description: 'Check a draft written for someone else, such as an email, a reply, a ticket or review comment, a bug report or a pull request description, before it is first shown or published. Use whenever this session writes a message that another person will read. Not for a commit message or a code comment.'
 ---
 
 # Draft
 
-Run this check on the finished text of a message to someone else, before the draft is first shown. Run it yourself and launch no agent for it, since verifying needs what this session did. The check strikes and verifies. It never adds detail.
+Run this check on the finished text of a message to someone else, before the draft is first shown or published. Run it yourself and launch no agent for it, since verifying needs what this session did. The check strikes and verifies. It never adds detail.
 
 ## Strike
 

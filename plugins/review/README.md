@@ -42,11 +42,11 @@ Reads of the repository and the forge, a fetch of the head and of the base branc
 
 ## Posting
 
-`reimagine review PR 12, post` checks each draft for your machine's paths, user name and host name and for the name of the model, reads the head, the description and the threads again, and posts only the drafts the forge does not hold yet, one at a time, each recorded before the next, so a step that stopped part way can run again. The vote is cast only when your vote on the forge differs from it. Afterwards every post is read back and compared with its draft. Without a forge tool that gives comments, anchors, a vote and threads, the step writes a paste-ready export instead.
+`reimagine review PR 12, post` checks each draft for your machine's paths, user name and host name and for the names of the model, the assistant and its maker, reads the head, the description and the threads again, and posts only the drafts the forge does not hold yet, one at a time, each recorded before the next, so a step that stopped part way can run again. The vote is cast only when your vote on the forge differs from it. Afterwards every post is read back and compared with its draft. Without a forge tool that gives comments, anchors, a vote and threads, the step writes a paste-ready export instead.
 
 ## The record
 
-Each pull request has a record in the plugin's data directory, under `reviews/<host>/<path>/<id>/`: the reading, the pull request's title and body, the notes, the drafts, what was posted, and the scratch worktree. Another clone of the same repository finds the earlier round there. The run ends by listing the worktree, the refs and the files it created, with the commands that remove them, and removes none without your yes. The record goes with the plugin when it is uninstalled.
+Each pull request has a record in the plugin's data directory, under `reviews/<host>/<path>/<id>/`: the reading, the pull request's title and body, the notes, the drafts, what was posted, and the scratch worktree. Another clone of the same repository finds the earlier round there. The run ends by listing the worktree, the refs and the files it created, with the commands that remove them, and removes none without your yes. Until they are removed, a push from that repository with `--mirror` or a `refs/*` refspec sends the refs, whose names hold `reimagine`; a plain push, `--all` and `--tags` do not. The record goes with the plugin when it is uninstalled.
 
 ## Uninstall
 

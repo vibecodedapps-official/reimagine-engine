@@ -5,7 +5,7 @@ style this plugin ships. Nothing installs it. To use it, paste the fenced block 
 into a chat product's custom instructions, and paste it again when it changes. The
 block stays short.
 
-Kept in step with `output-styles/concise-plain.md` (Concise Plain v4.17).
+Kept in step with `output-styles/concise-plain.md` (Concise Plain v4.18).
 Deliberate differences from the style:
 
 - Chat drafts commit messages too; they follow the repo's convention.

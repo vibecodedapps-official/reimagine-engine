@@ -57,15 +57,19 @@ export function finder(list) {
 const VALUE = String.raw`((?:"[^"]*"|'[^']*'|[^\s"';|&)])+)`;
 const unquote = (v) => v.replace(/"([^"]*)"|'([^']*)'/g, (_, a, b) => a ?? b);
 const all = (command, source, flags = 'dg') => [...command.matchAll(new RegExp(source, flags))];
+const fileOption = (name, value) => /file/i.test(name.replace(/profile/gi, '')) && !/names?$/i.test(name) && !/^(?:out|output|log)[-_]?file/i.test(name)
+  && !(/^file$/i.test(name) && /\.ps1$/i.test(value));
 
-// The files a command names: after a message or body option, as @<file>, after cat, Get-Content, gc or type, and after
-// a < redirect. loud: its loss warns.
-export function namedFiles(command) {
+// The files a command names: after a message or body option, after any option whose name holds file when own is true,
+// as @<file>, after cat, Get-Content, gc or type, and after a < redirect. loud: its loss warns.
+export function namedFiles(command, own = false) {
   const out = [];
-  const add = (m, loud, mention = false) => { const v = unquote(m[1]); if (v && v !== '-') out.push({ file: v, loud, mention, span: m.indices[1] }); };
+  const add = (m, loud, mention = false, g = 1) => { const v = unquote(m[g]); if (v && v !== '-') out.push({ file: v, loud, mention, span: m.indices[g] }); };
   // A -F value with = is a field, not a file, unless it is key=@<file>.
   for (const m of all(command, String.raw`(?<=^|\s)(?:-F|--file|--body-file|--notes-file|--input)(?:=|\s+)${VALUE}`)) if (!unquote(m[1]).includes('=')) add(m, true);
   for (const m of all(command, String.raw`(?<=^|\s)-F(?=[^\s=-])${VALUE}`)) if (!unquote(m[1]).includes('=')) add(m, false);
+  // A posting script's own option, as --file-path or -DescriptionFile:<file>, read only where the command holds a post: phrase.
+  if (own) for (const m of all(command, String.raw`(?<=^|\s)--?([A-Za-z][\w-]*)(?:=|:\s*|\s+)(?!-)${VALUE}`)) if (!/^--(?:file|body-file|notes-file)(?:=|\s)/.test(m[0]) && fileOption(m[1], unquote(m[2]))) add(m, false, false, 2);
   // An @<file> may be the text itself, a mention or a raw field, so its path is never left out of the search.
   for (const m of all(command, String.raw`(?<=^|[\s=])@([^\s"'@{(;|&)]+)`)) add(m, false, true);
   // Options before the path are passed over, one with its value included: cat -- x, Get-Content -Encoding utf8 x.
@@ -200,6 +204,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     return resolve(base, p);
   };
   const why = postWord(command, list), posts = why !== null, pushes = PUSH.test(command);
+  const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
   // A path the hook resolved stays on the machine, so it is left out of the search: a scratch folder may hold a listed
   // name. Only where no quote and no line break comes before it: after one, the path may be a message's own text,
@@ -229,7 +234,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   const texts = [], notes = [];
   if (posts) {
     const kept = dirs.map((d) => d.span).filter(typed), seen = new Set();
-    for (const { file, loud, mention, span } of namedFiles(command)) {
+    for (const { file, loud, mention, span } of namedFiles(command, own)) {
       let read = false;
       for (const full of new Set([cwd, ...dirs.map((d) => d.dir)].map((base) => local(file, base)))) {
         let text;

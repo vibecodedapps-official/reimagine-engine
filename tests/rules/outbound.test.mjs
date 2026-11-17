@@ -514,6 +514,62 @@ test('R405: a command that holds a post: phrase is read as a forge post, with th
   none(w.shell('node tools/other.mjs --body "by zqxlisted"'));
 });
 
+test('R405: a file after any option whose name holds file is read, and one that cannot be read gives no warning', () => {
+  const w = world();
+  writeFileSync(join(w.work, 'body.md'), 'zqxlisted in the body\n');
+  mkdirSync(join(w.work, 'zqxlisted'));
+  writeFileSync(join(w.work, 'zqxlisted', 'clean.md'), 'a clean body\n');
+  writeFileSync(join(w.work, 'zqxlisted.md'), 'a clean body\n');
+  w.list('zqxlisted', 'post: tools/send');
+  const file = `the file ${join(w.work, 'body.md')}`;
+  denied(w.shell('node tools/send.mjs --pr 7 --file-path body.md'), 'zqxlisted', file, w);
+  denied(w.shell('node tools/send.mjs --pr 7 --file-path=body.md'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -FilePath "body.md"', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -filepath body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile:body.md', 'PowerShell'), 'zqxlisted', file, w);
+  // A forge program's own file option outside the five is not read.
+  none(w.shell('gh pr comment 7 --comment-file body.md'));
+  denied(w.shell('./tools/send.ps1 -Id 7 -descriptionfile body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('node tools/send.mjs --bodyfile body.md'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -File body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile: body.md', 'PowerShell'), 'zqxlisted', file, w);
+  // The path of a file that was read stays on the machine.
+  none(w.shell('node tools/send.mjs --pr 7 --file-path zqxlisted/clean.md'));
+  none(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile zqxlisted/clean.md', 'PowerShell'));
+  // Only the five options warn: a name that holds file may take no file.
+  none(w.shell('node tools/send.mjs --profile dev --file-path missing.md'));
+  none(w.shell('node tools/send.mjs --no-file --pr 7'));
+  writeFileSync(join(w.work, 'dev'), 'zqxlisted\n');
+  none(w.shell('node tools/send.mjs --profile dev --pr 7'));
+  // File alone names the script an interpreter runs, which is not sent.
+  mkdirSync(join(w.work, 'tools'));
+  writeFileSync(join(w.work, 'tools', 'send.ps1'), 'zqxlisted\n');
+  none(w.shell('pwsh -NoProfile -File ./tools/send.ps1 -DescriptionFile zqxlisted/clean.md', 'PowerShell'));
+  // An option that writes a file names no text that is sent.
+  none(w.shell('node tools/send.mjs --pr 7 --output-file body.md'));
+  none(w.shell('node tools/send.mjs --pr 7 --log-file body.md'));
+  none(w.shell('node tools/send.mjs --pr 7 -OutFile body.md'));
+  // Out, output or log must stand directly before file, and a quoted word is not the command's.
+  denied(w.shell('node tools/send.mjs --outline-file body.md'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Body "pipe it to Out-File" -DescriptionFile body.md', 'PowerShell'), 'zqxlisted', file, w);
+  // A git or forge command that holds no post: phrase reads no file after an option such as --pathspec-from-file.
+  writeFileSync(join(w.work, 'paths.txt'), 'zqxlisted/clean.md\n');
+  none(w.shell('git commit --pathspec-from-file=paths.txt -m "fix"'));
+  // A command that holds both git commit and the phrase is read.
+  denied(w.shell('git commit -m x && node tools/send.mjs --file-path body.md'), 'zqxlisted', file, w);
+  // The first loop's guard for a value with = also holds for --file, which the generic read passes over.
+  writeFileSync(join(w.work, 'k=zqxlisted'), 'a clean body\n');
+  denied(w.shell('node tools/send.mjs --file k=zqxlisted'), 'zqxlisted', 'the command', w);
+  // A name is sent as text, so it is searched though a file of that name exists.
+  denied(w.shell('gh gist create --filename zqxlisted.md body.txt'), 'zqxlisted', 'the command', w);
+  denied(w.shell('./tools/send.ps1 -FileName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --file-name zqxlisted.md'), 'zqxlisted', 'the command', w);
+  denied(w.shell('./tools/send.ps1 -FileBaseName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --profile-name zqxlisted.md'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --file-names zqxlisted.md'), 'zqxlisted', 'the command', w);
+});
+
 test('R405: a text that names git on one line and a subcommand on another is no post, and a commit in each typed form is one', () => {
   const w = world();
   w.list('zqxlisted');

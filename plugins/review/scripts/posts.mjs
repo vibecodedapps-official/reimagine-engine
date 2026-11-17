@@ -39,10 +39,11 @@
 // double quotes. Kinds: home, user, host, record, worktree, model, plugin; each may be given more than once. A string is
 // found in any case, where no letter, digit or _ touches either end. A path of home, record or worktree is looked for
 // without its trailing slashes, with its slashes turned the other way, and C:/x also as /c/x and /c/x as C:/x, so one
-// spelling is enough. The assistant's name and its maker's are looked for too, with no argument, as the kind assistant.
-// It prints, per draft in the order given, "clean <draft>" when it holds none, else "leak <draft> <kind>[,<kind>...]"
-// and under it a line "  <kind> line <n>: <string>" for each hit, the string as the draft holds it, ordered by line,
-// then kind, then place on the line. It exits 1 when any draft leaks, else 0.
+// spelling is enough. The assistant's name and its maker's are looked for too, with no argument, as the kind assistant,
+// and are found where no letter touches either end. It prints, per draft in the order given, "clean <draft>" when it
+// holds none, else "leak <draft> <kind>[,<kind>...]" and under it a line "  <kind> line <n>: <string>" for each hit,
+// the string as the draft holds it, ordered by line, then kind, then place on the line. It exits 1 when any draft
+// leaks, else 0.
 //
 // A refusal prints one line "posts: <reason>" and exits 1, with nothing else printed.
 import { readdirSync, readFileSync, realpathSync } from 'node:fs';
@@ -201,7 +202,8 @@ export function leak(wanted, drafts, read = (p) => readText(p, 'the draft')) {
     .filter(({ strings }) => strings.length)
     .map(({ kind, strings }) => {
       const longestFirst = [...new Set(strings)].sort((a, b) => b.length - a.length);
-      return { kind, re: new RegExp(`(?<![A-Za-z0-9_])(?:${longestFirst.map(escape).join('|')})(?![A-Za-z0-9_])`, 'gi') };
+      const edge = kind === 'assistant' ? 'A-Za-z' : 'A-Za-z0-9_';
+      return { kind, re: new RegExp(`(?<![${edge}])(?:${longestFirst.map(escape).join('|')})(?![${edge}])`, 'gi') };
     });
   return drafts.flatMap((draft) => {
     const hits = lf(read(draft)).split('\n').flatMap((line, i) => patterns.flatMap(({ kind, re }) => (

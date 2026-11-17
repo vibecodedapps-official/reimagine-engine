@@ -9,7 +9,7 @@ House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept curren
 - A chat block, in `chat/instructions.md` inside the plugin. It is for pasting into a chat product's custom instructions. Nothing installs it.
 - The skill `/rules:refactor`, which you invoke yourself. It reviews a repository against the house rules and the repository's own instruction files and, on your yes, writes one ticket file per bundle to the repository's ignored scratch directory, else to the plugin's data directory.
 - The skill `/rules:handoff-prompt`, which also answers a plain request for a handoff prompt. It writes a prompt that carries this session's work to a later one, from a summary of a discussion or a single idea, for you to paste. It writes no file.
-- The skill `/rules:draft`, which a session reaches on its own when it writes a message for someone else. It checks the finished draft before you first see it: it strikes detail no reader acts on, verifies what the draft states, and keeps its notes for you outside the draft.
+- The skill `/rules:draft`, which a session reaches on its own when it writes a message for someone else. It checks the finished draft before it is first shown or published: it strikes detail no reader acts on, verifies what the draft states, and keeps its notes for you outside the draft.
 - The outbound check, a hook that denies a commit, a push or a forge post holding a string you listed. It does nothing until the list exists (see Outbound check).
 
 The plugin never edits `settings.json`.

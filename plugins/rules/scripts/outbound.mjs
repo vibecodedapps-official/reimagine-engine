@@ -127,11 +127,12 @@ const TEXT = ['commit', 'commit-tree', 'merge', 'tag'], FORGE = ['gh', 'az', 'gl
 const PUSH = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?![${EDGE}])[^|;&\n]*?\s(?<!stash\s+)push(?![${EDGE}])`, 'i');
 const firstText = (s) => TEXT.map((w) => [w, word(w).exec(s)?.index ?? Infinity]).reduce((a, b) => (b[1] < a[1] ? b : a), ['', Infinity])[0];
 // What makes a command a forge post, as the denial names it, or null. git and a subcommand count where one line holds
-// both, a line continued with a backslash or a backtick being one, so a text that names git and holds the word on
-// another line is no post; beside a $ or the word xargs they count anywhere in the command, since a variable or the
-// input of xargs may hold either. The denial names the subcommand word that comes first after git, else the first.
+// both, a line continued with a backslash, a backtick or an open parenthesis at its end being one, so a text that
+// names git and holds the word on another line is no post; beside a $ or the word xargs they count anywhere in the
+// command, since a variable or the input of xargs may hold either. The denial names the subcommand word that comes
+// first after git, else the first.
 function postWord(command, list) {
-  const lines = command.includes('$') || has(command, 'xargs') ? [command] : command.replace(/[\\`]\r?\n/g, ' ').split('\n');
+  const lines = command.includes('$') || has(command, 'xargs') ? [command] : command.replace(/(?:[\\`]|\([ \t]*)\r?\n/g, ' ').split('\n');
   const sub = lines.map((l) => { const g = word('git').exec(l); return g && (firstText(l.slice(g.index + 3)) || firstText(l)); }).find(Boolean);
   if (sub) return `"git" and "${sub}"`;
   const forge = FORGE.find((w) => has(command, w));

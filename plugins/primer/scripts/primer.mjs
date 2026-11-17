@@ -104,7 +104,7 @@ const formOf = (remote) => {
     ?? remote.match(/^([^/.]+)\.visualstudio\.com\/(?:DefaultCollection\/)?(?:([^/]+)\/)?_git\/([^/]+)$/i);
   return (m ? `dev.azure.com/${m[1]}/${m[2] ? `${m[2]}/` : ''}_git/${m[3]}` : remote).toLowerCase();
 };
-// A clone gets the entry it got before forms were folded; a folded form only adds a match where there was none.
+// An entry that holds one of the clone's remotes as written, or sits at its path, comes before one that only shares a form.
 export const match = (map, repo, platform) => {
   const forms = repo.remotes.map(formOf);
   return map.repos.find((e) => e.remotes.some((r) => repo.remotes.includes(r))

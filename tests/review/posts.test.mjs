@@ -315,6 +315,16 @@ describe('leak', () => {
     ]);
   });
 
+  test('R379: the assistant\'s name is found joined to _ or a digit, where only a letter touching it keeps it clean', () => {
+    const [a] = draftsOf({ '01-a.md': summary('Set ANTHROPIC_API_KEY and claude_code for Claude3') });
+    expect(run('leak', '--user', 'zed', a), 1, [
+      `leak ${a} assistant`,
+      '  assistant line 5: ANTHROPIC',
+      '  assistant line 5: claude',
+      '  assistant line 5: Claude',
+    ]);
+  });
+
   test('R379: each hit of a kind is named with its line, so one of them does not stand for another', () => {
     const [a] = draftsOf({ '01-a.md': 'Per CLAUDE.md the loop retries.\n\nCo-Authored-By: Claude <noreply@anthropic.com>' });
     expect(run('leak', '--user', 'zed', a), 1, [

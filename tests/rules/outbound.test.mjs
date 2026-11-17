@@ -392,6 +392,7 @@ test('R405: a text that names git on one line and a subcommand on another is no 
   none(w.shell(write('zqxlisted 2.1.\nShell: Git Bash through the tool.\nThe run made one commit.\n')));
   none(w.shell(write('zqxlisted 2.1.\nShell: Git Bash through the tool.\nThe release has a tag, after the merge.\n')));
   none(w.shell("Add-Content notes.md @'\nzqxlisted 2.1.\nShell: Git Bash.\nOne commit.\n'@", 'PowerShell'));
+  none(w.shell(write('Use git here,\ncommit by zqxlisted.\n')));
   for (const [command, tool] of [
     ['git -C sub commit -m "by zqxlisted"'],
     ['git -c "user.name=a;b" commit -m "by zqxlisted"'],
@@ -400,6 +401,8 @@ test('R405: a text that names git on one line and a subcommand on another is no 
     ['git \\\n  commit -m "by zqxlisted"'],
     ['git \\\r\n  commit -m "by zqxlisted"'],
     ['git `\n  commit -m "by zqxlisted"', 'PowerShell'],
+    ["git @(\n  'commit', '-m', 'by zqxlisted'\n)", 'PowerShell'],
+    ["Start-Process git -ArgumentList @(\n 'commit','-m','by zqxlisted')", 'PowerShell'],
     ['$g=\'git\'\n& $g commit -m "by zqxlisted"', 'PowerShell'],
     ['c=commit\ngit $c -m "by zqxlisted"'],
     ['GIT_AUTHOR_NAME=x git commit -m "by zqxlisted"'],

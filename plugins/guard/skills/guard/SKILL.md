@@ -1,7 +1,7 @@
 ---
 name: guard
 description: Keeps the auto mode classifier's entries for the repositories you list in your user settings file, and shows each change before it is made.
-argument-hint: "[add PATH [merge] [reads] [ask] | drop PATH-OR-REMOTE | clear | list | status | denials]"
+argument-hint: "[add PATH [merge] [reads] [ask] | drop PATH-OR-REMOTE | clear | list | status | denials | use PATH]"
 disable-model-invocation: true
 allowed-tools:
   - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" status *)
@@ -29,12 +29,13 @@ $ARGUMENTS
 - `list`
 - `status`
 - `denials`
+- `use <path>`
 
 Anything else: tell the user these are the accepted forms, and stop. Do not run anything.
 
 Put no text from the user into a command except the path or remote, in double quotes. If it holds a double quote, a backtick, `$` or a newline, say so, and stop. Do not run anything. Write each backslash in the path or remote as a forward slash first, so that `C:\src\app\` becomes `C:/src/app/`; a backslash before the closing quote would escape it.
 
-The `allowed-tools` lines pre-approve `status`, `list`, `plan` and `denials` only. `apply` meets the session's permission mode: a prompt in the default mode, the classifier in auto mode.
+The `allowed-tools` lines pre-approve `status`, `list`, `plan` and `denials` only. `apply` and `use` meet the session's permission mode: a prompt in the default mode, the classifier in auto mode. If the permission mode denies either, report the denial in full and wait. Never retry it another way, and never write the file yourself.
 
 ## Step 1: report
 
@@ -55,6 +56,8 @@ Run exactly one command with the Bash tool, chosen by the arguments:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}" --drop "<path or remote>"`
 - `clear`:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" plan "${CLAUDE_PLUGIN_DATA}" --clear`
+- `use <path>`, the path of another config folder's `reimagine-guard.json`: first say that this folder's own list file will name that file and nothing else changes, and wait for a yes; then
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" use "${CLAUDE_PLUGIN_DATA}" "<path>"`
 
 Show the output verbatim in a fenced code block.
 
@@ -62,7 +65,7 @@ If the output is a line that starts with `guard: ` and the command exited with a
 
 ## Step 2: ask
 
-- For `status`, `list` and `denials`, stop.
+- For `status`, `list`, `denials` and `use`, stop.
 - If the output says `change: none`, say nothing will change, and stop.
 - If it says `change: ready`, ask the user to approve by replying with this sentence, with the path from the `target:` line filled in:
 
@@ -76,4 +79,4 @@ Wait for the reply. Any other reply is a no: say nothing was written, and stop.
 
 On that reply, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" apply "${CLAUDE_PLUGIN_DATA}" <id>` with the Bash tool, where `<id>` is the twelve characters on the `plan:` line of the Step 1 output you showed. The script then writes that plan and no other. Show the output verbatim in a fenced code block.
 
-If the permission mode denies the command, report the denial in full and wait. Never retry it another way, and never write the file yourself.
+If the permission mode denies the command, follow the rule under Accepted arguments.

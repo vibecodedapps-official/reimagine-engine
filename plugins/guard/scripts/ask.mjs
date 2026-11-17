@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // The ask hook, a PreToolUse hook: has the host ask before a push, a pull request or a comment aimed at a repository the
 // list flags with ask, and before every push and gh or az repos write while the list cannot be used. When in doubt it asks.
+// A command that holds a post: phrase of the rules outbound list in the same folder or the list's folder is judged as a post too.
 // Usage: node ask.mjs, with the hook's input on stdin. It prints nothing or one line, and exits 0.
 import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { locate, marked, missing, normalizeRemote, readList, unreadable } from './guard.mjs';
 
@@ -24,6 +25,8 @@ const WRITE_WORDS = words('create update add delete remove merge comment post pu
 const CD = words('cd chdir set-location sl pushd push-location');
 const DIR_OPTIONS = words('-C --chdir --directory');
 const MAX_DIRS = 16;
+// What the git calls of one input may take together, under the hook's 10 seconds.
+const LIMIT = 8000;
 // git's global options that take their value as the next word.
 const GIT_VALUE = words('-C -c --git-dir --work-tree --namespace --config-env --attr-source --super-prefix');
 const PUSH_VALUE = words('-o --push-option --receive-pack --exec');
@@ -46,6 +49,10 @@ const commandOf = (w) => w.split(/[\\/]/).pop().replace(/^.*[=(`{]/, '').toLower
 const dynamic = (t) => /[$`%]/.test(t);
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const lower = (v) => String(v ?? '').toLowerCase();
+// A post: phrase and the command it is looked for in: lower case, each backslash a slash, a run of slashes and a /./ one slash.
+const flat = (s) => s.toLowerCase().replaceAll('\\', '/').replace(/\/+/g, '/').replace(/(?:\/\.)+\//g, '/');
+// A list saved as UTF-16 is read as UTF-16, as the rules outbound check reads it; a leading byte order mark is dropped.
+const listText = (b) => (b[0] === 0xff && b[1] === 0xfe ? b.toString('utf16le') : b[0] === 0xfe && b[1] === 0xff ? Buffer.from(b.subarray(0, b.length & ~1)).swap16().toString('utf16le') : b.toString('utf8')).replace(/^\ufeff/, '');
 const decode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
 const pathKey = (p, platform) => { const s = p.replace(/\\/g, '/').replace(/\/+$/, ''); return platform === 'win32' ? s.toLowerCase() : s; };
 
@@ -384,7 +391,18 @@ function scan(c) {
       if (hit) return hit;
     }
   }
-  return null;
+  return postCall(c);
+}
+
+// A command that holds a post: phrase asks when it names a flagged repository or may run in a checkout of one.
+function postCall(c) {
+  const text = flat(c.full);
+  if (!c.posts().some((p) => text.includes(p))) return null;
+  if (c.broken) return c.broken;
+  // A flagged name in the text, or its name and the part before it each as a whole word, or an Azure repository by option.
+  const f = c.flagged.find((x) => x.res.some((re) => re.test(c.full)) || (x.nameRe.test(c.full) && x.beforeRes.some((re) => re.test(c.full))))
+    ?? c.flagged.find((x) => x.az && c.cmds.some(({ ws }) => byOption(ws, x)));
+  return f ? c.hit(f) : byDirectories(c.dirs, undefined, c) ?? (c.unresolved ? c.unresolvedReason : null);
 }
 
 // GH_REPO set in the text as a word of its own, as VAR=value or $env:VAR = value, never inside quoted text.
@@ -397,21 +415,27 @@ const ghRepoOf = (cmds) => cmds.filter((x) => x.depth === 0).flatMap(({ raw }) =
 
 const readText = (p) => { try { return readFileSync(p, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } };
 const isDirectory = (p) => { try { return statSync(p).isDirectory(); } catch { return false; } };
-function runGit(dir, args, env) {
-  const r = spawnSync('git', ['-C', dir, ...args], { env, encoding: 'utf8', timeout: 5000, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+function runGit(dir, args, env, timeout) {
+  const r = spawnSync('git', ['-C', dir, ...args], { env, encoding: 'utf8', timeout, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
   if (r.error || r.signal) throw r.error ?? new Error(`git ended by ${r.signal}`);
   return r.status === 0 ? r.stdout : '';
 }
 
 // The reason the host shows with its prompt, or null to let the call go on. read returns a file's text, null when it is
-// missing, and throws when it cannot be read; git(dir, args) returns the output of git -C <dir> <args>, '' when it fails.
+// missing, and throws when it cannot be read; git(dir, args, ms) returns the output of git -C <dir> <args> within ms, ''
+// when it fails; now is the clock.
 export function decide(input, deps = {}) {
   const tool = input?.tool_name, ti = input?.tool_input;
   const mcp = typeof tool === 'string' && tool.startsWith('mcp__');
   if (!mcp && !((tool === 'Bash' || tool === 'PowerShell') && typeof ti?.command === 'string')) return null;
   const { env = process.env, home = homedir(), platform = process.platform, read = readText, isDir = isDirectory } = deps;
-  const git = deps.git ?? ((dir, args) => runGit(dir, args, env));
-  const { path, list } = locate(env, home);
+  const now = deps.now ?? Date.now, until = now() + LIMIT, call = deps.git ?? ((dir, args, ms) => runGit(dir, args, env, ms));
+  const git = (dir, args) => {
+    const left = until - now();
+    if (left <= 0) throw new Error('the git calls of this input ran out of time');
+    return call(dir, args, Math.min(left, 5000));
+  };
+  const { path, list, dir: folder } = locate(env, home);
   let text;
   try { text = read(list); } catch { text = undefined; }
   const c = { tool, platform, home, isDir, flagged: [], paths: [], full: '', envRepo: env.GH_REPO };
@@ -434,6 +458,13 @@ export function decide(input, deps = {}) {
   c.unresolvedFor = (remote) => `guard: this call's directory could not be resolved and ${remote} is listed to ask ${EVERY}`;
   c.unresolvedReason = c.broken ?? c.unresolvedFor((c.flagged[0] ?? c.paths[0]).remote);
   c.byId = (id) => c.flagged.find((f) => f.id === id);
+  // The post: lines of rules-outbound.txt in the config folder and in the list's folder.
+  c.posts = () => [...new Set([folder, dirname(list)])].flatMap((d) => {
+    try {
+      return listText(readFileSync(join(d, 'rules-outbound.txt'))).split(/\r?\n/).map((l) => l.trim())
+        .filter((l) => l.startsWith('post:')).map((l) => flat(l.slice(5).trim())).filter(Boolean);
+    } catch { return []; }
+  });
   c.listed = (p) => { const key = pathKey(p, platform); return c.paths.find((x) => key === x.key || key.startsWith(`${x.key}/`)); };
   const cache = new Map();
   const cached = (key, get) => {

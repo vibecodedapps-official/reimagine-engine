@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## rules 0.1.38 - 2026-11-17
 
-- In a command read as a post, a file after any option whose name holds `file` is read, with one dash or two, as in `--file-path <file>` or `-DescriptionFile <file>`, and its path is left out of the search as for the other files. A posting script that takes its file through an option of its own had that file left unread, and a clean file under a folder whose name holds a listed string was denied. Not read as a file are an option that takes a name, one that names a file to write such as `--output-file`, and `-File` with a `.ps1` script.
+- In a command that holds a `post:` phrase, a file after any option whose name holds `file` is read, with one dash or two, as in `--file-path <file>` or `-DescriptionFile <file>`, and its path is left out of the search as for the other files. A posting script that takes its file through an option of its own had that file left unread, and a clean file under a folder whose name holds a listed string was denied. A git or forge command with no such phrase is not read this way, since options such as `--pathspec-from-file` name a file that is not sent. Not read as a file are an option that takes a name, one that names a file to write such as `--output-file`, and `-File` with a `.ps1` script.
 
 ## primer 0.1.18 - 2026-11-17
 

@@ -528,7 +528,8 @@ test('R405: a file after any option whose name holds file is read, and one that 
   denied(w.shell('./tools/send.ps1 -Id 7 -FilePath "body.md"', 'PowerShell'), 'zqxlisted', file, w);
   denied(w.shell('./tools/send.ps1 -Id 7 -filepath body.md', 'PowerShell'), 'zqxlisted', file, w);
   denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile:body.md', 'PowerShell'), 'zqxlisted', file, w);
-  denied(w.shell('gh pr comment 7 --comment-file body.md'), 'zqxlisted', file, w);
+  // A forge program's own file option outside the five is not read.
+  none(w.shell('gh pr comment 7 --comment-file body.md'));
   denied(w.shell('./tools/send.ps1 -Id 7 -descriptionfile body.md', 'PowerShell'), 'zqxlisted', file, w);
   denied(w.shell('node tools/send.mjs --bodyfile body.md'), 'zqxlisted', file, w);
   denied(w.shell('./tools/send.ps1 -Id 7 -File body.md', 'PowerShell'), 'zqxlisted', file, w);
@@ -552,6 +553,11 @@ test('R405: a file after any option whose name holds file is read, and one that 
   // Out, output or log must stand directly before file, and a quoted word is not the command's.
   denied(w.shell('node tools/send.mjs --outline-file body.md'), 'zqxlisted', file, w);
   denied(w.shell('./tools/send.ps1 -Body "pipe it to Out-File" -DescriptionFile body.md', 'PowerShell'), 'zqxlisted', file, w);
+  // A git or forge command that holds no post: phrase reads no file after an option such as --pathspec-from-file.
+  writeFileSync(join(w.work, 'paths.txt'), 'zqxlisted/clean.md\n');
+  none(w.shell('git commit --pathspec-from-file=paths.txt -m "fix"'));
+  // A command that holds both git commit and the phrase is read.
+  denied(w.shell('git commit -m x && node tools/send.mjs --file-path body.md'), 'zqxlisted', file, w);
   // The first loop's guard for a value with = also holds for --file, which the generic read passes over.
   writeFileSync(join(w.work, 'k=zqxlisted'), 'a clean body\n');
   denied(w.shell('git commit --file k=zqxlisted'), 'zqxlisted', 'the command', w);

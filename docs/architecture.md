@@ -110,7 +110,7 @@ plugins/rules/
   scripts/rules.mjs              status | plan [--adopt] [--options a,b] | apply | remove | decline | session-start
   scripts/outbound.mjs           the outbound check; reads the hook input on stdin
   hooks/hooks.json               SessionStart startup -> node rules.mjs session-start ${CLAUDE_PLUGIN_DATA}
-                                 PreToolUse Bash|PowerShell|mcp__.* -> node outbound.mjs, timeout 10, onFailure continue
+                                 PreToolUse Bash|PowerShell|mcp__.* -> node outbound.mjs, timeout 60, onFailure continue
   rules/core.md                  the house rules
   rules/windows.md               the Windows paragraph
   output-styles/concise-plain.md keep-coding-instructions: true

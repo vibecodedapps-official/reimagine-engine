@@ -82,7 +82,7 @@ const FENCE = /^\s*```/;
 
 const ROOT_HOOKS = {
   hooks: {
-    PreToolUse: [{ matcher: 'Bash|PowerShell|mcp__.*', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/outbound.mjs'], timeout: 10, onFailure: 'continue' }] }],
+    PreToolUse: [{ matcher: 'Bash|PowerShell|mcp__.*', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/outbound.mjs'], timeout: 60, onFailure: 'continue' }] }],
     SessionStart: [{ matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/rules.mjs', 'session-start', '${CLAUDE_PLUGIN_DATA}'] }] }],
   },
 };

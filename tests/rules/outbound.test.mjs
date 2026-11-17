@@ -4,9 +4,9 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { check, parseList } from '../../plugins/rules/scripts/outbound.mjs';
 
@@ -363,6 +363,62 @@ test('R405: check: diff reads the added lines of the commits about to leave, and
   // A removed line is not read.
   w.list('kept', 'check: diff');
   none(w.shell('git push', 'Bash', dir));
+});
+
+// The git processes one run of the hook starts, counted from git's own event trace.
+function gitCalls(w, command, cwd) {
+  const trace = join(w.root, 'trace.json');
+  rmSync(trace, { force: true });
+  w.env.GIT_TRACE2_EVENT = trace;
+  try { none(w.shell(command, 'Bash', cwd)); } finally { delete w.env.GIT_TRACE2_EVENT; }
+  return readFileSync(trace, 'utf8').split('\n').filter((l) => l.includes('"event":"start"')).length;
+}
+
+test('R405: a push reads each folder with one git call, and a folder spelled two ways once', () => {
+  const w = world();
+  w.list('zqxlisted', 'check: diff');
+  const dir = repo(w), other = repo(w, 'other');
+  writeFileSync(join(dir, 'a.txt'), 'clean\n');
+  w.git(dir, 'add', 'a.txt');
+  w.git(dir, 'commit', '-q', '-m', 'add a');
+  assert.equal(gitCalls(w, 'git push', dir), 1);
+  assert.equal(gitCalls(w, `git -C "${dir}" push`, other), 2);
+  assert.equal(gitCalls(w, `git -C "${dir}" push`, `${dir}${sep}.`), 1);
+  // cd - names no folder.
+  assert.equal(gitCalls(w, `cd "${dir}" && cd - && git push`, other), 2);
+});
+
+test('R405: a push whose read runs past the hook\'s own limit is denied, with the folder and the limit named', () => {
+  const w = world();
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'clean');
+  const out = check({ tool_name: 'Bash', tool_input: { command: 'git push' }, cwd: dir }, parseList('zqxlisted\n'), w.listFile, { home: w.home, platform: process.platform, limit: 1 });
+  assert.deepEqual(out.map((l) => JSON.parse(l).hookSpecificOutput), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny',
+    permissionDecisionReason: `rules: the commits a push from ${dir} would send could not be read in 0.001 seconds, so the push was not checked against ${w.listFile}; run it again` }]);
+});
+
+test('R405: a folder or a file written through a variable of the environment is read, and a push that names a folder not found is denied', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'zqxlisted');
+  w.env.ZQX_ROOT = w.root;
+  delete w.env.ZQX_UNSET;
+  denied(w.shell('git -C "$ZQX_ROOT/repo" push'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('cd "${ZQX_ROOT}/repo" && git push'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git -C "$env:ZQX_ROOT/repo" push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('Set-Location "${env:ZQX_ROOT}/repo"; git push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  // A folder named after another is found in it.
+  denied(w.shell(`cd "${w.root}" && cd repo && git push`), 'zqxlisted', 'commit ', w);
+  writeFileSync(join(w.root, 'body.txt'), 'by zqxlisted\n');
+  denied(w.shell('gh pr create --body-file "$ZQX_ROOT/body.txt"'), 'zqxlisted', `the file ${join(w.root, 'body.txt')}`, w);
+  const lost = (value) => ({ decision: 'deny', reason: `rules: the folder ${value}, which the command names, was not found, so a push from it was not checked against ${w.listFile}; name it by a path that exists when the command is typed` });
+  assert.deepEqual(w.shell('git -C "$ZQX_UNSET/repo" push'), lost('$ZQX_UNSET/repo'));
+  assert.deepEqual(w.shell('git -C "$env:ZQX_UNSET/repo" push', 'PowerShell'), lost('$env:ZQX_UNSET/repo'));
+  assert.deepEqual(w.shell(`cd ${dir}x && git push`), lost(`${dir}x`));
+  // A variable of the other shell is not this shell's, and a word after cd in a message names no folder of the command.
+  assert.deepEqual(w.shell('git -C "$ZQX_ROOT/repo" push', 'PowerShell'), lost('$ZQX_ROOT/repo'));
+  none(w.shell('git commit --allow-empty -m "the CD pipeline" && git push'));
 });
 
 test('R405: parseList keeps strings, allow phrases, post phrases and the diff switch apart', () => {

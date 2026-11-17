@@ -3,6 +3,7 @@
 // rules-outbound.txt in $CLAUDE_CONFIG_DIR, else ~/.claude. Usage: node outbound.mjs, with the hook's input on stdin.
 // With no list file it does nothing; on any error it lets the call go ahead.
 import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -87,35 +88,52 @@ const without = (text, spans) => {
 
 const isDir = (p) => { try { return statSync(p).isDirectory(); } catch { return false; } };
 
-function git(dir, args) {
-  const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 28, windowsHide: true });
+// A git call that had no time left, or was stopped when its time ran out.
+class Late extends Error {}
+
+function git(dir, args, until = Infinity) {
+  const left = until - Date.now();
+  if (left <= 0) throw new Late();
+  const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 28, windowsHide: true, timeout: left < Infinity ? Math.ceil(left) : undefined });
+  if (r.error?.code === 'ETIMEDOUT') throw new Late();
   if (r.error || r.status !== 0) throw new Error(`git ${args[0]} exited ${r.status}`);
   return r.stdout;
 }
 
 // The texts of the commits a push from dir could send: those HEAD or a local branch reaches, or a tag when the command
 // sends tags, and no remote-tracking ref holds. Refspecs are not read, so a branch the push leaves behind counts too.
-// With diff, their added lines; lost says the diff could not be read.
-export function leaving(dir, command, diff) {
+// With diff, their added lines; lost says the diff could not be read. One git call reads both, its output cut at a mark
+// made for the call, so no text of a commit can end a piece. A call that runs past until throws Late.
+export function leaving(dir, command, diff, until) {
   const tags = new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command);
-  const revs = ['HEAD', '--branches', ...(tags ? ['--tags'] : []), '--not', '--remotes'];
-  const texts = git(dir, ['log', '--no-color', '--no-show-signature', '--format=%x1e%h%x1f%B', ...revs]).split('\x1e').filter(Boolean)
-    .map((c) => { const i = c.indexOf('\x1f'); return i < 0 ? { where: 'a commit', text: c } : { where: `commit ${c.slice(0, i)}`, text: c.slice(i + 1) }; });
-  if (!diff) return { texts, lost: false };
-  let patch;
-  try { patch = git(dir, ['log', '--no-color', '--no-ext-diff', '--no-textconv', '-p', '-U0', '--format=%x1e%h', ...revs]); } catch { return { texts, lost: true }; }
-  for (const c of patch.split('\x1e').filter(Boolean)) {
-    const [id, ...lines] = c.split('\n');
+  const id = randomBytes(8).toString('hex');
+  const args = (patch) => ['log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
+    `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, 'HEAD', '--branches', ...(tags ? ['--tags'] : []), '--not', '--remotes'];
+  let out, lost = false;
+  try { out = git(dir, args(diff), until); } catch (e) {
+    if (!diff || e instanceof Late) throw e;
+    out = git(dir, args(false), until);
+    lost = true;
+  }
+  const texts = [], added = [];
+  let commit = '';
+  for (const piece of out.split(`\x1e${id}`).slice(1)) {
+    if (piece[0] === 'm') {
+      const i = piece.indexOf('\x1f');
+      commit = piece.slice(1, i);
+      texts.push({ where: `commit ${commit}`, text: piece.slice(i + 1) });
+      continue;
+    }
     let hunk = false;
-    const added = lines.filter((l) => {
+    const lines = piece.split('\n').filter((l) => {
       if (l.startsWith('diff --git ')) hunk = false;
       else if (l.startsWith('@@')) hunk = true;
       else return hunk && l.startsWith('+');
       return false;
     });
-    texts.push({ where: `the added lines of commit ${id}`, text: added.map((l) => l.slice(1)).join('\n') });
+    if (lines.length) added.push({ where: `the added lines of commit ${commit}`, text: lines.map((l) => l.slice(1)).join('\n') });
   }
-  return { texts, lost: false };
+  return { texts: [...texts, ...added], lost };
 }
 
 const strings = (v) => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []);
@@ -142,7 +160,10 @@ function postWord(command, list) {
 }
 
 // The output lines for one hook input: a deny on the first hit, else one warning that names what could not be read.
-export function check(input, list, path, { home, platform, tmp = tmpdir() }) {
+// The git calls of one input share limit milliseconds, kept under the timeout of the hook's entry, since a hook the
+// host stops lets the call go ahead: a push whose commits were not read in that time, or from a folder not found, is denied.
+export function check(input, list, path, { home, platform, tmp = tmpdir(), env = process.env, limit = 45000 }) {
+  const until = Date.now() + limit;
   const find = finder(list), tool = String(input?.tool_name ?? ''), ti = input?.tool_input ?? {};
   const hit = (texts) => {
     for (const { where, text } of texts) {
@@ -153,9 +174,14 @@ export function check(input, list, path, { home, platform, tmp = tmpdir() }) {
   };
   if (tool.startsWith('mcp__')) return hit([{ where: 'the tool input', text: strings(ti).join('\n') }]) ?? [];
   if ((tool !== 'Bash' && tool !== 'PowerShell') || typeof ti.command !== 'string') return [];
-  const command = ti.command, cwd = typeof input.cwd === 'string' && isDir(input.cwd) ? input.cwd : process.cwd();
+  const command = ti.command, cwd = resolve(typeof input.cwd === 'string' && isDir(input.cwd) ? input.cwd : process.cwd());
+  // A variable in a path is read from the hook's environment, $NAME and ${NAME} for Bash, $env:NAME and ${env:NAME}
+  // for PowerShell, with HOME and PWD the home and the call's folder; one that is not set stays as written.
+  const vars = tool === 'Bash' ? /\$(?:\{(\w+)\}|(\w+))/g : /\$(?:\{env:(\w+)\}|env:(\w+)|(HOME|PWD)(?!\w))/gi;
+  const value = (name) => (name === 'HOME' ? home : name === 'PWD' ? cwd : env[name]);
   // The Bash tool on Windows names paths in the MSYS form: /c/... for a drive and /tmp for the temp folder.
-  const local = (p, base = cwd) => {
+  const local = (written, base = cwd) => {
+    const p = written.replace(vars, (all, a, b, c) => value(c ? c.toUpperCase() : a ?? b) ?? all);
     if (p === '~' || p.startsWith('~/')) return join(home, p.slice(2));
     if (platform === 'win32' && tool === 'Bash') {
       if (p === '/tmp' || p.startsWith('/tmp/')) return join(tmp, p.slice(5));
@@ -170,7 +196,14 @@ export function check(input, list, path, { home, platform, tmp = tmpdir() }) {
   // name. Only where no quote and no line break comes before it: after one, the path may be a message's own text,
   // and telling which would take a parse of each shell's quoting.
   const typed = ([i]) => !/["'\n]/.test(command.slice(0, i));
-  const dirs = namedDirs(command).map((d) => ({ ...d, dir: local(d.dir) })).filter((d) => isDir(d.dir));
+  // A folder is looked for in the call's folder and in each folder named before it, as cd a && cd b names a/b. One
+  // not found is named as typed; a value that starts with - is an option or cd -, not a folder.
+  const dirs = [], missing = [];
+  for (const d of namedDirs(command).sort((a, b) => a.span[0] - b.span[0])) {
+    const found = [...new Set([cwd, ...dirs.map((x) => x.dir)].map((base) => local(d.dir, base)))].filter(isDir);
+    dirs.push(...found.map((dir) => ({ ...d, dir })));
+    if (!found.length && typed(d.span) && !d.dir.startsWith('-')) missing.push(d.dir);
+  }
   const texts = [], notes = [];
   if (posts) {
     const kept = dirs.map((d) => d.span).filter(typed), seen = new Set();
@@ -193,13 +226,21 @@ export function check(input, list, path, { home, platform, tmp = tmpdir() }) {
   const first = hit(texts);
   if (first) return first;
   if (pushes) {
-    for (const dir of new Set([cwd, ...dirs.map((d) => d.dir)])) {
+    // A folder spelled two ways is read once.
+    const real = (p) => { try { return realpathSync.native(p); } catch { return p; } }, read = new Set();
+    for (const dir of [cwd, ...dirs.map((d) => d.dir)]) {
+      if (read.has(real(dir))) continue;
+      read.add(real(dir));
       let out;
-      try { out = leaving(dir, command, list.diff); } catch { continue; }
+      try { out = leaving(dir, command, list.diff, until); } catch (e) {
+        if (e instanceof Late) return [deny(`rules: the commits a push from ${dir} would send could not be read in ${limit / 1000} seconds, so the push was not checked against ${path}; run it again`)];
+        continue;
+      }
       const found = hit(out.texts);
       if (found) return found;
       if (out.lost) notes.push(`the diff of the commits in ${dir}`);
     }
+    if (missing.length) return [deny(`rules: the folder ${missing[0]}, which the command names, was not found, so a push from it was not checked against ${path}; name it by a path that exists when the command is typed`)];
   }
   return notes.length ? [warn(`rules: ${notes.join(', ')} could not be read, so ${notes.length === 1 ? 'its text was' : 'their texts were'} not checked against ${path}`)] : [];
 }
@@ -208,7 +249,7 @@ export function main({ env = process.env, home = homedir(), platform = process.p
   const path = listPath(env, home);
   let text;
   try { text = decode(readFileSync(path)); } catch { return []; }
-  try { return check(JSON.parse(stdin()), parseList(text), path, { home, platform }); } catch { return []; }
+  try { return check(JSON.parse(stdin()), parseList(text), path, { home, platform, env }); } catch { return []; }
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path.

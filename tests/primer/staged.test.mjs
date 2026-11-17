@@ -106,4 +106,35 @@ describe('staged', () => {
     const r = run(input('git add CLAUDE.md', dir), now);
     assert.deepEqual([r.status, r.stdout], [0, '']);
   });
+
+  test('R386: a clone keeps its own entry where the map holds one per form of the remote', () => {
+    const cfg = config([
+      { remotes: ['dev.azure.com/zz-org/zz-proj/_git/zz-svc'], path: 'unused', group: 'svc', profile: 'shared' },
+      { remotes: ['zz-org.visualstudio.com/zz-proj/_git/zz-svc'], path: 'unused', group: 'svc', profile: 'local' },
+    ]);
+    const old = repo('forms-7', 'https://zz-org.visualstudio.com/zz-proj/_git/zz-svc');
+    write(old, 'CLAUDE.md', '# x\n');
+    const r = run(input('git add CLAUDE.md', old), cfg);
+    const reason = `primer: ${slash(old)} has the local profile, which keeps agent files out of its history; `
+      + "the call would add CLAUDE.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read)";
+    assert.deepEqual([r.status, r.stdout],
+      [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
+    const now = repo('forms-8', 'https://dev.azure.com/zz-org/zz-proj/_git/zz-svc');
+    write(now, 'CLAUDE.md', '# x\n');
+    const s = run(input('git add CLAUDE.md', now), cfg);
+    assert.deepEqual([s.status, s.stdout], [0, '']);
+  });
+
+  test('R386: an older Azure remote with no project matches the entry that has none', () => {
+    const cfg = config([{ remotes: ['dev.azure.com/zz-org/_git/zz-svc'], path: 'unused', group: 'svc', profile: 'local' }]);
+    for (const [name, remote] of [['forms-9', 'https://zz-org.visualstudio.com/DefaultCollection/_git/zz-svc'], ['forms-10', 'https://zz-org.visualstudio.com/_git/zz-svc']]) {
+      const dir = repo(name, remote);
+      write(dir, 'CLAUDE.md', '# x\n');
+      const r = run(input('git add CLAUDE.md', dir), cfg);
+      const reason = `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; `
+        + "the call would add CLAUDE.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read)";
+      assert.deepEqual([r.status, r.stdout],
+        [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`], remote);
+    }
+  });
 });

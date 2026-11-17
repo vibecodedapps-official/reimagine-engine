@@ -408,6 +408,8 @@ test('R405: a text that names git on one line and a subcommand on another is no 
     ['git commit-tree -m "by zqxlisted" HEAD^{tree}'],
     ['bash -c "git commit -m \'by zqxlisted\'"'],
     ['echo "commit -m zqxlisted" | xargs git'],
+    ['xargs git <<EOF\ncommit -m "by zqxlisted"\nEOF'],
+    ["printf 'commit -m zqxlisted' |\n  xargs git"],
   ]) denied(w.shell(command, tool), 'zqxlisted', 'the command', w);
 });
 
@@ -416,6 +418,8 @@ test('R405: a denial for a command says what made the command a post', () => {
   w.list('zqxlisted', 'post: tools/send.mjs');
   const reason = (command) => w.shell(command).reason;
   assert.equal(reason('git -C sub Commit -m "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "git" and "commit" and so is read as a post`);
+  assert.equal(reason('git tag -a v1 -m "zqxlisted commit notes"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "git" and "tag" and so is read as a post`);
+  assert.equal(reason('echo "commit -m zqxlisted" | xargs git'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "git" and "commit" and so is read as a post`);
   assert.equal(reason('echo "zqxlisted ran gh once" >> notes.md'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "gh" and so is read as a post`);
   assert.equal(reason('node tools/send.mjs --body "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds the post: phrase "tools/send.mjs" and so is read as a post`);
 });

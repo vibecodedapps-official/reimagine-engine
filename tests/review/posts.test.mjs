@@ -227,7 +227,12 @@ describe('leak', () => {
     });
     expect(run('leak', '--home', 'C:/Work Area/Alice Home', '--user', 'alice', '--host', 'build-7', '--model', 'opus', a, b, c), 1, [
       `leak ${a} home,user`,
+      '  home line 5: C:\\Work Area\\Alice Home',
+      '  user line 5: Alice',
+      '  user line 5: alice',
       `leak ${b} host,model`,
+      '  host line 5: build-7',
+      '  model line 5: Opus',
       `clean ${c}`,
     ]);
   });
@@ -245,9 +250,24 @@ describe('leak', () => {
     });
     expect(run('leak', '--worktree', 'C:\\Data\\reviews\\github.com\\o\\r\\1\\worktree', '--record', 'D:/Data/reviews/github.com/o/r/1', a, b), 1, [
       `leak ${a} worktree`,
+      '  worktree line 5: /c/Data/reviews/github.com/o/r/1/worktree',
       `leak ${b} record`,
+      '  record line 5: D:\\Data\\Reviews\\github.com\\o\\r\\1',
     ]);
-    expect(run('leak', '--record', 'C:\\Data\\reviews\\github.com\\o\\r\\1', c), 1, [`leak ${c} record`]);
+    expect(run('leak', '--record', 'C:\\Data\\reviews\\github.com\\o\\r\\1', c), 1, [
+      `leak ${c} record`,
+      '  record line 5: c:/data/reviews/github.com/o/r/1',
+    ]);
+  });
+
+  test('R379: a path found in another spelling and case than the one given shows the string as the draft holds it, line by line', () => {
+    const [a] = draftsOf({ '01-a.md': 'Open c:\\users\\alice\\x.txt and /c/Users/ALICE/y.txt\n\nSee C:/USERS/alice again' });
+    expect(run('leak', '--home', 'C:/Users/Alice/', a), 1, [
+      `leak ${a} home`,
+      '  home line 1: c:\\users\\alice',
+      '  home line 1: /c/Users/ALICE',
+      '  home line 3: C:/USERS/alice',
+    ]);
   });
 
   test('R379: a path given with its trailing slash is found, and a /c/ form finds the drive form', () => {
@@ -257,7 +277,9 @@ describe('leak', () => {
     });
     expect(run('leak', '--record', 'C:/Data/reviews/github.com/o/r/1/', '--home', '/c/Users/alice', a, b), 1, [
       `leak ${a} record`,
+      '  record line 5: C:/Data/reviews/github.com/o/r/1',
       `leak ${b} home`,
+      '  home line 5: C:\\Users\\alice',
     ]);
   });
 
@@ -266,12 +288,12 @@ describe('leak', () => {
       '01-a.md': summary('anny and ann_x and xann stay clean'),
       '02-b.md': summary("It is ann's call"),
     });
-    expect(run('leak', '--user', 'Ann', a, b), 1, [`clean ${a}`, `leak ${b} user`]);
+    expect(run('leak', '--user', 'Ann', a, b), 1, [`clean ${a}`, `leak ${b} user`, '  user line 5: ann']);
   });
 
   test('R379: the header of a draft is read too', () => {
     const [a] = draftsOf({ '01-a.md': comment('home/alice/src/a.js', 3, 'Fix it') });
-    expect(run('leak', '--user', 'alice', a), 1, [`leak ${a} user`]);
+    expect(run('leak', '--user', 'alice', a), 1, [`leak ${a} user`, '  user line 3: alice']);
   });
 
   test('R379: the assistant\'s name and its maker\'s are looked for with no string given for them', () => {
@@ -283,9 +305,23 @@ describe('leak', () => {
     });
     expect(run('leak', '--user', 'al', a, b, c, d), 1, [
       `leak ${a} assistant`,
+      '  assistant line 5: Claude',
+      '  assistant line 5: anthropic',
       `leak ${b} assistant`,
+      '  assistant line 5: claude',
       `leak ${c} assistant`,
+      '  assistant line 5: Anthropic',
       `clean ${d}`,
+    ]);
+  });
+
+  test('R379: each hit of a kind is named with its line, so one of them does not stand for another', () => {
+    const [a] = draftsOf({ '01-a.md': 'Per CLAUDE.md the loop retries.\n\nCo-Authored-By: Claude <noreply@anthropic.com>' });
+    expect(run('leak', '--user', 'zed', a), 1, [
+      `leak ${a} assistant`,
+      '  assistant line 1: CLAUDE',
+      '  assistant line 3: Claude',
+      '  assistant line 3: anthropic',
     ]);
   });
 

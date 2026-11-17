@@ -18,6 +18,8 @@ after(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true });
 const WHO = { GIT_AUTHOR_NAME: 'fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid', GIT_AUTHOR_DATE: '2026-11-01T12:00:00Z',
   GIT_COMMITTER_NAME: 'fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid', GIT_COMMITTER_DATE: '2026-11-01T12:00:00Z' };
 
+const GIT_KEYS = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_PREFIX', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT'];
+
 function world() {
   const root = realpathSync.native(mkdtempSync(join(tmpdir(), 'rules-outbound-')));
   dirs.push(root);
@@ -27,7 +29,7 @@ function world() {
   writeFileSync(gitConfig, '');
   w.env = { ...process.env, ...WHO, CLAUDE_CONFIG_DIR: w.config, HOME: w.home, USERPROFILE: w.home,
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: gitConfig, GIT_CEILING_DIRECTORIES: root };
-  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_PREFIX', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT']) delete w.env[k];
+  for (const k of GIT_KEYS) delete w.env[k];
   w.listFile = join(w.config, 'rules-outbound.txt');
   w.list = (...lines) => writeFileSync(w.listFile, lines.map((l) => `${l}\n`).join(''));
   w.git = (cwd, ...args) => execFileSync('git', ['-c', 'init.defaultBranch=main', '-c', 'core.autocrlf=false', '-c', 'commit.gpgsign=false', ...args],
@@ -67,8 +69,8 @@ function repo(w, name = 'repo') {
 
 // A call of check in this process starts git with the world's git environment, not the machine's.
 function inWorld(w, run) {
-  const keys = ['GIT_CONFIG_NOSYSTEM', 'GIT_CONFIG_GLOBAL', 'GIT_CEILING_DIRECTORIES', 'HOME', 'USERPROFILE'], saved = keys.map((k) => process.env[k]);
-  for (const k of keys) process.env[k] = w.env[k];
+  const keys = ['GIT_CONFIG_NOSYSTEM', 'GIT_CONFIG_GLOBAL', 'GIT_CEILING_DIRECTORIES', 'HOME', 'USERPROFILE', ...GIT_KEYS], saved = keys.map((k) => process.env[k]);
+  for (const k of keys) { if (w.env[k] === undefined) delete process.env[k]; else process.env[k] = w.env[k]; }
   try { return run(); } finally { keys.forEach((k, i) => { if (saved[i] === undefined) delete process.env[k]; else process.env[k] = saved[i]; }); }
 }
 
@@ -426,10 +428,15 @@ test('R405: a folder or a file written through a variable of the environment is 
   denied(w.shell('cd "${ZQX_ROOT}/repo" && git push'), 'zqxlisted', 'commit ', w);
   denied(w.shell('git -C "$env:ZQX_ROOT/repo" push', 'PowerShell'), 'zqxlisted', 'commit ', w);
   denied(w.shell('Set-Location "${env:ZQX_ROOT}/repo"; git push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  // A path that is a quoted part with more after it is read whole.
+  denied(w.shell('git -C "$ZQX_ROOT"/repo push'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('cd "$ZQX_ROOT"/repo && git push'), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git -C "$env:ZQX_ROOT"/repo push', 'PowerShell'), 'zqxlisted', 'commit ', w);
   // A folder named after another is found in it.
   denied(w.shell(`cd "${w.root}" && cd repo && git push`), 'zqxlisted', 'commit ', w);
   writeFileSync(join(w.root, 'body.txt'), 'by zqxlisted\n');
   denied(w.shell('gh pr create --body-file "$ZQX_ROOT/body.txt"'), 'zqxlisted', `the file ${join(w.root, 'body.txt')}`, w);
+  denied(w.shell('gh pr create --title t --body-file "$ZQX_ROOT"/body.txt'), 'zqxlisted', `the file ${join(w.root, 'body.txt')}`, w);
   // A variable after the first character of a path, the braced HOME and PWD of PowerShell in any letter case, and ~ with a backslash.
   w.env.ZQX_NAME = 'repo';
   w.env.ZQX_FILE = 'body.txt';
@@ -444,12 +451,21 @@ test('R405: a folder or a file written through a variable of the environment is 
   w.env.HOME = w.root;
   denied(w.shell('git -C "$HOME/repo" push'), 'zqxlisted', 'commit ', w);
   w.env.HOME = w.home;
+  // A leading ~ follows the HOME of the environment under Bash and the home folder under PowerShell; home holds a folder of the name that is no repository.
+  mkdirSync(join(w.home, 'repo'));
+  const tilde = (tool) => inWorld(w, () => check({ tool_name: tool, tool_input: { command: 'cd ~/repo && git push' }, cwd: w.work }, parseList('zqxlisted\n'), w.listFile,
+    { home: w.home, platform: process.platform, env: { ...w.env, HOME: w.root } })).map((l) => JSON.parse(l).hookSpecificOutput);
+  const [tildeBash] = tilde('Bash');
+  assert.equal(tildeBash.permissionDecision, 'deny');
+  assert.ok(tildeBash.permissionDecisionReason.includes('"zqxlisted"') && tildeBash.permissionDecisionReason.includes('commit '), tildeBash.permissionDecisionReason);
+  assert.deepEqual(tilde('PowerShell'), []);
   // A name after env: is the environment's, not the shell's own HOME or PWD.
   w.env.HOME = w.root;
   denied(w.shell('git -C "$env:HOME/repo" push', 'PowerShell'), 'zqxlisted', 'commit ', w);
   w.env.HOME = w.home;
   const lost = (value) => ({ decision: 'deny', reason: `rules: the folder ${value}, which the command names, was not found, so a push from it was not checked against ${w.listFile}; name it by a path that exists when the command is typed` });
   assert.deepEqual(w.shell('git -C "$ZQX_UNSET/repo" push'), lost('$ZQX_UNSET/repo'));
+  assert.deepEqual(w.shell('git -C "$ZQX_UNSET"/repo push'), lost('$ZQX_UNSET/repo'));
   assert.deepEqual(w.shell('git -C "$env:ZQX_UNSET/repo" push', 'PowerShell'), lost('$env:ZQX_UNSET/repo'));
   delete w.env.PWD;
   assert.deepEqual(w.shell('git -C "$env:PWD/repo" push', 'PowerShell', w.root), lost('$env:PWD/repo'));

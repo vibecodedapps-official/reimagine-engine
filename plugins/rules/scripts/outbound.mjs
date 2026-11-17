@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The outbound check, a PreToolUse hook: denies a commit, a push or a forge post whose text holds a string listed in
 // rules-outbound.txt in $CLAUDE_CONFIG_DIR, else ~/.claude. Usage: node outbound.mjs, with the hook's input on stdin.
-// With no list file it does nothing; on any error it lets the call go ahead.
+// With no list file it does nothing; on any error but a push it could not read in time it lets the call go ahead.
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
@@ -54,8 +54,8 @@ export function finder(list) {
   };
 }
 
-const VALUE = String.raw`("[^"]*"|'[^']*'|[^\s"';|&)]+)`;
-const unquote = (v) => (/^(["']).*\1$/s.test(v) ? v.slice(1, -1) : v);
+const VALUE = String.raw`((?:"[^"]*"|'[^']*'|[^\s"';|&)])+)`;
+const unquote = (v) => v.replace(/"([^"]*)"|'([^']*)'/g, (_, a, b) => a ?? b);
 const all = (command, source, flags = 'dg') => [...command.matchAll(new RegExp(source, flags))];
 
 // The files a command names: after a message or body option, as @<file>, after cat, Get-Content, gc or type, and after
@@ -191,7 +191,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
       const name = all.replace(/^\$\{?|\}$/g, '');
       return (/^env:/i.test(name) ? env[name.slice(4)] : value(name)) ?? all;
     });
-    if (p === '~' || /^~[\\/]/.test(p)) return join(home, p.slice(2));
+    if (p === '~' || /^~[\\/]/.test(p)) return join(value('HOME'), p.slice(2));
     if (platform === 'win32' && tool === 'Bash') {
       if (p === '/tmp' || p.startsWith('/tmp/')) return join(tmp, p.slice(5));
       const m = /^\/([A-Za-z])(\/.*|)$/.exec(p);

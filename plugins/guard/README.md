@@ -61,7 +61,7 @@ A command names a repository by `owner/name`, in an option or a URL, or for Azur
 
 With nobody to answer, as in an unattended or `claude -p` run, the host denies a call that asks, so such a run cannot push or post to a flagged repository. When the hook itself cannot run, as with no `node` on the PATH, or runs past its 10-second limit, the call goes on without a prompt; the hook's `git` calls stop after 8 seconds together and it asks then, and guard's allow entries do not cover a flagged repository. The prompt was checked in auto mode, and in no other permission mode.
 
-When `reimagine-guard.json` cannot be read, or is missing while the settings file holds guard's entries, the hook asks before every push and every `gh` and `az repos` write, whatever its repository, until you correct the file or run `/guard`. Raw calls and MCP calls pass then, since nothing can aim them without the list. With no repository flagged it does nothing.
+When `reimagine-guard.json` cannot be read, or is missing while the settings file holds guard's entries, the hook asks before every push, every `gh` and `az repos` write and every command that holds a `post:` phrase, whatever its repository, until you correct the file or run `/guard`. Raw calls and MCP calls pass then, since nothing can aim them without the list. With no repository flagged it does nothing.
 
 The hook does not see:
 
@@ -110,7 +110,7 @@ If you install your user settings from a shared file by a merge that replaces th
 
 ## Uninstall
 
-1. Run `/guard clear` and reply with the sentence the skill asks for; a plain yes writes nothing and leaves the entries in place. It takes every guard entry out and deletes the list. When the copied default lines are every current default, they go back to one `$defaults`. A settings file that had no `autoMode` before gets its original bytes back, except that an object that held only whitespace, such as `{ }`, comes back as `{}`; a file guard created is deleted unless it holds something else.
+1. In a folder that reads another folder's list through `/guard use`, delete this folder's `reimagine-guard.json` and run `/guard`, which takes this folder's entries out and leaves the list; `/guard clear` there would empty the list for both folders. Otherwise run `/guard clear` and reply with the sentence the skill asks for; a plain yes writes nothing and leaves the entries in place. It takes every guard entry out and deletes the list. When the copied default lines are every current default, they go back to one `$defaults`. A settings file that had no `autoMode` before gets its original bytes back, except that an object that held only whitespace, such as `{ }`, comes back as `{}`; a file guard created is deleted unless it holds something else.
 2. Run `/plugin uninstall guard@reimagine-engine`.
 
 ## License

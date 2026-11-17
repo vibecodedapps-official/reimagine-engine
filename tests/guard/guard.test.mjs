@@ -1158,6 +1158,36 @@ test('R337: a marked entry that the list as read renders counts as written by th
   assert.equal(w.run('status')[0], `state: current ${w.settings}`);
 });
 
+test('R339: entries written before ask left the allow entries are stale, and a plan narrows them', () => {
+  const w = world();
+  const app = repo(w, 'app', [RA]);
+  const lib = repo(w, 'lib', [RB1]);
+  change(w, '--add', app.path, '--ask');
+  change(w, '--add', lib.path);
+  const state = join(w.data, 'guard-state.json');
+  for (const f of [w.settings, state]) writeFileSync(f, read(f).replace(' This entry does not cover git.example.invalid/org/app, where the user is asked before each push, pull request and comment.', ''));
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', A1]);
+  assert.equal(w.run('status')[0], `state: stale ${w.settings}`);
+  assert.deepEqual(w.run('plan').filter((l) => l.startsWith('entry: ')), [`entry: - allow: ${A1}`, `entry: + allow: ${A1_BUT(NA)}`]);
+});
+
+test('R340: a folder that reads another list leaves it by deleting its own list file, and the list stays', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path);
+  const second = join(w.dir, 'second'), data = join(w.dir, 'data2'), own = join(second, 'reimagine-guard.json'), settings = join(second, 'settings.json');
+  mkdirSync(second);
+  const at = (...argv) => main([argv[0], data, ...argv.slice(1)], { env: { ...w.env, CLAUDE_CONFIG_DIR: second }, now: w.now, home: w.home, cwd: w.work, claude: w.claude });
+  at('use', w.list);
+  at('apply', at('plan').at(-2).slice(6));
+  assert.deepEqual(JSON.parse(read(settings)).autoMode.allow, ['$defaults', A1]);
+  const list = read(w.list);
+  rmSync(own);
+  at('apply', at('plan').at(-2).slice(6));
+  assert.equal(existsSync(settings), false);
+  assert.equal(read(w.list), list);
+  assert.equal(w.run('status')[0], `state: current ${w.settings}`);
+});
+
 test('R340: use has a second folder read the first folder\'s list, and refuses a path that is no list or a folder with a list of its own', () => {
   const w = repoWorld();
   change(w, '--add', w.repo.path, '--ask');

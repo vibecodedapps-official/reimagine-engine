@@ -65,6 +65,13 @@ function repo(w, name = 'repo') {
   return dir;
 }
 
+// A call of check in this process starts git with the world's git environment, not the machine's.
+function inWorld(w, run) {
+  const keys = ['GIT_CONFIG_NOSYSTEM', 'GIT_CONFIG_GLOBAL', 'GIT_CEILING_DIRECTORIES', 'HOME', 'USERPROFILE'], saved = keys.map((k) => process.env[k]);
+  for (const k of keys) process.env[k] = w.env[k];
+  try { return run(); } finally { keys.forEach((k, i) => { if (saved[i] === undefined) delete process.env[k]; else process.env[k] = saved[i]; }); }
+}
+
 const HEREDOC = (line) => `git commit --allow-empty -m "$(cat <<'EOF'\n${line}\n\nsecond paragraph with "double" and 'single' quotes\nEOF\n)"`;
 const HERESTRING = (line) => `git commit --allow-empty -m @'\n${line}\n\nsecond paragraph with "double" quotes\n'@`;
 
@@ -392,9 +399,20 @@ test('R405: a push whose read runs past the hook\'s own limit is denied, with th
   const w = world();
   const dir = repo(w);
   w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'clean');
-  const out = check({ tool_name: 'Bash', tool_input: { command: 'git push' }, cwd: dir }, parseList('zqxlisted\n'), w.listFile, { home: w.home, platform: process.platform, limit: 1 });
+  const out = inWorld(w, () => check({ tool_name: 'Bash', tool_input: { command: 'git push' }, cwd: dir }, parseList('zqxlisted\n'), w.listFile, { home: w.home, platform: process.platform, limit: 1 }));
   assert.deepEqual(out.map((l) => JSON.parse(l).hookSpecificOutput), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny',
     permissionDecisionReason: `rules: the commits a push from ${dir} would send could not be read in 0.001 seconds, so the push was not checked against ${w.listFile}; run it again` }]);
+});
+
+test('R405: a push whose commits are read in time and searched past the limit is denied', () => {
+  const w = world();
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'clean');
+  // The clock stands still until git has returned, then jumps past the limit.
+  const ticks = [0, 0], now = () => (ticks.length ? ticks.shift() : 60000);
+  const out = inWorld(w, () => check({ tool_name: 'Bash', tool_input: { command: 'git push' }, cwd: dir }, parseList('zqxlisted\n'), w.listFile, { home: w.home, platform: process.platform, now }));
+  assert.deepEqual(out.map((l) => JSON.parse(l).hookSpecificOutput), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny',
+    permissionDecisionReason: `rules: the commits a push from ${dir} would send could not be read in 45 seconds, so the push was not checked against ${w.listFile}; run it again` }]);
 });
 
 test('R405: a folder or a file written through a variable of the environment is read, and a push that names a folder not found is denied', () => {
@@ -426,10 +444,16 @@ test('R405: a folder or a file written through a variable of the environment is 
   w.env.HOME = w.root;
   denied(w.shell('git -C "$HOME/repo" push'), 'zqxlisted', 'commit ', w);
   w.env.HOME = w.home;
+  // A name after env: is the environment's, not the shell's own HOME or PWD.
+  w.env.HOME = w.root;
+  denied(w.shell('git -C "$env:HOME/repo" push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  w.env.HOME = w.home;
   const lost = (value) => ({ decision: 'deny', reason: `rules: the folder ${value}, which the command names, was not found, so a push from it was not checked against ${w.listFile}; name it by a path that exists when the command is typed` });
   assert.deepEqual(w.shell('git -C "$ZQX_UNSET/repo" push'), lost('$ZQX_UNSET/repo'));
   assert.deepEqual(w.shell('git -C "$env:ZQX_UNSET/repo" push', 'PowerShell'), lost('$env:ZQX_UNSET/repo'));
-  assert.deepEqual(w.shell(`cd ${dir}x && git push`), lost(`${dir}x`));
+  delete w.env.PWD;
+  assert.deepEqual(w.shell('git -C "$env:PWD/repo" push', 'PowerShell', w.root), lost('$env:PWD/repo'));
+  assert.deepEqual(w.shell(`cd "${dir}x" && git push`), lost(`${dir}x`));
   // A -C names a push folder only as an option of git itself.
   none(w.shell('git log | grep -C 3 fix && git push'));
   none(w.shell('make -C zqxbuild && git push'));
@@ -440,8 +464,11 @@ test('R405: a folder or a file written through a variable of the environment is 
   // A name outside a quoted string is the command's own, also after a quoted folder or a quoted value in front of it.
   delete w.env.R;
   assert.deepEqual(w.shell(`cd '${w.work}' && git -C "$ZQX_UNSET/repo" push`), lost('$ZQX_UNSET/repo'));
-  assert.deepEqual(w.shell(`cd "${w.work}" && git -C ${dir}x push`), lost(`${dir}x`));
-  assert.deepEqual(w.shell(`git -c "core.quotepath=off" -C ${dir}x push`), lost(`${dir}x`));
+  assert.deepEqual(w.shell(`cd "${w.work}" && git -C "${dir}x" push`), lost(`${dir}x`));
+  assert.deepEqual(w.shell(`git -c "core.quotepath=off" -C "${dir}x" push`), lost(`${dir}x`));
+  // A quoted program name and a -c with a quoted value are git's own form.
+  assert.deepEqual(w.shell(`git -c "user.name=a b" -C "${dir}x" push`), lost(`${dir}x`));
+  assert.deepEqual(w.shell(`"git" -C "${dir}x" push`), lost(`${dir}x`));
   assert.deepEqual(w.shell(`R="${dir}"; git -C "$R" push`), lost('$R'));
   assert.deepEqual(w.shell(`$d = '${dir}'; git -C $d push`, 'PowerShell'), lost('$d'));
   // Inside one, with each shell's escaped or doubled quote, it is a message's word.

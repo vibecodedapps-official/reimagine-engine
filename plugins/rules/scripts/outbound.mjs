@@ -76,7 +76,7 @@ export function namedFiles(command) {
 
 // The directories a command names after cd, pushd, Set-Location, Push-Location or -C. A -C is loose unless it is an
 // option of git itself, since grep -C 3 and make -C build name no folder to push from.
-const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?:\s+(?:-c\s+\S+|-[^\sC]\S*))*\s+$`, 'i');
+const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?:"[^"]*"|'[^']*'|\S+)|-[^\sC]\S*))*\s+$`, 'i');
 export function namedDirs(command) {
   const dir = (m) => ({ dir: unquote(m[1]), span: m.indices[1] });
   return [...all(command, String.raw`(?<![${EDGE}])(?:cd|pushd|Set-Location|Push-Location)\s+(?:-(?:Literal)?Path\s+)?${VALUE}`, 'dgi').map(dir),
@@ -91,13 +91,13 @@ const without = (text, spans) => {
 
 const isDir = (p) => { try { return statSync(p).isDirectory(); } catch { return false; } };
 
-// A git call that had no time left, or was stopped when its time ran out.
+// A git call or a search that had no time left, or a git call stopped when its time ran out.
 class Late extends Error {}
 
-function git(dir, args, until = Infinity) {
-  const left = until - Date.now();
-  if (left <= 0) throw new Late();
-  const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 28, windowsHide: true, timeout: left < Infinity ? Math.ceil(left) : undefined });
+function git(dir, args, left = () => Infinity) {
+  const ms = left();
+  if (ms <= 0) throw new Late();
+  const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 28, windowsHide: true, timeout: ms < Infinity ? Math.ceil(ms) : undefined });
   if (r.error?.code === 'ETIMEDOUT') throw new Late();
   if (r.error || r.status !== 0) throw new Error(`git ${args[0]} exited ${r.status}`);
   return r.stdout;
@@ -106,16 +106,16 @@ function git(dir, args, until = Infinity) {
 // The texts of the commits a push from dir could send: those HEAD or a local branch reaches, or a tag when the command
 // sends tags, and no remote-tracking ref holds. Refspecs are not read, so a branch the push leaves behind counts too.
 // With diff, their added lines; lost says the diff could not be read. One git call reads both, its output cut at a mark
-// made for the call, so no text of a commit can end a piece. A call that runs past until throws Late.
-export function leaving(dir, command, diff, until) {
+// made for the call, so no text of a commit can end a piece. A call with no time left throws Late.
+export function leaving(dir, command, diff, left) {
   const tags = new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command);
   const id = randomBytes(8).toString('hex');
   const args = (patch) => ['log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
     `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, 'HEAD', '--branches', ...(tags ? ['--tags'] : []), '--not', '--remotes'];
   let out, lost = false;
-  try { out = git(dir, args(diff), until); } catch (e) {
+  try { out = git(dir, args(diff), left); } catch (e) {
     if (!diff || e instanceof Late) throw e;
-    out = git(dir, args(false), until);
+    out = git(dir, args(false), left);
     lost = true;
   }
   const texts = [], added = [];
@@ -163,13 +163,15 @@ function postWord(command, list) {
 }
 
 // The output lines for one hook input: a deny on the first hit, else one warning that names what could not be read.
-// The git calls of one input share limit milliseconds, kept under the timeout of the hook's entry, since a hook the
-// host stops lets the call go ahead: a push whose commits were not read in that time, or from a folder not found, is denied.
-export function check(input, list, path, { home, platform, tmp = tmpdir(), env = process.env, limit = 45000 }) {
-  const until = Date.now() + limit;
+// The git calls of one input and the search of what they return share limit milliseconds, kept under the timeout of
+// the hook's entry, since a hook the host stops lets the call go ahead: a push whose commits were not read in that
+// time, or from a folder not found, is denied.
+export function check(input, list, path, { home, platform, tmp = tmpdir(), env = process.env, limit = 45000, now = Date.now }) {
+  const until = now() + limit, left = () => until - now();
   const find = finder(list), tool = String(input?.tool_name ?? ''), ti = input?.tool_input ?? {};
-  const hit = (texts) => {
+  const hit = (texts, time) => {
     for (const { where, text } of texts) {
+      if (time && time() <= 0) throw new Late();
       const s = find(text);
       if (s !== null) return [deny(`rules: "${s}", listed in ${path}, is in ${where}`)];
     }
@@ -179,13 +181,16 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   if ((tool !== 'Bash' && tool !== 'PowerShell') || typeof ti.command !== 'string') return [];
   const command = ti.command, cwd = resolve(typeof input.cwd === 'string' && isDir(input.cwd) ? input.cwd : process.cwd());
   // A variable in a path is read from the hook's environment, $NAME and ${NAME} for Bash, $env:NAME and ${env:NAME}
-  // for PowerShell, with HOME the home folder, for Bash the HOME of the environment when set, and PWD the folder the
-  // path is looked for in; one that is not set stays as written.
+  // for PowerShell, with the shell's own HOME the home folder, for Bash the HOME of the environment when set, and its
+  // own PWD the folder the path is looked for in; one that is not set stays as written.
   const vars = tool === 'Bash' ? /\$(?:\{\w+\}|\w+)/g : /\$(?:\{env:\w+\}|env:\w+|\{(?:HOME|PWD)\}|(?:HOME|PWD)(?!\w))/gi;
   const value = (name) => { const key = tool === 'PowerShell' ? name.toUpperCase() : name; return key === 'HOME' ? (tool === 'Bash' ? env.HOME ?? home : home) : key === 'PWD' ? '.' : env[name]; };
   // The Bash tool on Windows names paths in the MSYS form: /c/... for a drive and /tmp for the temp folder.
   const local = (written, base = cwd) => {
-    const p = written.replace(vars, (all) => value(all.replace(/^\$\{?(?:env:)?|\}$/gi, '')) ?? all);
+    const p = written.replace(vars, (all) => {
+      const name = all.replace(/^\$\{?|\}$/g, '');
+      return (/^env:/i.test(name) ? env[name.slice(4)] : value(name)) ?? all;
+    });
     if (p === '~' || /^~[\\/]/.test(p)) return join(home, p.slice(2));
     if (platform === 'win32' && tool === 'Bash') {
       if (p === '/tmp' || p.startsWith('/tmp/')) return join(tmp, p.slice(5));
@@ -248,12 +253,11 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     for (const dir of [cwd, ...dirs.map((d) => d.dir)]) {
       if (read.has(real(dir))) continue;
       read.add(real(dir));
-      let out;
-      try { out = leaving(dir, command, list.diff, until); } catch (e) {
+      let out, found;
+      try { out = leaving(dir, command, list.diff, left); found = hit(out.texts, left); } catch (e) {
         if (e instanceof Late) return [deny(`rules: the commits a push from ${dir} would send could not be read in ${limit / 1000} seconds, so the push was not checked against ${path}; run it again`)];
         continue;
       }
-      const found = hit(out.texts);
       if (found) return found;
       if (out.lost) notes.push(`the diff of the commits in ${dir}`);
     }

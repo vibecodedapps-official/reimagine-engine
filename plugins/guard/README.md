@@ -66,6 +66,7 @@ When `reimagine-guard.json` cannot be read, or is missing while the settings fil
 The hook does not see:
 
 - a script or alias that pushes or posts and that no `post:` line names, and a git alias kept in git's configuration;
+- a command a `post:` line names, typed with a `..` segment or doubled spaces inside the phrase, and one that names an Azure DevOps repository alone, by an option other than `--repository` or `-r`, outside a flagged checkout;
 - a program started by another program, such as `Start-Process` or a script language's subprocess call;
 - the host's own calls;
 - a raw call that names the repository only by an id, or whose address is put together from variables;

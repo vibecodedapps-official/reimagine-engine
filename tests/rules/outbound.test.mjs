@@ -412,6 +412,14 @@ test('R405: a folder or a file written through a variable of the environment is 
   denied(w.shell(`cd "${w.root}" && cd repo && git push`), 'zqxlisted', 'commit ', w);
   writeFileSync(join(w.root, 'body.txt'), 'by zqxlisted\n');
   denied(w.shell('gh pr create --body-file "$ZQX_ROOT/body.txt"'), 'zqxlisted', `the file ${join(w.root, 'body.txt')}`, w);
+  // A variable after the first character of a path, the braced HOME and PWD of PowerShell in any letter case, and ~ with a backslash.
+  w.env.ZQX_NAME = 'repo';
+  w.env.ZQX_FILE = 'body.txt';
+  denied(w.shell(`git -C "${w.root}/$ZQX_NAME" push`), 'zqxlisted', 'commit ', w);
+  denied(w.shell('gh pr create --body-file "$ZQX_ROOT/$ZQX_FILE"'), 'zqxlisted', `the file ${join(w.root, 'body.txt')}`, w);
+  denied(w.shell('git -C "${PWD}/repo" push', 'PowerShell', w.root), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git -C "$pwd/repo" push', 'PowerShell', w.root), 'zqxlisted', 'commit ', w);
+  if (process.platform === 'win32') denied(w.shell('Set-Location ~\\..\\repo; git push', 'PowerShell'), 'zqxlisted', 'commit ', w);
   const lost = (value) => ({ decision: 'deny', reason: `rules: the folder ${value}, which the command names, was not found, so a push from it was not checked against ${w.listFile}; name it by a path that exists when the command is typed` });
   assert.deepEqual(w.shell('git -C "$ZQX_UNSET/repo" push'), lost('$ZQX_UNSET/repo'));
   assert.deepEqual(w.shell('git -C "$env:ZQX_UNSET/repo" push', 'PowerShell'), lost('$env:ZQX_UNSET/repo'));

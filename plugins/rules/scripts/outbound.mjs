@@ -177,12 +177,12 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   const command = ti.command, cwd = resolve(typeof input.cwd === 'string' && isDir(input.cwd) ? input.cwd : process.cwd());
   // A variable in a path is read from the hook's environment, $NAME and ${NAME} for Bash, $env:NAME and ${env:NAME}
   // for PowerShell, with HOME and PWD the home and the call's folder; one that is not set stays as written.
-  const vars = tool === 'Bash' ? /\$(?:\{(\w+)\}|(\w+))/g : /\$(?:\{env:(\w+)\}|env:(\w+)|(HOME|PWD)(?!\w))/gi;
-  const value = (name) => (name === 'HOME' ? home : name === 'PWD' ? cwd : env[name]);
+  const vars = tool === 'Bash' ? /\$(?:\{\w+\}|\w+)/g : /\$(?:\{env:\w+\}|env:\w+|\{(?:HOME|PWD)\}|(?:HOME|PWD)(?!\w))/gi;
+  const value = (name) => { const key = tool === 'PowerShell' ? name.toUpperCase() : name; return key === 'HOME' ? home : key === 'PWD' ? cwd : env[name]; };
   // The Bash tool on Windows names paths in the MSYS form: /c/... for a drive and /tmp for the temp folder.
   const local = (written, base = cwd) => {
-    const p = written.replace(vars, (all, a, b, c) => value(c ? c.toUpperCase() : a ?? b) ?? all);
-    if (p === '~' || p.startsWith('~/')) return join(home, p.slice(2));
+    const p = written.replace(vars, (all) => value(all.replace(/^\$\{?(?:env:)?|\}$/gi, '')) ?? all);
+    if (p === '~' || /^~[\\/]/.test(p)) return join(home, p.slice(2));
     if (platform === 'win32' && tool === 'Bash') {
       if (p === '/tmp' || p.startsWith('/tmp/')) return join(tmp, p.slice(5));
       const m = /^\/([A-Za-z])(\/.*|)$/.exec(p);

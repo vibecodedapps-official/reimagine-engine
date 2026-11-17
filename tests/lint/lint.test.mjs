@@ -230,12 +230,12 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'guard');
   });
 
-  negative('R406: ask.mjs over the 480-line budget', (dir) => {
-    put(dir, 'plugins/guard/scripts/ask.mjs', '// x\n'.repeat(481));
+  negative('R406: ask.mjs over the 520-line budget', (dir) => {
+    put(dir, 'plugins/guard/scripts/ask.mjs', '// x\n'.repeat(521));
     bump(dir, 'guard');
-  }, 1, ['plugins/guard/scripts/ask.mjs: 481 lines, over the 480-line budget']);
-  positive('R406: ask.mjs at 480 lines passes', (dir) => {
-    put(dir, 'plugins/guard/scripts/ask.mjs', '// x\n'.repeat(480));
+  }, 1, ['plugins/guard/scripts/ask.mjs: 521 lines, over the 520-line budget']);
+  positive('R406: ask.mjs at 520 lines passes', (dir) => {
+    put(dir, 'plugins/guard/scripts/ask.mjs', '// x\n'.repeat(520));
     bump(dir, 'guard');
   });
 

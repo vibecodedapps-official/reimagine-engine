@@ -275,7 +275,7 @@ function importFailures(ctx) {
 
 function budgetFailures(ctx) {
   const out = [];
-  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/rules/scripts/outbound.mjs', 300], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/guard/scripts/ask.mjs', 480], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/staged.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
+  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/rules/scripts/outbound.mjs', 300], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/guard/scripts/ask.mjs', 520], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/staged.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
     const source = ctx.text(script);
     if (source === null) continue;
     const lines = source.split('\n').length - 1 + (source !== '' && !source.endsWith('\n') ? 1 : 0);

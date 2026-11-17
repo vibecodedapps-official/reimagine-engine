@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## guard 0.1.6 - 2026-11-17
+
+- A command that holds a phrase you listed as a post asks when it names a flagged repository or runs in a checkout of one. The phrases are the `post:` lines of `rules-outbound.txt` in the config folder. A pull request updated or commented on by a script went out unasked, since the hook judged only `git`, `gh`, `az repos` and raw calls, so on a machine that posts through scripts the flag covered the push alone. A line such as `post: az boards work-item update` has a work item write asked about in a flagged checkout.
+- `/guard use <path>` has a second config folder read the first folder's list. A second folder that shared the settings file asked before every push in every repository, and one with neither file asked nothing in a repository the first folder flags; the only remedy was a copy of the list kept the same by hand.
+- A repository added with `ask` is left out of the publishing and merge allow entries. Where the hook could not answer, guard's own entry told the classifier that the push or post was allowed. Run `/guard` once after the update: the startup notice says the entries are stale until then.
+- The hook's `git` calls share 8 seconds, and it asks when they are used up. Each call had 5 seconds of its own, so a few slow ones could pass the hook's 10 seconds, after which the call went on with no prompt.
+
 ## rules 0.1.38 - 2026-11-17
 
 - In a command that holds a `post:` phrase, a file after any option whose name holds `file` is read, with one dash or two, as in `--file-path <file>` or `-DescriptionFile <file>`, and its path is left out of the search as for the other files. A posting script that takes its file through an option of its own had that file left unread, and a clean file under a folder whose name holds a listed string was denied. A git or forge command with no such phrase is not read this way, since options such as `--pathspec-from-file` name a file that is not sent. Not read as a file are an option that takes a name, one that names a file to write such as `--output-file`, and `-File` with a `.ps1` script.

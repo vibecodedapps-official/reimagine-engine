@@ -6,27 +6,29 @@
 //   plan     show the change and save it under an id; takes --add <path> [--merge] [--reads] [--ask], --drop <path or remote> or --clear
 //   apply    takes that id: write the saved change (a backup first), then check the host's effective configuration
 //   denials  print the classifier denials the PermissionDenied hook recorded
+//   use      takes the path of another config folder's list file: this folder's own list file then names it
 //   session-start  the startup hook: one notice line when the entries are stale or the list cannot be used; writes nothing
 //   denied   the hook itself: reads a hook input on stdin and appends one line to the denials file
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const MARK = ' (reimagine guard)';
 const PLAN_FILE = 'guard-plan.json';
 const STATE_FILE = 'guard-state.json';
 const LIST_FILE = 'reimagine-guard.json';
-const VERBS = ['status', 'list', 'plan', 'apply', 'denials'];
+const VERBS = ['status', 'list', 'plan', 'apply', 'use', 'denials'];
 const DENIALS_FILE = 'denials.jsonl';
 const DENIALS_MAX = 256 * 1024, DENIALS_KEEP = 100;
+const USE_FORM = "use takes the absolute or ~/ path of another folder's reimagine-guard.json";
 const NO_ID = 'apply takes the id on the plan: line of the plan it writes';
 const LISTS = ['environment', 'allow', 'soft_deny', 'hard_deny'];
 const FORMS = 'plan takes one of --add <path> [--merge] [--reads] [--ask], --drop <path or remote> or --clear; nothing else is accepted';
 const GUARD_LABELS = [['trusted repo', 'Trusted repo'], ['source control', 'Source control']];
-const ALLOW_OWN = `User's own repositories: pushing a branch to a repository listed under Source control, opening a pull request there, and editing the title or description of, or commenting on, a pull request there that the user's own message asked to work on, one this session did not open included. A body given on stdin, or in a file that the agent or its subagents wrote in this session, counts as derived from this transcript.${MARK}`;
+const ALLOW_OWN = `User's own repositories: pushing a branch to a repository listed under Source control, opening a pull request there, and editing the title or description of, or commenting on, a pull request there that the user's own message asked to work on, one this session did not open included. A body given on stdin, or in a file that the agent or its subagents wrote in this session, counts as derived from this transcript.`;
 const ALLOW_READS = `Settings reads: reading Claude Code settings files, the settings.json in the configuration directory and a listed repository's .claude/settings.json or .claude/settings.local.json, to inspect or verify configuration is not credential exploration, as long as no value read leaves the machine.${MARK}`;
 
 export class Refusal extends Error {}
@@ -153,7 +155,7 @@ export const readList = (text, platform) => { try { return parseList('', { text 
 // What the ask hook and the startup notice say while the list cannot be used.
 const BROKEN = 'so guard asks before every push and every gh and az repos write';
 export const unreadable = (list) => `guard: ${list} cannot be read, ${BROKEN}; correct it or run /guard`;
-export const missing = (path, list) => `guard: ${path} holds guard's entries but ${list} is missing, ${BROKEN}; run /guard, or put a copy of the list file beside that settings file`;
+export const missing = (path, list) => `guard: ${path} holds guard's entries but ${list} is missing, ${BROKEN}; run /guard, or /guard use with the path of another folder's list file`;
 // Whether a settings text holds an autoMode entry guard wrote; a text that does not parse is searched for one.
 export function marked(text) {
   if (typeof text !== 'string' || !text.includes(MARK)) return false;
@@ -264,11 +266,14 @@ function edit(text, scan, auto, created) {
 function entries(repos, defs) {
   const host = defs.environment.find((l) => labelOf(l) === 'trusted repo');
   const sites = repos.map((r) => `${r.path} (${r.remotes.join(', ')})`).join('; ');
-  const merge = sorted(repos.filter((r) => r.merge).flatMap((r) => r.remotes));
+  // A repository listed with ask is outside the allow entries, so a call the ask hook missed is no more allowed than without guard.
+  const asked = sorted(repos.filter((r) => r.ask).flatMap((r) => r.remotes));
+  const but = asked.length ? ` This entry does not cover ${asked.join(', ')}, where the user is asked before each push, pull request and comment.` : '';
+  const merge = sorted(repos.filter((r) => r.merge && !r.ask).flatMap((r) => r.remotes));
   return {
     trusted: `${host} The user's own repositories listed under Source control are trusted the same way, at these local checkouts: ${sites}.${MARK}`,
     source: `**Source control**: The trusted repo and its remote(s), and these remotes of the user's own repositories: ${sorted(repos.flatMap((r) => r.remotes)).join(', ')}; as scoped by the Trusted repo and Repository visibility entries above.${MARK}`,
-    allow: [ALLOW_OWN, ...(repos.some((r) => r.reads) ? [ALLOW_READS] : []), ...(merge.length
+    allow: [...(repos.every((r) => r.ask) ? [] : [`${ALLOW_OWN}${but}${MARK}`]), ...(repos.some((r) => r.reads) ? [ALLOW_READS] : []), ...(merge.length
       ? [`Owner-reviewed merges: merging a pull request in ${merge.join(', ')}, when the user's own message names that pull request and asks for the merge; the user reviews their own pull requests in these repositories.${MARK}`] : [])],
   };
 }
@@ -337,6 +342,7 @@ function render(auto, repos, defs, state) {
       else lines = lines.map((l, i) => (i === at ? { t: text, g: false } : l)).filter((l, i) => i === at || labelOf(l.t) !== lb);
     }
     allow = [...(allow0 === undefined ? ['$defaults'] : allow0.filter((l) => !isMarked(l))), ...want.allow];
+    if (!want.allow.length && same(allow, ['$defaults']) && (!allow0 || allow0.some(isMarked))) allow = undefined;
   }
   const env = lines?.map((l) => l.t);
   return {
@@ -346,13 +352,30 @@ function render(auto, repos, defs, state) {
   };
 }
 
+const tilde = (p, home) => (/^~[\\/]/.test(p) ? join(home, p.slice(2)) : p);
+// The settings file and the list of the session's config folder. own is the folder's list file; when it names another
+// folder's list in "use" by an absolute or ~/ path, that file is the list, and it is followed no further.
 export function locate(env, home) {
   const dir = env.CLAUDE_CONFIG_DIR || join(home, '.claude');
-  const logical = join(dir, 'settings.json');
-  return { path: existsSync(logical) && lstatSync(logical).isSymbolicLink() ? realpathSync(logical) : logical, list: join(dir, LIST_FILE) };
+  const logical = join(dir, 'settings.json'), own = join(dir, LIST_FILE), use = readJson(own)?.use;
+  const named = typeof use === 'string' && isAbsolute(tilde(use, home));
+  return { dir, own, path: existsSync(logical) && lstatSync(logical).isSymbolicLink() ? realpathSync(logical) : logical, list: named ? resolve(tilde(use, home)) : own };
+}
+
+function useList(c, value) {
+  const { own } = locate(c.env, c.home), target = resolve(tilde(value, c.home));
+  if (key(target, c.platform) === key(resolve(own), c.platform)) refuse(`${own} is this folder's own list file`);
+  let text = null;
+  try { text = readFile(target).text; } catch {}
+  if (text === null || !readList(text, c.platform)) refuse(`${target} is not a guard list`);
+  if (existsSync(own) && readJson(own)?.use === undefined) refuse(`${own} holds a list of its own; run /guard clear under this folder, or delete the file, first`);
+  mkdirSync(dirname(own), { recursive: true });
+  writeAtomic(own, `${JSON.stringify({ version: 1, use: slash(value) })}\n`);
+  return [`guard: wrote ${own}; this folder now reads ${target}; run /guard to write its entries`];
 }
 
 function parseRequest(verb, rest) {
+  if (verb === 'use') return rest.length === 1 && isAbsolute(tilde(rest[0], '/')) ? { value: rest[0] } : refuse(USE_FORM);
   if (verb === 'apply') return /^[0-9a-f]{12}$/.test(rest[0] ?? '') && rest.length === 1 ? { id: rest[0] } : refuse(NO_ID);
   if (verb !== 'plan') {
     if (rest.length) refuse(`${verb} takes no arguments`);
@@ -589,6 +612,7 @@ function applyPlan(c, id) {
 
 function run(verb, request, c) {
   if (verb === 'apply') return applyPlan(c, request.id);
+  if (verb === 'use') return useList(c, request.value);
   if (verb === 'denials') return listDenials(c.dataDir);
   if (verb === 'list') {
     let repos;
@@ -642,11 +666,11 @@ export function main(argv, { env = process.env, platform = process.platform, now
   if (verb === 'session-start') {
     try { return sessionStart({ env, platform, now, home, cwd, claude, dataDir }); } catch { return []; }
   }
-  if (!VERBS.includes(verb)) refuse(`unknown command ${verb}; use status, list, plan, apply or denials`);
+  if (!VERBS.includes(verb)) refuse(`unknown command ${verb}; the commands are status, list, plan, apply, use and denials`);
   if (!dataDir) refuse('the data directory argument is missing');
   const request = parseRequest(verb, rest);
   const step = () => run(verb, request, { env, platform, now, home, cwd, claude, dataDir });
-  return verb === 'plan' || verb === 'apply' ? locked(dataDir, step, wait) : step();
+  return ['plan', 'apply', 'use'].includes(verb) ? locked(dataDir, step, wait) : step();
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path.

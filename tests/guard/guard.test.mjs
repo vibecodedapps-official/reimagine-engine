@@ -21,6 +21,7 @@ const DOMAINS = '**Trusted internal domains**: None are configured.';
 const DEFAULT_ALLOW = ["Test runs: running the project's own test command is allowed.", "Local edits: editing files inside the working directory is allowed."];
 const A1 = "User's own repositories: pushing a branch to a repository listed under Source control, opening a pull request there, and editing the title or description of, or commenting on, a pull request there that the user's own message asked to work on, one this session did not open included. A body given on stdin, or in a file that the agent or its subagents wrote in this session, counts as derived from this transcript. (reimagine guard)";
 const A2 = "Settings reads: reading Claude Code settings files, the settings.json in the configuration directory and a listed repository's .claude/settings.json or .claude/settings.local.json, to inspect or verify configuration is not credential exploration, as long as no value read leaves the machine. (reimagine guard)";
+const A1_BUT = (remotes) => `${A1.slice(0, -' (reimagine guard)'.length)} This entry does not cover ${remotes}, where the user is asked before each push, pull request and comment. (reimagine guard)`;
 const RA = 'https://user:tok3n@git.example.invalid/org/app.git';
 const NA = 'git.example.invalid/org/app';
 const RB1 = 'git@git.example.invalid:org/lib.git';
@@ -569,7 +570,7 @@ test('R340: argument errors are refused before any claude call', () => {
   noCall(w, ['apply', 'x'], 'apply takes the id on the plan: line of the plan it writes');
   noCall(w, ['status', 'x'], 'status takes no arguments');
   noCall(w, ['list', 'x'], 'list takes no arguments');
-  assert.throws(() => main(['nope', w.data], { env: w.env }), refusal('unknown command nope; use status, list, plan, apply or denials'));
+  assert.throws(() => main(['nope', w.data], { env: w.env }), refusal('unknown command nope; the commands are status, list, plan, apply, use and denials'));
   assert.throws(() => main(['plan'], { env: w.env }), refusal('the data directory argument is missing'));
 });
 
@@ -866,7 +867,7 @@ test('R342: a refusal on the command line is one line starting guard: with exit 
   assert.equal(listed.stdout, 'list: no repositories\n');
   const unknown = run('nope', w.data);
   assert.equal(unknown.status, 1);
-  assert.equal(unknown.stdout, 'guard: unknown command nope; use status, list, plan, apply or denials\n');
+  assert.equal(unknown.stdout, 'guard: unknown command nope; the commands are status, list, plan, apply, use and denials\n');
 });
 
 const denied = (w, input) => main(['denied', w.data], { now: w.now, stdin: () => (typeof input === 'string' ? input : j(input)) });
@@ -1115,16 +1116,53 @@ test('R340: --ask sets ask on the entry, written only when set, and a change of 
   change(w, '--add', lib.path);
   assert.equal(read(w.list), `{\n  "version": 1,\n  "repos": [\n    {\n      "path": "${app.top}",\n      "remotes": [\n        "${NA}"\n      ],\n      "merge": false,\n      "ask": true\n    },\n    {\n      "path": "${lib.top}",\n      "remotes": [\n        "${NB1}"\n      ],\n      "merge": false\n    }\n  ]\n}\n`);
   assert.deepEqual(w.run('list'), [`${app.top} ${NA} ask`, `${lib.top} ${NB1}`]);
-  const settings = read(w.settings);
   assert.deepEqual(w.run('plan', '--add', lib.path, '--merge', '--reads', '--ask').slice(3, 4), [`repository: ~ ${lib.top} (${NB1}) merge reads ask`]);
-  const only = w.run('plan', '--add', lib.path, '--ask');
-  assert.deepEqual(only, [`target: ${w.settings}`, `list: ${w.list}`, 'state: stale', `repository: ~ ${lib.top} (${NB1}) ask`, PLAN_CHECK, 'change: ready']);
-  w.now = new Date(w.now.getTime() + 1000);
-  assert.deepEqual(w.run('apply'), [`guard: wrote ${w.list}`, CHECK]);
-  assert.equal(read(w.settings), settings);
+  change(w, '--add', lib.path, '--ask');
   assert.deepEqual(JSON.parse(read(w.list)).repos.map((r) => r.ask), [true, true]);
   assert.equal(w.run('status')[0], `state: current ${w.settings}`);
   assert.deepEqual(sessionStart(w), []);
+});
+
+test('R339: a repository listed with ask is outside the publishing and the merge entry', () => {
+  const w = world();
+  const app = repo(w, 'app', [RA]);
+  const lib = repo(w, 'lib', [RB1]);
+  const allow = () => JSON.parse(read(w.settings)).autoMode.allow;
+  const only = change(w, '--add', app.path, '--ask', '--merge');
+  assert.deepEqual(only.plan.filter((l) => l.startsWith('entry: + allow')), []);
+  assert.equal(allow(), undefined);
+  const both = change(w, '--add', lib.path, '--merge');
+  assert.deepEqual(both.plan.filter((l) => l.startsWith('entry: + allow')), [`entry: + allow: ${A1_BUT(NA)}`, `entry: + allow: ${mergeFor(NB1)}`]);
+  assert.deepEqual(allow(), ['$defaults', "User's own repositories: pushing a branch to a repository listed under Source control, opening a pull request there, and editing the title or description of, or commenting on, a pull request there that the user's own message asked to work on, one this session did not open included. A body given on stdin, or in a file that the agent or its subagents wrote in this session, counts as derived from this transcript. This entry does not cover git.example.invalid/org/app, where the user is asked before each push, pull request and comment. (reimagine guard)", mergeFor(NB1)]);
+  const flagged = change(w, '--add', lib.path, '--merge', '--ask');
+  assert.deepEqual(flagged.plan.filter((l) => l.startsWith('entry: ')), [`entry: - allow: ${A1_BUT(NA)}`, `entry: - allow: ${mergeFor(NB1)}`]);
+  assert.equal(allow(), undefined);
+  const off = change(w, '--add', app.path);
+  assert.deepEqual(off.plan.filter((l) => l.startsWith('entry: + allow')), [`entry: + allow: ${A1_BUT(NB1)}`]);
+  assert.equal(w.run('status')[0], `state: current ${w.settings}`);
+});
+
+test('R340: use has a second folder read the first folder\'s list, and refuses a path that is no list or a folder with a list of its own', () => {
+  const w = repoWorld();
+  change(w, '--add', w.repo.path, '--ask');
+  const second = join(w.dir, 'second'), data = join(w.dir, 'data2'), own = join(second, 'reimagine-guard.json');
+  mkdirSync(second);
+  const at = (...argv) => main([argv[0], data, ...argv.slice(1)], { env: { ...w.env, CLAUDE_CONFIG_DIR: second }, now: w.now, home: w.home, cwd: w.work, claude: w.claude });
+  assert.throws(() => at('use', 'reimagine-guard.json'), refusal("use takes the absolute or ~/ path of another folder's reimagine-guard.json"));
+  assert.throws(() => at('use'), refusal("use takes the absolute or ~/ path of another folder's reimagine-guard.json"));
+  assert.throws(() => at('use', join(w.dir, 'none.json')), refusal(`${join(w.dir, 'none.json')} is not a guard list`));
+  assert.throws(() => at('use', w.settings), refusal(`${w.settings} is not a guard list`));
+  assert.throws(() => at('use', own), refusal(`${own} is this folder's own list file`));
+  assert.equal(existsSync(own), false);
+  assert.deepEqual(at('use', w.list), [`guard: wrote ${own}; this folder now reads ${w.list}; run /guard to write its entries`]);
+  assert.equal(read(own), `{"version":1,"use":${j(w.list.replace(/\\/g, '/'))}}\n`);
+  assert.deepEqual(at('list'), [`${w.repo.top} ${NA} ask`]);
+  assert.deepEqual(at('status'), [`state: stale ${join(second, 'settings.json')}`, `list: ${w.list} (1 repositories)`]);
+  assert.deepEqual(at('use', w.list), [`guard: wrote ${own}; this folder now reads ${w.list}; run /guard to write its entries`]);
+  assert.throws(() => main(['use', w.data, own], { env: w.env, home: w.home, cwd: w.work, claude: w.claude }), refusal(`${own} is not a guard list`));
+  assert.throws(() => main(['use', w.data, join(w.dir, 'none.json')], { env: w.env, home: w.home, cwd: w.work, claude: w.claude }), refusal(`${join(w.dir, 'none.json')} is not a guard list`));
+  writeFileSync(own, read(w.list));
+  assert.throws(() => at('use', w.list), refusal(`${own} holds a list of its own; run /guard clear under this folder, or delete the file, first`));
 });
 
 test('R341: session-start names a missing list when the settings file holds guard entries, with no claude call, and not when no one attends', () => {
@@ -1135,7 +1173,7 @@ test('R341: session-start names a missing list when the settings file holds guar
   const lines = sessionStart(w);
   assert.equal(lines.length, 1);
   assert.ok(lines[0].startsWith('{"systemMessage":"guard: '));
-  assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: ${w.settings} holds guard's entries but ${w.list} is missing, so guard asks before every push and every gh and az repos write; run /guard, or put a copy of the list file beside that settings file` });
+  assert.deepEqual(JSON.parse(lines[0]), { systemMessage: `guard: ${w.settings} holds guard's entries but ${w.list} is missing, so guard asks before every push and every gh and az repos write; run /guard, or /guard use with the path of another folder's list file` });
   assert.deepEqual(w.calls, []);
   assert.deepEqual(main(['session-start', w.data], { env: { ...w.env, CLAUDE_CODE_SESSION_ATTENDED: '0' }, now: w.now, home: w.home, cwd: w.work, claude: w.claude }), []);
   writeFileSync(w.settings, '{"autoMode":{"allow":["$defaults"]}}\n');

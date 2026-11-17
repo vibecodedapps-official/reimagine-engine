@@ -78,7 +78,7 @@ const APP = to('github.com/zz-owner/zz-app');
 const SVC = to('dev.azure.com/zz-org/zz-proj/_git/zz-svc');
 const UNRES = `guard: this call's directory could not be resolved and github.com/zz-owner/zz-app is listed to ask ${EVERY}`;
 const BAD = (cfg) => `guard: ${join(cfg, 'reimagine-guard.json')} cannot be read, so guard asks before every push and every gh and az repos write; correct it or run /guard`;
-const GONE = (cfg) => `guard: ${join(cfg, 'settings.json')} holds guard's entries but ${join(cfg, 'reimagine-guard.json')} is missing, so guard asks before every push and every gh and az repos write; run /guard, or put a copy of the list file beside that settings file`;
+const GONE = (cfg) => `guard: ${join(cfg, 'settings.json')} holds guard's entries but ${join(cfg, 'reimagine-guard.json')} is missing, so guard asks before every push and every gh and az repos write; run /guard, or /guard use with the path of another folder's list file`;
 
 const deps = (cfg = MAIN, extra = {}) => ({ home: root, platform: process.platform, ...extra, env: { ...env, CLAUDE_CONFIG_DIR: cfg, ...extra.env } });
 const shell = (cwd, command, tool = 'Bash') => ({ cwd, tool_name: tool, tool_input: { command } });
@@ -503,6 +503,53 @@ test('R406: a --help word releases nothing, wherever it stands', () => {
   ]);
 });
 
+test('R406: a command that holds a post: phrase of the outbound list asks in a flagged checkout or when it names a flagged repository', () => {
+  const posts = '# scripts that post\nzz-secret\npost: Tools\\pr-\npost: az boards work-item update\n';
+  const cfg = config({ 'reimagine-guard.json': LIST, 'rules-outbound.txt': posts });
+  const update = 'node C:/tools/pr-update.mjs --project zz-proj --repository zz-svc --pr-id 12 --file-path body.json';
+  const comment = 'Get-Content note.json | node C:/tools/pr-comment.mjs --project zz-proj --repository zz-svc --pr-id 12';
+  const rows = [
+    [ps(B, update), SVC],
+    [ps(B, comment), SVC],
+    [ps(D, update), SVC],
+    [ps(D, comment), SVC],
+    [ps(D, 'node C:/tools/pr-update.mjs --project zz-else --repository zz-svc --pr-id 12'), null],
+    [ps(A, 'node C:/tools/pr-update.mjs --pr-id 12'), APP],
+    [ps(C, 'node C:/tools/pr-update.mjs --pr-id 12'), null],
+    [ps(C, 'cd $dir; node C:/tools/pr-update.mjs --pr-id 12'), UNRES],
+    [ps(B, 'az boards work-item update --id 12 --discussion "ready for review"'), SVC],
+    [ps(D, 'az boards work-item update --id 12 --discussion "ready for review"'), null],
+    [ps(B, 'az boards work-item show --id 12'), null],
+    [ps(B, 'node C:/tools/build.mjs'), null],
+  ];
+  judge(rows, deps(cfg));
+  judge([[ps(B, update), null], [ps(D, update), null]]);
+  const wide = config({ 'reimagine-guard.json': LIST, 'rules-outbound.txt': Buffer.from(`\ufeff${posts}`, 'utf16le') });
+  judge([[ps(B, comment), SVC], [ps(B, 'node C:/tools/build.mjs'), null]], deps(wide));
+  const gone = config({ 'settings.json': MARKED, 'rules-outbound.txt': posts });
+  judge([[ps(D, update), GONE(gone)], [ps(D, 'node C:/tools/build.mjs'), null]], deps(gone));
+});
+
+test('R406: git calls that together pass 8 seconds make the call ask, each call given what is left', () => {
+  let clock = 0;
+  const limits = [];
+  const slow = (dir, args, ms) => { limits.push(ms); clock += 3500; return ''; };
+  judge([[shell(C, `cd "${D}/n0"; cd "${D}/n1"; git push`), UNRES]], deps(MAIN, { git: slow, now: () => clock }));
+  assert.deepEqual(limits, [5000, 4500, 1000]);
+});
+
+test('R335: a folder whose list file names another list asks as that list has it, and asks before every push when the named file is no list', () => {
+  const named = (file) => JSON.stringify({ version: 1, use: file });
+  const second = config({ 'reimagine-guard.json': named(fw(join(MAIN, 'reimagine-guard.json'))) });
+  judge([[shell(A, 'git push'), APP], [shell(C, 'git push origin HEAD'), null]], deps(second));
+  const lost = config({ 'reimagine-guard.json': named(`${D}/none.json`), 'settings.json': MARKED });
+  judge([[shell(D, 'git push'), `guard: ${join(lost, 'settings.json')} holds guard's entries but ${join(D, 'none.json')} is missing, so guard asks before every push and every gh and az repos write; run /guard, or /guard use with the path of another folder's list file`]], deps(lost));
+  const twice = config({ 'reimagine-guard.json': named(fw(join(second, 'reimagine-guard.json'))) });
+  judge([[shell(D, 'git push'), BAD(second)]], deps(twice));
+  const relative = config({ 'reimagine-guard.json': named('reimagine-guard.json') });
+  judge([[shell(D, 'git push'), BAD(relative)]], deps(relative));
+});
+
 function hook(input, cfg = MAIN) {
   return spawnSync(process.execPath, [SCRIPT], { input, env: { ...env, CLAUDE_CONFIG_DIR: cfg }, encoding: 'utf8' });
 }
@@ -530,9 +577,9 @@ test('R406: the script prints nothing and exits 0 for stdin that is not JSON or 
   assert.equal(none.stdout, '');
 });
 
-test('R406: the script is at most 480 lines, ASCII, and imports only node: modules and ./guard.mjs', () => {
+test('R406: the script is at most 520 lines, ASCII, and imports only node: modules and ./guard.mjs', () => {
   const text = readFileSync(SCRIPT, 'utf8');
-  assert.ok(text.split('\n').length - 1 <= 480);
+  assert.ok(text.split('\n').length - 1 <= 520);
   assert.ok(/^[\x00-\x7f]*$/.test(text));
   const specs = [...text.matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]);
   assert.ok(specs.includes('./guard.mjs'));

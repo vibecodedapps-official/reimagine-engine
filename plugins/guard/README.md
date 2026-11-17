@@ -7,14 +7,14 @@ Auto mode trust for the repositories you list: the classifier's entries in your 
 Only `autoMode.environment` and `autoMode.allow`, in `$CLAUDE_CONFIG_DIR/settings.json` when that variable is set, else `~/.claude/settings.json`. Every other key keeps its value, `permissions` and `env` included, and every byte outside the `autoMode` value is kept. Nothing is written until you reply with the sentence the skill asks for.
 
 - The environment list. It is written out in full, with Claude Code's own default lines in it, since an added line does not replace a default one. While repositories are listed, a default line the host adds in a later release is added at the next `/guard`, if guard itself expanded `$defaults` or the absence of an environment list. With at least one repository listed, the Trusted repo line names each listed checkout and its remotes, and the Source control line names those remotes too. With none listed, both lines are Claude Code's again.
-- The allow list. With at least one repository listed, it gains one entry: publishing in the listed repositories, which is pushing a branch, opening a pull request, and editing or commenting on a pull request your own message asked to work on. Two more are written only when you ask: for a repository added with `merge`, merging a pull request in it that your own message names; and, while a repository is added with `reads`, reading Claude Code settings files to inspect configuration. That entry tells the classifier such a read is not credential exploration, so leave it out when your settings file holds tokens. Nothing guard writes clears the classifier's rules against self-modification, destructive git commands, safety bypasses or credential leakage.
-- The list of repositories, `reimagine-guard.json`, in the same directory as the settings file. The entries are rendered from it.
+- The allow list. With at least one repository listed, it gains one entry: publishing in the listed repositories, which is pushing a branch, opening a pull request, and editing or commenting on a pull request your own message asked to work on. A repository added with `ask` is left out of it: the entry names that repository's remotes as not covered, and is not written when every listed repository has `ask`. Two more are written only when you ask: for a repository added with `merge` and without `ask`, merging a pull request in it that your own message names; and, while a repository is added with `reads`, reading Claude Code settings files to inspect configuration. That entry tells the classifier such a read is not credential exploration, so leave it out when your settings file holds tokens. Nothing guard writes clears the classifier's rules against self-modification, destructive git commands, safety bypasses or credential leakage.
+- The list of repositories, `reimagine-guard.json`, in the same directory as the settings file. The entries are rendered from it. A second config folder can read the first one's list: see `/guard use` below.
 
 `autoMode` has no effect in a session started in bypass mode.
 
 ## Requirements
 
-Node 22 or later, `git` and the `claude` command on the PATH. The script runs `git`, `claude auto-mode defaults` and `claude auto-mode config` as child processes, and the ask hook runs `git remote -v` with a 5-second limit. Its design was checked on Claude Code 2.1.318.
+Node 22 or later, `git` and the `claude` command on the PATH. The script runs `git`, `claude auto-mode defaults` and `claude auto-mode config` as child processes, and the ask hook runs `git remote -v` with a 5-second limit, 8 seconds for all its `git` calls. Its design was checked on Claude Code 2.1.318.
 
 ## Install
 
@@ -36,6 +36,7 @@ Run `/guard` (also reachable as `/guard:guard`). Each change is shown as a plan,
 - `/guard list`: show the listed repositories.
 - `/guard status`: show the state: `absent`, `current`, `stale`, `edited`, `malformed`, `managed` or `unavailable`.
 - `/guard denials`: show the denials the hook recorded.
+- `/guard use <path>`: in a second config folder, read the list of the first. The path is the first folder's `reimagine-guard.json`, absolute or starting with `~/`. This folder's own list file becomes one line that names it, so both folders ask for the same repositories and a change made under either reaches both. Run `/guard` afterwards to write this folder's entries. To undo it, delete this folder's `reimagine-guard.json`.
 - `/guard`: refresh the entries after the host or a remote changed.
 
 Only `absent`, `current` and `stale` lead to a write, and `current` leads to none. `malformed` means the settings file is not a JSON object, holds `autoMode` twice, or holds an `autoMode` whose `environment` or `allow` is not a list of strings. `managed` means another settings scope already adds entries that the list would duplicate. `unavailable` means `claude` cannot run or prints defaults guard cannot use.
@@ -44,26 +45,27 @@ Before it saves a plan, the script writes the candidate `autoMode` to a temporar
 
 ## The startup notice
 
-When a session starts, a hook checks the entries against Claude Code's current defaults and prints one line when they are stale, such as after a host release reworded a default line: `guard: the auto mode entries in [path] are stale; run /guard to update them`. When the list file is not a guard list, it prints `guard: [list path] cannot be read, so guard asks before every push and every gh and az repos write; correct it or run /guard`. When the settings file holds guard's entries but the list file is missing, it prints `guard: [settings path] holds guard's entries but [list path] is missing, so guard asks before every push and every gh and az repos write; run /guard, or put a copy of the list file beside that settings file`. It prints nothing when no repository is listed and the settings file holds no guard entry, for any other state, and when `claude` cannot run, and it checks nothing in a `claude -p` session, which has no one to show the line to. It uses the remotes the list records, so a remote that changed on disk shows up at the next `/guard`. It runs `claude auto-mode defaults` with a 20-second limit, and writes nothing.
+When a session starts, a hook checks the entries against Claude Code's current defaults and prints one line when they are stale, such as after a host release reworded a default line: `guard: the auto mode entries in [path] are stale; run /guard to update them`. When the list file is not a guard list, it prints `guard: [list path] cannot be read, so guard asks before every push and every gh and az repos write; correct it or run /guard`. When the settings file holds guard's entries but the list file is missing, it prints `guard: [settings path] holds guard's entries but [list path] is missing, so guard asks before every push and every gh and az repos write; run /guard, or /guard use with the path of another folder's list file`. It prints nothing when no repository is listed and the settings file holds no guard entry, for any other state, and when `claude` cannot run, and it checks nothing in a `claude -p` session, which has no one to show the line to. It uses the remotes the list records, so a remote that changed on disk shows up at the next `/guard`. It runs `claude auto-mode defaults` with a 20-second limit, and writes nothing.
 
 ## Asking before a push or a post
 
-`/guard add <path> ask` has the host ask you before each push, pull request and comment aimed at that repository, even when an allow rule or guard's own entries would let the call run. The flag changes no `autoMode` entry. A hook reads each shell and MCP call before it runs, and asks for:
+`/guard add <path> ask` has the host ask you before each push, pull request and comment aimed at that repository, even when an allow rule would let the call run. Guard's own allow entries leave a flagged repository out, so where the hook cannot answer, a call to it is no more allowed than without guard. A hook reads each shell and MCP call before it runs, and asks for:
 
 - `git push`, including `git subtree push`, `git lfs push` and `git send-pack`, when it runs in a checkout of the repository, names the repository or one of its remotes, or pushes a branch whose configured remote is a URL of it;
 - a `gh` or `az repos` command that writes, such as `gh pr create`, `gh pr comment` or `az repos pr update`, when it names the repository or runs in a checkout of it; reads such as `gh pr view` pass, and an API call through `gh` counts as a write with a method other than GET, a field or an input, and a GraphQL call when it holds the word `mutation`, takes its query from a file or an input, or builds it from a variable or a command;
 - `curl`, `wget`, `Invoke-RestMethod`, `Invoke-WebRequest`, `az rest` and `az devops invoke`, when the command names the repository and is not a plain read; a read, with no method other than GET and no body, data, form, upload or config-file option, passes, and so does `curl -G`, which sends its data as a query;
-- an MCP call whose arguments name the repository or its listed path, unless the tool's name marks a read, such as `get_pull_request`.
+- an MCP call whose arguments name the repository or its listed path, unless the tool's name marks a read, such as `get_pull_request`;
+- a command that holds a phrase you listed as a post, when it names the repository or runs in a checkout of it. The phrases are the `post:` lines of `rules-outbound.txt` in your config folder, the file the rules plugin's outbound check reads, one per line: `post: tools/pr-update.mjs` has a script of that name asked about, and `post: az boards work-item update` a work item update. Case and the direction of a slash do not count. Guard reads the file whether or not the rules plugin is installed.
 
 A command names a repository by `owner/name`, in an option or a URL, or for Azure DevOps by its project and repository. A remote counts by that name whatever host or organization its URL gives, and a checkout at or inside a flagged repository's listed path counts as that repository whatever its remotes are now. The hook takes every directory a command line changes to, or names with `-C`, `--chdir` or `--directory`, wherever it stands, as one the command may run in, so a push typed in one checkout after a `cd` into another asks when either is flagged. A directory change the hook cannot follow, such as `cd $dir`, counts as aimed at a flagged repository, and so do a line with more than 16 such directories, a repository option that holds a variable, such as `-R "$REPO"`, and a push in a line that mentions a submodule, `GIT_DIR`, `GIT_WORK_TREE`, `CDPATH` or a `GIT_CONFIG` variable. `GH_REPO` never lets a call through: a flagged value asks, and any other value leaves the checkout rule in force; only `-R` or `--repo` decides alone. An `az repos` write that names no repository and runs outside a flagged checkout asks while an Azure DevOps repository is flagged, since a pull request id is looked up across the organization. Text that only looks like a command, such as `git push` inside an `echo` or a commit message, may ask too, and so may a GraphQL read through `gh` whose query the shell builds when the command runs, since the hook cannot tell it from a write.
 
-With nobody to answer, as in an unattended or `claude -p` run, the host denies a call that asks, so such a run cannot push or post to a flagged repository. When the hook itself cannot run, as with no `node` on the PATH, or runs past its 10-second limit, the call goes on without a prompt. The prompt was checked in auto mode, and in no other permission mode.
+With nobody to answer, as in an unattended or `claude -p` run, the host denies a call that asks, so such a run cannot push or post to a flagged repository. When the hook itself cannot run, as with no `node` on the PATH, or runs past its 10-second limit, the call goes on without a prompt; the hook's `git` calls stop after 8 seconds together and it asks then, and guard's allow entries do not cover a flagged repository. The prompt was checked in auto mode, and in no other permission mode.
 
 When `reimagine-guard.json` cannot be read, or is missing while the settings file holds guard's entries, the hook asks before every push and every `gh` and `az repos` write, whatever its repository, until you correct the file or run `/guard`. Raw calls and MCP calls pass then, since nothing can aim them without the list. With no repository flagged it does nothing.
 
 The hook does not see:
 
-- a script or alias that pushes or posts, and a git alias kept in git's configuration;
+- a script or alias that pushes or posts and that no `post:` line names, and a git alias kept in git's configuration;
 - a program started by another program, such as `Start-Process` or a script language's subprocess call;
 - the host's own calls;
 - a raw call that names the repository only by an id, or whose address is put together from variables;
@@ -75,9 +77,9 @@ The hook does not see:
 - a command word or a keyword spelled with an escape inside it or split by quotes;
 - a command run through `wsl` or another system's shell, whose directories the hook cannot read;
 - a forge tool other than `git`, `gh` and `az`;
-- work items and other forge objects that belong to no repository.
+- work items and other forge objects that belong to no repository, unless a `post:` line names the command and it runs in a flagged checkout.
 
-Two configuration folders that sync `settings.json` between them are not supported: the list does not travel with the settings, so the folder without it asks before every push and every `gh` and `az repos` write until a copy of the list file sits beside its `settings.json`.
+The list belongs to one config folder. A second folder that syncs `settings.json` with the first has guard's entries and no list, so it asks before every push and every `gh` and `az repos` write; a second folder with neither file asks nothing, also in a repository the first folder flags. `/guard use <path>` under the second folder ends both.
 
 ## The denial record
 
@@ -85,7 +87,7 @@ Guard's denial hook runs when auto mode denies a tool call. It appends one line 
 
 ## The list file
 
-`reimagine-guard.json` holds `{"version": 1, "repos": [{"path", "remotes", "merge", "reads", "ask"}]}`, with `reads` and `ask` written only when set. A path is written with forward slashes. Remotes are the fetch URLs of `git remote -v` written as `host/path`, with no scheme, user name, password, port or `.git`, so an HTTPS and an SSH remote of the same repository are the same remote. A local path remote is left out. Every plan rereads the remotes of each listed path, and notes each path that no longer exists. The file is deleted when the list becomes empty.
+`reimagine-guard.json` holds `{"version": 1, "repos": [{"path", "remotes", "merge", "reads", "ask"}]}`, with `reads` and `ask` written only when set, or, in a folder that reads another folder's list, `{"version": 1, "use": "<path>"}`. A path is written with forward slashes. Remotes are the fetch URLs of `git remote -v` written as `host/path`, with no scheme, user name, password, port or `.git`, so an HTTPS and an SSH remote of the same repository are the same remote. A local path remote is left out. Every plan rereads the remotes of each listed path, and notes each path that no longer exists. The file is deleted when the list becomes empty.
 
 ## Entries guard owns
 

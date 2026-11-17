@@ -546,10 +546,15 @@ test('R405: a file after any option whose name holds file is read, and one that 
   writeFileSync(join(w.work, 'tools', 'send.ps1'), 'zqxlisted\n');
   none(w.shell('pwsh -NoProfile -File ./tools/send.ps1 -DescriptionFile zqxlisted/clean.md', 'PowerShell'));
   // An option that writes a file names no text that is sent.
-  none(w.shell('gh issue list | Out-File -FilePath body.md', 'PowerShell'));
-  none(w.shell('gh issue list | Out-File -Encoding utf8 -FilePath body.md', 'PowerShell'));
   none(w.shell('node tools/send.mjs --pr 7 --output-file body.md'));
   none(w.shell('node tools/send.mjs --pr 7 --log-file body.md'));
+  none(w.shell('node tools/send.mjs --pr 7 -OutFile body.md'));
+  // Out, output or log must stand directly before file, and a quoted word is not the command's.
+  denied(w.shell('node tools/send.mjs --outline-file body.md'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Body "pipe it to Out-File" -DescriptionFile body.md', 'PowerShell'), 'zqxlisted', file, w);
+  // The first loop's guard for a value with = also holds for --file, which the generic read passes over.
+  writeFileSync(join(w.work, 'k=zqxlisted'), 'a clean body\n');
+  denied(w.shell('git commit --file k=zqxlisted'), 'zqxlisted', 'the command', w);
   // A name is sent as text, so it is searched though a file of that name exists.
   denied(w.shell('gh gist create --filename zqxlisted.md body.txt'), 'zqxlisted', 'the command', w);
   denied(w.shell('./tools/send.ps1 -FileName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);

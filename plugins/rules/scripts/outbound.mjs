@@ -57,8 +57,8 @@ export function finder(list) {
 const VALUE = String.raw`((?:"[^"]*"|'[^']*'|[^\s"';|&)])+)`;
 const unquote = (v) => v.replace(/"([^"]*)"|'([^']*)'/g, (_, a, b) => a ?? b);
 const all = (command, source, flags = 'dg') => [...command.matchAll(new RegExp(source, flags))];
-const fileOption = (name, value, before) => /file/i.test(name.replace(/profile/gi, '')) && !/names?$/i.test(name) && !/^(?:out|log)/i.test(name)
-  && !(/^file$/i.test(name) && /\.ps1$/i.test(value)) && !/(?:Out-File|Tee-Object)(?![\w-])[^|;&]*$/i.test(before);
+const fileOption = (name, value) => /file/i.test(name.replace(/profile/gi, '')) && !/names?$/i.test(name) && !/^(?:out|output|log)[-_]?file/i.test(name)
+  && !(/^file$/i.test(name) && /\.ps1$/i.test(value));
 
 // The files a command names: after a message or body option, after any option whose name holds file, as @<file>, after
 // cat, Get-Content, gc or type, and after a < redirect. loud: its loss warns.
@@ -68,9 +68,9 @@ export function namedFiles(command) {
   // A -F value with = is a field, not a file, unless it is key=@<file>.
   for (const m of all(command, String.raw`(?<=^|\s)(?:-F|--file|--body-file|--notes-file|--input)(?:=|\s+)${VALUE}`)) if (!unquote(m[1]).includes('=')) add(m, true);
   for (const m of all(command, String.raw`(?<=^|\s)-F(?=[^\s=-])${VALUE}`)) if (!unquote(m[1]).includes('=')) add(m, false);
-  // A script's own option, as --file-path or -DescriptionFile:<file>. Not -File with a .ps1 value, the script an interpreter runs,
-  // a name that ends in name, which takes text that is sent, nor an option that writes a file: out or log first, Out-File, Tee-Object.
-  for (const m of all(command, String.raw`(?<=^|\s)--?([A-Za-z][\w-]*)(?:[=:]\s*|\s+)(?!-)${VALUE}`)) if (fileOption(m[1], unquote(m[2]), command.slice(0, m.index))) add(m, false, false, 2);
+  // A script's own option, as --file-path or -DescriptionFile:<file>. Not --file, --body-file or --notes-file, read above, -File with a
+  // .ps1 value, the script an interpreter runs, a name that ends in name, which takes text that is sent, nor one that writes a file: out, output or log before file.
+  for (const m of all(command, String.raw`(?<=^|\s)--?([A-Za-z][\w-]*)(?:=|:\s*|\s+)(?!-)${VALUE}`)) if (!/^--(?:file|body-file|notes-file)(?:=|\s)/.test(m[0]) && fileOption(m[1], unquote(m[2]))) add(m, false, false, 2);
   // An @<file> may be the text itself, a mention or a raw field, so its path is never left out of the search.
   for (const m of all(command, String.raw`(?<=^|[\s=])@([^\s"'@{(;|&)]+)`)) add(m, false, true);
   // Options before the path are passed over, one with its value included: cat -- x, Get-Content -Encoding utf8 x.

@@ -527,6 +527,7 @@ test('R405: a file after any option whose name holds file is read, and one that 
   denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile body.md', 'PowerShell'), 'zqxlisted', file, w);
   denied(w.shell('./tools/send.ps1 -Id 7 -FilePath "body.md"', 'PowerShell'), 'zqxlisted', file, w);
   denied(w.shell('./tools/send.ps1 -Id 7 -filepath body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile:body.md', 'PowerShell'), 'zqxlisted', file, w);
   denied(w.shell('gh pr comment 7 --comment-file body.md'), 'zqxlisted', file, w);
   // The path of a file that was read stays on the machine.
   none(w.shell('node tools/send.mjs --pr 7 --file-path zqxlisted/clean.md'));
@@ -534,9 +535,18 @@ test('R405: a file after any option whose name holds file is read, and one that 
   // Only the five options warn: a name that holds file may take no file.
   none(w.shell('node tools/send.mjs --profile dev --file-path missing.md'));
   none(w.shell('node tools/send.mjs --no-file --pr 7'));
+  writeFileSync(join(w.work, 'dev'), 'zqxlisted\n');
+  none(w.shell('node tools/send.mjs --profile dev --pr 7'));
+  // File alone names the script an interpreter runs, which is not sent.
+  mkdirSync(join(w.work, 'tools'));
+  writeFileSync(join(w.work, 'tools', 'send.ps1'), 'zqxlisted\n');
+  none(w.shell('pwsh -NoProfile -File ./tools/send.ps1 -DescriptionFile zqxlisted/clean.md', 'PowerShell'));
   // A name is sent as text, so it is searched though a file of that name exists.
   denied(w.shell('gh gist create --filename zqxlisted.md body.txt'), 'zqxlisted', 'the command', w);
   denied(w.shell('./tools/send.ps1 -FileName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --file-name zqxlisted.md'), 'zqxlisted', 'the command', w);
+  denied(w.shell('./tools/send.ps1 -FileBaseName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --profile-name zqxlisted.md'), 'zqxlisted', 'the command', w);
 });
 
 test('R405: a text that names git on one line and a subcommand on another is no post, and a commit in each typed form is one', () => {

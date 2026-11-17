@@ -529,6 +529,10 @@ test('R405: a file after any option whose name holds file is read, and one that 
   denied(w.shell('./tools/send.ps1 -Id 7 -filepath body.md', 'PowerShell'), 'zqxlisted', file, w);
   denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile:body.md', 'PowerShell'), 'zqxlisted', file, w);
   denied(w.shell('gh pr comment 7 --comment-file body.md'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -descriptionfile body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('node tools/send.mjs --bodyfile body.md'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -File body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile: body.md', 'PowerShell'), 'zqxlisted', file, w);
   // The path of a file that was read stays on the machine.
   none(w.shell('node tools/send.mjs --pr 7 --file-path zqxlisted/clean.md'));
   none(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile zqxlisted/clean.md', 'PowerShell'));
@@ -541,12 +545,18 @@ test('R405: a file after any option whose name holds file is read, and one that 
   mkdirSync(join(w.work, 'tools'));
   writeFileSync(join(w.work, 'tools', 'send.ps1'), 'zqxlisted\n');
   none(w.shell('pwsh -NoProfile -File ./tools/send.ps1 -DescriptionFile zqxlisted/clean.md', 'PowerShell'));
+  // An option that writes a file names no text that is sent.
+  none(w.shell('gh issue list | Out-File -FilePath body.md', 'PowerShell'));
+  none(w.shell('gh issue list | Out-File -Encoding utf8 -FilePath body.md', 'PowerShell'));
+  none(w.shell('node tools/send.mjs --pr 7 --output-file body.md'));
+  none(w.shell('node tools/send.mjs --pr 7 --log-file body.md'));
   // A name is sent as text, so it is searched though a file of that name exists.
   denied(w.shell('gh gist create --filename zqxlisted.md body.txt'), 'zqxlisted', 'the command', w);
   denied(w.shell('./tools/send.ps1 -FileName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);
   denied(w.shell('node tools/send.mjs --file-name zqxlisted.md'), 'zqxlisted', 'the command', w);
   denied(w.shell('./tools/send.ps1 -FileBaseName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);
   denied(w.shell('node tools/send.mjs --profile-name zqxlisted.md'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --file-names zqxlisted.md'), 'zqxlisted', 'the command', w);
 });
 
 test('R405: a text that names git on one line and a subcommand on another is no post, and a commit in each typed form is one', () => {

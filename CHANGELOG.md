@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## rules 0.1.38 - 2026-11-17
 
-- In a command read as a post, a file after any option whose name holds `file` as a word is read, with one dash or two, as in `--file-path <file>` or `-DescriptionFile <file>`, and its path is left out of the search as for the other files. A posting script that takes its file through an option of its own had that file left unread, and a clean file under a folder whose name holds a listed string was denied. An option whose name ends in `name` is not read as a file.
+- In a command read as a post, a file after any option whose name holds `file` is read, with one dash or two, as in `--file-path <file>` or `-DescriptionFile <file>`, and its path is left out of the search as for the other files. A posting script that takes its file through an option of its own had that file left unread, and a clean file under a folder whose name holds a listed string was denied. An option whose name ends in `name` is not read as a file.
 
 ## primer 0.1.18 - 2026-11-17
 

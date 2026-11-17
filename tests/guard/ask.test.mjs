@@ -521,6 +521,12 @@ test('R406: a command that holds a post: phrase of the outbound list asks in a f
     [ps(D, 'az boards work-item update --id 12 --discussion "ready for review"'), null],
     [ps(B, 'az boards work-item show --id 12'), null],
     [ps(B, 'node C:/tools/build.mjs'), null],
+    [ps(D, '.\\tools\\pr-update.ps1 -Project zz-proj -Repository zz-svc -PullRequestId 12'), SVC],
+    [ps(D, 'node C:/tools/pr-comment.mjs --owner zz-owner --repo zz-app'), APP],
+    [ps(D, '.\\tools\\pr-update.ps1 -Project zz-else -Repository zz-svc -PullRequestId 12'), null],
+    [shell(D, 'node C:\\\\tools\\\\pr-update.mjs --project zz-proj --repository zz-svc --pr-id 12'), SVC],
+    [shell(D, 'node C:/tools//pr-update.mjs --project zz-proj --repository zz-svc --pr-id 12'), SVC],
+    [shell(D, 'node ./tools/./pr-update.mjs --project zz-proj --repository zz-svc --pr-id 12'), SVC],
   ];
   judge(rows, deps(cfg));
   judge([[ps(B, update), null], [ps(D, update), null]]);
@@ -528,6 +534,24 @@ test('R406: a command that holds a post: phrase of the outbound list asks in a f
   judge([[ps(B, comment), SVC], [ps(B, 'node C:/tools/build.mjs'), null]], deps(wide));
   const gone = config({ 'settings.json': MARKED, 'rules-outbound.txt': posts });
   judge([[ps(D, update), GONE(gone)], [ps(D, 'node C:/tools/build.mjs'), null]], deps(gone));
+});
+
+test('R406: a post: phrase with a letter outside ASCII matches in a list saved as UTF-16', () => {
+  const wide = config({ 'reimagine-guard.json': LIST, 'rules-outbound.txt': Buffer.from('\ufeff# scripts that post\npost: Tools\\caf\u00e9\\pr-\n', 'utf16le') });
+  judge([
+    [ps(D, 'node C:/tools/caf\u00e9/pr-update.mjs --project zz-proj --repository zz-svc --pr-id 12'), SVC],
+    [ps(D, 'node C:/tools/cafe/pr-update.mjs --project zz-proj --repository zz-svc --pr-id 12'), null],
+  ], deps(wide));
+});
+
+test('R406: a folder that reads another folder\'s list also reads the post: phrases of the folder that holds the list', () => {
+  const first = config({ 'reimagine-guard.json': LIST, 'rules-outbound.txt': 'post: Tools\\pr-\n' });
+  const second = config({ 'reimagine-guard.json': JSON.stringify({ version: 1, use: fw(join(first, 'reimagine-guard.json')) }) });
+  judge([
+    [ps(D, 'node C:/tools/pr-update.mjs --project zz-proj --repository zz-svc --pr-id 12'), SVC],
+    [ps(B, 'node C:/tools/pr-update.mjs --pr-id 12'), SVC],
+    [ps(B, 'node C:/tools/build.mjs'), null],
+  ], deps(second));
 });
 
 test('R406: git calls that together pass 8 seconds make the call ask, each call given what is left', () => {
@@ -548,6 +572,9 @@ test('R335: a folder whose list file names another list asks as that list has it
   judge([[shell(D, 'git push'), BAD(second)]], deps(twice));
   const relative = config({ 'reimagine-guard.json': named('reimagine-guard.json') });
   judge([[shell(D, 'git push'), BAD(relative)]], deps(relative));
+  const empty = config({ 'reimagine-guard.json': '{"version":1,"repos":[]}' });
+  const mixed = config({ 'reimagine-guard.json': JSON.stringify({ ...JSON.parse(LIST), use: fw(join(empty, 'reimagine-guard.json')) }) });
+  judge([[shell(A, 'git push'), APP]], deps(mixed));
 });
 
 function hook(input, cfg = MAIN) {

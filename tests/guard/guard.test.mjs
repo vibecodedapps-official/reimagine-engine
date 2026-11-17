@@ -21,7 +21,7 @@ const DOMAINS = '**Trusted internal domains**: None are configured.';
 const DEFAULT_ALLOW = ["Test runs: running the project's own test command is allowed.", "Local edits: editing files inside the working directory is allowed."];
 const A1 = "User's own repositories: pushing a branch to a repository listed under Source control, opening a pull request there, and editing the title or description of, or commenting on, a pull request there that the user's own message asked to work on, one this session did not open included. A body given on stdin, or in a file that the agent or its subagents wrote in this session, counts as derived from this transcript. (reimagine guard)";
 const A2 = "Settings reads: reading Claude Code settings files, the settings.json in the configuration directory and a listed repository's .claude/settings.json or .claude/settings.local.json, to inspect or verify configuration is not credential exploration, as long as no value read leaves the machine. (reimagine guard)";
-const A1_BUT = (remotes) => `${A1.slice(0, -' (reimagine guard)'.length)} This entry does not cover ${remotes}, where the user is asked before each push, pull request and comment. (reimagine guard)`;
+const A1_BUT = (remotes) => `User's own repositories: pushing a branch to a repository listed under Source control, opening a pull request there, and editing the title or description of, or commenting on, a pull request there that the user's own message asked to work on, one this session did not open included. A body given on stdin, or in a file that the agent or its subagents wrote in this session, counts as derived from this transcript. This entry does not cover ${remotes}, where the user is asked before each push, pull request and comment. (reimagine guard)`;
 const RA = 'https://user:tok3n@git.example.invalid/org/app.git';
 const NA = 'git.example.invalid/org/app';
 const RB1 = 'git@git.example.invalid:org/lib.git';
@@ -1142,6 +1142,22 @@ test('R339: a repository listed with ask is outside the publishing and the merge
   assert.equal(w.run('status')[0], `state: current ${w.settings}`);
 });
 
+test('R337: a marked entry that the list as read renders counts as written by the script, so a settings file synced from a folder that shares the list is not edited', () => {
+  const w = repoWorld();
+  const lib = repo(w, 'lib', [RB1]);
+  change(w, '--add', w.repo.path);
+  const second = join(w.dir, 'second'), data = join(w.dir, 'data2');
+  mkdirSync(second);
+  const at = (...argv) => main([argv[0], data, ...argv.slice(1)], { env: { ...w.env, CLAUDE_CONFIG_DIR: second }, now: w.now, home: w.home, cwd: w.work, claude: w.claude });
+  at('use', w.list);
+  writeFileSync(join(second, 'settings.json'), read(w.settings));
+  const id = at('plan', '--add', lib.path).at(-2).slice(6);
+  w.now = new Date(w.now.getTime() + 1000);
+  at('apply', id);
+  writeFileSync(w.settings, read(join(second, 'settings.json')));
+  assert.equal(w.run('status')[0], `state: current ${w.settings}`);
+});
+
 test('R340: use has a second folder read the first folder\'s list, and refuses a path that is no list or a folder with a list of its own', () => {
   const w = repoWorld();
   change(w, '--add', w.repo.path, '--ask');
@@ -1154,8 +1170,16 @@ test('R340: use has a second folder read the first folder\'s list, and refuses a
   assert.throws(() => at('use', w.settings), refusal(`${w.settings} is not a guard list`));
   assert.throws(() => at('use', own), refusal(`${own} is this folder's own list file`));
   assert.equal(existsSync(own), false);
+  const id = at('plan', '--add', w.repo.path).at(-2).slice(6);
   assert.deepEqual(at('use', w.list), [`guard: wrote ${own}; this folder now reads ${w.list}; run /guard to write its entries`]);
   assert.equal(read(own), `{"version":1,"use":${j(w.list.replace(/\\/g, '/'))}}\n`);
+  assert.throws(() => at('apply', id), refusal('there is no planned change; run /guard again'));
+  at('use', `${w.dir.replace(/\\/g, '/')}/second/../config/reimagine-guard.json`);
+  assert.equal(read(own), `{"version":1,"use":${j(w.list.replace(/\\/g, '/'))}}\n`);
+  writeFileSync(join(w.home, 'shared.json'), read(w.list));
+  at('use', '~/shared.json');
+  assert.equal(read(own), '{"version":1,"use":"~/shared.json"}\n');
+  at('use', w.list);
   assert.deepEqual(at('list'), [`${w.repo.top} ${NA} ask`]);
   assert.deepEqual(at('status'), [`state: stale ${join(second, 'settings.json')}`, `list: ${w.list} (1 repositories)`]);
   assert.deepEqual(at('use', w.list), [`guard: wrote ${own}; this folder now reads ${w.list}; run /guard to write its entries`]);
@@ -1190,6 +1214,15 @@ test('R341: session-start names a list file that is not a guard list, with no cl
   }
   assert.deepEqual(w.calls, []);
   assert.deepEqual(main(['session-start', w.data], { env: { ...w.env, CLAUDE_CODE_SESSION_ATTENDED: '0' }, now: w.now, home: w.home, cwd: w.work, claude: w.claude }), []);
+});
+
+test('R339: the merge entry names no remote of a repository with ask, one it shares with a repository without ask included', () => {
+  const w = world();
+  const x = repo(w, 'x', [RB1, RB2]);
+  const y = repo(w, 'y', [RB1]);
+  change(w, '--add', y.path, '--ask');
+  change(w, '--add', x.path, '--merge');
+  assert.deepEqual(JSON.parse(read(w.settings)).autoMode.allow, ['$defaults', A1_BUT(NB1), mergeFor(NB2)]);
 });
 
 test('R340: --drop of a repository listed with ask takes it and its flag off the list', () => {

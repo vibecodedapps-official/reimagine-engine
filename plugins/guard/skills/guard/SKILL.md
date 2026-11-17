@@ -35,7 +35,7 @@ Anything else: tell the user these are the accepted forms, and stop. Do not run 
 
 Put no text from the user into a command except the path or remote, in double quotes. If it holds a double quote, a backtick, `$` or a newline, say so, and stop. Do not run anything. Write each backslash in the path or remote as a forward slash first, so that `C:\src\app\` becomes `C:/src/app/`; a backslash before the closing quote would escape it.
 
-The `allowed-tools` lines pre-approve `status`, `list`, `plan` and `denials` only. `apply` and `use` meet the session's permission mode: a prompt in the default mode, the classifier in auto mode.
+The `allowed-tools` lines pre-approve `status`, `list`, `plan` and `denials` only. `apply` and `use` meet the session's permission mode: a prompt in the default mode, the classifier in auto mode. If the permission mode denies either, report the denial in full and wait. Never retry it another way, and never write the file yourself.
 
 ## Step 1: report
 
@@ -79,4 +79,4 @@ Wait for the reply. Any other reply is a no: say nothing was written, and stop.
 
 On that reply, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" apply "${CLAUDE_PLUGIN_DATA}" <id>` with the Bash tool, where `<id>` is the twelve characters on the `plan:` line of the Step 1 output you showed. The script then writes that plan and no other. Show the output verbatim in a fenced code block.
 
-If the permission mode denies the command, report the denial in full and wait. Never retry it another way, and never write the file yourself.
+If the permission mode denies the command, follow the rule under Accepted arguments.

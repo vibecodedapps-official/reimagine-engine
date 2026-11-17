@@ -266,10 +266,10 @@ function edit(text, scan, auto, created) {
 function entries(repos, defs) {
   const host = defs.environment.find((l) => labelOf(l) === 'trusted repo');
   const sites = repos.map((r) => `${r.path} (${r.remotes.join(', ')})`).join('; ');
-  // A repository listed with ask is outside the allow entries, so a call the ask hook missed is no more allowed than without guard.
+  // The allow entries do not cover a repository listed with ask; the Trusted repo and Source control lines still name it.
   const asked = sorted(repos.filter((r) => r.ask).flatMap((r) => r.remotes));
   const but = asked.length ? ` This entry does not cover ${asked.join(', ')}, where the user is asked before each push, pull request and comment.` : '';
-  const merge = sorted(repos.filter((r) => r.merge && !r.ask).flatMap((r) => r.remotes));
+  const merge = sorted(repos.filter((r) => r.merge && !r.ask).flatMap((r) => r.remotes).filter((x) => !asked.includes(x)));
   return {
     trusted: `${host} The user's own repositories listed under Source control are trusted the same way, at these local checkouts: ${sites}.${MARK}`,
     source: `**Source control**: The trusted repo and its remote(s), and these remotes of the user's own repositories: ${sorted(repos.flatMap((r) => r.remotes)).join(', ')}; as scoped by the Trusted repo and Repository visibility entries above.${MARK}`,
@@ -289,13 +289,14 @@ function assemble(auto, env, allow) {
   return Object.keys(out).length ? out : undefined;
 }
 
-// The new autoMode for the list, or a stop when an entry is the user's own or was changed by hand.
-function render(auto, repos, defs, state) {
+// The new autoMode for the list, or a stop when an entry is the user's own or was changed by hand. A marked entry that mine,
+// the entries of the list as read, holds is guard's own, as when the settings file came from a folder that shares the list.
+function render(auto, repos, defs, state, mine) {
   const env0 = auto?.environment, allow0 = auto?.allow, dflt = defs.environment;
   const isDefault = (l) => dflt.includes(l);
   const current = (lb) => (lb === null ? undefined : dflt.find((d) => labelOf(d) === lb));
   for (const [name, list] of [['environment', env0], ['allow', allow0]]) {
-    const odd = (list ?? []).find((e) => isMarked(e) && state.written && !state.written.includes(e));
+    const odd = (list ?? []).find((e) => isMarked(e) && state.written && !state.written.includes(e) && !mine.includes(e));
     if (odd) stop('edited', `${name}: "${short(odd)}..." was changed by hand; delete it or take off its (reimagine guard) ending, then run /guard again`);
   }
   const oldCopied = state.copied ?? [];
@@ -353,11 +354,13 @@ function render(auto, repos, defs, state) {
 }
 
 const tilde = (p, home) => (/^~[\\/]/.test(p) ? join(home, p.slice(2)) : p);
+// A folder's list file that names another list: version 1, a "use" and no repos of its own.
+const pointer = (file) => (file?.version === 1 && !('repos' in file) ? file.use : undefined);
 // The settings file and the list of the session's config folder. own is the folder's list file; when it names another
 // folder's list in "use" by an absolute or ~/ path, that file is the list, and it is followed no further.
 export function locate(env, home) {
   const dir = env.CLAUDE_CONFIG_DIR || join(home, '.claude');
-  const logical = join(dir, 'settings.json'), own = join(dir, LIST_FILE), use = readJson(own)?.use;
+  const logical = join(dir, 'settings.json'), own = join(dir, LIST_FILE), use = pointer(readJson(own));
   const named = typeof use === 'string' && isAbsolute(tilde(use, home));
   return { dir, own, path: existsSync(logical) && lstatSync(logical).isSymbolicLink() ? realpathSync(logical) : logical, list: named ? resolve(tilde(use, home)) : own };
 }
@@ -368,9 +371,10 @@ function useList(c, value) {
   let text = null;
   try { text = readFile(target).text; } catch {}
   if (text === null || !readList(text, c.platform)) refuse(`${target} is not a guard list`);
-  if (existsSync(own) && readJson(own)?.use === undefined) refuse(`${own} holds a list of its own; run /guard clear under this folder, or delete the file, first`);
+  if (existsSync(own) && pointer(readJson(own)) === undefined) refuse(`${own} holds a list of its own; run /guard clear under this folder, or delete the file, first`);
   mkdirSync(dirname(own), { recursive: true });
-  writeAtomic(own, `${JSON.stringify({ version: 1, use: slash(value) })}\n`);
+  save(c.dataDir, PLAN_FILE, {});
+  writeAtomic(own, `${JSON.stringify({ version: 1, use: slash(/^~[\\/]/.test(value) ? value : target) })}\n`);
   return [`guard: wrote ${own}; this folder now reads ${target}; run /guard to write its entries`];
 }
 
@@ -465,7 +469,7 @@ function body(c, t, request, deep, r) {
   const state = loadState(c.dataDir);
   const defs = ask(c.claude, 'defaults', c.env.CLAUDE_CONFIG_DIR || undefined, c.timeout);
   if (!GUARD_LABELS.every(([lb]) => defs.environment.some((l) => labelOf(l) === lb))) stop('unavailable', "the host's defaults have no Trusted repo or Source control line");
-  const res = render(auto, repos, defs, state);
+  const res = render(auto, repos, defs, state, old.length ? Object.values(entries(old, defs)).flat() : []);
   const after = same(res.auto, auto) ? file.text : edit(file.text, scan, res.auto, state.created);
   const listAfter = same(repos, old) ? list.text : repos.length ? serialize(repos) : null;
   const changed = after !== file.text || listAfter !== list.text;

@@ -420,10 +420,20 @@ test('R405: a folder or a file written through a variable of the environment is 
   denied(w.shell('git -C "${PWD}/repo" push', 'PowerShell', w.root), 'zqxlisted', 'commit ', w);
   denied(w.shell('git -C "$pwd/repo" push', 'PowerShell', w.root), 'zqxlisted', 'commit ', w);
   if (process.platform === 'win32') denied(w.shell('Set-Location ~\\..\\repo; git push', 'PowerShell'), 'zqxlisted', 'commit ', w);
+  // PWD is the folder the path is looked for in, so one after a cd is read there.
+  denied(w.shell(`cd "${w.root}" && git -C "$PWD/repo" push`), 'zqxlisted', 'commit ', w);
+  // Only where the home folder is not read from HOME (Windows) does the HOME of the environment differ from it.
+  w.env.HOME = w.root;
+  denied(w.shell('git -C "$HOME/repo" push'), 'zqxlisted', 'commit ', w);
+  w.env.HOME = w.home;
   const lost = (value) => ({ decision: 'deny', reason: `rules: the folder ${value}, which the command names, was not found, so a push from it was not checked against ${w.listFile}; name it by a path that exists when the command is typed` });
   assert.deepEqual(w.shell('git -C "$ZQX_UNSET/repo" push'), lost('$ZQX_UNSET/repo'));
   assert.deepEqual(w.shell('git -C "$env:ZQX_UNSET/repo" push', 'PowerShell'), lost('$env:ZQX_UNSET/repo'));
   assert.deepEqual(w.shell(`cd ${dir}x && git push`), lost(`${dir}x`));
+  // A -C names a push folder only as an option of git itself.
+  none(w.shell('git log | grep -C 3 fix && git push'));
+  none(w.shell('make -C zqxbuild && git push'));
+  assert.deepEqual(w.shell('git -c core.quotepath=off -C "$ZQX_UNSET/repo" push'), lost('$ZQX_UNSET/repo'));
   // A variable of the other shell is not this shell's, and a word after cd in a message names no folder of the command.
   assert.deepEqual(w.shell('git -C "$ZQX_ROOT/repo" push', 'PowerShell'), lost('$ZQX_ROOT/repo'));
   none(w.shell('git commit --allow-empty -m "the CD pipeline" && git push'));

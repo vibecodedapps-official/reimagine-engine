@@ -74,10 +74,13 @@ export function namedFiles(command) {
   return out;
 }
 
-// The directories a command names after cd, pushd, Set-Location, Push-Location or git's -C.
+// The directories a command names after cd, pushd, Set-Location, Push-Location or -C. A -C is loose unless it is an
+// option of git itself, since grep -C 3 and make -C build name no folder to push from.
+const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?:\s+(?:-c\s+\S+|-[^\sC]\S*))*\s+$`, 'i');
 export function namedDirs(command) {
-  return [...all(command, String.raw`(?<![${EDGE}])(?:cd|pushd|Set-Location|Push-Location)\s+(?:-(?:Literal)?Path\s+)?${VALUE}`, 'dgi'),
-    ...all(command, String.raw`(?<=^|\s)-C\s+${VALUE}`)].map((m) => ({ dir: unquote(m[1]), span: m.indices[1] }));
+  const dir = (m) => ({ dir: unquote(m[1]), span: m.indices[1] });
+  return [...all(command, String.raw`(?<![${EDGE}])(?:cd|pushd|Set-Location|Push-Location)\s+(?:-(?:Literal)?Path\s+)?${VALUE}`, 'dgi').map(dir),
+    ...all(command, String.raw`(?<=^|\s)-C\s+${VALUE}`).map((m) => ({ ...dir(m), loose: !GIT_C.test(command.slice(0, m.index)) }))];
 }
 
 // A text with each span replaced by a space; a span that reaches into one already taken is skipped.
@@ -176,9 +179,10 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   if ((tool !== 'Bash' && tool !== 'PowerShell') || typeof ti.command !== 'string') return [];
   const command = ti.command, cwd = resolve(typeof input.cwd === 'string' && isDir(input.cwd) ? input.cwd : process.cwd());
   // A variable in a path is read from the hook's environment, $NAME and ${NAME} for Bash, $env:NAME and ${env:NAME}
-  // for PowerShell, with HOME and PWD the home and the call's folder; one that is not set stays as written.
+  // for PowerShell, with HOME the home folder, for Bash the HOME of the environment when set, and PWD the folder the
+  // path is looked for in; one that is not set stays as written.
   const vars = tool === 'Bash' ? /\$(?:\{\w+\}|\w+)/g : /\$(?:\{env:\w+\}|env:\w+|\{(?:HOME|PWD)\}|(?:HOME|PWD)(?!\w))/gi;
-  const value = (name) => { const key = tool === 'PowerShell' ? name.toUpperCase() : name; return key === 'HOME' ? home : key === 'PWD' ? cwd : env[name]; };
+  const value = (name) => { const key = tool === 'PowerShell' ? name.toUpperCase() : name; return key === 'HOME' ? (tool === 'Bash' ? env.HOME ?? home : home) : key === 'PWD' ? '.' : env[name]; };
   // The Bash tool on Windows names paths in the MSYS form: /c/... for a drive and /tmp for the temp folder.
   const local = (written, base = cwd) => {
     const p = written.replace(vars, (all) => value(all.replace(/^\$\{?(?:env:)?|\}$/gi, '')) ?? all);
@@ -197,12 +201,12 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   // and telling which would take a parse of each shell's quoting.
   const typed = ([i]) => !/["'\n]/.test(command.slice(0, i));
   // A folder is looked for in the call's folder and in each folder named before it, as cd a && cd b names a/b. One
-  // not found is named as typed; a value that starts with - is an option or cd -, not a folder.
+  // not found is named as typed, unless it is a loose -C or starts with -, an option or cd -, not a folder.
   const dirs = [], missing = [];
   for (const d of namedDirs(command).sort((a, b) => a.span[0] - b.span[0])) {
     const found = [...new Set([cwd, ...dirs.map((x) => x.dir)].map((base) => local(d.dir, base)))].filter(isDir);
     dirs.push(...found.map((dir) => ({ ...d, dir })));
-    if (!found.length && typed(d.span) && !d.dir.startsWith('-')) missing.push(d.dir);
+    if (!found.length && typed(d.span) && !d.dir.startsWith('-') && !d.loose) missing.push(d.dir);
   }
   const texts = [], notes = [];
   if (posts) {

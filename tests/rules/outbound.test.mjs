@@ -367,7 +367,7 @@ test('R405: check: diff reads the added lines of the commits about to leave, and
 
 test('R405: parseList keeps strings, allow phrases, post phrases and the diff switch apart', () => {
   assert.deepEqual(parseList('\uFEFF# c\r\nalpha\r\n  allow: Alpha.md  \r\n\r\ncheck: diff\r\nallow:\r\npost: Tools\\Send.mjs\r\npost:\r\nbeta gamma\n'),
-    { strings: ['alpha', 'beta gamma'], allow: ['Alpha.md'], post: ['tools/send.mjs'], diff: true });
+    { strings: ['alpha', 'beta gamma'], allow: ['Alpha.md'], post: ['Tools\\Send.mjs'], diff: true });
 });
 
 test('R405: a command that holds a post: phrase is read as a forge post, with the files it names', () => {
@@ -425,6 +425,8 @@ test('R405: a denial for a command says what made the command a post', () => {
   assert.equal(reason('echo "commit -m zqxlisted" | xargs git'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "git" and "commit" and so is read as a post`);
   assert.equal(reason('echo "zqxlisted ran gh once" >> notes.md'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds "gh" and so is read as a post`);
   assert.equal(reason('node tools/send.mjs --body "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds the post: phrase "tools/send.mjs" and so is read as a post`);
+  w.list('zqxlisted', 'post: Tools\\Send.mjs');
+  assert.equal(reason('node tools/send.mjs --body "by zqxlisted"'), `rules: "zqxlisted", listed in ${w.listFile}, is in the command, which holds the post: phrase "Tools\\Send.mjs" and so is read as a post`);
 });
 
 test('R405: the Bash tool on Windows names a file in the MSYS form, which is read', { skip: process.platform !== 'win32' && 'the MSYS form exists on Windows only' }, () => {

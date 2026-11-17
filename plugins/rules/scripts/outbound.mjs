@@ -35,7 +35,7 @@ export function parseList(text) {
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
     if (line.startsWith('allow:')) { if (line.slice(6).trim()) list.allow.push(line.slice(6).trim()); }
-    else if (line.startsWith('post:')) { if (line.slice(5).trim()) list.post.push(flat(line.slice(5).trim())); }
+    else if (line.startsWith('post:')) { if (line.slice(5).trim()) list.post.push(line.slice(5).trim()); }
     else if (line === 'check: diff') list.diff = true;
     else list.strings.push(line);
   }
@@ -137,7 +137,7 @@ function postWord(command, list) {
   if (sub) return `"git" and "${sub}"`;
   const forge = FORGE.find((w) => has(command, w));
   if (forge) return `"${forge}"`;
-  const phrase = list.post.find((p) => flat(command).includes(p));
+  const flatCommand = flat(command), phrase = list.post.find((p) => flatCommand.includes(flat(p)));
   return phrase === undefined ? null : `the post: phrase "${phrase}"`;
 }
 

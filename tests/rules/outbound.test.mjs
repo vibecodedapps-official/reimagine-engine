@@ -514,6 +514,31 @@ test('R405: a command that holds a post: phrase is read as a forge post, with th
   none(w.shell('node tools/other.mjs --body "by zqxlisted"'));
 });
 
+test('R405: a file after any option whose name holds file is read, and one that cannot be read gives no warning', () => {
+  const w = world();
+  writeFileSync(join(w.work, 'body.md'), 'zqxlisted in the body\n');
+  mkdirSync(join(w.work, 'zqxlisted'));
+  writeFileSync(join(w.work, 'zqxlisted', 'clean.md'), 'a clean body\n');
+  writeFileSync(join(w.work, 'zqxlisted.md'), 'a clean body\n');
+  w.list('zqxlisted', 'post: tools/send');
+  const file = `the file ${join(w.work, 'body.md')}`;
+  denied(w.shell('node tools/send.mjs --pr 7 --file-path body.md'), 'zqxlisted', file, w);
+  denied(w.shell('node tools/send.mjs --pr 7 --file-path=body.md'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -FilePath "body.md"', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('./tools/send.ps1 -Id 7 -filepath body.md', 'PowerShell'), 'zqxlisted', file, w);
+  denied(w.shell('gh pr comment 7 --comment-file body.md'), 'zqxlisted', file, w);
+  // The path of a file that was read stays on the machine.
+  none(w.shell('node tools/send.mjs --pr 7 --file-path zqxlisted/clean.md'));
+  none(w.shell('./tools/send.ps1 -Id 7 -DescriptionFile zqxlisted/clean.md', 'PowerShell'));
+  // Only the five options warn: a name that holds file may take no file.
+  none(w.shell('node tools/send.mjs --profile dev --file-path missing.md'));
+  none(w.shell('node tools/send.mjs --no-file --pr 7'));
+  // A name is sent as text, so it is searched though a file of that name exists.
+  denied(w.shell('gh gist create --filename zqxlisted.md body.txt'), 'zqxlisted', 'the command', w);
+  denied(w.shell('./tools/send.ps1 -FileName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);
+});
+
 test('R405: a text that names git on one line and a subcommand on another is no post, and a commit in each typed form is one', () => {
   const w = world();
   w.list('zqxlisted');

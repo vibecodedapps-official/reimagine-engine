@@ -58,14 +58,16 @@ const VALUE = String.raw`((?:"[^"]*"|'[^']*'|[^\s"';|&)])+)`;
 const unquote = (v) => v.replace(/"([^"]*)"|'([^']*)'/g, (_, a, b) => a ?? b);
 const all = (command, source, flags = 'dg') => [...command.matchAll(new RegExp(source, flags))];
 
-// The files a command names: after a message or body option, as @<file>, after cat, Get-Content, gc or type, and after
-// a < redirect. loud: its loss warns.
+// The files a command names: after a message or body option, after any option whose name holds file, as @<file>, after
+// cat, Get-Content, gc or type, and after a < redirect. loud: its loss warns.
 export function namedFiles(command) {
   const out = [];
   const add = (m, loud, mention = false) => { const v = unquote(m[1]); if (v && v !== '-') out.push({ file: v, loud, mention, span: m.indices[1] }); };
   // A -F value with = is a field, not a file, unless it is key=@<file>.
   for (const m of all(command, String.raw`(?<=^|\s)(?:-F|--file|--body-file|--notes-file|--input)(?:=|\s+)${VALUE}`)) if (!unquote(m[1]).includes('=')) add(m, true);
   for (const m of all(command, String.raw`(?<=^|\s)-F(?=[^\s=-])${VALUE}`)) if (!unquote(m[1]).includes('=')) add(m, false);
+  // A script's own option, as --file-path or -DescriptionFile. A name that ends in name takes text that is sent.
+  for (const m of all(command, String.raw`(?<=^|\s)--?[\w-]*file(?!name(?![\w-]))[\w-]*(?:=|\s+)(?!-)${VALUE}`, 'dgi')) add(m, false);
   // An @<file> may be the text itself, a mention or a raw field, so its path is never left out of the search.
   for (const m of all(command, String.raw`(?<=^|[\s=])@([^\s"'@{(;|&)]+)`)) add(m, false, true);
   // Options before the path are passed over, one with its value included: cat -- x, Get-Content -Encoding utf8 x.

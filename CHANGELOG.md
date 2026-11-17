@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.38 - 2026-11-17
+
+- In a command read as a post, a file after any option whose name holds `file` is read, with one dash or two, as in `--file-path <file>` or `-DescriptionFile <file>`, and its path is left out of the search as for the other files. A posting script that takes its file through an option of its own had that file left unread, and a clean file under a folder whose name holds a listed string was denied. An option whose name ends in `name` is not read as a file.
+
 ## primer 0.1.18 - 2026-11-17
 
 - A clone matches its repository's map entry under any form of its remote: in any letter case, and with the older `visualstudio.com` hosts of Azure DevOps read as `dev.azure.com`. Such a clone was unmapped and loaded no layer, and in a `local` repository the staging check let a `git add` of an agent file through with no word. A form with no project segment is read too, and a clone takes the entry that holds its remote as written before one that holds another form of it, so a map with an entry for each form keeps each clone on its own.

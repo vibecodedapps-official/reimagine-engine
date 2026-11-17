@@ -437,6 +437,18 @@ test('R405: a folder or a file written through a variable of the environment is 
   // A variable of the other shell is not this shell's, and a word after cd in a message names no folder of the command.
   assert.deepEqual(w.shell('git -C "$ZQX_ROOT/repo" push', 'PowerShell'), lost('$ZQX_ROOT/repo'));
   none(w.shell('git commit --allow-empty -m "the CD pipeline" && git push'));
+  // A name outside a quoted string is the command's own, also after a quoted folder or a quoted value in front of it.
+  delete w.env.R;
+  assert.deepEqual(w.shell(`cd '${w.work}' && git -C "$ZQX_UNSET/repo" push`), lost('$ZQX_UNSET/repo'));
+  assert.deepEqual(w.shell(`cd "${w.work}" && git -C ${dir}x push`), lost(`${dir}x`));
+  assert.deepEqual(w.shell(`git -c "core.quotepath=off" -C ${dir}x push`), lost(`${dir}x`));
+  assert.deepEqual(w.shell(`R="${dir}"; git -C "$R" push`), lost('$R'));
+  assert.deepEqual(w.shell(`$d = '${dir}'; git -C $d push`, 'PowerShell'), lost('$d'));
+  // Inside one, with each shell's escaped or doubled quote, it is a message's word.
+  none(w.shell('git commit --allow-empty -m "say \\"cd nowhere\\" twice" && git push'));
+  none(w.shell('git commit --allow-empty -m "say `"cd nowhere`" twice"; git push', 'PowerShell'));
+  none(w.shell("git commit --allow-empty -m 'it''s cd nowhere'; git push", 'PowerShell'));
+  none(w.shell('git commit --allow-empty -m "it\'s cd nowhere" && git push'));
 });
 
 test('R405: parseList keeps strings, allow phrases, post phrases and the diff switch apart', () => {

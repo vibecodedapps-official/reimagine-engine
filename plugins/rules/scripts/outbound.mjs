@@ -200,13 +200,26 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   // name. Only where no quote and no line break comes before it: after one, the path may be a message's own text,
   // and telling which would take a parse of each shell's quoting.
   const typed = ([i]) => !/["'\n]/.test(command.slice(0, i));
+  // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape
+  // character: after a line break or inside a string, cd and -C may be a message's words.
+  const esc = tool === 'Bash' ? '\\' : '`';
+  const bare = (i) => {
+    let quote = null;
+    for (let k = 0; k < i; k += 1) {
+      const c = command[k];
+      if (c === '\n') return false;
+      if (c === esc && quote !== "'") k += 1;
+      else if (quote === null ? c === '"' || c === "'" : c === quote) quote = quote === null ? c : null;
+    }
+    return quote === null;
+  };
   // A folder is looked for in the call's folder and in each folder named before it, as cd a && cd b names a/b. One
   // not found is named as typed, unless it is a loose -C or starts with -, an option or cd -, not a folder.
   const dirs = [], missing = [];
   for (const d of namedDirs(command).sort((a, b) => a.span[0] - b.span[0])) {
     const found = [...new Set([cwd, ...dirs.map((x) => x.dir)].map((base) => local(d.dir, base)))].filter(isDir);
     dirs.push(...found.map((dir) => ({ ...d, dir })));
-    if (!found.length && typed(d.span) && !d.dir.startsWith('-') && !d.loose) missing.push(d.dir);
+    if (!found.length && bare(d.span[0]) && !d.dir.startsWith('-') && !d.loose) missing.push(d.dir);
   }
   const texts = [], notes = [];
   if (posts) {

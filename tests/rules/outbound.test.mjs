@@ -560,7 +560,7 @@ test('R405: a file after any option whose name holds file is read, and one that 
   denied(w.shell('git commit -m x && node tools/send.mjs --file-path body.md'), 'zqxlisted', file, w);
   // The first loop's guard for a value with = also holds for --file, which the generic read passes over.
   writeFileSync(join(w.work, 'k=zqxlisted'), 'a clean body\n');
-  denied(w.shell('git commit --file k=zqxlisted'), 'zqxlisted', 'the command', w);
+  denied(w.shell('node tools/send.mjs --file k=zqxlisted'), 'zqxlisted', 'the command', w);
   // A name is sent as text, so it is searched though a file of that name exists.
   denied(w.shell('gh gist create --filename zqxlisted.md body.txt'), 'zqxlisted', 'the command', w);
   denied(w.shell('./tools/send.ps1 -FileName zqxlisted.md', 'PowerShell'), 'zqxlisted', 'the command', w);

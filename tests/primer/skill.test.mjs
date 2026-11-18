@@ -81,6 +81,7 @@ test('R246, R390: the bans whose loss lets a run write where it must not stand i
   const first = never.split('. ')[0];
   for (const entry of ['code', 'configuration', 'settings', 'CI files', 'package manifests', '`CLAUDE.local.md`', 'anything git ignores', 'the auto memory directory']) assert.ok(first.includes(entry), `the list of what is never edited lacks ${entry}`);
   assert.ok(LOCAL.split('\n').some((l) => /writes nothing [^.]*work tree[^.]*no commit/.test(l)), 'local.md does not bar a work tree write and a commit');
+  assert.ok(LOCAL.split('\n').some((l) => l.includes('inside a repository') && l.includes('make and offer no commit, branch, push or pull request there')), 'local.md does not bar a commit in a repository that holds the store');
 });
 
 test('every script command the skill files show names a script that exists, a verb it takes and options it reads', () => {

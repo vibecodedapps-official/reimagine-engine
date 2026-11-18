@@ -28,17 +28,18 @@ export class Refusal extends Error {}
 class Unknown extends Error {}
 const refuse = (message) => { throw new Refusal(message); };
 const slash = (p) => p.replace(/\\/g, '/');
-const keyOf = (p, platform) => { const s = slash(p).replace(/\/+$/, ''); return platform === 'win32' ? s.toLowerCase() : s; };
+export const keyOf = (p, platform) => { const s = slash(p).replace(/\/+$/, ''); return platform === 'win32' ? s.toLowerCase() : s; };
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 export const isDir = (p) => typeof p === 'string' && p !== '' && !!statSync(p, { throwIfNoEntry: false })?.isDirectory();
 export const tilde = (p, home) => (p === '~' ? home : /^~[\\/]/.test(p) ? join(home, p.slice(2)) : p);
 // A path as a file of the store holds it: under the home directory as ~/, so a store that is shared names no home directory, else in full.
-const homed = (c, f) => { const h = keyOf(c.home, c.platform), k = keyOf(f, c.platform); return k === h ? '~' : k.startsWith(`${h}/`) ? `~/${slash(f).slice(h.length + 1)}` : slash(f); };
-// The same for a file that may sit inside the store, or another of dirs, which is held relative to it.
-export const held = (c, p, f, dirs = [p.store]) => {
-  for (const s of dirs.map((d) => keyOf(d, c.platform))) if (keyOf(f, c.platform).startsWith(`${s}/`)) return slash(f).slice(s.length + 1);
-  return homed(c, f);
+// A home directory that is the root of a file system holds every path, so no path is written under it.
+const homed = (c, f) => {
+  const h = keyOf(c.home, c.platform), k = keyOf(f, c.platform);
+  return !h || /^[a-z]:$/i.test(h) ? slash(f) : k === h ? '~' : k.startsWith(`${h}/`) ? `~/${slash(f).slice(h.length + 1)}` : slash(f);
 };
+// The same for a file that may sit inside the store, which is held relative to it.
+export const held = (c, p, f) => { const s = keyOf(p.store, c.platform); return keyOf(f, c.platform).startsWith(`${s}/`) ? slash(f).slice(s.length + 1) : homed(c, f); };
 export const readText = (path) => { try { return readFileSync(path, 'utf8'); } catch { return ''; } };
 const real = (p) => { try { return realpathSync.native(p); } catch { return p; } };
 
@@ -93,11 +94,12 @@ export function places(c, own) {
   return { own, cfgPath, cfg, store, local: cfg.local ? resolve(tilde(cfg.local, c.home)) : own, map: join(store, 'map.json') };
 }
 
-// The map, with each path a file holds as ~/ read as the path under this home directory.
+// The map, with each path a file holds as ~/ read as the path under this home directory. Version 2 holds such paths, which a script
+// that knows version 1 alone would read as no directory, so that script refuses the map; version 1, with each path in full, still loads.
 export function loadMap(path, home) {
   const v = readJson(path, 'a primer map');
-  if (v === undefined) return { version: 1, repos: [], roots: [] };
-  const ok = v && v.version === 1 && Array.isArray(v.roots) && v.roots.every((r) => typeof r === 'string') && Array.isArray(v.repos)
+  if (v === undefined) return { version: 2, repos: [], roots: [] };
+  const ok = v && (v.version === 1 || v.version === 2) && Array.isArray(v.roots) && v.roots.every((r) => typeof r === 'string') && Array.isArray(v.repos)
     && v.repos.every((r) => r && Array.isArray(r.remotes) && r.remotes.every((x) => typeof x === 'string') && typeof r.path === 'string'
       && typeof r.group === 'string' && GROUP.test(r.group) && PROFILES.includes(r.profile));
   if (!ok) refuse(`${path} is not a primer map`);
@@ -239,8 +241,8 @@ function delivery(c, p) {
     const parts = layersOf(p, entry), n = joined(parts).length;
     for (const x of parts) lines.push(`layer ${x.name}: ${x.file}, ${x.text ? `${x.text.length} characters, canary ${x.canary}` : 'missing or empty'}`);
     lines.push(`check size: ${n} characters as emitted, ${n > CAP ? 'over' : 'within'} the cap of ${CAP}`);
-    if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
   }
+  if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
@@ -432,9 +434,9 @@ function mapVerb(c, [op, ...args]) {
   }
   const fields = ['profile', 'group'].some((k) => k in o);
   if (op === '--add' ? (!fields && !o.roots.length) || (fields && !o.profile) : op === '--set' && (o.store || o.local ? fields || o.roots.length : !fields && !o.roots.length)) refuse(FORMS);
-  // The store may be shared, so the machine's directory, once named, sits outside it.
-  const dir = (v, d) => (v ? resolve(tilde(v, c.home)) : d), store = dir(o.store, p.store), local = dir(o.local, p.cfg.local && p.local);
-  if ((o.store || o.local) && local && `${keyOf(local, c.platform)}/`.startsWith(`${keyOf(store, c.platform)}/`)) refuse(`the machine's directory ${local} would sit inside the store ${store}, which may be shared; name one outside it`);
+  // The store may be shared, so the machine's directory sits outside it.
+  const dir = (v, d) => (v ? resolve(tilde(v, c.home)) : d), store = dir(o.store, p.store), local = dir(o.local, p.local);
+  if ((o.store || o.local) && `${keyOf(local, c.platform)}/`.startsWith(`${keyOf(store, c.platform)}/`)) refuse(`the machine's directory ${local} would sit inside the store ${store}, which may be shared; name one outside it`);
   const out = [];
   if (fields || (op === '--drop' && !o.roots.length)) {
     const repo = repoOf(c, c.cwd) ?? refuse(`${slash(c.cwd)} is in no git work tree`), at = map.repos.indexOf(match(map, repo, c.platform));
@@ -456,7 +458,7 @@ function mapVerb(c, [op, ...args]) {
     if (op === '--drop') out.push(`root: - ${map.roots.splice(at, 1)[0]}`);
     else if (at < 0) out.push(`root: + ${map.roots[map.roots.push(r) - 1]}`);
   }
-  const kept = { ...map, repos: map.repos.map((e) => ({ ...e, path: homed(c, e.path) })), roots: map.roots.map((d) => homed(c, d)) };
+  const kept = { ...map, version: 2, repos: map.repos.map((e) => ({ ...e, path: homed(c, e.path) })), roots: map.roots.map((d) => homed(c, d)) };
   if (out.length) { writeAtomic(p.map, `${JSON.stringify(kept, null, 2)}\n`); out.unshift(`primer: wrote ${p.map}`); }
   if (o.store || o.local) {
     writeAtomic(p.cfgPath, `${JSON.stringify({ ...p.cfg, ...(o.store && { store: o.store }), ...(o.local && { local: o.local }) }, null, 2)}\n`);

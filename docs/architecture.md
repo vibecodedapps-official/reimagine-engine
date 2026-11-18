@@ -549,7 +549,7 @@ A repository has one of two profiles, picked once by the user on primer's first 
   machine.md           the layer of this machine: people, dates, paths
   machine/<group>.md   the layer of one group on this machine
 <store>/               the directory config.json names, else <config>/reimagine-primer/store/
-  map.json             {"version": 1, "repos": [{"remotes", "path", "group", "profile"}], "roots": ["<path>"]}
+  map.json             {"version": 2, "repos": [{"remotes", "path", "group", "profile"}], "roots": ["<path>"]}
   shared.md            the layer of every mapped repository
   groups/<group>.md    the layer of one group of sibling repositories
   docs/                documents a layer points to, read on demand

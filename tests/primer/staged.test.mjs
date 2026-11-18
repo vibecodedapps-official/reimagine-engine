@@ -32,9 +32,9 @@ const repo = (name, remote) => {
   return dir;
 };
 // A configuration directory with primer's own directory and a map.
-const config = (repos) => {
+const config = (repos, version = 1) => {
   const dir = join(base, `config-${++seq}`), own = join(dir, 'reimagine-primer');
-  write(own, 'store/map.json', JSON.stringify({ version: 1, repos, roots: [] }));
+  write(own, 'store/map.json', JSON.stringify({ version, repos, roots: [] }));
   return { dir, own };
 };
 const APP = { remotes: ['example.invalid/team/app'], path: 'unused', group: 'app', profile: 'local' };
@@ -87,7 +87,7 @@ describe('staged', () => {
   test('R386: a local repository the map holds as ~/ is checked where the call\'s directory cannot be told', () => {
     const dir = repo('home/far');
     write(dir, 'CLAUDE.md', '# x\n');
-    const cfg = config([{ remotes: [], path: '~/far', group: 'far', profile: 'local' }]);
+    const cfg = config([{ remotes: [], path: '~/far', group: 'far', profile: 'local' }], 2);
     const r = run(input('cd "$SOMEWHERE" && git add CLAUDE.md', base), cfg);
     const reason = `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; the command cannot be resolved, `
       + "so it counts as staging every file git does not ignore; the call would add CLAUDE.md, while the upstream's tree is unknown (no remote names it)";

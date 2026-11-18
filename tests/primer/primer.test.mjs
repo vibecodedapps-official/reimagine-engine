@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { delimiter, dirname, join } from 'node:path';
+import { delimiter, dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { main } from '../../plugins/primer/scripts/primer.mjs';
 
@@ -176,7 +176,7 @@ describe('session-start', () => {
     const plain = join(base, 'plain');
     mkdirSync(plain);
     assert.equal(start(config(local({ roots: [slash(base)] }), { group: GROUP }), plain).stdout, '');
-    const bad = config({ version: 2 });
+    const bad = config({ version: 3, repos: [], roots: [] });
     const r = start(bad, repo('bad-map', 'https://example.invalid/team/app.git'));
     assert.deepEqual([r.status, r.stdout], [0, '']);
   });
@@ -410,7 +410,7 @@ describe('map', () => {
     const r = m('--add', '--profile', 'shared', '--root', base);
     assert.equal(r.status, 0, r.stdout);
     assert.equal(r.stdout, `primer: wrote ${mapPath}\nrepo: + group App, profile shared, remotes example.invalid/team/App\nroot: + ${slash(base)}\n`);
-    assert.deepEqual(read(), { version: 1, repos: [{ remotes: ['example.invalid/team/App'], path: slash(dir), group: 'App', profile: 'shared' }], roots: [slash(base)] });
+    assert.deepEqual(read(), { version: 2, repos: [{ remotes: ['example.invalid/team/App'], path: slash(dir), group: 'App', profile: 'shared' }], roots: [slash(base)] });
     assert.deepEqual([m('--add', '--profile', 'local').status, m('--add', '--profile', 'local').stdout],
       [1, 'primer: this repository is already mapped (group App, profile shared, remotes example.invalid/team/App); use --set\n']);
     assert.equal(m('--set', '--profile', 'local', '--group', 'app').stdout, `primer: wrote ${mapPath}\nrepo: ~ group app, profile local, remotes example.invalid/team/App\n`);
@@ -418,7 +418,7 @@ describe('map', () => {
     assert.equal(m('--add', '--root', base).stdout, 'primer: the map already holds that; nothing was written\n');
     assert.equal(m('--drop', '--root', base).stdout, `primer: wrote ${mapPath}\nroot: - ${slash(base)}\n`);
     assert.equal(m('--drop').stdout, `primer: wrote ${mapPath}\nrepo: - group app, profile local, remotes example.invalid/team/App\n`);
-    assert.deepEqual(read(), { version: 1, repos: [], roots: [] });
+    assert.deepEqual(read(), { version: 2, repos: [], roots: [] });
     assert.equal(m('--drop').stdout, 'primer: this repository has no entry in the map; use --add\n');
     const store = join(base, 'elsewhere-store');
     assert.equal(m('--set', '--store', store).stdout, `primer: wrote ${join(cfgDir, 'reimagine-primer', 'config.json')}\n`);
@@ -441,9 +441,18 @@ describe('map', () => {
     const mapPath = join(cfgDir, 'reimagine-primer', 'store', 'map.json');
     assert.equal(m('--add', '--profile', 'local', '--root', join(base, 'home', 'work'), '--root', join(base, 'home')).stdout,
       `primer: wrote ${mapPath}\nrepo: + group kept, profile local, path ${slash(dir)}\nroot: + ${slash(join(base, 'home', 'work'))}\nroot: + ${slash(join(base, 'home'))}\n`);
-    assert.deepEqual(JSON.parse(readFileSync(mapPath, 'utf8')), { version: 1, repos: [{ remotes: [], path: '~/kept', group: 'kept', profile: 'local' }], roots: ['~/work', '~'] });
+    assert.deepEqual(JSON.parse(readFileSync(mapPath, 'utf8')), { version: 2, repos: [{ remotes: [], path: '~/kept', group: 'kept', profile: 'local' }], roots: ['~/work', '~'] });
     assert.equal(m().stdout, `map: ${mapPath}\nrepo: group kept, profile local, path ${slash(dir)}\nroot: ${slash(join(base, 'home', 'work'))}\nroot: ${slash(join(base, 'home'))}\n`);
     assert.equal(m('--set', '--group', 'kin').stdout, `primer: wrote ${mapPath}\nrepo: ~ group kin, profile local, path ${slash(dir)}\n`);
+  });
+
+  test('where the home directory is the root of the file system, a path is held in full', () => {
+    const dir = repo('root-home');
+    const cfgDir = join(base, `map-config-${++seq}`), top = parse(base).root;
+    const r = run(['map', '--add', '--profile', 'local'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfgDir, HOME: top, USERPROFILE: top } });
+    assert.equal(r.status, 0, r.stdout);
+    assert.deepEqual(JSON.parse(readFileSync(join(cfgDir, 'reimagine-primer', 'store', 'map.json'), 'utf8')),
+      { version: 2, repos: [{ remotes: [], path: slash(dir), group: 'root-home', profile: 'local' }], roots: [] });
   });
 
   test('a map written with paths in full loads, and the next write holds those under the home directory as ~/', () => {
@@ -451,7 +460,7 @@ describe('map', () => {
     const cfg = config({ version: 1, repos: [{ remotes: [], path: slash(dir), group: 'older', profile: 'local' }], roots: [slash(base)] });
     const r = run(['map', '--set', '--profile', 'shared'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
     assert.equal(r.stdout, `primer: wrote ${join(cfg.store, 'map.json')}\nrepo: ~ group older, profile shared, path ${slash(dir)}\n`);
-    assert.deepEqual(JSON.parse(readFileSync(join(cfg.store, 'map.json'), 'utf8')), { version: 1, repos: [{ remotes: [], path: '~/older', group: 'older', profile: 'shared' }], roots: [slash(base)] });
+    assert.deepEqual(JSON.parse(readFileSync(join(cfg.store, 'map.json'), 'utf8')), { version: 2, repos: [{ remotes: [], path: '~/older', group: 'older', profile: 'shared' }], roots: [slash(base)] });
   });
 
   test('--set --local names the machine\'s directory, and says so while a machine layer is left in primer\'s own', () => {
@@ -464,6 +473,11 @@ describe('map', () => {
     const status = run(['status'], { cwd: repo('map-local-key', 'https://example.invalid/team/app.git'), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
     assert.equal(status[8], `layer machine: ${join(here, 'machine.md')}, missing or empty`);
     assert.equal(status[11], `check machine: ${left}`);
+    const unmapped = run(['status'], { cwd: repo('map-local-unmapped', 'https://example.invalid/team/none.git'), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
+    assert.equal(unmapped[6], `check machine: ${left}`);
+    const plain = config(local());
+    const p = run(['map', '--set', '--store', plain.dir], { extraEnv: { CLAUDE_CONFIG_DIR: plain.dir } });
+    assert.deepEqual([p.status, p.stdout], [1, `primer: the machine's directory ${plain.own} would sit inside the store ${plain.dir}, which may be shared; name one outside it\n`]);
     assert.deepEqual(m('--set', '--local', 'relative'), [1, 'primer: --local takes an absolute or ~/ path, not relative\n']);
     assert.deepEqual(m('--set', '--local', join(cfg.store, 'mine')), [1, `primer: the machine's directory ${join(cfg.store, 'mine')} would sit inside the store ${cfg.store}, which may be shared; name one outside it\n`]);
     assert.deepEqual(m('--set', '--store', base), [1, `primer: the machine's directory ${here} would sit inside the store ${base}, which may be shared; name one outside it\n`]);
@@ -488,7 +502,7 @@ describe('map', () => {
     const m = (...args) => { const r = run(['map', ...args], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }); return [r.status, r.stdout]; };
     assert.deepEqual(m(), [0, `map: ${mapPath}\nrepo: group own, profile local, remotes example.invalid/team/own\n`]);
     assert.deepEqual(m('--set', '--profile', 'shared'), [0, `primer: wrote ${mapPath}\nrepo: ~ group own, profile shared, remotes example.invalid/team/own\n`]);
-    assert.deepEqual(JSON.parse(readFileSync(mapPath, 'utf8')), { version: 1, repos: [{ remotes: ['example.invalid/team/own'], path: 'unused', group: 'own', profile: 'shared' }], roots: [] });
+    assert.deepEqual(JSON.parse(readFileSync(mapPath, 'utf8')), { version: 2, repos: [{ remotes: ['example.invalid/team/own'], path: 'unused', group: 'own', profile: 'shared' }], roots: [] });
   });
 
   test('each form the map does not take is refused with one line', () => {

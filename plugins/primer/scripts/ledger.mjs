@@ -6,14 +6,14 @@
 //   --worked <id> <log>                  a log says the folded rule worked
 //   --set <id> <status> [--place <file> [--commit <sha>]] [--by <id>]
 //                                        open, held or rejected; folded at a place, with its commit when git tracks a place
-//                                        outside the store and the machine's directory;
+//                                        that is no file of the store and no layer of the machine's directory;
 //                                        superseded by another item
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Refusal, held, ownOf, places, writeAtomic } from './primer.mjs';
+import { Refusal, held, keyOf, ownOf, places, writeAtomic } from './primer.mjs';
 
 const STATUSES = ['open', 'folded', 'rejected', 'held', 'superseded'];
 const FORMS = 'ledger takes nothing, --add <log> <gap>, --seen <id> <log>, --worked <id> <log>, or --set <id> <status> '
@@ -87,14 +87,14 @@ export function main(argv, { env = process.env, platform = process.platform, hom
     if (status === 'folded') {
       const place = resolve(cwd, o['--place']);
       if (!statSync(place, { throwIfNoEntry: false })?.isFile()) refuse(`${place} is not a file`);
-      const tracked = git(dirname(place), 'ls-files', '--error-unmatch', '--', place).status === 0, at = held(c, p, place, [p.store, p.local]);
-      // A run makes no commit in a repository that holds the store or the machine's directory, so a fold inside one may have none.
-      const ours = at !== held(c, p, place, []);
+      const tracked = git(dirname(place), 'ls-files', '--error-unmatch', '--', place).status === 0, k = (f) => keyOf(f, c.platform);
+      // A run makes no commit in a repository that holds the store or the machine's layers, so a fold into one of those may have none.
+      const ours = [p.store, join(p.local, 'machine')].some((d) => k(place).startsWith(`${k(d)}/`)) || k(place) === k(join(p.local, 'machine.md'));
       if (tracked && !o['--commit'] && !ours) refuse(`git tracks ${place}; --commit names the commit that folded it`);
       if (!tracked && o['--commit']) refuse(`git does not track ${place}, so the fold has no commit`);
       const sha = tracked && o['--commit'] && git(dirname(place), 'rev-parse', '-q', '--verify', `${o['--commit']}^{commit}`);
       if (sha && sha.status !== 0) refuse(`${o['--commit']} is not a commit of the repository that holds ${place}`);
-      Object.assign(x, { place: at, commit: sha ? sha.stdout.trim() : null });
+      Object.assign(x, { place: held(c, p, place), commit: sha ? sha.stdout.trim() : null });
     }
   } else refuse(FORMS);
   writeAtomic(path, items.map((y) => JSON.stringify(y)).join('\n') + '\n');

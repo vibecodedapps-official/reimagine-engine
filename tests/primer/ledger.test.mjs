@@ -134,7 +134,23 @@ describe('ledger', () => {
       `~ L1 folded in shared.md at ${sha.slice(0, 12)}, seen 1: Line ends were mixed. (2026-11-01.md)`);
   });
 
-  test('a fold is recorded by its path inside the store or the machine\'s directory, as ~/ under the home directory, and else in full', () => {
+  test('a tracked file under the machine\'s directory that is no layer of it still needs its commit', () => {
+    const cfg = config();
+    const here = join(base, `machine-${seq}`);
+    write(cfg.dir, 'reimagine-primer/config.json', JSON.stringify({ local: here }));
+    write(here, 'machine/app.md', 'The app group keeps its database on port 5433 here.\n');
+    write(here, 'notes/CLAUDE.md', '# Notes\n');
+    git(here, 'init', '-q');
+    git(here, 'add', '-A');
+    git(here, 'commit', '-q', '-m', 'machine');
+    out(cfg, '--add', '2026-11-01.md', 'One.');
+    assert.deepEqual(out(cfg, '--set', 'L1', 'folded', '--place', join(here, 'notes', 'CLAUDE.md')),
+      [1, `primer: git tracks ${join(here, 'notes', 'CLAUDE.md')}; --commit names the commit that folded it\n`]);
+    assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(here, 'machine', 'app.md'))[1].split('\n')[1],
+      `~ L1 folded in ${slash(join(here, 'machine', 'app.md'))}, seen 1: One. (2026-11-01.md)`);
+  });
+
+  test('a fold is recorded by its path inside the store, as ~/ under the home directory, and else in full', () => {
     const cfg = config();
     write(cfg.dir, 'reimagine-primer/store/groups/app.md', 'The app group builds with npm run build.\n');
     write(base, 'home/notes/machine.md', 'This machine keeps its checkouts on one disk.\n');
@@ -144,7 +160,7 @@ describe('ledger', () => {
     assert.equal(lines(cfg)[0].place, 'groups/app.md');
     write(cfg.dir, 'reimagine-primer/machine/app.md', 'The app group keeps its database on port 5433 here.\n');
     assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(cfg.dir, 'reimagine-primer', 'machine', 'app.md'))[1].split('\n')[1],
-      '~ L1 folded in machine/app.md, seen 1: One. (2026-11-01.md)');
+      `~ L1 folded in ${slash(join(cfg.dir, 'reimagine-primer', 'machine', 'app.md'))}, seen 1: One. (2026-11-01.md)`);
     assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(base, 'home', 'notes', 'machine.md'))[1].split('\n')[1],
       '~ L1 folded in ~/notes/machine.md, seen 1: One. (2026-11-01.md)');
   });

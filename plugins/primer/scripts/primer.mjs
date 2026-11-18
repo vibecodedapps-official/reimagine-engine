@@ -69,13 +69,13 @@ export function git(c, cwd, args, deadline) {
 }
 export const blob = (c, cwd, spec) => { const r = git(c, cwd, ['cat-file', 'blob', spec]); return r.status === 0 ? r.stdout : ''; };
 
-// The repository a directory is in: its main work tree's root, its top level, its remotes as host/path and its remote names.
+// The repository a directory is in: its main work tree's root, its top level, its remotes as host/path, their names and their URLs.
 export function repoOf(c, cwd, deadline) {
   const r = git(c, cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir', '--show-toplevel'], deadline);
   if (r.status !== 0) return null;
   const [common, top] = r.stdout.split('\n');
   const fetch = git(c, cwd, ['remote', '-v'], deadline).stdout.split('\n').map((l) => l.trim().match(/^(\S+)\s+(.+) \(fetch\)$/)).filter(Boolean);
-  return { root: slash(dirname(common)), top: slash(top), remotes: [...new Set(fetch.map((m) => normalizeRemote(m[2])).filter(Boolean))].sort(), names: fetch.map((m) => m[1]) };
+  return { root: slash(dirname(common)), top: slash(top), remotes: [...new Set(fetch.map((m) => normalizeRemote(m[2])).filter(Boolean))].sort(), names: fetch.map((m) => m[1]), urls: fetch.map((m) => m[2]) };
 }
 
 // <config> as the hooks find it: three levels above the input's transcript, else the variable, else ~/.claude.
@@ -157,9 +157,27 @@ function frontOf(text) {
   return out;
 }
 
+// The feedback logs of <config>/feedback/ as one repository reads them. A log's entries are its level-two sections, but one headed
+// Recommended, and an entry is the repository's when its heading holds, as a word, the name of the repository's directory or of a
+// remote. .reviewed holds, a line per repository and log, how many entries the log had at that repository's last review.
+export function feedbackOf(config, repo) {
+  const dir = join(config, 'feedback'), stamp = join(dir, '.reviewed'), key = repo.root.replace(/[^A-Za-z0-9]/g, '-'), low = (s) => s.replace(/[A-Z]/g, (ch) => ch.toLowerCase());
+  const last = (u) => slash(u).replace(/\/+$/, '').replace(/\.git$/, '').replace(/\/+$/, '').replace(/^.*[/:]/, '');
+  const names = [...new Set([repo.root, ...repo.urls].map((u) => low(last(u))).filter(Boolean))], edge = (ch) => !ch || !/[a-z0-9_-]/.test(ch);
+  const named = (h) => names.some((nm) => { for (let at = h.indexOf(nm); at >= 0; at = h.indexOf(nm, at + 1)) if (edge(h[at - 1]) && edge(h[at + nm.length])) return true; return false; });
+  const marks = readText(stamp).split('\n').map((l) => l.replace(/\r$/, '').split('\t')).filter((f) => f.length === 3 && /^[0-9]+$/.test(f[1]));
+  const read = new Map(marks.filter((f) => f[0] === key).map((f) => [f[2], Number(f[1])]));
+  const files = (() => { try { return readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && !e.name.startsWith('.')).map((e) => e.name).sort(); } catch { return []; } })();
+  const logs = files.map((name) => {
+    const heads = readText(join(dir, name)).split('\n').map((l) => l.replace(/\r$/, '')).filter((l) => l.startsWith('## ') && !/^recommended([^a-z0-9_-]|$)/.test(low(l.slice(3)).replace(/^[ \t]+/, '')));
+    return { name, total: heads.length, unread: heads.map((l, i) => ({ n: i + 1, heading: l.slice(3).trim(), own: named(low(l.slice(3))) })).slice(read.get(name) ?? 0) };
+  });
+  return { stamp, key, reviewed: read.size > 0, others: marks.filter((f) => f[0] !== key), logs };
+}
+
 // The notice of notice.sh for a local repository, which has no hub: the auto memory notes of type feedback or project modified
-// after the stamp, and the feedback logs under <config>/feedback/ modified after theirs, .reviewed beside them or else
-// reviewed/feedback in the data directory, each counting in full without a stamp.
+// after the stamp, and the repository's feedback entries since its last review. After a review a single entry makes no notice:
+// it is taken for the reviewing session's own, which that session logs after the stamp is written.
 function notice(c, input, data, repo) {
   const config = configOf(c, input), win = c.platform === 'win32', cwd = slash(isDir(input.cwd) ? input.cwd : c.cwd);
   const tp = typeof input.transcript_path === 'string' ? slash(input.transcript_path) : '', sdir = tp && dirname(tp), key = repo.root.replace(/[^A-Za-z0-9]/g, '-');
@@ -176,7 +194,7 @@ function notice(c, input, data, repo) {
   memory ??= sdir && c.env.CLAUDE_CODE_PROJECT_DIR_NAME && basename(sdir) === c.env.CLAUDE_CODE_PROJECT_DIR_NAME ? `${sdir}/memory` : join(sdir ? dirname(sdir) : join(config, 'projects'), key, 'memory');
   const file = (f) => (statSync(f, { throwIfNoEntry: false })?.isFile() ? f : null), stamp = (name) => (data ? file(join(data, 'reviewed', name)) : null);
   const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0], seen = new Set();
-  let n = 0, m = 0;
+  let n = 0;
   for (const l of readText(join(memory, 'MEMORY.md')).split('\n').map((x) => x.replace(/\r$/, ''))) {
     const at = l.indexOf(']('), rest = l.slice(at + 2), name = rest.slice(0, rest.indexOf(')'));
     if (!l.startsWith('- [') || at < 0 || !rest.includes(')') || !name || name.startsWith('/') || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
@@ -184,9 +202,8 @@ function notice(c, input, data, repo) {
     const fm = frontOf(readText(join(memory, name)));
     if (['feedback', 'project'].includes(fm.type) && (noted === null || (fm.modified && fm.modified > since))) n++;
   }
-  const logs = join(config, 'feedback'), mark = file(join(logs, '.reviewed')) ?? stamp('feedback'), after = mark ? statSync(mark).mtimeMs : -Infinity;
-  try { for (const e of readdirSync(logs, { withFileTypes: true })) if (e.isFile() && !e.name.startsWith('.') && statSync(join(logs, e.name)).mtimeMs > after) m++; } catch {}
-  const what = n && m ? `auto memory has ${n} notes and ${m} feedback logs` : n ? `auto memory has ${n} notes` : `${m} feedback logs`;
+  const fb = feedbackOf(config, repo), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
+  const what = n && m ? `auto memory has ${n} notes and ${m} feedback entries` : n ? `auto memory has ${n} notes` : `${m} feedback entries`;
   return n || m ? `primer: ${what} since the last review; run /primer` : null;
 }
 

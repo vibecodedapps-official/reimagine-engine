@@ -79,13 +79,15 @@ primer: auto memory has 2 notes since the last review; run /primer
 
 `/primer` in `maintain` mode reviews them and records the review, after which the line goes until new notes arrive. Without the marker the notice says nothing. It never writes a file.
 
-The notice also counts the feedback logs under `~/.claude/feedback/` (under `$CLAUDE_CONFIG_DIR` when set) that changed since the last fold-back review. The house rules have each session write there unless loaded context names another log, which primer does not read. It counts them in every repository, since the logs belong to none:
+The notice also counts the feedback entries under `~/.claude/feedback/` (under `$CLAUDE_CONFIG_DIR` when set) that name this repository and came after its last fold-back review. The house rules have each session write an entry there, headed by the repository it worked in, unless loaded context names another log, which primer does not read. An entry is a `## ` section of a log, and it names a repository by its directory's name or by the name of a remote:
 
 ```
-primer: auto memory has 2 notes and 1 feedback logs since the last review; run /primer
+primer: auto memory has 2 notes and 3 feedback entries since the last review; run /primer
 ```
 
-The fold-back review in `maintain` checks each logged item's evidence, then its worth and placement, and asks once about what it would fold, hold or reject. `scripts/ledger.mjs` keeps one line per item in `ledger.jsonl` in the store, with its status and how often it was seen, so a held item that comes up again returns with its count, and a later item that matches a folded rule counts as that rule's failure. The review ends by writing `.reviewed` in the logs' folder, so two config folders that share one plugins folder each keep their own review time.
+Right after a review a single new entry makes no notice, since the session that reviews logs one about its own run; the next review reads it. An entry that names another repository or none is counted in no repository, and a review reads it only when you ask.
+
+The fold-back review in `maintain` reads this repository's entries, classes each item, and checks the evidence, worth and placement of the ones this repository's context can hold; an item for the house rules or another plugin is listed by its kind with its count, unchecked. It asks once about what it would fold, hold or reject. `scripts/ledger.mjs` keeps one line per item in `ledger.jsonl` in the store, with its status and how often it was seen, so a held item that comes up again returns with its count, and a later item that matches a folded rule counts as that rule's failure. The review ends by writing `.reviewed` in the logs' folder, which holds how far each repository has read each log, so two config folders that share one plugins folder each keep their own.
 
 ## Reach hook
 

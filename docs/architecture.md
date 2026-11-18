@@ -474,10 +474,10 @@ plugins/primer/
                                    SubagentStart -> the same command, one entry, no matcher, timeout 10
                                    PreToolUse Edit|Write|NotebookEdit -> node primer.mjs reach, timeout 10, onFailure continue
   hooks/drift.sh                   the commit check; hands a `git add` or `git commit` in a `local` repository to staged.mjs
-  hooks/notice.sh                  one line when auto memory or the feedback logs have unreviewed entries
+  hooks/notice.sh                  one line when auto memory has unreviewed notes or the feedback logs unread entries that name the repository
   scripts/primer.mjs               session-start <layer> | reach | status | measure | map | copies | skills
   scripts/staged.mjs               the staging check of the `local` profile, started by drift.sh with the hook's input
-  scripts/ledger.mjs               the fold-back ledger in the store: list | --add | --seen | --worked | --set
+  scripts/ledger.mjs               the fold-back ledger in the store: list | --add | --seen | --worked | --set; the logs: --unread | --reviewed
   scripts/transcripts.mjs          the user's own messages from the session files, for a repository and a span of days
 ```
 
@@ -558,7 +558,7 @@ A repository has one of two profiles, picked once by the user on primer's first 
   skills/<name>/       a skill, linked by name into <config>/skills/ by primer.mjs skills --link
   ledger.jsonl         one line per feedback item
 <config>/feedback/     the dated logs the house rules have every session write, unless loaded context names a log for these entries (requirement 362)
-  .reviewed            the stamp of the last fold-back review (requirement 397)
+  .reviewed            how many entries of each log each repository's last fold-back review had before it (requirement 397)
 ```
 
 A repository matches a map entry by a remote, written `host/path` as guard writes it, else by its main work tree's root, found from the git common directory as the notice finds it, and only then by a remote that differs from an entry's in letter case or in naming an older host of Azure DevOps, which `formOf` reads as `dev.azure.com`; so every worktree matches as its repository does, and a map that holds an entry for each form keeps each clone on its own (requirement 386, decisions 292 and 338). The store may be a directory the user versions, which is why the machine's own layer sits outside it and why the map, the ledger and the copies record hold a path under the home directory as `~/` (decision 344). Only `primer.mjs` writes the map and `config.json`; the skill writes a layer or a document on a yes that names the file, and where the store or the machine's directory sits inside a repository it leaves those files uncommitted there (decision 346).

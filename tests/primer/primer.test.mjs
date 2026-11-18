@@ -775,17 +775,16 @@ describe('the notice', () => {
     assert.equal(build.status, 0, build.stderr);
     memory = build.stdout.trim();
     dir = repo('notice-both', 'https://example.invalid/team/app.git');
+    git(dir, 'remote', 'add', 'upstream', 'git@other.invalid:fork/kit.git');
     write(dir, 'CLAUDE.md', '<!-- primer -->\n# demo\n');
     cfg = config(local());
     key = dir.replace(/[^A-Za-z0-9]/g, '-');
     cpSync(join(memory, 'memory'), join(cfg.dir, 'projects', key, 'memory'), { recursive: true });
   });
-  const stamps = (data, { notes, logs }) => {
+  const stamps = (data, { notes }) => {
     mkdirSync(join(data, 'reviewed'), { recursive: true });
     rmSync(join(data, 'reviewed', key), { force: true });
-    rmSync(join(data, 'reviewed', 'feedback'), { force: true });
     if (notes) write(data, `reviewed/${key}`, `${notes}\n`);
-    if (logs) { write(data, 'reviewed/feedback', '2026-11-01T00:00:00.000Z\n'); utimesSync(join(data, 'reviewed', 'feedback'), logs, logs); }
   };
   const both = (data, extra = {}) => {
     const input = JSON.stringify({ session_id: 'test', transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SessionStart', source: 'startup', ...extra });
@@ -795,51 +794,49 @@ describe('the notice', () => {
   };
   const message = (text) => `{"systemMessage":"${text}"}\n`;
 
-  test('notes alone, notes and logs, and logs alone each read the same from both hooks', () => {
-    const t = 1793491200;
-    for (const [i, at] of [t - day, t + day, t + 2 * day].entries()) { write(cfg.dir, `feedback/2026-11-0${i + 1}.md`, '# Log\n'); utimesSync(join(cfg.dir, 'feedback', `2026-11-0${i + 1}.md`), at, at); }
-    const data = join(base, `notice-data-${++seq}`);
-    stamps(data, { notes: '2026-09-15T12:00:00.000Z', logs: t + 3 * day });
+  test('notes alone, notes and entries, and entries alone each read the same from both hooks', () => {
+    const logs = join(cfg.dir, 'feedback'), data = join(base, `notice-data-${++seq}`);
+    // Three entries name the repository: a level-two Recommended section is no entry, and app-two is another repository's name.
+    write(logs, '2026-11-01.md', '## app: a first entry\n\n- One.\n\n### Recommended\n\n- One.\n\n## Recommended\n\n- Kept at level two.\n\n## app-two: another repository\n\n## team, app: a comma before the colon\n');
+    write(logs, '2026-11-02.md', '## Session\n\n- It names none.\n\n## APP: in capitals\r\n\n## Recommended for app\n');
+    const read = `${key}\t3\t2026-11-01.md\n${key}\t2\t2026-11-02.md\n`;
+    write(logs, '.reviewed', read);
+    stamps(data, { notes: '2026-09-15T12:00:00.000Z' });
     const one = message('primer: auto memory has 1 notes since the last review; run /primer');
     assert.deepEqual(both(data), [one, one]);
-    stamps(data, { notes: '2026-09-15T12:00:00.000Z', logs: t });
-    const two = message('primer: auto memory has 1 notes and 2 feedback logs since the last review; run /primer');
+    rmSync(join(logs, '.reviewed'));
+    const two = message('primer: auto memory has 1 notes and 3 feedback entries since the last review; run /primer');
     assert.deepEqual(both(data), [two, two]);
     stamps(data, { notes: '2026-12-01T00:00:00.000Z' });
-    const three = message('primer: 3 feedback logs since the last review; run /primer');
+    const three = message('primer: 3 feedback entries since the last review; run /primer');
     assert.deepEqual(both(data), [three, three]);
-    rmSync(join(cfg.dir, 'projects', key, 'memory', 'MEMORY.md'));
-    stamps(data, { logs: t });
-    const logs = message('primer: 2 feedback logs since the last review; run /primer');
-    assert.deepEqual(both(data), [logs, logs]);
-    cpSync(join(memory, 'memory', 'MEMORY.md'), join(cfg.dir, 'projects', key, 'memory', 'MEMORY.md'));
+    write(logs, '.reviewed', read);
+    assert.deepEqual(both(data), ['', '']);
   });
 
-  test('the stamp beside the logs is one config folder\'s own, and the one in the data folder is read only without it', () => {
-    const t = 1793491200, data = join(base, `notice-data-${++seq}`), a = config(local()), b = config(local());
-    const put = (c, name, at) => { write(c.dir, `feedback/${name}`, '# Log\n'); utimesSync(join(c.dir, 'feedback', name), at, at); };
-    const from = (c) => both(data, { transcript_path: join(c.dir, 'projects', key, 'test.jsonl') });
-    const one = message('primer: 1 feedback logs since the last review; run /primer');
-    put(a, '2026-11-01.md', t);
-    put(b, '2026-11-01.md', t);
+  test('the stamp holds how far one repository read each log, and a single entry after a review makes no notice', () => {
+    const data = join(base, `notice-data-${++seq}`), a = config(local()), b = config(local()), c = config(local());
+    const from = (x) => both(data, { transcript_path: join(x.dir, 'projects', key, 'test.jsonl') });
+    const said = (n) => message(`primer: ${n} feedback entries since the last review; run /primer`);
     stamps(data, {});
-    put(a, '.reviewed', t + day);
+    write(a.dir, 'feedback/2026-11-01.md', '## app: one\n\n## app: two\n');
+    write(b.dir, 'feedback/2026-11-01.md', '## app: one\n\n## app: two\n');
+    // A stamp in the earlier form, one line that holds a time, counts for nothing, and neither does another repository's line.
+    write(a.dir, 'feedback/.reviewed', '2026-11-01T00:00:00.000Z\nanother-key\t2\t2026-11-01.md\n');
+    assert.deepEqual(from(a), [said(2), said(2)]);
+    write(a.dir, 'feedback/.reviewed', `another-key\t2\t2026-11-01.md\n${key}\t2\t2026-11-01.md\n`);
     assert.deepEqual(from(a), ['', '']);
-    assert.deepEqual(from(b), [one, one]);
-    stamps(data, { logs: t + day });
-    assert.deepEqual(from(b), ['', '']);
-    put(a, '2026-11-03.md', t + 2 * day);
-    stamps(data, { logs: t + 3 * day });
-    assert.deepEqual(from(a), [one, one]);
-    put(b, '2026-11-03.md', t + 2 * day);
-    put(b, '.reviewed', t + 3 * day);
-    stamps(data, { logs: t + day });
-    assert.deepEqual(from(b), ['', '']);
-    const c = config(local());
-    put(c, '2026-11-01.md', t);
+    assert.deepEqual(from(b), [said(2), said(2)]);
+    // The reviewing session logs its own entry after the stamp is written.
+    write(a.dir, 'feedback/2026-11-01.md', '## app: one\n\n## app: two\n\n## app: three\n');
+    assert.deepEqual(from(a), ['', '']);
+    // A second entry, in a log the stamp does not hold and by the name of the second remote, makes the notice.
+    write(a.dir, 'feedback/2026-11-02.md', '## kit: a later session\n');
+    assert.deepEqual(from(a), [said(2), said(2)]);
+    // A directory of the stamp's name is no stamp, and the directory's own name is one of the repository's.
+    write(c.dir, 'feedback/2026-11-01.md', '## notice-both: by its directory\n\n## notice: a shorter name\n');
     mkdirSync(join(c.dir, 'feedback', '.reviewed'));
-    stamps(data, {});
-    assert.deepEqual(from(c), [one, one]);
+    assert.deepEqual(from(c), [said(1), said(1)]);
   });
 
   test('the loader gives no notice on a later source or in a session no one attends', () => {

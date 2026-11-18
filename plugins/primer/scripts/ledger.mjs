@@ -5,7 +5,8 @@
 //   --seen <id> <log>                    another log states the item's gap: a held item opens again, a folded one counts a failure
 //   --worked <id> <log>                  a log says the folded rule worked
 //   --set <id> <status> [--place <file> [--commit <sha>]] [--by <id>]
-//                                        open, held or rejected; folded at a place, with its commit when git tracks the place;
+//                                        open, held or rejected; folded at a place, with its commit when git tracks a place
+//                                        outside the store and the machine's directory;
 //                                        superseded by another item
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
@@ -86,12 +87,14 @@ export function main(argv, { env = process.env, platform = process.platform, hom
     if (status === 'folded') {
       const place = resolve(cwd, o['--place']);
       if (!statSync(place, { throwIfNoEntry: false })?.isFile()) refuse(`${place} is not a file`);
-      const tracked = git(dirname(place), 'ls-files', '--error-unmatch', '--', place).status === 0;
-      if (tracked && !o['--commit']) refuse(`git tracks ${place}; --commit names the commit that folded it`);
+      const tracked = git(dirname(place), 'ls-files', '--error-unmatch', '--', place).status === 0, at = held(c, p, place, [p.store, p.local]);
+      // A run makes no commit in a repository that holds the store or the machine's directory, so a fold inside one may have none.
+      const ours = at !== held(c, p, place, []);
+      if (tracked && !o['--commit'] && !ours) refuse(`git tracks ${place}; --commit names the commit that folded it`);
       if (!tracked && o['--commit']) refuse(`git does not track ${place}, so the fold has no commit`);
-      const sha = tracked && git(dirname(place), 'rev-parse', '-q', '--verify', `${o['--commit']}^{commit}`);
+      const sha = tracked && o['--commit'] && git(dirname(place), 'rev-parse', '-q', '--verify', `${o['--commit']}^{commit}`);
       if (sha && sha.status !== 0) refuse(`${o['--commit']} is not a commit of the repository that holds ${place}`);
-      Object.assign(x, { place: held(c, p, place, [p.store, p.local]), commit: sha ? sha.stdout.trim() : null });
+      Object.assign(x, { place: at, commit: sha ? sha.stdout.trim() : null });
     }
   } else refuse(FORMS);
   writeAtomic(path, items.map((y) => JSON.stringify(y)).join('\n') + '\n');

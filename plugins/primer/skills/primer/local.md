@@ -24,6 +24,7 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
 - Write a layer, in the store or the machine's directory, or a document under the store's `docs/`, with the Write or Edit tool, and only on a yes that names the file.
 - `map.json` and `config.json` change only through the same script's `map` verb: show the exact command and the change it makes, run it on a yes, and never edit either file by hand. `map --set --group <name>` puts sibling repositories in one group; `map --add --root <dir>` lists a directory whose repositories the user expects to be mapped, so an unmapped one there gets a warning at start; `map --set --store <path>`, given alone, names a store kept elsewhere, by an absolute or `~/` path, and `map --set --local <path>` the machine's directory the same way.
 - The review stamp of Maintain step 3 is written as before.
+- A store or a machine's directory inside a repository, which `git -C <directory> rev-parse --show-toplevel` names, is that repository's to commit. Write its files and leave them: make and offer no commit, branch, push or pull request there, and name in the report the repository and each file left uncommitted. A fold into such a file is recorded with no commit.
 
 ## Beside the plan
 

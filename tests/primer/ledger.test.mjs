@@ -118,6 +118,22 @@ describe('ledger', () => {
       [1, `primer: git does not track ${join(base, `loose-${seq}.md`)}, so the fold has no commit\n`]);
   });
 
+  test('a fold into a file of a store git tracks needs no commit, since a run makes none there', () => {
+    const cfg = config();
+    const store = join(cfg.dir, 'reimagine-primer', 'store');
+    write(store, 'shared.md', 'Every mapped repository uses LF line ends.\n');
+    git(store, 'init', '-q');
+    git(store, 'add', '-A');
+    git(store, 'commit', '-q', '-m', 'store');
+    out(cfg, '--add', '2026-11-01.md', 'Line ends were mixed.');
+    assert.deepEqual(out(cfg, '--set', 'L1', 'folded', '--place', join(store, 'shared.md')),
+      [0, `primer: wrote ${cfg.ledger}\n~ L1 folded in shared.md, seen 1: Line ends were mixed. (2026-11-01.md)\n`]);
+    assert.equal(lines(cfg)[0].commit, null);
+    const sha = git(store, 'rev-parse', 'HEAD').trim();
+    assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(store, 'shared.md'), '--commit', 'HEAD')[1].split('\n')[1],
+      `~ L1 folded in shared.md at ${sha.slice(0, 12)}, seen 1: Line ends were mixed. (2026-11-01.md)`);
+  });
+
   test('a fold is recorded by its path inside the store or the machine\'s directory, as ~/ under the home directory, and else in full', () => {
     const cfg = config();
     write(cfg.dir, 'reimagine-primer/store/groups/app.md', 'The app group builds with npm run build.\n');

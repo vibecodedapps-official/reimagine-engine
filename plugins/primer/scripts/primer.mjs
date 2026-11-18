@@ -15,7 +15,7 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -69,13 +69,13 @@ export function git(c, cwd, args, deadline) {
 }
 export const blob = (c, cwd, spec) => { const r = git(c, cwd, ['cat-file', 'blob', spec]); return r.status === 0 ? r.stdout : ''; };
 
-// The repository a directory is in: its main work tree's root, its top level, its remotes as host/path and its remote names.
+// The repository a directory is in: its main work tree's root, its top level, its remotes as host/path, their names and their URLs.
 export function repoOf(c, cwd, deadline) {
   const r = git(c, cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir', '--show-toplevel'], deadline);
   if (r.status !== 0) return null;
   const [common, top] = r.stdout.split('\n');
   const fetch = git(c, cwd, ['remote', '-v'], deadline).stdout.split('\n').map((l) => l.trim().match(/^(\S+)\s+(.+) \(fetch\)$/)).filter(Boolean);
-  return { root: slash(dirname(common)), top: slash(top), remotes: [...new Set(fetch.map((m) => normalizeRemote(m[2])).filter(Boolean))].sort(), names: fetch.map((m) => m[1]) };
+  return { root: slash(dirname(common)), top: slash(top), remotes: [...new Set(fetch.map((m) => normalizeRemote(m[2])).filter(Boolean))].sort(), names: fetch.map((m) => m[1]), urls: fetch.map((m) => m[2]) };
 }
 
 // <config> as the hooks find it: three levels above the input's transcript, else the variable, else ~/.claude.
@@ -157,9 +157,27 @@ function frontOf(text) {
   return out;
 }
 
+// The feedback logs of <config>/feedback/ as one repository reads them. A log's entries are its level-two sections, but one headed
+// Recommended, and an entry is the repository's when its heading holds, as a word, the name of the repository's directory or of a
+// remote. .reviewed holds, a line per repository and log, how many entries the log had at that repository's last review.
+export function feedbackOf(config, repo) {
+  const dir = join(config, 'feedback'), stamp = join(dir, '.reviewed'), key = repo.root.replace(/[^A-Za-z0-9]/g, '-'), low = (s) => s.replace(/[A-Z]/g, (ch) => ch.toLowerCase());
+  const last = (u) => slash(u).replace(/\/+$/, '').replace(/\.git$/, '').replace(/\/+$/, '').replace(/^.*[/:]/, '');
+  const names = [...new Set([repo.root, ...repo.urls].map((u) => low(last(u))).filter(Boolean))], edge = (ch) => !ch || !/[a-z0-9_-]/.test(ch);
+  const named = (h) => names.some((nm) => { for (let at = h.indexOf(nm); at >= 0; at = h.indexOf(nm, at + 1)) if (edge(h[at - 1]) && edge(h[at + nm.length])) return true; return false; });
+  const marks = readText(stamp).split('\n').map((l) => l.replace(/\r$/, '').split('\t')).filter((f) => f.length === 3 && /^[0-9]+$/.test(f[1]));
+  const read = new Map(marks.filter((f) => f[0] === key).map((f) => [f[2], Number(f[1])]));
+  const files = (() => { try { return readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && !e.name.startsWith('.')).map((e) => e.name).sort(); } catch { return []; } })();
+  const logs = files.map((name) => {
+    const heads = readText(join(dir, name)).split('\n').map((l) => l.replace(/\r$/, '')).filter((l) => l.startsWith('## ') && !/^recommended([^a-z0-9_-]|$)/.test(low(l.slice(3)).replace(/^[ \t]+/, '')));
+    return { name, total: heads.length, unread: heads.map((l, i) => ({ n: i + 1, heading: l.slice(3).trim(), own: named(low(l.slice(3))) })).slice(read.get(name) ?? 0) };
+  });
+  return { stamp, key, reviewed: read.size > 0, others: marks.filter((f) => f[0] !== key), logs };
+}
+
 // The notice of notice.sh for a local repository, which has no hub: the auto memory notes of type feedback or project modified
-// after the stamp, and the feedback logs under <config>/feedback/ modified after theirs, .reviewed beside them or else
-// reviewed/feedback in the data directory, each counting in full without a stamp.
+// after the stamp, and the repository's feedback entries since its last review. After a review a single entry makes no notice:
+// it is taken for the reviewing session's own, which that session logs after the stamp is written.
 function notice(c, input, data, repo) {
   const config = configOf(c, input), win = c.platform === 'win32', cwd = slash(isDir(input.cwd) ? input.cwd : c.cwd);
   const tp = typeof input.transcript_path === 'string' ? slash(input.transcript_path) : '', sdir = tp && dirname(tp), key = repo.root.replace(/[^A-Za-z0-9]/g, '-');
@@ -176,7 +194,7 @@ function notice(c, input, data, repo) {
   memory ??= sdir && c.env.CLAUDE_CODE_PROJECT_DIR_NAME && basename(sdir) === c.env.CLAUDE_CODE_PROJECT_DIR_NAME ? `${sdir}/memory` : join(sdir ? dirname(sdir) : join(config, 'projects'), key, 'memory');
   const file = (f) => (statSync(f, { throwIfNoEntry: false })?.isFile() ? f : null), stamp = (name) => (data ? file(join(data, 'reviewed', name)) : null);
   const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0], seen = new Set();
-  let n = 0, m = 0;
+  let n = 0;
   for (const l of readText(join(memory, 'MEMORY.md')).split('\n').map((x) => x.replace(/\r$/, ''))) {
     const at = l.indexOf(']('), rest = l.slice(at + 2), name = rest.slice(0, rest.indexOf(')'));
     if (!l.startsWith('- [') || at < 0 || !rest.includes(')') || !name || name.startsWith('/') || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
@@ -184,9 +202,8 @@ function notice(c, input, data, repo) {
     const fm = frontOf(readText(join(memory, name)));
     if (['feedback', 'project'].includes(fm.type) && (noted === null || (fm.modified && fm.modified > since))) n++;
   }
-  const logs = join(config, 'feedback'), mark = file(join(logs, '.reviewed')) ?? stamp('feedback'), after = mark ? statSync(mark).mtimeMs : -Infinity;
-  try { for (const e of readdirSync(logs, { withFileTypes: true })) if (e.isFile() && !e.name.startsWith('.') && statSync(join(logs, e.name)).mtimeMs > after) m++; } catch {}
-  const what = n && m ? `auto memory has ${n} notes and ${m} feedback logs` : n ? `auto memory has ${n} notes` : `${m} feedback logs`;
+  const fb = feedbackOf(config, repo), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
+  const what = n && m ? `auto memory has ${n} notes and ${m} feedback entries` : n ? `auto memory has ${n} notes` : `${m} feedback entries`;
   return n || m ? `primer: ${what} since the last review; run /primer` : null;
 }
 
@@ -222,6 +239,36 @@ function sessionStart(c, layer, input, data) {
   return Object.keys(out).length ? [JSON.stringify(out)] : [];
 }
 
+// The .md files of a directory, and every file under one, each sorted.
+const mdIn = (d) => { try { return readdirSync(d).filter((f) => f.endsWith('.md')).sort().map((f) => join(d, f)); } catch { return []; } };
+const filesIn = (d) => {
+  const out = [], walk = (x) => { for (const e of (() => { try { return readdirSync(x, { withFileTypes: true }); } catch { return []; } })()) (e.isDirectory() ? walk : (f) => out.push(f))(join(x, e.name)); };
+  walk(d);
+  return out.sort();
+};
+
+// What the text of a store that may be shared should not hold, by line and kind, the text never quoted: this machine's home
+// directory, the first label of its host name and its user name, each as a word, and a term of terms.txt in the machine's
+// directory, one a line.
+function ofMachine(c, p) {
+  const low = (s) => slash(s).toLowerCase(), h = keyOf(c.home, 'win32'), edge = (ch) => !ch || !/[a-z0-9_]/.test(ch);
+  const own = [[!h || /^[a-z]:$/.test(h) ? '' : h, 'the home directory'], [low(c.host).split('.')[0], 'the host name'], [low(c.user), 'the user name']];
+  const terms = readText(join(p.local, 'terms.txt')).split('\n').map((l) => low(l.trim())).filter(Boolean);
+  // t with each w that stands as a word taken out, or null where it holds none.
+  const cut = (t, w) => {
+    let out = '', from = 0;
+    for (let at = w ? t.indexOf(w) : -1; at >= 0; at = t.indexOf(w, at + 1)) if (at >= from && edge(t[at - 1]) && edge(t[at + w.length])) { out += `${t.slice(from, at)} `; from = at + w.length; }
+    return from ? out + t.slice(from) : null;
+  };
+  return (text) => (text.includes('\0') ? [] : text.split('\n').flatMap((l, i) => {
+    // A path under the home directory holds the user name, and a host name may: each is told once, by the longer.
+    let t = low(l);
+    const kinds = own.filter(([w]) => { const rest = cut(t, w); if (rest !== null) t = rest; return rest !== null; }).map(([, kind]) => kind);
+    if (terms.some((w) => cut(t, w) !== null)) kinds.push('a listed term');
+    return kinds.map((kind) => `${i + 1} holds ${kind}`);
+  }));
+}
+
 function status(c) {
   const p = places(c, ownOf(c));
   // A copies record that cannot be read costs the copies their lines and not the rest of the report.
@@ -249,6 +296,8 @@ function delivery(c, p) {
   if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
   const loose = skillsOf(c, p).filter((x) => x.state !== 'linked');
   if (loose.length) lines.push(`check skills: no link in ${join(dirname(p.own), 'skills')} for ${loose.map((x) => x.name).join(', ')}`);
+  const mine = ofMachine(c, p);
+  for (const f of [join(p.store, 'shared.md'), ...mdIn(join(p.store, 'groups')), ...filesIn(join(p.store, 'docs')), ...filesIn(join(p.store, 'skills')), join(p.store, 'ledger.jsonl'), ...filesIn(join(p.store, 'copies'))]) for (const hit of mine(readText(f))) lines.push(`check tracked: ${held(c, p, f)}:${hit}`);
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
@@ -265,13 +314,14 @@ function measure(c, args) {
     swap = { file: fileOf(p, g ? (g[1] === 'groups' ? 'group' : 'machine-group') : layer.slice(0, -3), g?.[2]), buf };
   }
   const out = [`primer: the host's cap is ${CAP} characters per context string, counted as emitted`], size = (x) => x.text?.length ?? 0;
+  const hits = swap && keyOf(swap.file, c.platform).startsWith(`${keyOf(p.store, c.platform)}/`) ? ofMachine(c, p)(swap.buf.toString('utf8')).map((hit) => `check tracked: ${args[2]}:${hit}`) : [];
   for (const e of map.repos) {
     if (e.profile !== 'local') { out.push(`repo ${shown(e)}: no context string`); continue; }
     const now = layersOf(p, e), next = swap ? layersOf(p, e, swap) : now, n = joined(next).length;
     const parts = now.map((x, i) => `${x.name} ${size(x)}${x.file === swap?.file ? ` -> ${size(next[i])}` : ''}`);
     out.push(`repo ${shown(e)}: ${swap ? `${joined(now).length} -> ` : ''}${n} characters (${parts.join(', ')}), ${n > CAP ? 'over' : 'within'} the cap`);
   }
-  return out;
+  return [...out, ...hits];
 }
 
 const COPIES = 'copies takes nothing, --add <copy> <source>, --ported <copy> or --spans';
@@ -332,10 +382,7 @@ function copiesVerb(c, [op, ...args]) {
 // The runs of consecutive lines two layers or documents share, trimmed of blank lines at either end and holding at least SPAN
 // lines that are not blank, longest first. Lines compare without their trailing white space.
 function spans(p) {
-  const docs = [], walk = (d) => { for (const e of (() => { try { return readdirSync(d, { withFileTypes: true }); } catch { return []; } })()) (e.isDirectory() ? walk : (f) => docs.push(f))(join(d, e.name)); };
-  walk(join(p.store, 'docs'));
-  const each = (d) => { try { return readdirSync(d).filter((f) => f.endsWith('.md')).sort().map((f) => join(d, f)); } catch { return []; } };
-  const files = [join(p.store, 'shared.md'), ...each(join(p.store, 'groups')), join(p.local, 'machine.md'), ...each(join(p.local, 'machine')), ...docs.sort()].filter((f) => statSync(f, { throwIfNoEntry: false })?.isFile());
+  const files = [join(p.store, 'shared.md'), ...mdIn(join(p.store, 'groups')), join(p.local, 'machine.md'), ...mdIn(join(p.local, 'machine')), ...filesIn(join(p.store, 'docs'))].filter((f) => statSync(f, { throwIfNoEntry: false })?.isFile());
   const text = files.map((f) => { const l = readText(f).split('\n').map((x) => x.trimEnd()); return l.at(-1) === '' ? l.slice(0, -1) : l; });
   const runs = [];
   for (let a = 0; a < files.length; a++) for (let b = a + 1; b < files.length; b++) {
@@ -511,8 +558,8 @@ function mapVerb(c, [op, ...args]) {
 }
 
 // Returns the output lines; a refusal throws. limit is the time the loader's and status's git calls share, in milliseconds.
-export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd(), stdin = () => readFileSync(0, 'utf8'), limit = 5000 } = {}) {
-  const [verb, ...rest] = argv, c = { env, platform, home, cwd, limit };
+export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd(), stdin = () => readFileSync(0, 'utf8'), limit = 5000, user, host = hostname() } = {}) {
+  const [verb, ...rest] = argv, c = { env, platform, home, cwd, limit, host, user: user ?? (() => { try { return userInfo().username; } catch { return ''; } })() };
   const input = () => { try { const v = JSON.parse(stdin()); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } };
   if (verb === 'session-start') { try { return sessionStart(c, rest[0], input(), rest[1]); } catch { return []; } }
   if (verb === 'reach') { try { return reach(c, rest[0], input()); } catch { return []; } }

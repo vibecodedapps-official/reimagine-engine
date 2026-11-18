@@ -167,10 +167,12 @@ describe('ledger', () => {
 
   test('each form the ledger does not take is refused with one line and writes nothing', () => {
     const cfg = config();
-    const forms = 'primer: ledger takes nothing, --add <log> <gap>, --seen <id> <log>, --worked <id> <log>, or --set <id> <status> '
+    const forms = 'primer: ledger takes nothing, --unread, --reviewed, --add <log> <gap>, --seen <id> <log>, --worked <id> <log>, or --set <id> <status> '
       + 'with --place <file> [--commit <sha>] for folded and --by <id> for superseded\n';
     assert.deepEqual(out(cfg, '--add', '2026-11-01.md'), [1, forms]);
     assert.deepEqual(out(cfg, '--drop', 'L1'), [1, forms]);
+    assert.deepEqual(out(cfg, '--unread', 'all'), [1, forms]);
+    assert.deepEqual(out(cfg, '--unread'), [1, `primer: ${base} is in no git work tree\n`]);
     assert.deepEqual(out(cfg, '--add', 'missing.md', 'A gap.'), [1, `primer: ${join(cfg.dir, 'feedback', 'missing.md')} is not a feedback log\n`]);
     assert.deepEqual(out(cfg, '--add', '../feedback', 'A gap.'), [1, `primer: ${join(cfg.dir, 'feedback', '../feedback')} is not a feedback log\n`]);
     assert.deepEqual(out(cfg, '--add', '2026-11-01.md', 'two\nlines'), [1, 'primer: a gap is one line of text\n']);
@@ -184,5 +186,27 @@ describe('ledger', () => {
     assert.equal(readFileSync(cfg.ledger, 'utf8'), before);
     writeFileSync(cfg.ledger, '{"id":"x"}\n');
     assert.deepEqual(out(cfg), [1, `primer: ${cfg.ledger} is not a primer ledger\n`]);
+  });
+
+  test('R397: the entries that name this repository and came after its last review are listed, and --reviewed marks every log read for it', () => {
+    const cfg = config(), dir = join(base, 'app'), logs = join(cfg.dir, 'feedback'), stamp = join(logs, '.reviewed'), key = dir.replace(/[^A-Za-z0-9]/g, '-');
+    const at = (...args) => { const r = spawnSync(process.execPath, [SCRIPT, ...args], { cwd: dir, env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, encoding: 'utf8' }); return [r.status, r.stdout]; };
+    write(dir, 'README.md', '# x\n');
+    git(dir, 'init', '-q');
+    git(dir, 'remote', 'add', 'origin', 'https://example.invalid/team/kit.git');
+    write(logs, '2026-11-01.md', '## app: a first entry\n\n- One.\n\n### Recommended\n\n- One.\n\n## app-two: another repository\n\n## Recommended\n\n## Kit, by its remote: a second\n');
+    assert.deepEqual(at('--unread'), [0, `feedback: ${logs}\n2026-11-01.md entry 1: app: a first entry\n2026-11-01.md entry 3: Kit, by its remote: a second\nunread: 2 for this repository, 1 for another or none\n`]);
+    // Another repository's line stays, and a stamp in the earlier form, one line that holds a time, does not.
+    write(logs, '.reviewed', '2026-11-01T00:00:00.000Z\nanother-key\t5\t2026-11-01.md\n');
+    assert.deepEqual(at('--reviewed'), [0, `primer: wrote ${stamp}\nreviewed: 3 logs through their last entries, for ${slash(dir)}\n`]);
+    assert.equal(readFileSync(stamp, 'utf8'), `another-key\t5\t2026-11-01.md\n${key}\t3\t2026-11-01.md\n${key}\t0\t2026-11-02.md\n${key}\t0\t2026-11-03.md\n`);
+    assert.deepEqual(at('--unread'), [0, `feedback: ${logs}\nunread: 0 for this repository, 0 for another or none\n`]);
+    write(logs, '2026-11-03.md', '# Log\n\n## app: a later entry\n');
+    assert.deepEqual(at('--unread'), [0, `feedback: ${logs}\n2026-11-03.md entry 1: app: a later entry\nunread: 1 for this repository, 0 for another or none\n`]);
+    rmSync(stamp);
+    mkdirSync(stamp);
+    assert.deepEqual(at('--reviewed'), [1, `primer: ${stamp} is a directory, so the stamp cannot be written\n`]);
+    rmSync(logs, { recursive: true });
+    assert.deepEqual(at('--reviewed'), [0, `primer: ${logs} holds no log; nothing was written\n`]);
   });
 });

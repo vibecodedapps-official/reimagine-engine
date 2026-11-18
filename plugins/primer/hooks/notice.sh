@@ -4,13 +4,13 @@
 # first line is <!-- primer -->, `git rev-parse` for the repository root and the main worktree,
 # the autoMemoryDirectory key of the local, project and user settings files, the auto memory
 # index MEMORY.md (by default <config>/projects/<key>/memory/), the topic files it lists, and
-# the review stamp $CLAUDE_PLUGIN_DATA/reviewed/<key>, and the feedback logs of <config>/feedback/
-# with their stamp <config>/feedback/.reviewed, or without it $CLAUDE_PLUGIN_DATA/reviewed/feedback;
-# never writes a file. Prints at most one JSON object and always exits 0:
-#   notice:  the count of listed feedback or project notes modified after the stamp, and of logs
-#            modified after theirs, every one when there is no stamp, as a systemMessage that
-#            points at /primer
-#   nothing: no opted-in hub, or no such note and no such log
+# the review stamp $CLAUDE_PLUGIN_DATA/reviewed/<key>, the feedback logs of <config>/feedback/ with
+# their stamp <config>/feedback/.reviewed, and `git remote -v` for the repository's names; never
+# writes a file. Prints at most one JSON object and always exits 0:
+#   notice:  the count of listed feedback or project notes modified after the stamp, every one
+#            when there is no stamp, and of the repository's feedback entries since its last
+#            review, as a systemMessage that points at /primer
+#   nothing: no opted-in hub, or no such note and no such entry
 
 json=
 while IFS= read -r in_line || [ -n "$in_line" ]; do
@@ -97,20 +97,76 @@ fi
 [ -n "$memory" ] || memory=$projects/$key/memory
 memory=${memory%/}
 
-# The feedback logs of <config>/feedback/ modified after their stamp, every one when there is none.
+# The repository's feedback entries since its last review. A log's entries are its level-two
+# sections, but one headed Recommended, and an entry is the repository's when its heading holds,
+# as a word, the name of its directory or the last segment of a remote's URL. The stamp holds, a
+# line per repository and log, how many entries the log had at the last review. After a review a
+# single entry counts for nothing: it is taken for the reviewing session's own.
 m=0
 fstamp=
 if [ -f "${projects%/*}/feedback/.reviewed" ]; then
 	fstamp=${projects%/*}/feedback/.reviewed
-elif [ -n "$CLAUDE_PLUGIN_DATA" ] && [ -f "$CLAUDE_PLUGIN_DATA/reviewed/feedback" ]; then
-	fstamp=$CLAUDE_PLUGIN_DATA/reviewed/feedback
 fi
+names=$({
+	printf '%s\n' "$main"
+	git -C "$cwd" remote -v 2>/dev/null | LC_ALL=C sed -n 's/^[^[:space:]]\{1,\}[[:space:]]\{1,\}\(.*\) (fetch)$/\1/p'
+} | LC_ALL=C awk '{
+	gsub(/\\/, "/")
+	sub(/\/+$/, "")
+	sub(/\.git$/, "")
+	sub(/\/+$/, "")
+	sub(/^.*[\/:]/, "")
+	if ($0 != "") print tolower($0)
+}')
+set --
 for f in "${projects%/*}/feedback"/*; do
 	[ -f "$f" ] || continue
-	if [ -z "$fstamp" ] || [ "$f" -nt "$fstamp" ]; then
-		m=$((m + 1))
-	fi
+	set -- "$@" "$f"
 done
+if [ $# -gt 0 ]; then
+	m=$(NOTICE_KEY=$key NOTICE_NAMES=$names NOTICE_STAMP=$fstamp LC_ALL=C awk '
+function named(h,    i, at, off, rest, b, a) {
+	for (i = 1; i <= nn; i++) {
+		if (nm[i] == "") continue
+		off = 0
+		rest = h
+		while ((at = index(rest, nm[i])) > 0) {
+			b = (off + at > 1) ? substr(h, off + at - 1, 1) : ""
+			a = substr(h, off + at + length(nm[i]), 1)
+			if (b !~ /[a-z0-9_-]/ && a !~ /[a-z0-9_-]/) return 1
+			off += at
+			rest = substr(h, off + 1)
+		}
+	}
+	return 0
+}
+
+BEGIN {
+	key = ENVIRON["NOTICE_KEY"]
+	nn = split(ENVIRON["NOTICE_NAMES"], nm, "\n")
+	stamp = ENVIRON["NOTICE_STAMP"]
+	if (stamp != "") {
+		while ((getline l < stamp) > 0) {
+			sub(/\r$/, "", l)
+			if (split(l, f, "\t") == 3 && f[1] == key && f[2] ~ /^[0-9]+$/) { cur[f[3]] = f[2] + 0; has = 1 }
+		}
+		close(stamp)
+	}
+}
+
+FNR == 1 { n = 0; log_name = FILENAME; sub(/^.*\//, "", log_name) }
+{ sub(/\r$/, "") }
+substr($0, 1, 3) == "## " {
+	h = tolower(substr($0, 4))
+	t = h
+	sub(/^[ \t]+/, "", t)
+	if (t ~ /^recommended([^a-z0-9_-]|$)/) next
+	n++
+	if (n > cur[log_name] + 0 && named(h)) own++
+}
+END { print (has && own < 2) ? 0 : own + 0 }' "$@" 2>/dev/null)
+fi
+[ "$m" -gt 0 ] 2>/dev/null || m=0
 
 stamp=
 has=
@@ -171,10 +227,10 @@ END { print total + 0 }' "$memory/MEMORY.md" 2>/dev/null)
 
 [ "$n" -gt 0 ] 2>/dev/null || n=0
 if [ "$n" -gt 0 ] && [ "$m" -gt 0 ]; then
-	printf '{"systemMessage":"primer: auto memory has %s notes and %s feedback logs since the last review; run /primer"}\n' "$n" "$m"
+	printf '{"systemMessage":"primer: auto memory has %s notes and %s feedback entries since the last review; run /primer"}\n' "$n" "$m"
 elif [ "$n" -gt 0 ]; then
 	printf '{"systemMessage":"primer: auto memory has %s notes since the last review; run /primer"}\n' "$n"
 elif [ "$m" -gt 0 ]; then
-	printf '{"systemMessage":"primer: %s feedback logs since the last review; run /primer"}\n' "$m"
+	printf '{"systemMessage":"primer: %s feedback entries since the last review; run /primer"}\n' "$m"
 fi
 exit 0

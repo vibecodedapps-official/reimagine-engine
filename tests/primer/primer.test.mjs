@@ -110,6 +110,15 @@ describe('session-start', () => {
     assert.equal(r.stdout, context(part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')));
   });
 
+  test('a layer checked out with CRLF line ends is emitted, counted and given its canary as the same layer with LF', () => {
+    const cfg = config(local(), { group: 'The web group builds with make.\r\nIts tests run with make check.\r\n' });
+    const dir = repo('crlf', 'https://example.invalid/team/app.git');
+    const file = join(cfg.store, 'groups', 'app.md');
+    assert.equal(start(cfg, dir).stdout, context(part('group', file, 'The web group builds with make.\nIts tests run with make check.', '426e70e8')));
+    const status = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
+    assert.equal(status.find((l) => l.startsWith('layer group:')), `layer group: ${file}, ${file.length + 116} characters, canary 426e70e8`);
+  });
+
   test('a layer run alone emits that layer only', () => {
     const cfg = config(local(), { shared: SHARED, group: GROUP, machine: MACHINE });
     const r = start(cfg, repo('per-layer', 'https://example.invalid/team/app.git'), {}, 'machine');

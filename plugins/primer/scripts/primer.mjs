@@ -123,7 +123,8 @@ const under = (map, root, platform) => map.roots.find((d) => `${keyOf(root, plat
 const shown = (e) => `group ${e.group}, profile ${e.profile}, ${e.remotes.length ? `remotes ${e.remotes.join(', ')}` : `path ${e.path}`}`;
 
 // Each layer of an entry as it is emitted: a line naming the layer and its file, the text, and a canary line holding the first
-// eight hex characters of the SHA-256 of the file's bytes. An empty or missing layer has no text. swap gives one file other bytes.
+// eight hex characters of the SHA-256 of the file's bytes, a CRLF line end read as LF so that a store git checks out either way
+// gives one string. An empty or missing layer has no text. swap gives one file other bytes.
 const fileOf = (p, name, group) => (name === 'machine' ? join(p.local, 'machine.md') : name === 'machine-group' ? join(p.local, 'machine', `${group}.md`)
   : name === 'shared' ? join(p.store, 'shared.md') : join(p.store, 'groups', `${group}.md`));
 // A machine layer left in primer's own directory after config.json named another for the machine.
@@ -131,7 +132,8 @@ const left = (c, p) => (keyOf(p.local, c.platform) !== keyOf(p.own, c.platform) 
 function layersOf(p, entry, swap) {
   const files = Object.fromEntries(LAYERS.map((name) => [name, fileOf(p, name, entry.group)]));
   return LAYERS.map((name) => {
-    const buf = swap?.file === files[name] ? swap.buf : existsSync(files[name]) ? readFileSync(files[name]) : null, body = buf ? buf.toString('utf8').replace(/\s+$/, '') : '';
+    const raw = swap?.file === files[name] ? swap.buf : existsSync(files[name]) ? readFileSync(files[name]) : null;
+    const buf = raw && Buffer.from(raw.toString('utf8').replace(/\r\n/g, '\n')), body = buf ? buf.toString('utf8').replace(/\s+$/, '') : '';
     if (!body) return { name, file: files[name] };
     const canary = createHash('sha256').update(buf).digest('hex').slice(0, 8);
     return { name, file: files[name], canary, text: `primer layer ${name} from ${files[name]}\n${body}\nprimer canary ${name} ${canary}` };

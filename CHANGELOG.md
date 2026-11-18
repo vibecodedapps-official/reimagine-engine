@@ -5,7 +5,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 ## primer 0.1.22 - 2026-11-18
 
 - `measure --with` gives a group's proposed layer a size line when no `local` entry of the map holds that group. `/primer move` writes the group layer and makes its removal commit before the map entry, so the plan of a move had no measured size to show for the layer it proposed: the output was the cap line alone, or the unchanged sizes of other repositories. The line gives the string a repository of that group would be given, before and after, against the cap.
-- The removal commit of `/primer move` says what left, and nothing of where the files' text went or that anyone still uses it, and a pull request you ask for afterwards holds its title and body to the same. The message named no model, agent, tool or plugin, and its body could still say that each contributor keeps their own context outside the work tree; the text of a pull request was under no rule. Either shows what the `local` profile hides.
+- The removal commit of `/primer move` says which files leave and nothing of where their text went, who keeps it or that it is still used, and a pull request you ask for afterwards holds its title and body to the same. The message named no model, agent, tool or plugin, and its body could still say that each contributor keeps their own context outside the work tree; the text of a pull request was under no rule. Either shows what the `local` profile hides.
 
 ## primer 0.1.21 - 2026-11-18
 

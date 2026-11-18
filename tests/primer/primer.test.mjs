@@ -3,7 +3,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -549,10 +549,36 @@ describe('skills', () => {
     assert.deepEqual(status(), [`check skills: no link in ${to} for app-release, app-seed`]);
     assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-release: + linked\n${other}\n`]);
     assert.equal(readFileSync(join(to, 'app-release', 'SKILL.md'), 'utf8'), SKILL);
-    assert.equal(realpathSync.native(join(to, 'app-release')), realpathSync.native(join(from, 'app-release')));
+    assert.equal(lstatSync(join(to, 'app-release')).isSymbolicLink(), true);
     assert.equal(readFileSync(join(to, 'app-seed', 'SKILL.md'), 'utf8'), 'A skill of the user\'s own.\n');
     assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-release: linked\n${other}\n`]);
     assert.deepEqual(status(), [`check skills: no link in ${to} for app-seed`]);
+  });
+
+  test('a skill kept in the store through a link is listed, and a link whose directory is gone is made again', () => {
+    const cfg = config(local()), from = join(cfg.store, 'skills'), to = join(cfg.dir, 'skills'), kept = join(base, `skills-kept-${++seq}`), head = `skills: ${from}, linked from ${to}`;
+    write(kept, 'SKILL.md', SKILL);
+    mkdirSync(from, { recursive: true });
+    symlinkSync(kept, join(from, 'app-release'), 'junction');
+    assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-release: + linked\n`]);
+    renameSync(join(from, 'app-release'), join(from, 'app-moved'));
+    mkdirSync(join(to, 'gone-target'));
+    symlinkSync(join(to, 'gone-target'), join(to, 'app-moved'), 'junction');
+    rmSync(join(to, 'gone-target'), { recursive: true });
+    assert.deepEqual(at(cfg), [0, `${head}\nskill app-moved: not linked, and its link leads to a directory that is gone\n`]);
+    assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-moved: + linked\n`]);
+    assert.equal(readFileSync(join(to, 'app-moved', 'SKILL.md'), 'utf8'), SKILL);
+  });
+
+  test('a config folder whose skills entry is no directory takes no link, and neither the verb nor status fails', () => {
+    const cfg = config(local()), from = join(cfg.store, 'skills'), to = join(cfg.dir, 'skills'), dir = repo('skills-blocked', 'https://example.invalid/team/blocked.git');
+    write(from, 'app-release/SKILL.md', SKILL);
+    writeFileSync(to, 'not a directory\n');
+    const said = [0, `skills: ${from}, linked from ${to}\nskill app-release: ${to} is not a link to it and is left as it is\n`];
+    assert.deepEqual(at(cfg), said);
+    assert.deepEqual(at(cfg, '--link'), said);
+    const r = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.deepEqual([r.status, r.stdout.split('\n').filter((l) => l.startsWith('check skills'))], [0, [`check skills: no link in ${to} for app-release`]]);
   });
 
   test('a store with no skill says so and makes no folder, and any other form is refused with one line', () => {
@@ -674,6 +700,9 @@ describe('reach', () => {
     assert.equal(at(join(hub, 'context', 'groups', 'app.md')), '');
     assert.equal(at(join(hub, 'mine', 'machine.md')), '');
     assert.equal(at(join(hub, 'README.md')), said(`${lead(hub)} instruction files: ${slash(hub)}/CLAUDE.md`));
+    const link = join(base, `reach-hub-link-${seq}`);
+    symlinkSync(hub, link, 'junction');
+    assert.equal(at(join(link, 'context', 'docs', 'new.md')), '');
   });
 
   test('a configuration directory reached through a link is still not another repository', () => {

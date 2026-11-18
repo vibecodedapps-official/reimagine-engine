@@ -361,29 +361,35 @@ function spans(p) {
     ...runs.map((r) => `${r.n} lines: ${files[r.a]} ${r.sa + 1}-${r.sa + r.n} and ${files[r.b]} ${r.sb + 1}-${r.sb + r.n}`)];
 }
 
-// The directory at or above a path that holds .git, found without git and, as git does, never above a ceiling directory.
-// The store's skills, each a directory of skills/ that holds SKILL.md, with the entry of its name in <config>/skills, where the host
-// loads a personal skill: a link that leads to it, none, or something else.
+// The store's skills, each an entry of skills/ that holds SKILL.md, with the entry of its name in <config>/skills, where the host
+// loads a personal skill: a link that leads to it, none, a link whose directory is gone, or something else. Where <config>/skills
+// is itself no directory, it is the entry in the way.
 function skillsOf(c, p) {
-  const from = join(p.store, 'skills'), to = join(dirname(p.own), 'skills');
-  const dirs = (() => { try { return readdirSync(from, { withFileTypes: true }); } catch { return []; } })();
-  return dirs.filter((e) => e.isDirectory() && existsSync(join(from, e.name, 'SKILL.md'))).map((e) => e.name).sort().map((name) => {
-    const dir = join(from, name), link = join(to, name);
-    return { name, dir, link, state: !lstatSync(link, { throwIfNoEntry: false }) ? 'missing' : keyOf(real(link), c.platform) === keyOf(real(dir), c.platform) ? 'linked' : 'other' };
+  const from = join(p.store, 'skills'), to = join(dirname(p.own), 'skills'), free = !existsSync(to) || isDir(to);
+  const names = (() => { try { return readdirSync(from); } catch { return []; } })();
+  return names.filter((name) => existsSync(join(from, name, 'SKILL.md'))).sort().map((name) => {
+    const dir = join(from, name), link = free ? join(to, name) : to, at = free && lstatSync(link, { throwIfNoEntry: false });
+    const state = !free ? 'other' : !at ? 'missing' : at.isSymbolicLink() && !existsSync(link) ? 'gone' : keyOf(real(link), c.platform) === keyOf(real(dir), c.platform) ? 'linked' : 'other';
+    return { name, dir, link, state };
   });
 }
 
-// Lists them; --link makes each missing link, a junction on Windows, and leaves an entry that is anything else.
+// Lists them; --link makes each missing link, a junction on Windows, makes again one whose directory is gone, and leaves an entry
+// that is anything else.
 function skillsVerb(c, args) {
   if (args.length > 1 || (args.length && args[0] !== '--link')) refuse('skills takes nothing, or --link');
-  const p = places(c, ownOf(c)), list = skillsOf(c, p);
-  const lines = list.map((x) => {
-    if (x.state === 'missing' && args.length) { mkdirSync(dirname(x.link), { recursive: true }); symlinkSync(x.dir, x.link, 'junction'); return `skill ${x.name}: + linked`; }
-    return `skill ${x.name}: ${x.state === 'linked' ? 'linked' : x.state === 'missing' ? 'not linked' : `${x.link} is not a link to it and is left as it is`}`;
+  const p = places(c, ownOf(c)), said = { linked: 'linked', missing: 'not linked', gone: 'not linked, and its link leads to a directory that is gone' };
+  const lines = skillsOf(c, p).map((x) => {
+    if (!args.length || !['missing', 'gone'].includes(x.state)) return `skill ${x.name}: ${said[x.state] ?? `${x.link} is not a link to it and is left as it is`}`;
+    if (x.state === 'gone') rmSync(x.link);
+    mkdirSync(dirname(x.link), { recursive: true });
+    symlinkSync(x.dir, x.link, 'junction');
+    return `skill ${x.name}: + linked`;
   });
   return [`skills: ${join(p.store, 'skills')}, linked from ${join(dirname(p.own), 'skills')}`, ...(lines.length ? lines : ['no skills'])];
 }
 
+// The directory at or above a path that holds .git, found without git and, as git does, never above a ceiling directory.
 function topOf(c, path) {
   const ceilings = (c.env.GIT_CEILING_DIRECTORIES ?? '').split(c.platform === 'win32' ? ';' : ':').filter(Boolean).map((d) => keyOf(d, c.platform));
   for (let d = resolve(path); ; d = dirname(d)) {
@@ -416,7 +422,10 @@ function reach(c, data, input) {
   const path = input.tool_input?.file_path ?? input.tool_input?.notebook_path, cwd = isDir(input.cwd) ? input.cwd : c.cwd;
   if (typeof path !== 'string' || !path) return [];
   const file = resolve(cwd, path), top = topOf(c, dirname(file)), own = topOf(c, c.env.CLAUDE_PROJECT_DIR || cwd), k = (p) => keyOf(p, c.platform);
-  const inside = (d) => `${k(real(dirname(file)))}/`.startsWith(`${k(real(d))}/`);
+  // The file's directory by its nearest ancestor that exists, links followed, since a first write makes its directory.
+  let at = dirname(file), rest = '';
+  while (!existsSync(at) && dirname(at) !== at) [at, rest] = [dirname(at), join(basename(at), rest)];
+  const inside = (d) => `${k(join(real(at), rest))}/`.startsWith(`${k(real(d))}/`);
   // The host loads the user's own instruction files in every session, so a file under <config>, links followed, is never another repository's.
   if (!top || (own && k(top) === k(own)) || inside(configOf(c, input))) return [];
   const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf);

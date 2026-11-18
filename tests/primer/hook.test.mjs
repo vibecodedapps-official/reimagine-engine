@@ -166,7 +166,7 @@ after(() => rmSync(base, { recursive: true, force: true }));
 
 describe('primer drift hook', () => {
   describe('cases that write no shared repository', { concurrency }, () => {
-    test('hooks.json registers PreToolUse hooks for Bash and PowerShell and for file edits, one SessionStart hook for startup and the loader on every source', () => {
+    test('hooks.json registers PreToolUse hooks for Bash and PowerShell and for file edits, one SessionStart hook for startup, and the loader on every source and at a subagent\'s start', () => {
       const json = JSON.parse(readFileSync(join(root, 'plugins/primer/hooks/hooks.json'), 'utf8'));
       assert.deepEqual(json, {
         hooks: {
@@ -176,6 +176,9 @@ describe('primer drift hook', () => {
           ],
           SessionStart: [
             { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
+            { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
+          ],
+          SubagentStart: [
             { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
           ],
         },
@@ -351,6 +354,11 @@ describe('primer drift hook', () => {
   describe('quiet and opt-in', { concurrency }, () => {
     test('the base fixture with nothing staged prints nothing', async () => {
       assert.equal(await run('git commit -m x', fixture), '');
+    });
+    test('R409: a commit that removes the hub and every other instruction file prints nothing', async () => {
+      const dir = await make('removal', {});
+      await git(dir, 'rm', '-r', '-q', 'CLAUDE.md', 'src/api/CLAUDE.md', '.claude');
+      assert.equal(await run('git commit -m x', dir), '');
     });
     test('a hub without the marker line prints nothing', async () => {
       const dir = await make('no-marker', { 'CLAUDE.md': brokenHub.split('\n').slice(1).join('\n') });

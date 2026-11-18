@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.20 - 2026-11-18
+
+- A subagent in a `local` repository gets the layers. The loader ran at a session's start alone, so a subagent held none of the repository's context where, in a `shared` repository, it holds the hub and the rules. A SubagentStart entry now loads the same string, with no warning or notice, for every agent type but the two Claude Code starts without instruction files. An agent whose definition sets `omitClaudeMd` still gets it.
+- A procedure in the `local` profile is kept as a skill in the store, `skills/<name>/SKILL.md`, and `scripts/primer.mjs skills --link` links it into the `skills/` folder of your config folder, where Claude Code loads a personal skill. It was a document behind a pointer line, which no `/name` ran. Claude Code lists a personal skill in every repository, so a skill for one group is named `<group>-<name>`. Each config folder and each machine makes its own links, and makes them again after the store moves: `status` names the skills that have none, and the verb leaves any other entry of a skill's name as it is.
+- `/primer move` takes a repository's tracked agent files out and leaves it on the `local` profile. A repository that had been primed could take that profile only by hand. The run restates what the files hold in the store, lists each setting, hook and MCP server for you to place in your own configuration, and removes the files in one commit that it never pushes. It makes no removal commit while your own `attribution` setting would add a trailer to it, and a commit that is refused leaves the repository as it was.
+- The reach hook says nothing on an edit to a file of the store or of the machine's directory. A session that wrote a layer into a store kept in another repository was told it had not loaded that repository's instruction files.
+
 ## primer 0.1.19 - 2026-11-18
 
 - A file of the store writes a path under your home directory as `~/`: a clone's place and the listed directories in `map.json`, and the place of a fold in the ledger. A store kept under version control held the home directory of the machine that wrote it, where the README and the skill said it held nothing of one machine. A map written before loads as it is, and the next `map` write holds its paths the new way and makes the map version 2. A path outside the home directory is still written in full. Update primer on every machine that shares the store: an older primer does not read a version 2 map, and its staging check denies each `git add` and `git commit`, naming the map, until it is updated.

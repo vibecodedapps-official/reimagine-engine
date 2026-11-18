@@ -3,7 +3,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -162,6 +162,15 @@ describe('session-start', () => {
     assert.equal(r.stdout, context(part('group', join(cfg.store, 'groups', 'app.md'), 'a'.repeat(9990), 'fb0545d8')));
   });
 
+  test('a subagent gets the string under its own event with no warning, and the Explore and Plan agents get nothing', () => {
+    const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
+    const dir = repo('subagent', 'https://example.invalid/team/app.git');
+    const as = (agent_type) => run(['session-start', 'all', join(base, 'data')], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', 'key', 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_id: 'a1', agent_type }) }).stdout;
+    const want = `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: part('group', join(cfg.store, 'groups', 'app.md'), 'a'.repeat(9990), 'fb0545d8') } })}\n`;
+    for (const type of ['general-purpose', 'audit:auditor', undefined]) assert.equal(as(type), want, String(type));
+    for (const type of ['Explore', 'Plan']) assert.equal(as(type), '', type);
+  });
+
   test('a repository under a root with no entry gets the unmapped warning; one under no root gets nothing', () => {
     const cfg = config(local({ roots: [slash(join(base, 'work'))] }));
     const dir = repo('work/unmapped', 'https://example.invalid/team/other.git');
@@ -263,7 +272,7 @@ describe('status', () => {
 
   test('status takes no arguments, and an unknown verb is refused', () => {
     assert.deepEqual([run(['status', 'x']).status, run(['status', 'x']).stdout], [1, 'primer: status takes no arguments\n']);
-    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, reach, status, measure, map or copies\n']);
+    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, reach, status, measure, map, copies or skills\n']);
   });
 });
 
@@ -523,6 +532,63 @@ describe('map', () => {
   });
 });
 
+describe('skills', () => {
+  const SKILL = '---\nname: app-release\ndescription: Release the app group.\n---\n# app-release\n';
+  const at = (cfg, ...args) => { const r = run(['skills', ...args], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }); return [r.status, r.stdout]; };
+
+  test('lists each skill of the store with the entry of its name in the config folder; --link makes the missing links and leaves any other entry as it is', () => {
+    const cfg = config(local()), from = join(cfg.store, 'skills'), to = join(cfg.dir, 'skills'), dir = repo('skills-status', 'https://example.invalid/team/other.git');
+    write(from, 'app-release/SKILL.md', SKILL);
+    write(from, 'app-seed/SKILL.md', SKILL);
+    write(from, 'drafts/notes.md', 'No skill file here.\n');
+    write(from, 'README.md', 'Not a directory.\n');
+    write(to, 'app-seed/SKILL.md', 'A skill of the user\'s own.\n');
+    const head = `skills: ${from}, linked from ${to}`, other = `skill app-seed: ${join(to, 'app-seed')} is not a link to it and is left as it is`;
+    const status = () => run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n').filter((l) => l.startsWith('check skills'));
+    assert.deepEqual(at(cfg), [0, `${head}\nskill app-release: not linked\n${other}\n`]);
+    assert.deepEqual(status(), [`check skills: no link in ${to} for app-release, app-seed`]);
+    assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-release: + linked\n${other}\n`]);
+    assert.equal(readFileSync(join(to, 'app-release', 'SKILL.md'), 'utf8'), SKILL);
+    assert.equal(lstatSync(join(to, 'app-release')).isSymbolicLink(), true);
+    assert.equal(readFileSync(join(to, 'app-seed', 'SKILL.md'), 'utf8'), 'A skill of the user\'s own.\n');
+    assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-release: linked\n${other}\n`]);
+    assert.deepEqual(status(), [`check skills: no link in ${to} for app-seed`]);
+  });
+
+  test('a skill kept in the store through a link is listed, and a link whose directory is gone is made again', () => {
+    const cfg = config(local()), from = join(cfg.store, 'skills'), to = join(cfg.dir, 'skills'), kept = join(base, `skills-kept-${++seq}`), head = `skills: ${from}, linked from ${to}`;
+    write(kept, 'SKILL.md', SKILL);
+    mkdirSync(from, { recursive: true });
+    symlinkSync(kept, join(from, 'app-release'), 'junction');
+    assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-release: + linked\n`]);
+    renameSync(join(from, 'app-release'), join(from, 'app-moved'));
+    mkdirSync(join(to, 'gone-target'));
+    symlinkSync(join(to, 'gone-target'), join(to, 'app-moved'), 'junction');
+    rmSync(join(to, 'gone-target'), { recursive: true });
+    assert.deepEqual(at(cfg), [0, `${head}\nskill app-moved: not linked, and its link leads to a directory that is gone\n`]);
+    assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-moved: + linked\n`]);
+    assert.equal(readFileSync(join(to, 'app-moved', 'SKILL.md'), 'utf8'), SKILL);
+  });
+
+  test('a config folder whose skills entry is no directory takes no link, and neither the verb nor status fails', () => {
+    const cfg = config(local()), from = join(cfg.store, 'skills'), to = join(cfg.dir, 'skills'), dir = repo('skills-blocked', 'https://example.invalid/team/blocked.git');
+    write(from, 'app-release/SKILL.md', SKILL);
+    writeFileSync(to, 'not a directory\n');
+    const said = [0, `skills: ${from}, linked from ${to}\nskill app-release: ${to} is not a link to it and is left as it is\n`];
+    assert.deepEqual(at(cfg), said);
+    assert.deepEqual(at(cfg, '--link'), said);
+    const r = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.deepEqual([r.status, r.stdout.split('\n').filter((l) => l.startsWith('check skills'))], [0, [`check skills: no link in ${to} for app-release`]]);
+  });
+
+  test('a store with no skill says so and makes no folder, and any other form is refused with one line', () => {
+    const cfg = config(local());
+    assert.deepEqual(at(cfg, '--link'), [0, `skills: ${join(cfg.store, 'skills')}, linked from ${join(cfg.dir, 'skills')}\nno skills\n`]);
+    assert.equal(existsSync(join(cfg.dir, 'skills')), false);
+    for (const args of [['--unlink'], ['--link', 'x'], ['x']]) assert.deepEqual(at(cfg, ...args), [1, 'primer: skills takes nothing, or --link\n'], args.join(' '));
+  });
+});
+
 describe('measure', () => {
   const site = { remotes: ['example.invalid/team/site'], path: 'unused', group: 'site', profile: 'shared', own: true };
   const web = { remotes: ['example.invalid/team/web'], path: 'unused', group: 'web', profile: 'local' };
@@ -623,6 +689,20 @@ describe('reach', () => {
     const dir = repo(`reach-config-${++seq}`);
     write(dir, 'CLAUDE.md', '# Mine\n');
     assert.equal(edit(join(base, `reach-data-${++seq}`), join(dir, 'feedback', '2026-11-14.md'), { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout, '');
+  });
+
+  test('a file of the store or of the machine\'s directory prints nothing, though a repository with a hub holds it, and leaves that repository unrecorded', () => {
+    const hub = repo(`reach-hub-${++seq}`, 'https://example.invalid/team/hub.git'), dir = join(base, `reach-hub-config-${seq}`), data = join(base, `reach-data-${++seq}`);
+    write(hub, 'CLAUDE.md', '# Hub\n');
+    write(hub, 'context/map.json', JSON.stringify(local()));
+    write(dir, 'reimagine-primer/config.json', JSON.stringify({ store: join(hub, 'context'), local: join(hub, 'mine') }));
+    const at = (file) => edit(data, file, { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout;
+    assert.equal(at(join(hub, 'context', 'groups', 'app.md')), '');
+    assert.equal(at(join(hub, 'mine', 'machine.md')), '');
+    assert.equal(at(join(hub, 'README.md')), said(`${lead(hub)} instruction files: ${slash(hub)}/CLAUDE.md`));
+    const link = join(base, `reach-hub-link-${seq}`);
+    symlinkSync(hub, link, 'junction');
+    assert.equal(at(join(link, 'context', 'docs', 'new.md')), '');
   });
 
   test('a configuration directory reached through a link is still not another repository', () => {
@@ -769,5 +849,6 @@ describe('the notice', () => {
     assert.equal(run(['session-start', 'all', data], { input: input('resume') }).stdout, '');
     assert.equal(run(['session-start', 'all', data], { input: input('startup'), extraEnv: { CLAUDE_CODE_SESSION_ATTENDED: '0' } }).stdout, '');
     assert.notEqual(run(['session-start', 'all', data], { input: input('startup') }).stdout, '');
+    assert.equal(run(['session-start', 'all', data], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }) }).stdout, '');
   });
 });

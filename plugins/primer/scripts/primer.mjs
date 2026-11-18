@@ -2,7 +2,8 @@
 // Primer: the local profile's store and map, its context loader, the budget, the reach check and the copies. The staging check
 // is staged.mjs, which imports what it shares from here.
 // Usage: node primer.mjs <verb> [args]
-//   session-start <layer> <data dir>  the SessionStart hook: a local repository's layers as context, the delivery warnings, the notice
+//   session-start <layer> <data dir>  the SessionStart hook: a local repository's layers as context, the delivery warnings, the notice;
+//            on SubagentStart, the layers alone
 //   reach <data dir>  the PreToolUse hook on file edits: another repository's instructions, on the session's first edit there
 //   status   the working directory's entry, profile, layers and delivery checks, and each declared copy; writes nothing
 //   measure  every mapped repository's context string as emitted; --with <file> <layer> measures a proposed layer; writes nothing
@@ -10,9 +11,10 @@
 //   copies   each declared copy against its source's snapshot; --add <copy> <source> records one source of a copy, and
 //            --ported <copy> every source of it;
 //            --spans lists the runs of lines two layers or documents share, and writes nothing
+//   skills   each skill of the store and its link in <config>/skills; --link makes the missing links
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -189,7 +191,9 @@ function notice(c, input, data, repo) {
 }
 
 function sessionStart(c, layer, input, data) {
-  if (![...LAYERS, 'all'].includes(layer)) return [];
+  // At a subagent's start no check or notice runs, and the agent types that start without instruction files get no layer either.
+  const sub = input.hook_event_name === 'SubagentStart', quiet = sub || c.env.CLAUDE_CODE_SESSION_ATTENDED === '0';
+  if (![...LAYERS, 'all'].includes(layer) || (sub && ['Explore', 'Plan'].includes(input.agent_type))) return [];
   const own = join(configOf(c, input), 'reimagine-primer');
   if (!existsSync(own)) return [];
   const p = places(c, own), map = loadMap(p.map, c.home);
@@ -210,11 +214,11 @@ function sessionStart(c, layer, input, data) {
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
     for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
     // notice.sh runs at startup alone, and so does this.
-    const told = (input.source ?? 'startup') === 'startup' && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
+    const told = (input.source ?? 'startup') === 'startup' && !quiet && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
     if (told) msgs.push(told);
   }
-  const warn = msgs.length && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && (layer === 'all' || layer === 'group');
-  const out = { ...(context ? { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context } } : {}), ...(warn ? { systemMessage: msgs.join('; ') } : {}) };
+  const warn = msgs.length && !quiet && (layer === 'all' || layer === 'group');
+  const out = { ...(context ? { hookSpecificOutput: { hookEventName: sub ? 'SubagentStart' : 'SessionStart', additionalContext: context } } : {}), ...(warn ? { systemMessage: msgs.join('; ') } : {}) };
   return Object.keys(out).length ? [JSON.stringify(out)] : [];
 }
 
@@ -243,6 +247,8 @@ function delivery(c, p) {
     lines.push(`check size: ${n} characters as emitted, ${n > CAP ? 'over' : 'within'} the cap of ${CAP}`);
   }
   if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
+  const loose = skillsOf(c, p).filter((x) => x.state !== 'linked');
+  if (loose.length) lines.push(`check skills: no link in ${join(dirname(p.own), 'skills')} for ${loose.map((x) => x.name).join(', ')}`);
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
@@ -355,6 +361,34 @@ function spans(p) {
     ...runs.map((r) => `${r.n} lines: ${files[r.a]} ${r.sa + 1}-${r.sa + r.n} and ${files[r.b]} ${r.sb + 1}-${r.sb + r.n}`)];
 }
 
+// The store's skills, each an entry of skills/ that holds SKILL.md, with the entry of its name in <config>/skills, where the host
+// loads a personal skill: a link that leads to it, none, a link whose directory is gone, or something else. Where <config>/skills
+// is itself no directory, it is the entry in the way.
+function skillsOf(c, p) {
+  const from = join(p.store, 'skills'), to = join(dirname(p.own), 'skills'), free = !existsSync(to) || isDir(to);
+  const names = (() => { try { return readdirSync(from); } catch { return []; } })();
+  return names.filter((name) => existsSync(join(from, name, 'SKILL.md'))).sort().map((name) => {
+    const dir = join(from, name), link = free ? join(to, name) : to, at = free && lstatSync(link, { throwIfNoEntry: false });
+    const state = !free ? 'other' : !at ? 'missing' : at.isSymbolicLink() && !existsSync(link) ? 'gone' : keyOf(real(link), c.platform) === keyOf(real(dir), c.platform) ? 'linked' : 'other';
+    return { name, dir, link, state };
+  });
+}
+
+// Lists them; --link makes each missing link, a junction on Windows, makes again one whose directory is gone, and leaves an entry
+// that is anything else.
+function skillsVerb(c, args) {
+  if (args.length > 1 || (args.length && args[0] !== '--link')) refuse('skills takes nothing, or --link');
+  const p = places(c, ownOf(c)), said = { linked: 'linked', missing: 'not linked', gone: 'not linked, and its link leads to a directory that is gone' };
+  const lines = skillsOf(c, p).map((x) => {
+    if (!args.length || !['missing', 'gone'].includes(x.state)) return `skill ${x.name}: ${said[x.state] ?? `${x.link} is not a link to it and is left as it is`}`;
+    if (x.state === 'gone') rmSync(x.link);
+    mkdirSync(dirname(x.link), { recursive: true });
+    symlinkSync(x.dir, x.link, 'junction');
+    return `skill ${x.name}: + linked`;
+  });
+  return [`skills: ${join(p.store, 'skills')}, linked from ${join(dirname(p.own), 'skills')}`, ...(lines.length ? lines : ['no skills'])];
+}
+
 // The directory at or above a path that holds .git, found without git and, as git does, never above a ceiling directory.
 function topOf(c, path) {
   const ceilings = (c.env.GIT_CEILING_DIRECTORIES ?? '').split(c.platform === 'win32' ? ';' : ':').filter(Boolean).map((d) => keyOf(d, c.platform));
@@ -388,13 +422,20 @@ function reach(c, data, input) {
   const path = input.tool_input?.file_path ?? input.tool_input?.notebook_path, cwd = isDir(input.cwd) ? input.cwd : c.cwd;
   if (typeof path !== 'string' || !path) return [];
   const file = resolve(cwd, path), top = topOf(c, dirname(file)), own = topOf(c, c.env.CLAUDE_PROJECT_DIR || cwd), k = (p) => keyOf(p, c.platform);
+  // The file's directory by its nearest ancestor that exists, links followed, since a first write makes its directory.
+  let at = dirname(file), rest = '';
+  while (!existsSync(at) && dirname(at) !== at) [at, rest] = [dirname(at), join(basename(at), rest)];
+  const inside = (d) => `${k(join(real(at), rest))}/`.startsWith(`${k(real(d))}/`);
   // The host loads the user's own instruction files in every session, so a file under <config>, links followed, is never another repository's.
-  if (!top || (own && k(top) === k(own)) || `${k(real(dirname(file)))}/`.startsWith(`${k(real(configOf(c, input)))}/`)) return [];
+  if (!top || (own && k(top) === k(own)) || inside(configOf(c, input))) return [];
+  const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf);
+  // A file of the store or the machine's directory is primer's to write wherever it sits, and a repository that holds it is not recorded.
+  if (p && [p.store, p.local].some(inside)) return [];
   const log = data && isAbsolute(data) && typeof input.session_id === 'string' && GROUP.test(input.session_id) ? join(data, 'reach', input.session_id) : null;
   if (log && readText(log).split('\n').includes(k(top))) return [];
   const deadline = Date.now() + c.limit, repo = repoOf(c, top, deadline), mine = own && repoOf(c, own, deadline);
   if (!repo) return [];
-  const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf), map = p && loadMap(p.map, c.home);
+  const map = p && loadMap(p.map, c.home);
   // Another work tree of the session's repository is its own: it is recorded and gets nothing.
   const other = !(mine && k(mine.root) === k(repo.root)), entry = other && map && match(map, repo, c.platform), home = map && mine && match(map, mine, c.platform);
   // A session that started in a local repository holds the shared and machine layers, and the group's two where the two share one.
@@ -479,7 +520,8 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   if (verb === 'measure') return measure(c, rest);
   if (verb === 'map') return mapVerb(c, rest);
   if (verb === 'copies') return copiesVerb(c, rest);
-  return refuse(`unknown command${verb ? ` ${verb}` : ''}; use session-start, reach, status, measure, map or copies`);
+  if (verb === 'skills') return skillsVerb(c, rest);
+  return refuse(`unknown command${verb ? ` ${verb}` : ''}; use session-start, reach, status, measure, map, copies or skills`);
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path. A hook verb prints nothing but its JSON, and

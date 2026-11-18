@@ -103,6 +103,7 @@ const PRIMER_HOOK = {
       { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
       { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
     ],
+    SubagentStart: [{ hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] }],
   },
 };
 
@@ -463,7 +464,7 @@ function skillFailures(ctx) {
 function hookFailures(ctx) {
   const out = [];
   if (!same(ctx.json(RULES_HOOKS), ROOT_HOOKS)) out.push(`${RULES_HOOKS}: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape`);
-  if (!same(ctx.json(PRIMER_HOOKS), PRIMER_HOOK)) out.push(`${PRIMER_HOOKS}: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape`);
+  if (!same(ctx.json(PRIMER_HOOKS), PRIMER_HOOK)) out.push(`${PRIMER_HOOKS}: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape`);
   if (!same(ctx.json(GUARD_HOOKS), GUARD_HOOK)) out.push(`${GUARD_HOOKS}: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape`);
   const manifests = new Map(ctx.plugins.map((p) => [p.path, p.manifest]));
   const message = (file) => `${file}: hooks outside ${RULES_HOOKS}, ${PRIMER_HOOKS} and ${GUARD_HOOKS}`;

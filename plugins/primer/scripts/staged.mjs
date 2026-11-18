@@ -235,7 +235,7 @@ function staged(c, input) {
   const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false };
   scan(command, ps, st);
   if (!st.calls.length && !st.hidden) return [];
-  const path = places(c, own).map, map = (() => { try { return loadMap(path); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
+  const path = places(c, own).map, map = (() => { try { return loadMap(path, c.home); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
   if (!map) return [deny(`primer: ${path} is not a primer map, so the staging check cannot tell which repositories have the local profile and denies every git add `
     + 'and git commit; restore the file from a copy or from the store\'s history, or correct it to the form primer map writes')];
   if (!map.repos.some((e) => e.profile === 'local')) return [];

@@ -84,6 +84,17 @@ describe('staged', () => {
       [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
   });
 
+  test('R386: a local repository the map holds as ~/ is checked where the call\'s directory cannot be told', () => {
+    const dir = repo('home/far');
+    write(dir, 'CLAUDE.md', '# x\n');
+    const cfg = config([{ remotes: [], path: '~/far', group: 'far', profile: 'local' }]);
+    const r = run(input('cd "$SOMEWHERE" && git add CLAUDE.md', base), cfg);
+    const reason = `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; the command cannot be resolved, `
+      + "so it counts as staging every file git does not ignore; the call would add CLAUDE.md, while the upstream's tree is unknown (no remote names it)";
+    assert.deepEqual([r.status, r.stdout],
+      [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
+  });
+
   test('R386: a clone under another host form or letter case of its remote matches the entry', () => {
     const denies = (name, remote, cfg) => {
       const dir = repo(name, remote);

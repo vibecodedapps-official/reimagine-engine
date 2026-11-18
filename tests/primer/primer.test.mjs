@@ -400,6 +400,27 @@ describe('map', () => {
     assert.equal(r.stdout, `primer: wrote ${join(cfgDir, 'reimagine-primer', 'store', 'map.json')}\nrepo: + group map-no-remote, profile local, path ${slash(dir)}\n`);
   });
 
+  test('a clone and a root under the home directory are recorded as ~/, shown in full, and match when read again', () => {
+    const dir = repo('home/kept');
+    mkdirSync(join(base, 'home', 'work'));
+    const cfgDir = join(base, `map-config-${++seq}`);
+    const m = (...args) => run(['map', ...args], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } });
+    const mapPath = join(cfgDir, 'reimagine-primer', 'store', 'map.json');
+    assert.equal(m('--add', '--profile', 'local', '--root', join(base, 'home', 'work'), '--root', join(base, 'home')).stdout,
+      `primer: wrote ${mapPath}\nrepo: + group kept, profile local, path ${slash(dir)}\nroot: + ${slash(join(base, 'home', 'work'))}\nroot: + ${slash(join(base, 'home'))}\n`);
+    assert.deepEqual(JSON.parse(readFileSync(mapPath, 'utf8')), { version: 1, repos: [{ remotes: [], path: '~/kept', group: 'kept', profile: 'local' }], roots: ['~/work', '~'] });
+    assert.equal(m().stdout, `map: ${mapPath}\nrepo: group kept, profile local, path ${slash(dir)}\nroot: ${slash(join(base, 'home', 'work'))}\nroot: ${slash(join(base, 'home'))}\n`);
+    assert.equal(m('--set', '--group', 'kin').stdout, `primer: wrote ${mapPath}\nrepo: ~ group kin, profile local, path ${slash(dir)}\n`);
+  });
+
+  test('a map written with paths in full loads, and the next write holds those under the home directory as ~/', () => {
+    const dir = repo('home/older');
+    const cfg = config({ version: 1, repos: [{ remotes: [], path: slash(dir), group: 'older', profile: 'local' }], roots: [slash(base)] });
+    const r = run(['map', '--set', '--profile', 'shared'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.equal(r.stdout, `primer: wrote ${join(cfg.store, 'map.json')}\nrepo: ~ group older, profile shared, path ${slash(dir)}\n`);
+    assert.deepEqual(JSON.parse(readFileSync(join(cfg.store, 'map.json'), 'utf8')), { version: 1, repos: [{ remotes: [], path: '~/older', group: 'older', profile: 'shared' }], roots: [slash(base)] });
+  });
+
   test('a root given through a link is recorded as the directory it leads to', () => {
     const target = join(base, 'root-target'), link = join(base, 'root-link');
     mkdirSync(target);

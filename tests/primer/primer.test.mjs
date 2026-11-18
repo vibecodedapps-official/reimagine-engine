@@ -634,6 +634,17 @@ describe('reach', () => {
     assert.equal(edit(join(base, `reach-data-${++seq}`), join(dir, 'feedback', '2026-11-14.md'), { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout, '');
   });
 
+  test('a file of the store or of the machine\'s directory prints nothing, though a repository with a hub holds it, and leaves that repository unrecorded', () => {
+    const hub = repo(`reach-hub-${++seq}`, 'https://example.invalid/team/hub.git'), dir = join(base, `reach-hub-config-${seq}`), data = join(base, `reach-data-${++seq}`);
+    write(hub, 'CLAUDE.md', '# Hub\n');
+    write(hub, 'context/map.json', JSON.stringify(local()));
+    write(dir, 'reimagine-primer/config.json', JSON.stringify({ store: join(hub, 'context'), local: join(hub, 'mine') }));
+    const at = (file) => edit(data, file, { extraEnv: { CLAUDE_CONFIG_DIR: dir } }).stdout;
+    assert.equal(at(join(hub, 'context', 'groups', 'app.md')), '');
+    assert.equal(at(join(hub, 'mine', 'machine.md')), '');
+    assert.equal(at(join(hub, 'README.md')), said(`${lead(hub)} instruction files: ${slash(hub)}/CLAUDE.md`));
+  });
+
   test('a configuration directory reached through a link is still not another repository', () => {
     const dir = repo(`reach-config-${++seq}`), link = join(base, `reach-config-link-${seq}`);
     write(dir, 'CLAUDE.md', '# Mine\n');

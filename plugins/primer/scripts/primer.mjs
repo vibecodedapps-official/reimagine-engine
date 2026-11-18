@@ -391,13 +391,17 @@ function reach(c, data, input) {
   const path = input.tool_input?.file_path ?? input.tool_input?.notebook_path, cwd = isDir(input.cwd) ? input.cwd : c.cwd;
   if (typeof path !== 'string' || !path) return [];
   const file = resolve(cwd, path), top = topOf(c, dirname(file)), own = topOf(c, c.env.CLAUDE_PROJECT_DIR || cwd), k = (p) => keyOf(p, c.platform);
+  const inside = (d) => `${k(real(dirname(file)))}/`.startsWith(`${k(real(d))}/`);
   // The host loads the user's own instruction files in every session, so a file under <config>, links followed, is never another repository's.
-  if (!top || (own && k(top) === k(own)) || `${k(real(dirname(file)))}/`.startsWith(`${k(real(configOf(c, input)))}/`)) return [];
+  if (!top || (own && k(top) === k(own)) || inside(configOf(c, input))) return [];
+  const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf);
+  // A file of the store or the machine's directory is primer's to write wherever it sits, and a repository that holds it is not recorded.
+  if (p && [p.store, p.local].some(inside)) return [];
   const log = data && isAbsolute(data) && typeof input.session_id === 'string' && GROUP.test(input.session_id) ? join(data, 'reach', input.session_id) : null;
   if (log && readText(log).split('\n').includes(k(top))) return [];
   const deadline = Date.now() + c.limit, repo = repoOf(c, top, deadline), mine = own && repoOf(c, own, deadline);
   if (!repo) return [];
-  const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf), map = p && loadMap(p.map, c.home);
+  const map = p && loadMap(p.map, c.home);
   // Another work tree of the session's repository is its own: it is recorded and gets nothing.
   const other = !(mine && k(mine.root) === k(repo.root)), entry = other && map && match(map, repo, c.platform), home = map && mine && match(map, mine, c.platform);
   // A session that started in a local repository holds the shared and machine layers, and the group's two where the two share one.

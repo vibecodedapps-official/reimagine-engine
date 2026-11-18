@@ -6,7 +6,7 @@
 //   --worked <id> <log>                  a log says the folded rule worked
 //   --set <id> <status> [--place <file> [--commit <sha>]] [--by <id>]
 //                                        open, held or rejected; folded at a place, with its commit when git tracks a place
-//                                        that is no file of the store and no layer of the machine's directory;
+//                                        outside the store and outside machine.md and machine/ of the machine's directory;
 //                                        superseded by another item
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';

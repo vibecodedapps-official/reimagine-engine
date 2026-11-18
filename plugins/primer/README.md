@@ -27,6 +27,8 @@ Name a mode to force it:
 /primer adopt
 ```
 
+`/primer move` runs only when you name it. It takes a repository's tracked agent files out and leaves the repository on the `local` profile below: it restates what the files hold in the store, lists each setting, hook and MCP server for you to place in your own configuration, and removes the files in one commit, which it never pushes. It makes no removal commit while your own `attribution` setting would add a trailer to it.
+
 Add one item after the command to record it alone, such as a checklist you just ran:
 
 ```

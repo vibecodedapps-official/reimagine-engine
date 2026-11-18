@@ -5,7 +5,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 
 const DIR = new URL('../../plugins/primer/skills/primer/', import.meta.url);
 const read = (url) => readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
-const FILES = Object.fromEntries(['SKILL.md', 'adopt.md', 'init.md', 'local.md', 'placement.md', 'shapes.md'].map((name) => [name, read(new URL(name, DIR))]));
+const FILES = Object.fromEntries(['SKILL.md', 'adopt.md', 'init.md', 'local.md', 'move.md', 'placement.md', 'shapes.md'].map((name) => [name, read(new URL(name, DIR))]));
 const SKILL = FILES['SKILL.md'];
 const SHAPES = FILES['shapes.md'];
 const PLACEMENT = FILES['placement.md'];
@@ -21,8 +21,8 @@ function lineCount(text) {
   return newlines + (text.endsWith('\n') ? 0 : 1);
 }
 
-test('R237: the skill directory holds SKILL.md, adopt.md, init.md, local.md, placement.md and shapes.md only', () => {
-  assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'adopt.md', 'init.md', 'local.md', 'placement.md', 'shapes.md']);
+test('R237: the skill directory holds SKILL.md, adopt.md, init.md, local.md, move.md, placement.md and shapes.md only', () => {
+  assert.deepEqual(readdirSync(DIR).sort(), ['SKILL.md', 'adopt.md', 'init.md', 'local.md', 'move.md', 'placement.md', 'shapes.md']);
 });
 
 test('R245: the frontmatter names the skill, leaves its start to the command, and grants read-only tools', () => {
@@ -57,10 +57,10 @@ test('R245: the frontmatter names the skill, leaves its start to the command, an
   ]);
 });
 
-test('R245: the mode line the skill gives is the one the eval grader matches, for each of the three modes', () => {
+test('R245: the mode line the skill gives is the one the eval grader matches, for each of the four modes', () => {
   const form = /`primer: mode <([^>`]+)> \(<[^>`]+>\)`/.exec(SKILL);
   assert.ok(form, 'SKILL.md gives no mode line form');
-  assert.deepEqual(form[1].split('|'), ['init', 'adopt', 'maintain']);
+  assert.deepEqual(form[1].split('|'), ['init', 'adopt', 'maintain', 'move']);
   const grader = read(new URL('../evals/primer/mode-line/graders/mode-line.md', import.meta.url));
   const pattern = /^pattern: '(.*)'$/m.exec(grader)?.[1];
   assert.ok(pattern, 'the grader holds no pattern');
@@ -82,6 +82,8 @@ test('R246, R390: the bans whose loss lets a run write where it must not stand i
   for (const entry of ['code', 'configuration', 'settings', 'CI files', 'package manifests', '`CLAUDE.local.md`', 'anything git ignores', 'the auto memory directory']) assert.ok(first.includes(entry), `the list of what is never edited lacks ${entry}`);
   assert.ok(LOCAL.split('\n').some((l) => /writes nothing [^.]*work tree[^.]*no commit/.test(l)), 'local.md does not bar a work tree write and a commit');
   assert.ok(LOCAL.split('\n').some((l) => l.includes('inside a repository') && l.includes('make and offer no commit, branch, push or pull request there')), 'local.md does not bar a commit in a repository that holds the store');
+  assert.ok(FILES['move.md'].split('\n').some((l) => l.includes('`attribution`') && l.includes('make no removal commit until')), 'move.md does not bar the removal commit while a trailer would be added');
+  assert.ok(FILES['move.md'].split('\n').some((l) => l.includes('removal commit') && l.includes('Never push it')), 'move.md does not bar a push of the removal commit');
 });
 
 test('every script command the skill files show names a script that exists, a verb it takes and options it reads', () => {
@@ -159,7 +161,7 @@ test('R237: every skill file SKILL.md names exists', () => {
   for (const m of SKILL.matchAll(/`([^`\n]+)`/g)) {
     if (/^[A-Za-z0-9_.-]+\.md$/.test(m[1]) && !host.has(m[1])) named.add(m[1]);
   }
-  assert.deepEqual([...named].sort(), ['adopt.md', 'init.md', 'local.md', 'placement.md', 'shapes.md']);
+  assert.deepEqual([...named].sort(), ['adopt.md', 'init.md', 'local.md', 'move.md', 'placement.md', 'shapes.md']);
   for (const name of named) assert.ok(existsSync(new URL(name, DIR)), `${name} exists`);
 });
 

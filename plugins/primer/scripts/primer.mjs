@@ -18,11 +18,11 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:pat
 import { pathToFileURL } from 'node:url';
 
 export const CAP = 10000;
-const LAYERS = ['shared', 'group', 'machine'];
+const LAYERS = ['shared', 'group', 'machine', 'machine-group'];
 const PROFILES = ['shared', 'local'];
 const GROUP = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const FORMS = 'map takes --add with --profile shared|local [--group <name>] or --root <dir>, --set with any of '
-  + '--profile, --group and --root or with --store <path> alone, or --drop [--root <dir>]; nothing else is accepted';
+  + '--profile, --group and --root or with --store <path> or --local <path> alone, or --drop [--root <dir>]; nothing else is accepted';
 
 export class Refusal extends Error {}
 class Unknown extends Error {}
@@ -34,8 +34,11 @@ export const isDir = (p) => typeof p === 'string' && p !== '' && !!statSync(p, {
 export const tilde = (p, home) => (p === '~' ? home : /^~[\\/]/.test(p) ? join(home, p.slice(2)) : p);
 // A path as a file of the store holds it: under the home directory as ~/, so a store that is shared names no home directory, else in full.
 const homed = (c, f) => { const h = keyOf(c.home, c.platform), k = keyOf(f, c.platform); return k === h ? '~' : k.startsWith(`${h}/`) ? `~/${slash(f).slice(h.length + 1)}` : slash(f); };
-// The same for a file that may sit inside the store, which is held relative to it.
-export const held = (c, p, f) => { const s = keyOf(p.store, c.platform); return keyOf(f, c.platform).startsWith(`${s}/`) ? slash(f).slice(s.length + 1) : homed(c, f); };
+// The same for a file that may sit inside the store, or another of dirs, which is held relative to it.
+export const held = (c, p, f, dirs = [p.store]) => {
+  for (const s of dirs.map((d) => keyOf(d, c.platform))) if (keyOf(f, c.platform).startsWith(`${s}/`)) return slash(f).slice(s.length + 1);
+  return homed(c, f);
+};
 export const readText = (path) => { try { return readFileSync(path, 'utf8'); } catch { return ''; } };
 const real = (p) => { try { return realpathSync.native(p); } catch { return p; } };
 
@@ -82,12 +85,12 @@ function readJson(path, what) {
   try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return refuse(`${path} is not ${what}`); }
 }
 
-// Primer's own directory, its configuration, the store and the map path.
+// Primer's own directory, its configuration, the store, the machine's directory and the map path.
 export function places(c, own) {
   const cfgPath = join(own, 'config.json'), cfg = readJson(cfgPath, 'a primer configuration') ?? {};
-  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg) || (cfg.store !== undefined && typeof cfg.store !== 'string')) refuse(`${cfgPath} is not a primer configuration`);
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg) || ['store', 'local'].some((k) => cfg[k] !== undefined && typeof cfg[k] !== 'string')) refuse(`${cfgPath} is not a primer configuration`);
   const store = cfg.store ? resolve(tilde(cfg.store, c.home)) : join(own, 'store');
-  return { own, cfgPath, cfg, store, map: join(store, 'map.json') };
+  return { own, cfgPath, cfg, store, local: cfg.local ? resolve(tilde(cfg.local, c.home)) : own, map: join(store, 'map.json') };
 }
 
 // The map, with each path a file holds as ~/ read as the path under this home directory.
@@ -121,7 +124,10 @@ const shown = (e) => `group ${e.group}, profile ${e.profile}, ${e.remotes.length
 
 // Each layer of an entry as it is emitted: a line naming the layer and its file, the text, and a canary line holding the first
 // eight hex characters of the SHA-256 of the file's bytes. An empty or missing layer has no text. swap gives one file other bytes.
-const fileOf = (p, name, group) => (name === 'machine' ? join(p.own, 'machine.md') : name === 'shared' ? join(p.store, 'shared.md') : join(p.store, 'groups', `${group}.md`));
+const fileOf = (p, name, group) => (name === 'machine' ? join(p.local, 'machine.md') : name === 'machine-group' ? join(p.local, 'machine', `${group}.md`)
+  : name === 'shared' ? join(p.store, 'shared.md') : join(p.store, 'groups', `${group}.md`));
+// A machine layer left in primer's own directory after config.json named another for the machine.
+const left = (c, p) => (keyOf(p.local, c.platform) !== keyOf(p.own, c.platform) && existsSync(join(p.own, 'machine.md')) ? `${join(p.own, 'machine.md')} is not read while ${p.cfgPath} names ${p.local}; move its text to ${join(p.local, 'machine.md')}` : null);
 function layersOf(p, entry, swap) {
   const files = Object.fromEntries(LAYERS.map((name) => [name, fileOf(p, name, entry.group)]));
   return LAYERS.map((name) => {
@@ -200,7 +206,7 @@ function sessionStart(c, layer, input, data) {
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
     for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
     // notice.sh runs at startup alone, and so does this.
-    const told = (input.source ?? 'startup') === 'startup' && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && layer !== 'shared' && layer !== 'machine' && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
+    const told = (input.source ?? 'startup') === 'startup' && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
     if (told) msgs.push(told);
   }
   const warn = msgs.length && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && (layer === 'all' || layer === 'group');
@@ -231,21 +237,22 @@ function delivery(c, p) {
     const parts = layersOf(p, entry), n = joined(parts).length;
     for (const x of parts) lines.push(`layer ${x.name}: ${x.file}, ${x.text ? `${x.text.length} characters, canary ${x.canary}` : 'missing or empty'}`);
     lines.push(`check size: ${n} characters as emitted, ${n > CAP ? 'over' : 'within'} the cap of ${CAP}`);
+    if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
   }
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
-const MEASURE = 'measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md or machine.md';
+const MEASURE = 'measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md, machine.md or machine/<group>.md';
 
 // Each mapped repository's context string as the loader emits it; with --with, before and after the file takes the layer's place.
 function measure(c, args) {
   const p = places(c, ownOf(c)), map = loadMap(p.map, c.home);
   let swap;
   if (args.length) {
-    const [flag, file, layer] = args, g = layer?.match(/^groups\/(.+)\.md$/);
-    if (flag !== '--with' || args.length !== 3 || !(layer === 'shared.md' || layer === 'machine.md' || (g && GROUP.test(g[1])))) refuse(MEASURE);
+    const [flag, file, layer] = args, g = layer?.match(/^(groups|machine)\/(.+)\.md$/);
+    if (flag !== '--with' || args.length !== 3 || !(layer === 'shared.md' || layer === 'machine.md' || (g && GROUP.test(g[2])))) refuse(MEASURE);
     const buf = (() => { try { return readFileSync(resolve(c.cwd, file)); } catch { return refuse(`${file} cannot be read`); } })();
-    swap = { file: fileOf(p, g ? 'group' : layer.slice(0, -3), g?.[1]), buf };
+    swap = { file: fileOf(p, g ? (g[1] === 'groups' ? 'group' : 'machine-group') : layer.slice(0, -3), g?.[2]), buf };
   }
   const out = [`primer: the host's cap is ${CAP} characters per context string, counted as emitted`], size = (x) => x.text?.length ?? 0;
   for (const e of map.repos) {
@@ -317,8 +324,8 @@ function copiesVerb(c, [op, ...args]) {
 function spans(p) {
   const docs = [], walk = (d) => { for (const e of (() => { try { return readdirSync(d, { withFileTypes: true }); } catch { return []; } })()) (e.isDirectory() ? walk : (f) => docs.push(f))(join(d, e.name)); };
   walk(join(p.store, 'docs'));
-  const groups = (() => { try { return readdirSync(join(p.store, 'groups')).filter((f) => f.endsWith('.md')).sort().map((f) => join(p.store, 'groups', f)); } catch { return []; } })();
-  const files = [join(p.store, 'shared.md'), ...groups, join(p.own, 'machine.md'), ...docs.sort()].filter((f) => statSync(f, { throwIfNoEntry: false })?.isFile());
+  const each = (d) => { try { return readdirSync(d).filter((f) => f.endsWith('.md')).sort().map((f) => join(d, f)); } catch { return []; } };
+  const files = [join(p.store, 'shared.md'), ...each(join(p.store, 'groups')), join(p.local, 'machine.md'), ...each(join(p.local, 'machine')), ...docs.sort()].filter((f) => statSync(f, { throwIfNoEntry: false })?.isFile());
   const text = files.map((f) => { const l = readText(f).split('\n').map((x) => x.trimEnd()); return l.at(-1) === '' ? l.slice(0, -1) : l; });
   const runs = [];
   for (let a = 0; a < files.length; a++) for (let b = a + 1; b < files.length; b++) {
@@ -386,9 +393,9 @@ function reach(c, data, input) {
   const conf = join(configOf(c, input), 'reimagine-primer'), p = existsSync(conf) && places(c, conf), map = p && loadMap(p.map, c.home);
   // Another work tree of the session's repository is its own: it is recorded and gets nothing.
   const other = !(mine && k(mine.root) === k(repo.root)), entry = other && map && match(map, repo, c.platform), home = map && mine && match(map, mine, c.platform);
-  // A session that started in a local repository holds the shared and machine layers, and the group's where the two share one.
-  const held = (x) => home?.profile === 'local' && (x.name !== 'group' || home.group === entry.group);
-  const layers = entry?.profile === 'local' && joined(layersOf(p, entry).filter((x) => !held(x))), files = other ? instructionsOf(repo.top) : [];
+  // A session that started in a local repository holds the shared and machine layers, and the group's two where the two share one.
+  const has = (x) => home?.profile === 'local' && (!x.name.endsWith('group') || home.group === entry.group);
+  const layers = entry?.profile === 'local' && joined(layersOf(p, entry).filter((x) => !has(x))), files = other ? instructionsOf(repo.top) : [];
   const text = [files.length && `instruction files: ${files.join(', ')}`, layers && `context, which follows.\n\n${layers}`].filter(Boolean).join('; nor its ');
   // Recorded last, so an error above leaves the next edit to be answered; a record that cannot be written answers every edit.
   if (log) try { mkdirSync(dirname(log), { recursive: true }); appendFileSync(log, `${k(top)}\n`); } catch {}
@@ -418,11 +425,14 @@ function mapVerb(c, [op, ...args]) {
     if (a === '--profile') o.profile = PROFILES.includes(v) ? v : refuse(`--profile takes shared or local, not ${v}`);
     else if (a === '--group') o.group = GROUP.test(v) ? v : refuse(`--group takes letters, digits, ., _ and -, starting with a letter or digit, not ${v}`);
     else if (a === '--root') o.roots.push(slash(real(resolve(c.cwd, tilde(v, c.home)))));
-    else if (a === '--store' && op === '--set') o.store = isAbsolute(v) || /^~[\\/]/.test(v) ? v : refuse(`--store takes an absolute or ~/ path, not ${v}`);
+    else if ((a === '--store' || a === '--local') && op === '--set') o[a.slice(2)] = isAbsolute(v) || /^~[\\/]/.test(v) ? v : refuse(`${a} takes an absolute or ~/ path, not ${v}`);
     else refuse(FORMS);
   }
   const fields = ['profile', 'group'].some((k) => k in o);
-  if (op === '--add' ? (!fields && !o.roots.length) || (fields && !o.profile) : op === '--set' && (o.store ? fields || o.roots.length : !fields && !o.roots.length)) refuse(FORMS);
+  if (op === '--add' ? (!fields && !o.roots.length) || (fields && !o.profile) : op === '--set' && (o.store || o.local ? fields || o.roots.length : !fields && !o.roots.length)) refuse(FORMS);
+  // The store may be shared, so the machine's directory, once named, sits outside it.
+  const dir = (v, d) => (v ? resolve(tilde(v, c.home)) : d), store = dir(o.store, p.store), local = dir(o.local, p.cfg.local && p.local);
+  if ((o.store || o.local) && local && `${keyOf(local, c.platform)}/`.startsWith(`${keyOf(store, c.platform)}/`)) refuse(`the machine's directory ${local} would sit inside the store ${store}, which may be shared; name one outside it`);
   const out = [];
   if (fields || (op === '--drop' && !o.roots.length)) {
     const repo = repoOf(c, c.cwd) ?? refuse(`${slash(c.cwd)} is in no git work tree`), at = map.repos.indexOf(match(map, repo, c.platform));
@@ -446,7 +456,12 @@ function mapVerb(c, [op, ...args]) {
   }
   const kept = { ...map, repos: map.repos.map((e) => ({ ...e, path: homed(c, e.path) })), roots: map.roots.map((d) => homed(c, d)) };
   if (out.length) { writeAtomic(p.map, `${JSON.stringify(kept, null, 2)}\n`); out.unshift(`primer: wrote ${p.map}`); }
-  if (o.store) { writeAtomic(p.cfgPath, `${JSON.stringify({ ...p.cfg, store: o.store }, null, 2)}\n`); out.unshift(`primer: wrote ${p.cfgPath}`); }
+  if (o.store || o.local) {
+    writeAtomic(p.cfgPath, `${JSON.stringify({ ...p.cfg, ...(o.store && { store: o.store }), ...(o.local && { local: o.local }) }, null, 2)}\n`);
+    out.unshift(`primer: wrote ${p.cfgPath}`);
+    const gone = left(c, places(c, p.own));
+    if (gone) out.push(`primer: ${gone}`);
+  }
   return out.length ? out : ['primer: the map already holds that; nothing was written'];
 }
 

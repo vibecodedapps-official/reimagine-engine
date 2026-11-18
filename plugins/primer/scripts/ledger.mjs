@@ -91,7 +91,7 @@ export function main(argv, { env = process.env, platform = process.platform, hom
       if (!tracked && o['--commit']) refuse(`git does not track ${place}, so the fold has no commit`);
       const sha = tracked && git(dirname(place), 'rev-parse', '-q', '--verify', `${o['--commit']}^{commit}`);
       if (sha && sha.status !== 0) refuse(`${o['--commit']} is not a commit of the repository that holds ${place}`);
-      Object.assign(x, { place: held(c, p, place), commit: sha ? sha.stdout.trim() : null });
+      Object.assign(x, { place: held(c, p, place, [p.store, p.local]), commit: sha ? sha.stdout.trim() : null });
     }
   } else refuse(FORMS);
   writeAtomic(path, items.map((y) => JSON.stringify(y)).join('\n') + '\n');

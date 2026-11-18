@@ -118,7 +118,7 @@ describe('ledger', () => {
       [1, `primer: git does not track ${join(base, `loose-${seq}.md`)}, so the fold has no commit\n`]);
   });
 
-  test('a fold is recorded by its path inside the store, as ~/ under the home directory, and else in full', () => {
+  test('a fold is recorded by its path inside the store or the machine\'s directory, as ~/ under the home directory, and else in full', () => {
     const cfg = config();
     write(cfg.dir, 'reimagine-primer/store/groups/app.md', 'The app group builds with npm run build.\n');
     write(base, 'home/notes/machine.md', 'This machine keeps its checkouts on one disk.\n');
@@ -126,6 +126,9 @@ describe('ledger', () => {
     assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(cfg.dir, 'reimagine-primer', 'store', 'groups', 'app.md'))[1].split('\n')[1],
       '~ L1 folded in groups/app.md, seen 1: One. (2026-11-01.md)');
     assert.equal(lines(cfg)[0].place, 'groups/app.md');
+    write(cfg.dir, 'reimagine-primer/machine/app.md', 'The app group keeps its database on port 5433 here.\n');
+    assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(cfg.dir, 'reimagine-primer', 'machine', 'app.md'))[1].split('\n')[1],
+      '~ L1 folded in machine/app.md, seen 1: One. (2026-11-01.md)');
     assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(base, 'home', 'notes', 'machine.md'))[1].split('\n')[1],
       '~ L1 folded in ~/notes/machine.md, seen 1: One. (2026-11-01.md)');
   });

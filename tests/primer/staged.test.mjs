@@ -95,6 +95,19 @@ describe('staged', () => {
       [0, `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`]);
   });
 
+  test('R391: a file under .agents/ is an agent file, in any letter case', () => {
+    const dir = repo('agents-dir');
+    write(dir, '.agents/skills/ship/SKILL.md', '# Ship\n');
+    write(dir, 'docs/.Agents/notes.md', '# Notes\n');
+    const cfg = config([{ remotes: [], path: slash(dir), group: 'agents-dir', profile: 'local' }]);
+    const lead = `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; `;
+    const deny = (reason) => `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } })}\n`;
+    assert.equal(run(input('git add .agents/skills/ship/SKILL.md', dir), cfg).stdout,
+      deny(lead + "the call would add .agents/skills/ship/SKILL.md, while the upstream's tree is unknown (no remote names it)"));
+    assert.equal(run(input('git add docs/.Agents/notes.md', dir), cfg).stdout,
+      deny(lead + "the call would add docs/.Agents/notes.md, while the upstream's tree is unknown (no remote names it)"));
+  });
+
   test('R386: a clone under another host form or letter case of its remote matches the entry', () => {
     const denies = (name, remote, cfg) => {
       const dir = repo(name, remote);

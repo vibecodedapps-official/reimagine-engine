@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 import { Refusal, blob, configOf, git, isDir, loadMap, match, places, readText, repoOf, tilde } from './primer.mjs';
 
 const AGENT_NAMES = new Set(['claude.md', 'claude.local.md', 'agents.md', '.reimagine.json', '.mcp.json']);
-const AGENT_DIRS = new Set(['.claude', '.reimagine']);
+const AGENT_DIRS = new Set(['.claude', '.agents', '.reimagine']);
 
 // The simple commands of a shell text, each a list of words { w, bad, git }, with ( and ) kept: bad marks an expansion the
 // script cannot resolve, a brace expansion among them, git a command substitution that stages or commits with git. Null for a quote

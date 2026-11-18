@@ -734,7 +734,7 @@ describe('primer drift hook', () => {
     });
     test('with the agent files in info/exclude, staging and committing everything in one command passes', async () => {
       const dir = await clone();
-      write(dir, '.git/info/exclude', 'CLAUDE.md\nCLAUDE.local.md\nAGENTS.md\n.claude/\n.reimagine/\n.reimagine.json\n.mcp.json\n');
+      write(dir, '.git/info/exclude', 'CLAUDE.md\nCLAUDE.local.md\nAGENTS.md\n.claude/\n.agents/\n.reimagine/\n.reimagine.json\n.mcp.json\n');
       assert.equal(await check('git add -A && git commit -m x', dir), '');
     });
     test('an add whose options the script cannot resolve is taken to stage every file git does not ignore', async () => {
@@ -802,7 +802,7 @@ describe('primer drift hook', () => {
     });
     test('a forced add of an agent file git ignores is counted beside a commit in the same command', async () => {
       const dir = await clone();
-      write(dir, '.git/info/exclude', 'CLAUDE.md\nCLAUDE.local.md\nAGENTS.md\n.claude/\n.reimagine/\n.reimagine.json\n.mcp.json\n');
+      write(dir, '.git/info/exclude', 'CLAUDE.md\nCLAUDE.local.md\nAGENTS.md\n.claude/\n.agents/\n.reimagine/\n.reimagine.json\n.mcp.json\n');
       assert.equal(await check('git add -f CLAUDE.md && git commit -m x', dir),
         deny(lead(dir) + unresolved + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
     });

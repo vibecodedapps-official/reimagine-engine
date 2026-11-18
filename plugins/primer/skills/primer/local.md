@@ -34,6 +34,7 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
   CLAUDE.local.md
   AGENTS.md
   .claude/
+  .agents/
   .reimagine/
   .reimagine.json
   .mcp.json

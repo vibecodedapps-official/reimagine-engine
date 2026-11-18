@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 import { Refusal, blob, configOf, git, isDir, loadMap, match, places, readText, repoOf, tilde } from './primer.mjs';
 
 const AGENT_NAMES = new Set(['claude.md', 'claude.local.md', 'agents.md', '.reimagine.json', '.mcp.json']);
-const AGENT_DIRS = new Set(['.claude', '.reimagine']);
+const AGENT_DIRS = new Set(['.claude', '.agents', '.reimagine']);
 
 // The simple commands of a shell text, each a list of words { w, bad, git }, with ( and ) kept: bad marks an expansion the
 // script cannot resolve, a brace expansion among them, git a command substitution that stages or commits with git. Null for a quote
@@ -235,7 +235,7 @@ function staged(c, input) {
   const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false };
   scan(command, ps, st);
   if (!st.calls.length && !st.hidden) return [];
-  const path = places(c, own).map, map = (() => { try { return loadMap(path); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
+  const path = places(c, own).map, map = (() => { try { return loadMap(path, c.home); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
   if (!map) return [deny(`primer: ${path} is not a primer map, so the staging check cannot tell which repositories have the local profile and denies every git add `
     + 'and git commit; restore the file from a copy or from the store\'s history, or correct it to the form primer map writes')];
   if (!map.repos.some((e) => e.profile === 'local')) return [];

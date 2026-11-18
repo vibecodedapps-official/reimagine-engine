@@ -5,20 +5,20 @@
 //   --seen <id> <log>                    another log states the item's gap: a held item opens again, a folded one counts a failure
 //   --worked <id> <log>                  a log says the folded rule worked
 //   --set <id> <status> [--place <file> [--commit <sha>]] [--by <id>]
-//                                        open, held or rejected; folded at a place, with its commit when git tracks the place;
+//                                        open, held or rejected; folded at a place, with its commit when git tracks a place
+//                                        outside the store and outside machine.md and machine/ of the machine's directory;
 //                                        superseded by another item
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Refusal, ownOf, places, writeAtomic } from './primer.mjs';
+import { Refusal, held, keyOf, ownOf, places, writeAtomic } from './primer.mjs';
 
 const STATUSES = ['open', 'folded', 'rejected', 'held', 'superseded'];
 const FORMS = 'ledger takes nothing, --add <log> <gap>, --seen <id> <log>, --worked <id> <log>, or --set <id> <status> '
   + 'with --place <file> [--commit <sha>] for folded and --by <id> for superseded';
 const refuse = (message) => { throw new Refusal(message); };
-const slash = (p) => p.replace(/\\/g, '/');
 
 function load(path) {
   if (!existsSync(path)) return [];
@@ -35,8 +35,8 @@ const shown = (x) => `${x.id} ${x.status}${x.status === 'folded' ? ` in ${x.plac
 const git = (cwd, ...args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' });
 
 // Returns the output lines; a refusal throws.
-export function main(argv, { env = process.env, home = homedir(), cwd = process.cwd() } = {}) {
-  const c = { env, home }, p = places(c, ownOf(c)), path = join(p.store, 'ledger.jsonl'), items = load(path);
+export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd() } = {}) {
+  const c = { env, platform, home }, p = places(c, ownOf(c)), path = join(p.store, 'ledger.jsonl'), items = load(path);
   const [op, ...args] = argv, logs = join(dirname(ownOf(c)), 'feedback');
   if (op === undefined) return [`ledger: ${path}`, ...(items.length ? items.map(shown) : ['no items'])];
   const item = (id) => items.find((x) => x.id === id) ?? refuse(`the ledger holds no item ${id}`);
@@ -87,12 +87,14 @@ export function main(argv, { env = process.env, home = homedir(), cwd = process.
     if (status === 'folded') {
       const place = resolve(cwd, o['--place']);
       if (!statSync(place, { throwIfNoEntry: false })?.isFile()) refuse(`${place} is not a file`);
-      const tracked = git(dirname(place), 'ls-files', '--error-unmatch', '--', place).status === 0;
-      if (tracked && !o['--commit']) refuse(`git tracks ${place}; --commit names the commit that folded it`);
+      const tracked = git(dirname(place), 'ls-files', '--error-unmatch', '--', place).status === 0, k = (f) => keyOf(f, c.platform);
+      // A run makes no commit in a repository that holds the store or the machine's layers, so a fold into one of those may have none.
+      const ours = [p.store, join(p.local, 'machine')].some((d) => k(place).startsWith(`${k(d)}/`)) || k(place) === k(join(p.local, 'machine.md'));
+      if (tracked && !o['--commit'] && !ours) refuse(`git tracks ${place}; --commit names the commit that folded it`);
       if (!tracked && o['--commit']) refuse(`git does not track ${place}, so the fold has no commit`);
-      const sha = tracked && git(dirname(place), 'rev-parse', '-q', '--verify', `${o['--commit']}^{commit}`);
+      const sha = tracked && o['--commit'] && git(dirname(place), 'rev-parse', '-q', '--verify', `${o['--commit']}^{commit}`);
       if (sha && sha.status !== 0) refuse(`${o['--commit']} is not a commit of the repository that holds ${place}`);
-      Object.assign(x, { place: slash(place), commit: sha ? sha.stdout.trim() : null });
+      Object.assign(x, { place: held(c, p, place), commit: sha ? sha.stdout.trim() : null });
     }
   } else refuse(FORMS);
   writeAtomic(path, items.map((y) => JSON.stringify(y)).join('\n') + '\n');

@@ -81,6 +81,7 @@ test('R246, R390: the bans whose loss lets a run write where it must not stand i
   const first = never.split('. ')[0];
   for (const entry of ['code', 'configuration', 'settings', 'CI files', 'package manifests', '`CLAUDE.local.md`', 'anything git ignores', 'the auto memory directory']) assert.ok(first.includes(entry), `the list of what is never edited lacks ${entry}`);
   assert.ok(LOCAL.split('\n').some((l) => /writes nothing [^.]*work tree[^.]*no commit/.test(l)), 'local.md does not bar a work tree write and a commit');
+  assert.ok(LOCAL.split('\n').some((l) => l.includes('inside a repository') && l.includes('make and offer no commit, branch, push or pull request there')), 'local.md does not bar a commit in a repository that holds the store');
 });
 
 test('every script command the skill files show names a script that exists, a verb it takes and options it reads', () => {
@@ -137,11 +138,11 @@ test('R256, R257 and R397: the stamps the skill writes are the ones the notice h
 test('R390 and R391: the info/exclude lines local.md offers are the agent files the staging check knows, as git reads them', () => {
   const set = (name) => new RegExp(`const ${name} = new Set\\(\\[([^\\]]+)\\]\\)`).exec(SOURCE['staged.mjs'])?.[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')) ?? [];
   const known = [...set('AGENT_NAMES'), ...set('AGENT_DIRS')].sort();
-  assert.equal(known.length, 7);
+  assert.equal(known.length, 8);
   const fence = /\n  ```\n((?:  \S+\n)+)  ```\n/.exec(LOCAL)?.[1] ?? '';
   const written = fence.split('\n').filter(Boolean).map((l) => l.trim().replace(/\/$/, ''));
   assert.deepEqual(written.map((l) => l.toLowerCase()).sort(), known);
-  assert.deepEqual([...written].sort(), ['.claude', '.mcp.json', '.reimagine', '.reimagine.json', 'AGENTS.md', 'CLAUDE.local.md', 'CLAUDE.md']);
+  assert.deepEqual([...written].sort(), ['.agents', '.claude', '.mcp.json', '.reimagine', '.reimagine.json', 'AGENTS.md', 'CLAUDE.local.md', 'CLAUDE.md']);
 });
 
 test('R240: SKILL.md is within its cap of 150 lines, counted as the file has them', () => {

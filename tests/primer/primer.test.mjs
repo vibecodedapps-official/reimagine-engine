@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { delimiter, dirname, join } from 'node:path';
+import { delimiter, dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { main } from '../../plugins/primer/scripts/primer.mjs';
 
@@ -14,6 +14,7 @@ const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const SHARED = 'Every mapped repository uses LF line ends.\n';
 const GROUP = 'The app group builds with npm run build.\n';
 const MACHINE = 'This machine keeps its checkouts on one disk.\n';
+const HERE = 'The app group keeps its database on port 5433 here.\n';
 const slash = (p) => p.replaceAll('\\', '/');
 
 let base, env, seq = 0;
@@ -36,7 +37,7 @@ const repo = (name, remote) => {
   if (remote) git(dir, 'remote', 'add', 'origin', remote);
   return dir;
 };
-// A configuration directory with primer's own directory, a map and, as given, the three layers.
+// A configuration directory with primer's own directory, a map and, as given, the layers.
 const config = (map, layers = {}) => {
   const dir = join(base, `config-${++seq}`);
   const own = join(dir, 'reimagine-primer');
@@ -44,6 +45,7 @@ const config = (map, layers = {}) => {
   if (layers.shared !== undefined) write(own, 'store/shared.md', layers.shared);
   if (layers.group !== undefined) write(own, 'store/groups/app.md', layers.group);
   if (layers.machine !== undefined) write(own, 'machine.md', layers.machine);
+  if (layers.here !== undefined) write(own, 'machine/app.md', layers.here);
   return { dir, own, store: join(own, 'store') };
 };
 const local = (extra = {}) => ({ version: 1, repos: [{ remotes: ['example.invalid/team/app'], path: 'unused', group: 'app', profile: 'local' }], roots: [], ...extra });
@@ -84,10 +86,37 @@ describe('session-start', () => {
     assert.ok(r.stdout.endsWith('primer canary machine 3b656d6a"}}\n'));
   });
 
+  test('the machine\'s directory is the one config.json names, and a group\'s layer there is emitted last', () => {
+    const dir = repo('four', 'https://example.invalid/team/app.git');
+    const cfg = config(local(), { shared: SHARED, group: GROUP });
+    const here = join(base, 'machine-side');
+    write(cfg.own, 'config.json', JSON.stringify({ local: here }));
+    write(here, 'machine.md', MACHINE);
+    write(here, 'machine/app.md', HERE);
+    const last = part('machine-group', join(here, 'machine', 'app.md'), 'The app group keeps its database on port 5433 here.', '29f29947');
+    const text = [
+      part('shared', join(cfg.store, 'shared.md'), SHARED.trim(), 'c09a8e67'),
+      part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e'),
+      part('machine', join(here, 'machine.md'), MACHINE.trim(), '3b656d6a'),
+      last,
+    ].join('\n\n');
+    assert.equal(start(cfg, dir).stdout, context(text));
+    assert.equal(start(cfg, dir, {}, 'machine-group').stdout, context(last));
+  });
+
   test('an empty or missing layer contributes nothing, and the last line is the last layer\'s canary', () => {
     const cfg = config(local(), { shared: '\n \n', group: GROUP });
     const r = start(cfg, repo('one-layer', 'git@example.invalid:team/app.git'));
     assert.equal(r.stdout, context(part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')));
+  });
+
+  test('a layer checked out with CRLF line ends is emitted, counted and given its canary as the same layer with LF', () => {
+    const cfg = config(local(), { group: 'The web group builds with make.\r\nIts tests run with make check.\r\n' });
+    const dir = repo('crlf', 'https://example.invalid/team/app.git');
+    const file = join(cfg.store, 'groups', 'app.md');
+    assert.equal(start(cfg, dir).stdout, context(part('group', file, 'The web group builds with make.\nIts tests run with make check.', '426e70e8')));
+    const status = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
+    assert.equal(status.find((l) => l.startsWith('layer group:')), `layer group: ${file}, ${file.length + 116} characters, canary 426e70e8`);
   });
 
   test('a layer run alone emits that layer only', () => {
@@ -147,7 +176,7 @@ describe('session-start', () => {
     const plain = join(base, 'plain');
     mkdirSync(plain);
     assert.equal(start(config(local({ roots: [slash(base)] }), { group: GROUP }), plain).stdout, '');
-    const bad = config({ version: 2 });
+    const bad = config({ version: 3, repos: [], roots: [] });
     const r = start(bad, repo('bad-map', 'https://example.invalid/team/app.git'));
     assert.deepEqual([r.status, r.stdout], [0, '']);
   });
@@ -208,6 +237,7 @@ describe('status', () => {
       `layer shared: ${shared}, ${shared.length + 98} characters, canary c09a8e67`,
       `layer group: ${group}, ${group.length + 94} characters, canary 5ee2174e`,
       `layer machine: ${join(cfg.own, 'machine.md')}, missing or empty`,
+      `layer machine-group: ${join(cfg.own, 'machine', 'app.md')}, missing or empty`,
       `check size: ${shared.length + group.length + 194} characters as emitted, within the cap of 10000`,
       'check map: mapped',
       'check git: answered within 5 s',
@@ -352,15 +382,18 @@ describe('copies', () => {
       shared: '# Shared\nAlpha one.\nAlpha two.\n\nAlpha three.\nAlpha four.\nAlpha five.\nShared end.\n',
       group: 'Alpha one.\nAlpha two.\n\nAlpha three.\nAlpha four.  \nAlpha five.\nGroup end.\nPair one.\nPair two.\n',
       machine: 'Pair one.\nPair two.\nBeta one.\nBeta two.\nBeta three.\n',
+      here: 'Gamma one.\nGamma two.\nGamma three.\n',
     });
+    write(cfg.store, 'docs/gamma.md', 'Gamma one.\nGamma two.\nGamma three.\n');
     write(cfg.store, 'docs/guide.md', '# Guide\r\nBeta one.\r\nBeta two.\r\nBeta three.\r\n');
     write(cfg.store, 'docs/blank.md', '\n\n\n\nShared end.\n');
     const r = run(['copies', '--spans'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
     assert.equal(r.status, 0, r.stdout);
     assert.equal(r.stdout, [
-      'primer: 2 runs shared by two layers or documents, of at least 3 lines that are not blank, longest first',
+      'primer: 3 runs shared by two layers or documents, of at least 3 lines that are not blank, longest first',
       `6 lines: ${join(cfg.store, 'shared.md')} 2-7 and ${join(cfg.store, 'groups', 'app.md')} 1-6`,
       `3 lines: ${join(cfg.own, 'machine.md')} 3-5 and ${join(cfg.store, 'docs', 'guide.md')} 2-4`,
+      `3 lines: ${join(cfg.own, 'machine', 'app.md')} 1-3 and ${join(cfg.store, 'docs', 'gamma.md')} 1-3`,
       '',
     ].join('\n'));
     assert.equal(existsSync(join(cfg.store, 'copies.json')), false);
@@ -377,7 +410,7 @@ describe('map', () => {
     const r = m('--add', '--profile', 'shared', '--root', base);
     assert.equal(r.status, 0, r.stdout);
     assert.equal(r.stdout, `primer: wrote ${mapPath}\nrepo: + group App, profile shared, remotes example.invalid/team/App\nroot: + ${slash(base)}\n`);
-    assert.deepEqual(read(), { version: 1, repos: [{ remotes: ['example.invalid/team/App'], path: slash(dir), group: 'App', profile: 'shared' }], roots: [slash(base)] });
+    assert.deepEqual(read(), { version: 2, repos: [{ remotes: ['example.invalid/team/App'], path: slash(dir), group: 'App', profile: 'shared' }], roots: [slash(base)] });
     assert.deepEqual([m('--add', '--profile', 'local').status, m('--add', '--profile', 'local').stdout],
       [1, 'primer: this repository is already mapped (group App, profile shared, remotes example.invalid/team/App); use --set\n']);
     assert.equal(m('--set', '--profile', 'local', '--group', 'app').stdout, `primer: wrote ${mapPath}\nrepo: ~ group app, profile local, remotes example.invalid/team/App\n`);
@@ -385,7 +418,7 @@ describe('map', () => {
     assert.equal(m('--add', '--root', base).stdout, 'primer: the map already holds that; nothing was written\n');
     assert.equal(m('--drop', '--root', base).stdout, `primer: wrote ${mapPath}\nroot: - ${slash(base)}\n`);
     assert.equal(m('--drop').stdout, `primer: wrote ${mapPath}\nrepo: - group app, profile local, remotes example.invalid/team/App\n`);
-    assert.deepEqual(read(), { version: 1, repos: [], roots: [] });
+    assert.deepEqual(read(), { version: 2, repos: [], roots: [] });
     assert.equal(m('--drop').stdout, 'primer: this repository has no entry in the map; use --add\n');
     const store = join(base, 'elsewhere-store');
     assert.equal(m('--set', '--store', store).stdout, `primer: wrote ${join(cfgDir, 'reimagine-primer', 'config.json')}\n`);
@@ -398,6 +431,59 @@ describe('map', () => {
     const cfgDir = join(base, `map-config-${++seq}`);
     const r = run(['map', '--add', '--profile', 'local'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } });
     assert.equal(r.stdout, `primer: wrote ${join(cfgDir, 'reimagine-primer', 'store', 'map.json')}\nrepo: + group map-no-remote, profile local, path ${slash(dir)}\n`);
+  });
+
+  test('a clone and a root under the home directory are recorded as ~/, shown in full, and match when read again', () => {
+    const dir = repo('home/kept');
+    mkdirSync(join(base, 'home', 'work'));
+    const cfgDir = join(base, `map-config-${++seq}`);
+    const m = (...args) => run(['map', ...args], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfgDir } });
+    const mapPath = join(cfgDir, 'reimagine-primer', 'store', 'map.json');
+    assert.equal(m('--add', '--profile', 'local', '--root', join(base, 'home', 'work'), '--root', join(base, 'home')).stdout,
+      `primer: wrote ${mapPath}\nrepo: + group kept, profile local, path ${slash(dir)}\nroot: + ${slash(join(base, 'home', 'work'))}\nroot: + ${slash(join(base, 'home'))}\n`);
+    assert.deepEqual(JSON.parse(readFileSync(mapPath, 'utf8')), { version: 2, repos: [{ remotes: [], path: '~/kept', group: 'kept', profile: 'local' }], roots: ['~/work', '~'] });
+    assert.equal(m().stdout, `map: ${mapPath}\nrepo: group kept, profile local, path ${slash(dir)}\nroot: ${slash(join(base, 'home', 'work'))}\nroot: ${slash(join(base, 'home'))}\n`);
+    assert.equal(m('--set', '--group', 'kin').stdout, `primer: wrote ${mapPath}\nrepo: ~ group kin, profile local, path ${slash(dir)}\n`);
+  });
+
+  test('where the home directory is the root of the file system, a path is held in full', () => {
+    const dir = repo('root-home');
+    const cfgDir = join(base, `map-config-${++seq}`), top = parse(base).root;
+    const r = run(['map', '--add', '--profile', 'local'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfgDir, HOME: top, USERPROFILE: top } });
+    assert.equal(r.status, 0, r.stdout);
+    assert.deepEqual(JSON.parse(readFileSync(join(cfgDir, 'reimagine-primer', 'store', 'map.json'), 'utf8')),
+      { version: 2, repos: [{ remotes: [], path: slash(dir), group: 'root-home', profile: 'local' }], roots: [] });
+  });
+
+  test('a map written with paths in full loads, and the next write holds those under the home directory as ~/', () => {
+    const dir = repo('home/older');
+    const cfg = config({ version: 1, repos: [{ remotes: [], path: slash(dir), group: 'older', profile: 'local' }], roots: [slash(base)] });
+    const r = run(['map', '--set', '--profile', 'shared'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
+    assert.equal(r.stdout, `primer: wrote ${join(cfg.store, 'map.json')}\nrepo: ~ group older, profile shared, path ${slash(dir)}\n`);
+    assert.deepEqual(JSON.parse(readFileSync(join(cfg.store, 'map.json'), 'utf8')), { version: 2, repos: [{ remotes: [], path: '~/older', group: 'older', profile: 'shared' }], roots: [slash(base)] });
+  });
+
+  test('--set --local names the machine\'s directory, and says so while a machine layer is left in primer\'s own', () => {
+    const cfg = config(local(), { machine: MACHINE });
+    const here = join(base, 'machine-elsewhere');
+    const m = (...args) => { const r = run(['map', ...args], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }); return [r.status, r.stdout]; };
+    const left = `${join(cfg.own, 'machine.md')} is not read while ${join(cfg.own, 'config.json')} names ${here}; move its text to ${join(here, 'machine.md')}`;
+    assert.deepEqual(m('--set', '--local', here), [0, `primer: wrote ${join(cfg.own, 'config.json')}\nprimer: ${left}\n`]);
+    assert.deepEqual(JSON.parse(readFileSync(join(cfg.own, 'config.json'), 'utf8')), { local: here });
+    const status = run(['status'], { cwd: repo('map-local-key', 'https://example.invalid/team/app.git'), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
+    assert.equal(status[8], `layer machine: ${join(here, 'machine.md')}, missing or empty`);
+    assert.equal(status[11], `check machine: ${left}`);
+    const unmapped = run(['status'], { cwd: repo('map-local-unmapped', 'https://example.invalid/team/none.git'), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
+    assert.equal(unmapped[6], `check machine: ${left}`);
+    const plain = config(local());
+    const p = run(['map', '--set', '--store', plain.dir], { extraEnv: { CLAUDE_CONFIG_DIR: plain.dir } });
+    assert.deepEqual([p.status, p.stdout], [1, `primer: the machine's directory ${plain.own} would sit inside the store ${plain.dir}, which may be shared; name one outside it\n`]);
+    assert.deepEqual(m('--set', '--local', 'relative'), [1, 'primer: --local takes an absolute or ~/ path, not relative\n']);
+    assert.deepEqual(m('--set', '--local', join(cfg.store, 'mine')), [1, `primer: the machine's directory ${join(cfg.store, 'mine')} would sit inside the store ${cfg.store}, which may be shared; name one outside it\n`]);
+    assert.deepEqual(m('--set', '--store', base), [1, `primer: the machine's directory ${here} would sit inside the store ${base}, which may be shared; name one outside it\n`]);
+    assert.deepEqual(JSON.parse(readFileSync(join(cfg.own, 'config.json'), 'utf8')), { local: here });
+    assert.deepEqual(m('--set', '--local', here, '--group', 'web'), [1, 'primer: map takes --add with --profile shared|local [--group <name>] or --root <dir>, --set with any of '
+      + '--profile, --group and --root or with --store <path> or --local <path> alone, or --drop [--root <dir>]; nothing else is accepted\n']);
   });
 
   test('a root given through a link is recorded as the directory it leads to', () => {
@@ -416,14 +502,14 @@ describe('map', () => {
     const m = (...args) => { const r = run(['map', ...args], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }); return [r.status, r.stdout]; };
     assert.deepEqual(m(), [0, `map: ${mapPath}\nrepo: group own, profile local, remotes example.invalid/team/own\n`]);
     assert.deepEqual(m('--set', '--profile', 'shared'), [0, `primer: wrote ${mapPath}\nrepo: ~ group own, profile shared, remotes example.invalid/team/own\n`]);
-    assert.deepEqual(JSON.parse(readFileSync(mapPath, 'utf8')), { version: 1, repos: [{ remotes: ['example.invalid/team/own'], path: 'unused', group: 'own', profile: 'shared' }], roots: [] });
+    assert.deepEqual(JSON.parse(readFileSync(mapPath, 'utf8')), { version: 2, repos: [{ remotes: ['example.invalid/team/own'], path: 'unused', group: 'own', profile: 'shared' }], roots: [] });
   });
 
   test('each form the map does not take is refused with one line', () => {
     const dir = repo('map-refused', 'https://example.invalid/team/app.git');
     const m = (...args) => { const r = run(['map', ...args], { cwd: dir }); return [r.status, r.stdout]; };
     const forms = 'primer: map takes --add with --profile shared|local [--group <name>] or --root <dir>, --set with any of '
-      + '--profile, --group and --root or with --store <path> alone, or --drop [--root <dir>]; nothing else is accepted\n';
+      + '--profile, --group and --root or with --store <path> or --local <path> alone, or --drop [--root <dir>]; nothing else is accepted\n';
     assert.deepEqual(m('--add'), [1, forms]);
     assert.deepEqual(m('--move'), [1, forms]);
     assert.deepEqual(m('--drop', '--group', 'x'), [1, forms]);
@@ -450,8 +536,8 @@ describe('measure', () => {
     const s = join(cfg.store, 'shared.md').length + 98, g = join(cfg.store, 'groups', 'app.md').length + 94;
     const r = run(['measure'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
     assert.equal(r.status, 0, r.stdout);
-    assert.equal(r.stdout, [head, `${app}: ${s + 2 + g} characters (shared ${s}, group ${g}, machine 0), within the cap`,
-      `${webLine}: ${s} characters (shared ${s}, group 0, machine 0), within the cap`, siteLine, ''].join('\n'));
+    assert.equal(r.stdout, [head, `${app}: ${s + 2 + g} characters (shared ${s}, group ${g}, machine 0, machine-group 0), within the cap`,
+      `${webLine}: ${s} characters (shared ${s}, group 0, machine 0, machine-group 0), within the cap`, siteLine, ''].join('\n'));
   });
 
   test('--with measures a proposed layer in its file\'s place, before and after, for each repository', () => {
@@ -459,17 +545,22 @@ describe('measure', () => {
     const s = join(cfg.store, 'shared.md').length + 98, g = join(cfg.store, 'groups', 'app.md').length + 94;
     write(base, 'proposal.md', `${GROUP}The app group deploys from main.\n`);
     const r = run(['measure', '--with', 'proposal.md', 'groups/app.md'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } });
-    assert.equal(r.stdout, [head, `${app}: ${s + 2 + g} -> ${s + 2 + g + 33} characters (shared ${s}, group ${g} -> ${g + 33}, machine 0), within the cap`,
-      `${webLine}: ${s} -> ${s} characters (shared ${s}, group 0, machine 0), within the cap`, siteLine, ''].join('\n'));
+    assert.equal(r.stdout, [head, `${app}: ${s + 2 + g} -> ${s + 2 + g + 33} characters (shared ${s}, group ${g} -> ${g + 33}, machine 0, machine-group 0), within the cap`,
+      `${webLine}: ${s} -> ${s} characters (shared ${s}, group 0, machine 0, machine-group 0), within the cap`, siteLine, ''].join('\n'));
     assert.equal(readFileSync(join(cfg.store, 'groups', 'app.md'), 'utf8'), GROUP);
     write(base, 'big.md', `${'a'.repeat(9990)}\n`);
     const big = run(['measure', '--with', join(base, 'big.md'), 'shared.md'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
-    assert.equal(big[1], `${app}: ${s + 2 + g} -> ${s + 2 + g + 9948} characters (shared ${s} -> ${s + 9948}, group ${g}, machine 0), over the cap`);
+    assert.equal(big[1], `${app}: ${s + 2 + g} -> ${s + 2 + g + 9948} characters (shared ${s} -> ${s + 9948}, group ${g}, machine 0, machine-group 0), over the cap`);
+    write(base, 'here.md', HERE);
+    const here = run(['measure', '--with', 'here.md', 'machine/app.md'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n');
+    const h = join(cfg.own, 'machine', 'app.md').length + 121;
+    assert.equal(here[1], `${app}: ${s + 2 + g} -> ${s + 2 + g + 2 + h} characters (shared ${s}, group ${g}, machine 0, machine-group 0 -> ${h}), within the cap`);
+    assert.equal(here[2], `${webLine}: ${s} -> ${s} characters (shared ${s}, group 0, machine 0, machine-group 0), within the cap`);
   });
 
   test('each form measure does not take is refused with one line', () => {
-    const forms = 'primer: measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md or machine.md\n';
-    for (const args of [['--with', 'x.md'], ['--with', 'x.md', 'groups/../x.md'], ['--with', 'x.md', 'other.md'], ['x']]) {
+    const forms = 'primer: measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md, machine.md or machine/<group>.md\n';
+    for (const args of [['--with', 'x.md'], ['--with', 'x.md', 'groups/../x.md'], ['--with', 'x.md', 'machine/../x.md'], ['--with', 'x.md', 'other.md'], ['x']]) {
       assert.deepEqual([run(['measure', ...args]).status, run(['measure', ...args]).stdout], [1, forms], args.join(' '));
     }
     assert.equal(run(['measure', '--with', 'missing.md', 'machine.md']).stdout, 'primer: missing.md cannot be read\n');
@@ -510,12 +601,13 @@ describe('reach', () => {
     assert.equal(edit(data, join(site, 'x.ipynb'), { id: 's3', tool: 'NotebookEdit' }).stdout, said(`${lead(site)} instruction files: ${files(site)}`));
   });
 
-  test('a session that started in a local repository gets the group layer of another alone, and nothing where the two share a group', () => {
+  test('a session that started in a local repository gets the two group layers of another alone, and nothing where the two share a group', () => {
     const home = (group) => config(local({ repos: [...local().repos, { remotes: ['example.invalid/team/session'], path: 'unused', group, profile: 'local' }] }),
-      { shared: SHARED, group: GROUP, machine: MACHINE });
+      { shared: SHARED, group: GROUP, machine: MACHINE, here: HERE });
     const other = home('home'), same = home('app');
     assert.equal(edit(join(base, `reach-data-${++seq}`), join(app, 'src', 'new.ts'), { extraEnv: { CLAUDE_CONFIG_DIR: other.dir } }).stdout,
-      said(`${lead(app)} context, which follows.\n\n${part('group', join(other.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')}`));
+      said(`${lead(app)} context, which follows.\n\n${part('group', join(other.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')}\n\n`
+        + part('machine-group', join(other.own, 'machine', 'app.md'), 'The app group keeps its database on port 5433 here.', '29f29947')));
     assert.equal(edit(join(base, `reach-data-${++seq}`), join(app, 'src', 'new.ts'), { extraEnv: { CLAUDE_CONFIG_DIR: same.dir } }).stdout, '');
   });
 

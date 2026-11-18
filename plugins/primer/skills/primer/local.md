@@ -4,11 +4,11 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
 
 ## The store
 
-- `<config>/reimagine-primer/`, `<config>` being `$CLAUDE_CONFIG_DIR` else `~/.claude`, holds `config.json`, whose `store` key may name the store, and `machine.md`, the layer of this machine.
-- The store, `<config>/reimagine-primer/store/` unless `config.json` names another, holds `map.json`; `shared.md`, the layer of every mapped repository; `groups/<group>.md`, the layer of one group of sibling repositories; and under `docs/` the documents a layer points to. A store the user versions or shares carries nothing of one machine.
-- The loader emits the shared, group and machine layers, in that order, as one string: each opens with a line that names its file and closes with its canary line. It warns at every start while the string is over the host's cap of 10,000 characters, and at startup gives the notice of auto memory notes and feedback logs since the last review, as `notice.sh` does where a hub has the marker.
+- `<config>/reimagine-primer/`, `<config>` being `$CLAUDE_CONFIG_DIR` else `~/.claude`, holds `config.json`, whose `store` key may name the store and whose `local` key the machine's directory. The machine's directory, primer's own unless `local` names another, holds `machine.md`, the layer of this machine, and `machine/<group>.md`, the layer of one group on this machine.
+- The store, `<config>/reimagine-primer/store/` unless `config.json` names another, holds `map.json`; `shared.md`, the layer of every mapped repository; `groups/<group>.md`, the layer of one group of sibling repositories; and under `docs/` the documents a layer points to. A store the user versions or shares names no home directory: the script holds a path under it as `~/`.
+- The loader emits the shared and group layers, then the machine's and the group's on this machine, as one string: each opens with a line that names its file and closes with its canary line. It warns at every start while the string is over the host's cap of 10,000 characters, and at startup gives the notice of auto memory notes and feedback logs since the last review, as `notice.sh` does where a hub has the marker.
 - A layer is factual statements, never commands addressed to the session, since the host may show imperative injected text to the user as a suspected injection.
-- A shared layer costs in every mapped repository, and the tightest one sets the budget. `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" measure` prints each repository's string as emitted; before a proposal that adds to a layer, write the proposed layer to a temporary file outside the work tree and show `measure --with <file> <layer>`, the layer being `shared.md`, `groups/<group>.md` or `machine.md`, with each repository's size before and after.
+- A shared layer costs in every mapped repository, and the tightest one sets the budget. `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" measure` prints each repository's string as emitted; before a proposal that adds to a layer, write the proposed layer to a temporary file outside the work tree and show `measure --with <file> <layer>`, the layer being `shared.md`, `groups/<group>.md`, `machine.md` or `machine/<group>.md`, with each repository's size before and after.
 - Where a proposal goes, and what it carries, is in the local profile section of `placement.md`.
 
 ## Mode
@@ -21,9 +21,10 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
 
 ## Writes
 
-- Write a layer, a document under the store's `docs/` or `machine.md` with the Write or Edit tool, and only on a yes that names the file.
-- `map.json` and `config.json` change only through the same script's `map` verb: show the exact command and the change it makes, run it on a yes, and never edit either file by hand. `map --set --group <name>` puts sibling repositories in one group; `map --add --root <dir>` lists a directory whose repositories the user expects to be mapped, so an unmapped one there gets a warning at start; `map --set --store <path>`, given alone, names a store kept elsewhere, by an absolute or `~/` path.
+- Write a layer, in the store or the machine's directory, or a document under the store's `docs/`, with the Write or Edit tool, and only on a yes that names the file.
+- `map.json` and `config.json` change only through the same script's `map` verb: show the exact command and the change it makes, run it on a yes, and never edit either file by hand. `map --set --group <name>` puts sibling repositories in one group; `map --add --root <dir>` lists a directory whose repositories the user expects to be mapped, so an unmapped one there gets a warning at start; `map --set --store <path>`, given alone, names a store kept elsewhere, by an absolute or `~/` path, and `map --set --local <path>` the machine's directory the same way.
 - The review stamp of Maintain step 3 is written as before.
+- A store or a machine's directory inside a repository, which `git -C <directory> rev-parse --show-toplevel` names, is that repository's to commit. Write its files and leave them: make and offer no commit, branch, push or pull request there, and name in the report the repository and each file left uncommitted. A fold into such a file is recorded with no commit.
 
 ## Beside the plan
 
@@ -34,6 +35,7 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
   CLAUDE.local.md
   AGENTS.md
   .claude/
+  .agents/
   .reimagine/
   .reimagine.json
   .mcp.json

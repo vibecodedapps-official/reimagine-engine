@@ -247,18 +247,24 @@ const filesIn = (d) => {
   return out.sort();
 };
 
-// What the text of a store that may be shared should not hold, by line and kind and never by its words: this machine's home
+// What the text of a store that may be shared should not hold, by line and kind, the text never quoted: this machine's home
 // directory, the first label of its host name and its user name, each as a word, and a term of terms.txt in the machine's
 // directory, one a line.
 function ofMachine(c, p) {
-  const low = (s) => slash(s).toLowerCase(), h = keyOf(c.home, 'win32'), home = !h || /^[a-z]:$/.test(h) ? '' : h, edge = (ch) => !ch || !/[a-z0-9_]/.test(ch);
+  const low = (s) => slash(s).toLowerCase(), h = keyOf(c.home, 'win32'), edge = (ch) => !ch || !/[a-z0-9_]/.test(ch);
+  const own = [[!h || /^[a-z]:$/.test(h) ? '' : h, 'the home directory'], [low(c.host).split('.')[0], 'the host name'], [low(c.user), 'the user name']];
   const terms = readText(join(p.local, 'terms.txt')).split('\n').map((l) => low(l.trim())).filter(Boolean);
-  const word = (t, w) => { for (let at = w ? t.indexOf(w) : -1; at >= 0; at = t.indexOf(w, at + 1)) if (edge(t[at - 1]) && edge(t[at + w.length])) return true; return false; };
+  // t with each w that stands as a word taken out, or null where it holds none.
+  const cut = (t, w) => {
+    let out = '', from = 0;
+    for (let at = w ? t.indexOf(w) : -1; at >= 0; at = t.indexOf(w, at + 1)) if (at >= from && edge(t[at - 1]) && edge(t[at + w.length])) { out += `${t.slice(from, at)} `; from = at + w.length; }
+    return from ? out + t.slice(from) : null;
+  };
   return (text) => (text.includes('\0') ? [] : text.split('\n').flatMap((l, i) => {
     // A path under the home directory holds the user name, and a host name may: each is told once, by the longer.
-    const t = low(l), kinds = [], take = (s, w, kind) => (word(s, w) ? (kinds.push(kind), s.split(w).join(' ')) : s);
-    const rest = take(take(home && t.includes(home) ? (kinds.push('the home directory'), t.split(home).join(' ')) : t, low(c.host).split('.')[0], 'the host name'), low(c.user), 'the user name');
-    if (terms.some((w) => word(rest, w))) kinds.push('a listed term');
+    let t = low(l);
+    const kinds = own.filter(([w]) => { const rest = cut(t, w); if (rest !== null) t = rest; return rest !== null; }).map(([, kind]) => kind);
+    if (terms.some((w) => cut(t, w) !== null)) kinds.push('a listed term');
     return kinds.map((kind) => `${i + 1} holds ${kind}`);
   }));
 }
@@ -291,7 +297,7 @@ function delivery(c, p) {
   const loose = skillsOf(c, p).filter((x) => x.state !== 'linked');
   if (loose.length) lines.push(`check skills: no link in ${join(dirname(p.own), 'skills')} for ${loose.map((x) => x.name).join(', ')}`);
   const mine = ofMachine(c, p);
-  for (const f of [join(p.store, 'shared.md'), ...mdIn(join(p.store, 'groups')), ...filesIn(join(p.store, 'docs')), ...filesIn(join(p.store, 'skills'))]) for (const hit of mine(readText(f))) lines.push(`check tracked: ${held(c, p, f)}:${hit}`);
+  for (const f of [join(p.store, 'shared.md'), ...mdIn(join(p.store, 'groups')), ...filesIn(join(p.store, 'docs')), ...filesIn(join(p.store, 'skills')), join(p.store, 'ledger.jsonl'), ...filesIn(join(p.store, 'copies'))]) for (const hit of mine(readText(f))) lines.push(`check tracked: ${held(c, p, f)}:${hit}`);
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
@@ -308,7 +314,7 @@ function measure(c, args) {
     swap = { file: fileOf(p, g ? (g[1] === 'groups' ? 'group' : 'machine-group') : layer.slice(0, -3), g?.[2]), buf };
   }
   const out = [`primer: the host's cap is ${CAP} characters per context string, counted as emitted`], size = (x) => x.text?.length ?? 0;
-  const hits = swap && keyOf(swap.file, c.platform).startsWith(`${keyOf(p.store, c.platform)}/`) ? ofMachine(c, p)(swap.buf.toString('utf8')).map((hit) => `check tracked: ${args[1]}:${hit}`) : [];
+  const hits = swap && keyOf(swap.file, c.platform).startsWith(`${keyOf(p.store, c.platform)}/`) ? ofMachine(c, p)(swap.buf.toString('utf8')).map((hit) => `check tracked: ${args[2]}:${hit}`) : [];
   for (const e of map.repos) {
     if (e.profile !== 'local') { out.push(`repo ${shown(e)}: no context string`); continue; }
     const now = layersOf(p, e), next = swap ? layersOf(p, e, swap) : now, n = joined(next).length;

@@ -99,9 +99,9 @@ memory=${memory%/}
 
 # The repository's feedback entries since its last review. A log's entries are its level-two
 # sections, but one headed Recommended, and an entry is the repository's when its heading holds,
-# as a word, the name of its directory or of a remote. The stamp holds, a line per repository and
-# log, how many entries the log had at the last review. After a review a single entry counts for
-# nothing: it is taken for the reviewing session's own.
+# as a word, the name of its directory or the last segment of a remote's URL. The stamp holds, a
+# line per repository and log, how many entries the log had at the last review. After a review a
+# single entry counts for nothing: it is taken for the reviewing session's own.
 m=0
 fstamp=
 if [ -f "${projects%/*}/feedback/.reviewed" ]; then

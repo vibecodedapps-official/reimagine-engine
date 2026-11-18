@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.22 - 2026-11-18
+
+- `measure --with` gives a group's proposed layer a size line when no `local` entry of the map holds that group. `/primer move` writes the group layer and makes its removal commit before the map entry, so the plan of a move had no measured size to show for the layer it proposed: the output was the cap line alone, or the unchanged sizes of other repositories. The line gives the string a repository of that group would be given, before and after, against the cap.
+- The removal commit of `/primer move` says what left, and nothing of where the files' text went or that anyone still uses it, and a pull request you ask for afterwards holds its title and body to the same. The message named no model, agent, tool or plugin, and its body could still say that each contributor keeps their own context outside the work tree; the text of a pull request was under no rule. Either shows what the `local` profile hides.
+
 ## primer 0.1.21 - 2026-11-18
 
 - The startup notice counts the feedback entries that name this repository and came after its last fold-back review, and says `feedback entries` where it said `feedback logs`. It counted every log file changed since one stamp, in every repository, so a repository was told of logs that never named it. An entry is a `## ` section of a log, and it names a repository in its heading, by the directory's name or by the last part of a remote's URL. An entry that names its repository elsewhere, or names none, is counted in none.

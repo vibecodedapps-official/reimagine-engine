@@ -162,6 +162,15 @@ describe('session-start', () => {
     assert.equal(r.stdout, context(part('group', join(cfg.store, 'groups', 'app.md'), 'a'.repeat(9990), 'fb0545d8')));
   });
 
+  test('a subagent gets the string under its own event with no warning, and the Explore and Plan agents get nothing', () => {
+    const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
+    const dir = repo('subagent', 'https://example.invalid/team/app.git');
+    const as = (agent_type) => run(['session-start', 'all', join(base, 'data')], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', 'key', 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_id: 'a1', agent_type }) }).stdout;
+    const want = `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: part('group', join(cfg.store, 'groups', 'app.md'), 'a'.repeat(9990), 'fb0545d8') } })}\n`;
+    for (const type of ['general-purpose', 'audit:auditor', undefined]) assert.equal(as(type), want, String(type));
+    for (const type of ['Explore', 'Plan']) assert.equal(as(type), '', type);
+  });
+
   test('a repository under a root with no entry gets the unmapped warning; one under no root gets nothing', () => {
     const cfg = config(local({ roots: [slash(join(base, 'work'))] }));
     const dir = repo('work/unmapped', 'https://example.invalid/team/other.git');
@@ -769,5 +778,6 @@ describe('the notice', () => {
     assert.equal(run(['session-start', 'all', data], { input: input('resume') }).stdout, '');
     assert.equal(run(['session-start', 'all', data], { input: input('startup'), extraEnv: { CLAUDE_CODE_SESSION_ATTENDED: '0' } }).stdout, '');
     assert.notEqual(run(['session-start', 'all', data], { input: input('startup') }).stdout, '');
+    assert.equal(run(['session-start', 'all', data], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }) }).stdout, '');
   });
 });

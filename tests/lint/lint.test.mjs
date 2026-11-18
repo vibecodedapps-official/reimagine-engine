@@ -572,30 +572,30 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     rmSync(join(dir, 'plugins/rules/hooks/hooks.json'));
     bump(dir, 'rules');
   }, 1, ['plugins/rules/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.* and SessionStart startup shape']);
-  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape', (dir) => {
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', '"Bash|PowerShell"', '"Bash"');
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
-  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (PreToolUse without onFailure)', (dir) => {
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (PreToolUse without onFailure)', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', ',\n            "onFailure": "continue"', '');
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
-  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (onFailure block)', (dir) => {
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (onFailure block)', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', '"onFailure": "continue"', '"onFailure": "block"');
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
-  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (SessionStart command)', (dir) => {
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (SessionStart command)', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', '/hooks/notice.sh', '/hooks/drift.sh');
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
-  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (loader layer)', (dir) => {
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
+  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (loader layer)', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', '"session-start", "all"', '"session-start", "group"');
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
-  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (loader timeout)', (dir) => {
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
+  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (loader timeout)', (dir) => {
     editJson(dir, 'plugins/primer/hooks/hooks.json', (h) => { h.hooks.SessionStart[1].hooks[0].timeout = 30; });
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
   const reachEntry = (change) => (dir) => {
     editJson(dir, 'plugins/primer/hooks/hooks.json', (h) => change(h.hooks.PreToolUse));
     bump(dir, 'primer');
@@ -607,22 +607,26 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     ['without onFailure', (p) => { delete p[1].hooks[0].onFailure; }],
     ['no reach entry', (p) => { p.pop(); }],
   ]) {
-    negative(`R395: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (reach ${label})`,
-      reachEntry(change), 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
+    negative(`R395: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (reach ${label})`,
+      reachEntry(change), 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
   }
-  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (loader matcher)', (dir) => {
+  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (loader matcher)', (dir) => {
     edit(dir, 'plugins/primer/hooks/hooks.json', '      {\n        "hooks": [\n          {\n            "type": "command",\n            "command": "node"',
       '      {\n        "matcher": "startup",\n        "hooks": [\n          {\n            "type": "command",\n            "command": "node"');
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
-  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (no loader)', (dir) => {
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
+  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (no loader)', (dir) => {
     editJson(dir, 'plugins/primer/hooks/hooks.json', (h) => { h.hooks.SessionStart.pop(); });
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
-  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape (missing)', (dir) => {
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
+  negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (no subagent entry)', (dir) => {
+    editJson(dir, 'plugins/primer/hooks/hooks.json', (h) => { delete h.hooks.SubagentStart; });
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
+  negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (missing)', (dir) => {
     rmSync(join(dir, 'plugins/primer/hooks/hooks.json'));
     bump(dir, 'primer');
-  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup and SessionStart loader shape']);
+  }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
   negative('R344: plugins/guard/hooks/hooks.json: not the PreToolUse Bash|PowerShell|mcp__.*, PermissionDenied and SessionStart startup shape', (dir) => {
     edit(dir, 'plugins/guard/hooks/hooks.json', '"denied"', '"status"');
     bump(dir, 'guard');

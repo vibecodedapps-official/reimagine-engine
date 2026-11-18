@@ -2,7 +2,8 @@
 // Primer: the local profile's store and map, its context loader, the budget, the reach check and the copies. The staging check
 // is staged.mjs, which imports what it shares from here.
 // Usage: node primer.mjs <verb> [args]
-//   session-start <layer> <data dir>  the SessionStart hook: a local repository's layers as context, the delivery warnings, the notice
+//   session-start <layer> <data dir>  the SessionStart hook: a local repository's layers as context, the delivery warnings, the notice;
+//            on SubagentStart, the layers alone
 //   reach <data dir>  the PreToolUse hook on file edits: another repository's instructions, on the session's first edit there
 //   status   the working directory's entry, profile, layers and delivery checks, and each declared copy; writes nothing
 //   measure  every mapped repository's context string as emitted; --with <file> <layer> measures a proposed layer; writes nothing
@@ -189,7 +190,9 @@ function notice(c, input, data, repo) {
 }
 
 function sessionStart(c, layer, input, data) {
-  if (![...LAYERS, 'all'].includes(layer)) return [];
+  // At a subagent's start no check or notice runs, and the agent types that start without instruction files get no layer either.
+  const sub = input.hook_event_name === 'SubagentStart', quiet = sub || c.env.CLAUDE_CODE_SESSION_ATTENDED === '0';
+  if (![...LAYERS, 'all'].includes(layer) || (sub && ['Explore', 'Plan'].includes(input.agent_type))) return [];
   const own = join(configOf(c, input), 'reimagine-primer');
   if (!existsSync(own)) return [];
   const p = places(c, own), map = loadMap(p.map, c.home);
@@ -210,11 +213,11 @@ function sessionStart(c, layer, input, data) {
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
     for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
     // notice.sh runs at startup alone, and so does this.
-    const told = (input.source ?? 'startup') === 'startup' && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
+    const told = (input.source ?? 'startup') === 'startup' && !quiet && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
     if (told) msgs.push(told);
   }
-  const warn = msgs.length && c.env.CLAUDE_CODE_SESSION_ATTENDED !== '0' && (layer === 'all' || layer === 'group');
-  const out = { ...(context ? { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context } } : {}), ...(warn ? { systemMessage: msgs.join('; ') } : {}) };
+  const warn = msgs.length && !quiet && (layer === 'all' || layer === 'group');
+  const out = { ...(context ? { hookSpecificOutput: { hookEventName: sub ? 'SubagentStart' : 'SessionStart', additionalContext: context } } : {}), ...(warn ? { systemMessage: msgs.join('; ') } : {}) };
   return Object.keys(out).length ? [JSON.stringify(out)] : [];
 }
 

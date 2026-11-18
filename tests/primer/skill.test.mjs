@@ -88,7 +88,7 @@ test('every script command the skill files show names a script that exists, a ve
   const verbs = [...SOURCE['primer.mjs'].matchAll(/verb === '([a-z-]+)'/g)].map((m) => m[1]);
   assert.ok(verbs.includes('status') && verbs.includes('map') && verbs.includes('copies') && verbs.includes('measure'), 'primer.mjs lists its verbs as verb === <name>');
   // An option counts only in the function that reads its verb's arguments: the script also quotes options it passes to git.
-  const READERS = { status: 'status', measure: 'measure', map: 'mapVerb', copies: 'copiesVerb' };
+  const READERS = { status: 'status', measure: 'measure', map: 'mapVerb', copies: 'copiesVerb', skills: 'skillsVerb' };
   const reader = Object.fromEntries(Object.entries(READERS).map(([verb, name]) => [verb, SOURCE['primer.mjs'].match(new RegExp(`^function ${name}\\(.*?^}`, 'ms'))?.[0]]));
   for (const [verb, body] of Object.entries(reader)) assert.ok(body, `primer.mjs has no function that reads ${verb}`);
   const reads = (script, option, verb) => {

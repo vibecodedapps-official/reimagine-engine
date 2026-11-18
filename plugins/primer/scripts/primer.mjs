@@ -11,9 +11,10 @@
 //   copies   each declared copy against its source's snapshot; --add <copy> <source> records one source of a copy, and
 //            --ported <copy> every source of it;
 //            --spans lists the runs of lines two layers or documents share, and writes nothing
+//   skills   each skill of the store and its link in <config>/skills; --link makes the missing links
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -246,6 +247,8 @@ function delivery(c, p) {
     lines.push(`check size: ${n} characters as emitted, ${n > CAP ? 'over' : 'within'} the cap of ${CAP}`);
   }
   if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
+  const loose = skillsOf(c, p).filter((x) => x.state !== 'linked');
+  if (loose.length) lines.push(`check skills: no link in ${join(dirname(p.own), 'skills')} for ${loose.map((x) => x.name).join(', ')}`);
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
@@ -359,6 +362,28 @@ function spans(p) {
 }
 
 // The directory at or above a path that holds .git, found without git and, as git does, never above a ceiling directory.
+// The store's skills, each a directory of skills/ that holds SKILL.md, with the entry of its name in <config>/skills, where the host
+// loads a personal skill: a link that leads to it, none, or something else.
+function skillsOf(c, p) {
+  const from = join(p.store, 'skills'), to = join(dirname(p.own), 'skills');
+  const dirs = (() => { try { return readdirSync(from, { withFileTypes: true }); } catch { return []; } })();
+  return dirs.filter((e) => e.isDirectory() && existsSync(join(from, e.name, 'SKILL.md'))).map((e) => e.name).sort().map((name) => {
+    const dir = join(from, name), link = join(to, name);
+    return { name, dir, link, state: !lstatSync(link, { throwIfNoEntry: false }) ? 'missing' : keyOf(real(link), c.platform) === keyOf(real(dir), c.platform) ? 'linked' : 'other' };
+  });
+}
+
+// Lists them; --link makes each missing link, a junction on Windows, and leaves an entry that is anything else.
+function skillsVerb(c, args) {
+  if (args.length > 1 || (args.length && args[0] !== '--link')) refuse('skills takes nothing, or --link');
+  const p = places(c, ownOf(c)), list = skillsOf(c, p);
+  const lines = list.map((x) => {
+    if (x.state === 'missing' && args.length) { mkdirSync(dirname(x.link), { recursive: true }); symlinkSync(x.dir, x.link, 'junction'); return `skill ${x.name}: + linked`; }
+    return `skill ${x.name}: ${x.state === 'linked' ? 'linked' : x.state === 'missing' ? 'not linked' : `${x.link} is not a link to it and is left as it is`}`;
+  });
+  return [`skills: ${join(p.store, 'skills')}, linked from ${join(dirname(p.own), 'skills')}`, ...(lines.length ? lines : ['no skills'])];
+}
+
 function topOf(c, path) {
   const ceilings = (c.env.GIT_CEILING_DIRECTORIES ?? '').split(c.platform === 'win32' ? ';' : ':').filter(Boolean).map((d) => keyOf(d, c.platform));
   for (let d = resolve(path); ; d = dirname(d)) {
@@ -486,7 +511,8 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   if (verb === 'measure') return measure(c, rest);
   if (verb === 'map') return mapVerb(c, rest);
   if (verb === 'copies') return copiesVerb(c, rest);
-  return refuse(`unknown command${verb ? ` ${verb}` : ''}; use session-start, reach, status, measure, map or copies`);
+  if (verb === 'skills') return skillsVerb(c, rest);
+  return refuse(`unknown command${verb ? ` ${verb}` : ''}; use session-start, reach, status, measure, map, copies or skills`);
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path. A hook verb prints nothing but its JSON, and

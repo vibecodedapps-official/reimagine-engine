@@ -54,7 +54,8 @@ The items above give way to these destinations, since nothing outside the work t
 
 - A stable, impersonal rule for every mapped repository goes in `shared.md`; one for a group goes in its group layer.
 - People, dates and calendars go in `machine.md`, each with an expiry; a path of this machine goes there too. One of these that concerns a single group goes in `machine/<group>.md`, which loads in that group's repositories alone.
-- Reference material, a procedure and a convention for one kind of file become a document under the store's `docs/`, with a pointer in the layer that says when to read it and which part.
+- A procedure becomes a skill under the store's `skills/`, linked into the personal skills folder as `local.md` says.
+- Reference material and a convention for one kind of file become a document under the store's `docs/`, with a pointer in the layer that says when to read it and which part.
 - A convention that belongs to another repository goes in that repository's own instruction files, by its own profile.
 - A general working rule is recommended for the house rules through the feedback log.
 - A workaround is a pointer to the report of the fault it works around.

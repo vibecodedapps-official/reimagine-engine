@@ -272,7 +272,7 @@ describe('status', () => {
 
   test('status takes no arguments, and an unknown verb is refused', () => {
     assert.deepEqual([run(['status', 'x']).status, run(['status', 'x']).stdout], [1, 'primer: status takes no arguments\n']);
-    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, reach, status, measure, map or copies\n']);
+    assert.deepEqual([run(['nope']).status, run(['nope']).stdout], [1, 'primer: unknown command nope; use session-start, reach, status, measure, map, copies or skills\n']);
   });
 });
 
@@ -529,6 +529,37 @@ describe('map', () => {
     assert.deepEqual(m('--add', '--profile', 'local', '--group', '../x'), [1, 'primer: --group takes letters, digits, ., _ and -, starting with a letter or digit, not ../x\n']);
     assert.deepEqual(m('--set', '--store', 'relative'), [1, 'primer: --store takes an absolute or ~/ path, not relative\n']);
     assert.deepEqual(m('--set', '--profile', 'local'), [1, 'primer: this repository has no entry in the map; use --add\n']);
+  });
+});
+
+describe('skills', () => {
+  const SKILL = '---\nname: app-release\ndescription: Release the app group.\n---\n# app-release\n';
+  const at = (cfg, ...args) => { const r = run(['skills', ...args], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }); return [r.status, r.stdout]; };
+
+  test('lists each skill of the store with the entry of its name in the config folder; --link makes the missing links and leaves any other entry as it is', () => {
+    const cfg = config(local()), from = join(cfg.store, 'skills'), to = join(cfg.dir, 'skills'), dir = repo('skills-status', 'https://example.invalid/team/other.git');
+    write(from, 'app-release/SKILL.md', SKILL);
+    write(from, 'app-seed/SKILL.md', SKILL);
+    write(from, 'drafts/notes.md', 'No skill file here.\n');
+    write(from, 'README.md', 'Not a directory.\n');
+    write(to, 'app-seed/SKILL.md', 'A skill of the user\'s own.\n');
+    const head = `skills: ${from}, linked from ${to}`, other = `skill app-seed: ${join(to, 'app-seed')} is not a link to it and is left as it is`;
+    const status = () => run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n').filter((l) => l.startsWith('check skills'));
+    assert.deepEqual(at(cfg), [0, `${head}\nskill app-release: not linked\n${other}\n`]);
+    assert.deepEqual(status(), [`check skills: no link in ${to} for app-release, app-seed`]);
+    assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-release: + linked\n${other}\n`]);
+    assert.equal(readFileSync(join(to, 'app-release', 'SKILL.md'), 'utf8'), SKILL);
+    assert.equal(realpathSync.native(join(to, 'app-release')), realpathSync.native(join(from, 'app-release')));
+    assert.equal(readFileSync(join(to, 'app-seed', 'SKILL.md'), 'utf8'), 'A skill of the user\'s own.\n');
+    assert.deepEqual(at(cfg, '--link'), [0, `${head}\nskill app-release: linked\n${other}\n`]);
+    assert.deepEqual(status(), [`check skills: no link in ${to} for app-seed`]);
+  });
+
+  test('a store with no skill says so and makes no folder, and any other form is refused with one line', () => {
+    const cfg = config(local());
+    assert.deepEqual(at(cfg, '--link'), [0, `skills: ${join(cfg.store, 'skills')}, linked from ${join(cfg.dir, 'skills')}\nno skills\n`]);
+    assert.equal(existsSync(join(cfg.dir, 'skills')), false);
+    for (const args of [['--unlink'], ['--link', 'x'], ['x']]) assert.deepEqual(at(cfg, ...args), [1, 'primer: skills takes nothing, or --link\n'], args.join(' '));
   });
 });
 

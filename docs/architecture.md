@@ -473,7 +473,7 @@ plugins/primer/
                                    PreToolUse Edit|Write|NotebookEdit -> node primer.mjs reach, timeout 10, onFailure continue
   hooks/drift.sh                   the commit check; hands a `git add` or `git commit` in a `local` repository to staged.mjs
   hooks/notice.sh                  one line when auto memory or the feedback logs have unreviewed entries
-  scripts/primer.mjs               session-start <layer> | reach | status | measure | map | copies
+  scripts/primer.mjs               session-start <layer> | reach | status | measure | map | copies | skills
   scripts/staged.mjs               the staging check of the `local` profile, started by drift.sh with the hook's input
   scripts/ledger.mjs               the fold-back ledger in the store: list | --add | --seen | --worked | --set
   scripts/transcripts.mjs          the user's own messages from the session files, for a repository and a span of days
@@ -553,6 +553,7 @@ A repository has one of two profiles, picked once by the user on primer's first 
   shared.md            the layer of every mapped repository
   groups/<group>.md    the layer of one group of sibling repositories
   docs/                documents a layer points to, read on demand
+  skills/<name>/       a skill, linked by name into <config>/skills/ by primer.mjs skills --link
   ledger.jsonl         one line per feedback item
 <config>/feedback/     the dated logs the house rules have every session write, unless loaded context names a log for these entries (requirement 362)
   .reviewed            the stamp of the last fold-back review (requirement 397)

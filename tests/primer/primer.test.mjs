@@ -766,6 +766,40 @@ describe('reach', () => {
   });
 });
 
+// Requirement 410: what a store that may be shared holds of one machine, told by line and kind.
+describe('the store check', () => {
+  const opts = (cfg, cwd, extra = {}) => ({ env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: '/home/fixture', cwd, user: 'pat', host: 'box-7.example.invalid', ...extra });
+  const tracked = (lines) => lines.filter((l) => l.startsWith('check tracked'));
+
+  test('status names the line and the kind, and never the words, for each layer, document and skill of the store', () => {
+    const dir = repo('tracked-status', 'https://example.invalid/team/app.git');
+    const cfg = config(local(), { shared: SHARED, group: `${GROUP}Its checkout is /home/fixture/work/app here.\nThe host BOX-7 serves it, and pat runs it.\n`, machine: 'pat keeps /home/fixture/notes on BOX-7.\n' });
+    write(cfg.store, 'docs/blob.bin', 'pat\0pat\n');
+    write(cfg.store, 'docs/release.md', '# Release\n\nAsk Acme Rail before a release.\nAn acme-rail branch is theirs, and patch notes are ours.\n');
+    write(cfg.store, 'skills/app-release/SKILL.md', '---\nname: app-release\n---\n\nRun it as PAT.\n');
+    write(cfg.own, 'terms.txt', 'Acme Rail\n\n');
+    assert.deepEqual(tracked(main(['status'], opts(cfg, dir))), [
+      'check tracked: groups/app.md:2 holds the home directory',
+      'check tracked: groups/app.md:3 holds the host name',
+      'check tracked: groups/app.md:3 holds the user name',
+      'check tracked: docs/release.md:3 holds a listed term',
+      'check tracked: skills/app-release/SKILL.md:5 holds the user name',
+    ]);
+    // A home directory that is a file system's root is in every path, and an empty name is in every line: neither is looked for.
+    assert.deepEqual(tracked(main(['status'], opts(cfg, dir, { home: '/', user: '', host: '' }))), ['check tracked: docs/release.md:3 holds a listed term']);
+    rmSync(join(cfg.own, 'terms.txt'));
+    assert.deepEqual(tracked(main(['status'], opts(cfg, dir, { home: '/', user: '', host: '' }))), []);
+  });
+
+  test('measure --with gives the same lines for a proposed layer of the store, and none for a layer of the machine', () => {
+    const cfg = config(local(), { group: GROUP }), next = join(base, `proposed-${++seq}.md`);
+    write(cfg.own, 'terms.txt', 'Acme Rail\n');
+    writeFileSync(next, `${GROUP}Acme Rail signs off each release from /home/fixture/out.\n`);
+    assert.deepEqual(tracked(main(['measure', '--with', next, 'groups/app.md'], opts(cfg, base))), [`check tracked: ${next}:2 holds the home directory`, `check tracked: ${next}:2 holds a listed term`]);
+    assert.deepEqual(tracked(main(['measure', '--with', next, 'machine/app.md'], opts(cfg, base))), []);
+  });
+});
+
 // Requirement 397: notice.sh, where the hub has the marker, and the loader, in a local repository, give one message on one fixture.
 describe('the notice', () => {
   let memory, dir, cfg, key;

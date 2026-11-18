@@ -15,7 +15,7 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -239,6 +239,30 @@ function sessionStart(c, layer, input, data) {
   return Object.keys(out).length ? [JSON.stringify(out)] : [];
 }
 
+// The .md files of a directory, and every file under one, each sorted.
+const mdIn = (d) => { try { return readdirSync(d).filter((f) => f.endsWith('.md')).sort().map((f) => join(d, f)); } catch { return []; } };
+const filesIn = (d) => {
+  const out = [], walk = (x) => { for (const e of (() => { try { return readdirSync(x, { withFileTypes: true }); } catch { return []; } })()) (e.isDirectory() ? walk : (f) => out.push(f))(join(x, e.name)); };
+  walk(d);
+  return out.sort();
+};
+
+// What the text of a store that may be shared should not hold, by line and kind and never by its words: this machine's home
+// directory, the first label of its host name and its user name, each as a word, and a term of terms.txt in the machine's
+// directory, one a line.
+function ofMachine(c, p) {
+  const low = (s) => slash(s).toLowerCase(), h = keyOf(c.home, 'win32'), home = !h || /^[a-z]:$/.test(h) ? '' : h, edge = (ch) => !ch || !/[a-z0-9_]/.test(ch);
+  const terms = readText(join(p.local, 'terms.txt')).split('\n').map((l) => low(l.trim())).filter(Boolean);
+  const word = (t, w) => { for (let at = w ? t.indexOf(w) : -1; at >= 0; at = t.indexOf(w, at + 1)) if (edge(t[at - 1]) && edge(t[at + w.length])) return true; return false; };
+  return (text) => (text.includes('\0') ? [] : text.split('\n').flatMap((l, i) => {
+    // A path under the home directory holds the user name, and a host name may: each is told once, by the longer.
+    const t = low(l), kinds = [], take = (s, w, kind) => (word(s, w) ? (kinds.push(kind), s.split(w).join(' ')) : s);
+    const rest = take(take(home && t.includes(home) ? (kinds.push('the home directory'), t.split(home).join(' ')) : t, low(c.host).split('.')[0], 'the host name'), low(c.user), 'the user name');
+    if (terms.some((w) => word(rest, w))) kinds.push('a listed term');
+    return kinds.map((kind) => `${i + 1} holds ${kind}`);
+  }));
+}
+
 function status(c) {
   const p = places(c, ownOf(c));
   // A copies record that cannot be read costs the copies their lines and not the rest of the report.
@@ -266,6 +290,8 @@ function delivery(c, p) {
   if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
   const loose = skillsOf(c, p).filter((x) => x.state !== 'linked');
   if (loose.length) lines.push(`check skills: no link in ${join(dirname(p.own), 'skills')} for ${loose.map((x) => x.name).join(', ')}`);
+  const mine = ofMachine(c, p);
+  for (const f of [join(p.store, 'shared.md'), ...mdIn(join(p.store, 'groups')), ...filesIn(join(p.store, 'docs')), ...filesIn(join(p.store, 'skills'))]) for (const hit of mine(readText(f))) lines.push(`check tracked: ${held(c, p, f)}:${hit}`);
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
@@ -282,13 +308,14 @@ function measure(c, args) {
     swap = { file: fileOf(p, g ? (g[1] === 'groups' ? 'group' : 'machine-group') : layer.slice(0, -3), g?.[2]), buf };
   }
   const out = [`primer: the host's cap is ${CAP} characters per context string, counted as emitted`], size = (x) => x.text?.length ?? 0;
+  const hits = swap && keyOf(swap.file, c.platform).startsWith(`${keyOf(p.store, c.platform)}/`) ? ofMachine(c, p)(swap.buf.toString('utf8')).map((hit) => `check tracked: ${args[1]}:${hit}`) : [];
   for (const e of map.repos) {
     if (e.profile !== 'local') { out.push(`repo ${shown(e)}: no context string`); continue; }
     const now = layersOf(p, e), next = swap ? layersOf(p, e, swap) : now, n = joined(next).length;
     const parts = now.map((x, i) => `${x.name} ${size(x)}${x.file === swap?.file ? ` -> ${size(next[i])}` : ''}`);
     out.push(`repo ${shown(e)}: ${swap ? `${joined(now).length} -> ` : ''}${n} characters (${parts.join(', ')}), ${n > CAP ? 'over' : 'within'} the cap`);
   }
-  return out;
+  return [...out, ...hits];
 }
 
 const COPIES = 'copies takes nothing, --add <copy> <source>, --ported <copy> or --spans';
@@ -349,10 +376,7 @@ function copiesVerb(c, [op, ...args]) {
 // The runs of consecutive lines two layers or documents share, trimmed of blank lines at either end and holding at least SPAN
 // lines that are not blank, longest first. Lines compare without their trailing white space.
 function spans(p) {
-  const docs = [], walk = (d) => { for (const e of (() => { try { return readdirSync(d, { withFileTypes: true }); } catch { return []; } })()) (e.isDirectory() ? walk : (f) => docs.push(f))(join(d, e.name)); };
-  walk(join(p.store, 'docs'));
-  const each = (d) => { try { return readdirSync(d).filter((f) => f.endsWith('.md')).sort().map((f) => join(d, f)); } catch { return []; } };
-  const files = [join(p.store, 'shared.md'), ...each(join(p.store, 'groups')), join(p.local, 'machine.md'), ...each(join(p.local, 'machine')), ...docs.sort()].filter((f) => statSync(f, { throwIfNoEntry: false })?.isFile());
+  const files = [join(p.store, 'shared.md'), ...mdIn(join(p.store, 'groups')), join(p.local, 'machine.md'), ...mdIn(join(p.local, 'machine')), ...filesIn(join(p.store, 'docs'))].filter((f) => statSync(f, { throwIfNoEntry: false })?.isFile());
   const text = files.map((f) => { const l = readText(f).split('\n').map((x) => x.trimEnd()); return l.at(-1) === '' ? l.slice(0, -1) : l; });
   const runs = [];
   for (let a = 0; a < files.length; a++) for (let b = a + 1; b < files.length; b++) {
@@ -528,8 +552,8 @@ function mapVerb(c, [op, ...args]) {
 }
 
 // Returns the output lines; a refusal throws. limit is the time the loader's and status's git calls share, in milliseconds.
-export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd(), stdin = () => readFileSync(0, 'utf8'), limit = 5000 } = {}) {
-  const [verb, ...rest] = argv, c = { env, platform, home, cwd, limit };
+export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd(), stdin = () => readFileSync(0, 'utf8'), limit = 5000, user, host = hostname() } = {}) {
+  const [verb, ...rest] = argv, c = { env, platform, home, cwd, limit, host, user: user ?? (() => { try { return userInfo().username; } catch { return ''; } })() };
   const input = () => { try { const v = JSON.parse(stdin()); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } };
   if (verb === 'session-start') { try { return sessionStart(c, rest[0], input(), rest[1]); } catch { return []; } }
   if (verb === 'reach') { try { return reach(c, rest[0], input()); } catch { return []; } }

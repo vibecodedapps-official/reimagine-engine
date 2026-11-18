@@ -355,6 +355,11 @@ describe('primer drift hook', () => {
     test('the base fixture with nothing staged prints nothing', async () => {
       assert.equal(await run('git commit -m x', fixture), '');
     });
+    test('R409: a commit that removes the hub and every other instruction file prints nothing', async () => {
+      const dir = await make('removal', {});
+      await git(dir, 'rm', '-r', '-q', 'CLAUDE.md', 'src/api/CLAUDE.md', '.claude');
+      assert.equal(await run('git commit -m x', dir), '');
+    });
     test('a hub without the marker line prints nothing', async () => {
       const dir = await make('no-marker', { 'CLAUDE.md': brokenHub.split('\n').slice(1).join('\n') });
       assert.equal(await run('git commit -m x', dir), '');

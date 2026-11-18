@@ -108,6 +108,23 @@ describe('staged', () => {
       deny(lead + "the call would add docs/.Agents/notes.md, while the upstream's tree is unknown (no remote names it)"));
   });
 
+  test('R409: a commit that only removes agent files the repository tracks is let through', () => {
+    const cfg = config([APP]);
+    const dir = repo(`staged-removal-${++seq}`, 'https://example.invalid/team/app.git');
+    write(dir, 'CLAUDE.md', '# x\n');
+    write(dir, '.claude/settings.json', '{}\n');
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-q', '-m', 'agent files');
+    git(dir, 'rm', '-r', '-q', 'CLAUDE.md', '.claude');
+    for (const command of ['git commit -m x', 'git commit -m x -- CLAUDE.md .claude']) {
+      const r = run(input(command, dir), cfg);
+      assert.deepEqual([r.status, r.stdout], [0, ''], command);
+    }
+    write(dir, 'AGENTS.md', '# y\n');
+    const added = run(input('git add AGENTS.md', dir), cfg);
+    assert.equal(added.stdout.includes('"permissionDecision":"deny"'), true);
+  });
+
   test('R386: a clone under another host form or letter case of its remote matches the entry', () => {
     const denies = (name, remote, cfg) => {
       const dir = repo(name, remote);

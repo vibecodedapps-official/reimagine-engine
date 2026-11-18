@@ -624,6 +624,19 @@ describe('measure', () => {
     assert.equal(here[2], `${webLine}: ${s} -> ${s} characters (shared ${s}, group 0, machine 0, machine-group 0), within the cap`);
   });
 
+  test('--with gives a group that no local entry of the map holds the size a repository of it would be given', () => {
+    const none = config(local({ repos: [] }), { shared: SHARED });
+    const s = join(none.store, 'shared.md').length + 98, g = join(none.store, 'groups', 'site.md').length + 87;
+    write(base, 'site.md', 'The site group deploys from main.\n');
+    const of = (cfg, layer) => run(['measure', '--with', 'site.md', layer], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
+    assert.equal(of(none, 'groups/site.md'), [head, `group site, in no local entry of the map: ${s} -> ${s + 2 + g} characters (shared ${s}, group 0 -> ${g}, machine 0, machine-group 0), within the cap`, ''].join('\n'));
+    const held = config(local({ repos: [site] })), m = join(held.own, 'machine', 'site.md').length + 103;
+    assert.equal(of(held, 'machine/site.md'), [head, siteLine, `group site, in no local entry of the map: 0 -> ${m} characters (shared 0, group 0, machine 0, machine-group 0 -> ${m}), within the cap`, ''].join('\n'));
+    // Windows reads groups/APP.md as the file the app entry loads.
+    const cased = of(config(local(), { group: GROUP }), 'groups/APP.md').split('\n').filter((l) => l.startsWith('group '));
+    assert.equal(cased.length, process.platform === 'win32' ? 0 : 1);
+  });
+
   test('each form measure does not take is refused with one line', () => {
     const forms = 'primer: measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md, machine.md or machine/<group>.md\n';
     for (const args of [['--with', 'x.md'], ['--with', 'x.md', 'groups/../x.md'], ['--with', 'x.md', 'machine/../x.md'], ['--with', 'x.md', 'other.md'], ['x']]) {

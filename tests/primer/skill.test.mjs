@@ -84,6 +84,7 @@ test('R246, R390: the bans whose loss lets a run write where it must not stand i
   assert.ok(LOCAL.split('\n').some((l) => l.includes('inside a repository') && l.includes('make and offer no commit, branch, push or pull request there')), 'local.md does not bar a commit in a repository that holds the store');
   assert.ok(FILES['move.md'].split('\n').some((l) => l.includes('`attribution`') && l.includes('make no removal commit until')), 'move.md does not bar the removal commit while a trailer would be added');
   assert.ok(FILES['move.md'].split('\n').some((l) => l.includes('removal commit') && l.includes('Never push it')), 'move.md does not bar a push of the removal commit');
+  assert.ok(FILES['move.md'].split('\n').some((l) => l.includes('removal commit') && l.includes('or says where the text went, who keeps it or that it is still used') && l.includes("a pull request's title and body hold to the same")), 'move.md does not hold the removal\'s message and a later pull request to what left');
 });
 
 test('every script command the skill files show names a script that exists, a verb it takes and options it reads', () => {

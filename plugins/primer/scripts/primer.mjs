@@ -303,7 +303,8 @@ function delivery(c, p) {
 
 const MEASURE = 'measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md, machine.md or machine/<group>.md';
 
-// Each mapped repository's context string as the loader emits it; with --with, before and after the file takes the layer's place.
+// Each mapped repository's context string as the loader emits it; with --with, before and after the file takes the layer's place,
+// and for a group's layer that no local entry holds, as a move writes one before its entry, a repository of that group's.
 function measure(c, args) {
   const p = places(c, ownOf(c)), map = loadMap(p.map, c.home);
   let swap;
@@ -311,16 +312,19 @@ function measure(c, args) {
     const [flag, file, layer] = args, g = layer?.match(/^(groups|machine)\/(.+)\.md$/);
     if (flag !== '--with' || args.length !== 3 || !(layer === 'shared.md' || layer === 'machine.md' || (g && GROUP.test(g[2])))) refuse(MEASURE);
     const buf = (() => { try { return readFileSync(resolve(c.cwd, file)); } catch { return refuse(`${file} cannot be read`); } })();
-    swap = { file: fileOf(p, g ? (g[1] === 'groups' ? 'group' : 'machine-group') : layer.slice(0, -3), g?.[2]), buf };
+    const name = g ? (g[1] === 'groups' ? 'group' : 'machine-group') : layer.slice(0, -3);
+    swap = { name, file: fileOf(p, name, g?.[2]), buf, group: g?.[2] };
   }
   const out = [`primer: the host's cap is ${CAP} characters per context string, counted as emitted`], size = (x) => x.text?.length ?? 0;
   const hits = swap && keyOf(swap.file, c.platform).startsWith(`${keyOf(p.store, c.platform)}/`) ? ofMachine(c, p)(swap.buf.toString('utf8')).map((hit) => `check tracked: ${args[2]}:${hit}`) : [];
-  for (const e of map.repos) {
-    if (e.profile !== 'local') { out.push(`repo ${shown(e)}: no context string`); continue; }
+  const line = (who, e) => {
     const now = layersOf(p, e), next = swap ? layersOf(p, e, swap) : now, n = joined(next).length;
     const parts = now.map((x, i) => `${x.name} ${size(x)}${x.file === swap?.file ? ` -> ${size(next[i])}` : ''}`);
-    out.push(`repo ${shown(e)}: ${swap ? `${joined(now).length} -> ` : ''}${n} characters (${parts.join(', ')}), ${n > CAP ? 'over' : 'within'} the cap`);
-  }
+    return `${who}: ${swap ? `${joined(now).length} -> ` : ''}${n} characters (${parts.join(', ')}), ${n > CAP ? 'over' : 'within'} the cap`;
+  };
+  for (const e of map.repos) out.push(e.profile === 'local' ? line(`repo ${shown(e)}`, e) : `repo ${shown(e)}: no context string`);
+  const at = (f) => keyOf(f, c.platform);
+  if (swap?.group && !map.repos.some((e) => e.profile === 'local' && at(fileOf(p, swap.name, e.group)) === at(swap.file))) out.push(line(`group ${swap.group}, in no local entry of the map`, { group: swap.group }));
   return [...out, ...hits];
 }
 

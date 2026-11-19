@@ -764,14 +764,35 @@ describe('primer drift hook', () => {
       for (const command of ['git merge notes', 'git merge', 'git cherry-pick notes', 'git rebase notes', `git am ${notes}`, 'git merge --abort', 'git rebase --continue', 'git cherry-pick --skip', 'git am --quit', 'git am --show-current-patch=diff', 'git merge-base main feat', 'git merge --help', 'git am -h', 'git cherry-pick -h', 'git rebase -Xignore-space-change notes']) {
         assert.equal(await check(command, dir), '', command);
       }
-      const blind = (sub) => deny(lead(dir) + `what git ${sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where nothing but a cd, a git add or a git commit runs before it in the command`);
+      const blind = (sub) => deny(lead(dir) + `what git ${sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads`);
       for (const [sub, rest] of [['merge', '"$BRANCH"'], ['merge', 'no-such-branch'], ['cherry-pick', ''], ['rebase', '-x "npm test" notes'], ['rebase', "-x'npm test' notes"], ['rebase', '--exe "npm test" notes'], ['rebase', '-i notes'], ['rebase', '-ki notes'], ['rebase', '--interactive notes'], ['cherry-pick', '--onto --output=' + slash(join(patches, 'made.txt'))], ['am', ''], ['am', '--directory=sub ' + hub], ['am', slash(join(patches, 'none.patch'))], ['am', slash(join(patches, 'plain.patch'))], ['am', '--patch-format=mbox ' + hub]]) {
         assert.equal(await check(`git ${sub} ${rest}`.trim(), dir), blind(sub), `${sub} ${rest}`);
       }
       assert.equal(existsSync(join(patches, 'made.txt')), false);
-      for (const [command, sub] of [['git checkout main && git merge notes', 'merge'], ['git fetch origin && git rebase notes', 'rebase'], ['git switch main; git cherry-pick notes', 'cherry-pick'], [`git reset -q && git am ${notes}`, 'am'], ['git branch -f tmp feat && git merge tmp', 'merge'], [`echo x > ${slash(join(patches, 'other.patch'))} && git am ${notes}`, 'am'], ['git status && git rebase notes', 'rebase'], ['git merge --abort; git merge notes', 'merge']]) {
+      // A call that may move a branch, the index or a patch file before one of the four leaves it unread.
+      for (const [command, sub] of [[`git reset -q && git am ${notes}`, 'am'], ['git branch -f tmp feat && git merge tmp', 'merge'], [`echo x > ${slash(join(patches, 'other.patch'))} && git am ${notes}`, 'am'], ['git merge --abort; git merge notes', 'merge'],
+        ['git stash && git merge notes', 'merge'], ['git pull && git rebase notes', 'rebase'], ['git checkout no-such && git merge notes', 'merge'], ['git switch main && git merge -', 'merge'], ['git checkout -- src/a.ts && git merge notes', 'merge'],
+        [`git diff main feat > ${slash(join(patches, 'made.patch'))} && git am ${notes}`, 'am'], [`git log --output=${slash(join(patches, 'made.txt'))} && git merge notes`, 'merge'], ['git fetch origin feat:tmp && git merge notes', 'merge'],
+        ['echo "$(git branch -f tmp feat)" && git merge notes', 'merge'], ['git branch tmp feat && git merge notes', 'merge'], ['npm test && git merge notes', 'merge']]) {
         assert.equal(await check(command, dir), blind(sub), command);
       }
+      // A call that only reads, a fetch, and a checkout or a switch to a branch leave it read.
+      for (const command of ['git status && git merge notes', 'git log --oneline -3 && git merge notes', 'git rev-parse HEAD && git merge notes', 'git diff --stat && git merge notes', 'git branch --show-current && git merge notes',
+        'echo start && git merge notes', 'git status 2>/dev/null; git rebase notes', 'git log --oneline | head -3 && git cherry-pick notes', `git status && git am ${notes}`, 'git fetch && git merge notes', 'git fetch origin && git rebase notes',
+        'git checkout main && git merge notes', 'git switch main; git cherry-pick notes', 'git switch main && git merge --ff-only origin/main', 'git switch -c topic origin/main && git merge --ff-only origin/main', 'git switch main && git merge']) {
+        assert.equal(await check(command, dir), '', command);
+      }
+      assert.equal(await check('git status; git merge notes', dir, { tool: 'PowerShell' }), '');
+      for (const command of ['git status && git merge feat', 'echo start && git rebase feat', 'git fetch origin && git merge feat', 'git switch main && git merge feat', `git log --oneline | head -3; git cherry-pick ${tip}`, `git rev-parse HEAD && git am ${hub}`]) {
+        assert.equal(await check(command, dir), reason, command);
+      }
+      // After a switch the call is read against the branch switched to and against the head as it stands.
+      await git(dir, 'checkout', '-q', 'later');
+      assert.equal(await check('git merge feat', dir), '');
+      for (const command of ['git switch main && git merge feat', 'git checkout main; git rebase feat', 'git switch -c topic main && git merge feat']) assert.equal(await check(command, dir), reason, command);
+      await git(dir, 'checkout', '-q', 'main');
+      assert.equal(await check('git switch later && git merge feat', dir), reason);
+      assert.equal(await check('git switch main && git merge lines', dir), line);
       // Where another call of the command cannot be resolved, the lines a merge adds to an ignore file still count.
       assert.equal(await check('git merge lines && git add "$F"', dir), deny(lead(dir) + unresolved
         + 'the call would add .claude/settings.local.json, which refs/remotes/origin/HEAD does not hold; the line CLAUDE.md in .gitignore, which names an agent file'));

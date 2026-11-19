@@ -104,6 +104,34 @@ describe('session-start', () => {
     assert.equal(start(cfg, dir, {}, 'machine-group').stdout, context(last));
   });
 
+  test('a config folder that names no machine\'s directory says so at load and in status while the default folder reads one', () => {
+    const dir = repo('second-folder', 'https://example.invalid/team/app.git'), home = join(base, 'home-two'), first = join(home, '.claude', 'reimagine-primer'), here = join(base, 'machine-shared');
+    const cfg = config(local(), { shared: SHARED, group: GROUP }), two = { HOME: home, USERPROFILE: home };
+    write(first, 'config.json', JSON.stringify({ local: here }));
+    write(here, 'machine.md', MACHINE);
+    write(cfg.own, 'config.json', JSON.stringify({ store: cfg.store }));
+    const layers = [part('shared', join(cfg.store, 'shared.md'), SHARED.trim(), 'c09a8e67'), part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')];
+    const said = `${join(cfg.own, 'config.json')} names no machine's directory, so the machine layers that ${first} reads from ${here} are not loaded here; name it with map --set --local`;
+    const checks = () => run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir, ...two } }).stdout.split('\n').filter((l) => l.startsWith('check machine'));
+    assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n'), `primer: ${said}`));
+    assert.deepEqual(checks(), [`check machine: ${said}`]);
+    // The default folder with a machine.md of its own and no key is read the same way.
+    rmSync(join(first, 'config.json'));
+    write(first, 'machine.md', MACHINE);
+    assert.deepEqual(checks(), [`check machine: ${said.replace(here, first)}`]);
+    // No word once the key is set, where this folder holds a layer of its own, or where the default folder holds none.
+    write(cfg.own, 'config.json', JSON.stringify({ store: cfg.store, local: here }));
+    assert.equal(start(cfg, dir, two).stdout, context([...layers, part('machine', join(here, 'machine.md'), MACHINE.trim(), '3b656d6a')].join('\n\n')));
+    assert.deepEqual(checks(), []);
+    write(cfg.own, 'config.json', JSON.stringify({ store: cfg.store }));
+    write(cfg.own, 'machine/app.md', HERE);
+    assert.deepEqual(checks(), []);
+    rmSync(join(cfg.own, 'machine'), { recursive: true });
+    rmSync(join(first, 'machine.md'));
+    assert.deepEqual(checks(), []);
+    assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n')));
+  });
+
   test('an empty or missing layer contributes nothing, and the last line is the last layer\'s canary', () => {
     const cfg = config(local(), { shared: '\n \n', group: GROUP });
     const r = start(cfg, repo('one-layer', 'git@example.invalid:team/app.git'));

@@ -142,6 +142,14 @@ const fileOf = (p, name, group) => (name === 'machine' ? join(p.local, 'machine.
   : name === 'shared' ? join(p.store, 'shared.md') : join(p.store, 'groups', `${group}.md`));
 // A machine layer left in primer's own directory after config.json named another for the machine.
 const left = (c, p) => (keyOf(p.local, c.platform) !== keyOf(p.own, c.platform) && existsSync(join(p.own, 'machine.md')) ? `${join(p.own, 'machine.md')} is not read while ${p.cfgPath} names ${p.local}; move its text to ${join(p.local, 'machine.md')}` : null);
+// Machine layers the default config folder reads and this one does not: here config.json names no machine's directory and
+// primer's own holds no machine layer, while the default folder's names one or holds a machine.md.
+function apart(c, p) {
+  const other = join(c.home, '.claude', 'reimagine-primer'), holds = (d) => existsSync(join(d, 'machine.md'));
+  if (p.cfg.local || keyOf(other, c.platform) === keyOf(p.own, c.platform) || holds(p.own) || existsSync(join(p.own, 'machine'))) return null;
+  const there = (() => { try { return places(c, other); } catch { return null; } })(), dir = there?.cfg.local ? there.local : holds(other) ? other : null;
+  return dir ? `${p.cfgPath} names no machine's directory, so the machine layers that ${other} reads from ${dir} are not loaded here; name it with map --set --local` : null;
+}
 function layersOf(p, entry, swap) {
   const files = Object.fromEntries(LAYERS.map((name) => [name, fileOf(p, name, entry.group)]));
   return LAYERS.map((name) => {
@@ -239,6 +247,7 @@ function sessionStart(c, layer, input, data) {
     context = input.source === 'resume' ? undefined : layer === 'all' ? joined(parts) : parts.find((x) => x.name === layer)?.text;
     const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
+    if (apart(c, p)) msgs.push(`primer: ${apart(c, p)}`);
     for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
     // The notice hook runs at startup alone, and so does this.
     const told = (input.source ?? 'startup') === 'startup' && !quiet && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
@@ -303,7 +312,7 @@ function delivery(c, p) {
     for (const x of parts) lines.push(`layer ${x.name}: ${x.file}, ${x.text ? `${x.text.length} characters, canary ${x.canary}` : 'missing or empty'}`);
     lines.push(`check size: ${n} characters as emitted, ${n > CAP ? 'over' : 'within'} the cap of ${CAP}`);
   }
-  if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
+  for (const said of [left(c, p), apart(c, p)]) if (said) lines.push(`check machine: ${said}`);
   const loose = skillsOf(c, p).filter((x) => x.state !== 'linked');
   if (loose.length) lines.push(`check skills: no link in ${join(dirname(p.own), 'skills')} for ${loose.map((x) => x.name).join(', ')}`);
   const mine = ofMachine(c, p);

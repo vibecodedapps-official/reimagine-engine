@@ -199,6 +199,8 @@ test('R405: a path inside a string or after a line break is searched, since it m
   denied(w.shell('gh api repos/o/r/issues -f title=@zqxlisted/msg.txt'), 'zqxlisted', 'the command', w);
   // A real path after a quoted argument stands outside the string and is left out.
   none(w.shell('gh pr create --title "a title" --body-file zqxlisted/msg.txt'));
+  // A path inside a command substitution may be a message's words too.
+  denied(w.shell('gh issue create --body "x" --title $(cd zqxlisted && pwd)'), 'zqxlisted', 'the command', w);
   // A line continued with the tool's escape character is one line, and a path on a later line is searched.
   none(w.shell('git commit \\\n -F zqxlisted/msg.txt'));
   denied(w.shell('git commit -m x\ncat zqxlisted/msg.txt'), 'zqxlisted', 'the command', w);

@@ -85,8 +85,9 @@ const DAY = /^\d{4}-\d{2}-\d{2}(  |$)/;
 const PART = /^(what|back when|in|record): /;
 
 // The text as the blocks of lines that blank lines part, without the file's first line. An entry is its resume command and the
-// lines above it from its day line on, or with no day line the lines of an entry right above it, so two entries with no blank
-// line between them are still two; any other line is in a block kept as it is.
+// lines above it from the first day line since the command before, so a line set by hand in day form stays in it, or with no day
+// line the lines of an entry right above it, so two entries with no blank line between them are still two; any other line is in
+// a block kept as it is.
 function load(text) {
   const out = [], all = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split('\n');
   if (all[0].startsWith(HEAD.slice(0, 30))) all.shift();
@@ -95,8 +96,7 @@ function load(text) {
     for (const l of b.split('\n')) {
       const id = COMMAND.exec(l)?.[1].toLowerCase();
       if (!id) { lines.push(l); continue; }
-      // An entry starts at the last day line above its command, so a line set inside it by hand stays in it.
-      let k = lines.findLastIndex((x) => DAY.test(x));
+      let k = lines.findIndex((x) => DAY.test(x));
       if (k < 0) for (k = lines.length; k > 0 && PART.test(lines[k - 1]); k--);
       if (k) out.push({ lines: lines.slice(0, k) });
       out.push({ lines: [...lines.slice(k), l], id });

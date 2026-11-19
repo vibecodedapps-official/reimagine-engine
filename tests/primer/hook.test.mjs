@@ -781,13 +781,15 @@ describe('primer drift hook', () => {
         [`bash -c "cat ${hub}" > ${notes} && git am ${notes}`, 'am'], [`(cat ${hub}; cd .) > ${notes} && git am ${notes}`, 'am'], [`{ cat ${hub}; git add -A; } > ${notes} && git am ${notes}`, 'am'],
         ['git fetch -f --tags && git merge notes', 'merge'], ['git fetch origin tag v1 && git merge notes', 'merge'],
         ['git add "$(git branch -f tmp feat; echo f)" && git merge notes', 'merge'], ['cd "$(git branch -f tmp feat; echo .)" && git merge notes', 'merge'],
-        ['git switch main && git switch -c t HEAD~1 && git merge notes', 'merge'], [`git log -p feat -1 > 1 && git am ${notes}`, 'am']]) {
+        ['git switch main && git switch -c t HEAD~1 && git merge notes', 'merge'], [`git log -p feat -1 > 1 && git am ${notes}`, 'am'],
+        ['git switch -c topic origin/main && git merge --ff-only origin/main', 'merge'], ['git switch -c topic main && git merge feat', 'merge'], ['git switch main; git switch later; git merge feat', 'merge'],
+        ['git checkout -B notes feat && git checkout main && git merge notes', 'merge'], ['git switch -c && git merge notes', 'merge']]) {
         assert.equal(await check(command, dir), blind(sub), command);
       }
       // A call that only reads, a fetch, and a checkout or a switch to a branch leave it read.
       for (const command of ['git status && git merge notes', 'git log --oneline -3 && git merge notes', 'git rev-parse HEAD && git merge notes', 'git diff --stat && git merge notes', 'git branch --show-current && git merge notes',
         'echo start && git merge notes', 'git status 2>/dev/null; git rebase notes', 'git status 2>&1 && git merge notes', 'git log --oneline | head -3 && git cherry-pick notes', `git status && git am ${notes}`, 'git fetch && git merge notes', 'git fetch origin && git rebase notes',
-        'git checkout main && git merge notes', 'git switch main; git cherry-pick notes', 'git switch main && git merge --ff-only origin/main', 'git switch -c topic origin/main && git merge --ff-only origin/main', 'git switch main && git merge']) {
+        'git checkout main && git merge notes', 'git switch main; git cherry-pick notes', 'git switch main && git merge --ff-only origin/main', 'git switch main && git merge']) {
         assert.equal(await check(command, dir), '', command);
       }
       assert.equal(await check('git status; git merge notes', dir, { tool: 'PowerShell' }), '');
@@ -798,8 +800,13 @@ describe('primer drift hook', () => {
       await git(dir, 'checkout', '-q', 'later');
       assert.equal(await check('git merge feat', dir), '');
       assert.equal(await check('git switch main && git switch -c t HEAD~1 && git merge notes', dir), blind('merge'));
-      for (const command of ['git switch main && git merge feat', 'git checkout main; git rebase feat', 'git switch -c topic main && git merge feat', 'git switch main && cd src && git merge feat', 'git switch main && git -C src merge feat',
-        'git switch main; git switch later; git merge feat']) assert.equal(await check(command, dir), reason, command);
+      for (const command of ['git switch main && git merge feat', 'git checkout main; git rebase feat', 'git switch main && cd src && git merge feat', 'git switch main && git -C src merge feat']) assert.equal(await check(command, dir), reason, command);
+      // A branch that tracks another remote than the current branch's is read against the wrong upstream, so the call is unread.
+      await git(dir, 'remote', 'add', 'other', 'https://example.invalid/team/app.git');
+      await git(dir, 'config', 'branch.main.remote', 'other');
+      assert.equal(await check('git switch main && git merge feat', dir), blind('merge'));
+      await git(dir, 'config', 'branch.main.remote', 'origin');
+      await git(dir, 'remote', 'remove', 'other');
       await git(dir, 'checkout', '-q', 'main');
       assert.equal(await check('git switch later && git merge feat', dir), reason);
       assert.equal(await check('git switch main && git merge lines', dir), line);

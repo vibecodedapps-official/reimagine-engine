@@ -220,9 +220,9 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     return quote === null;
   };
   // A path the hook resolved stays on the machine, so it is left out of the search where it stands outside a string
-  // and on the first line, with no $'...' or typographic quote before it, which bare() does not read: a scratch
-  // folder may hold a listed name.
-  const typed = ([i]) => bare(i) && !/\$'|[\u2018\u2019\u201C\u201D]/.test(command.slice(0, i));
+  // and on the first line, with no dollar sign, backtick or typographic quote before it, which bare() does not read: a
+  // scratch folder may hold a listed name.
+  const typed = ([i]) => bare(i) && !/[$`\u2018\u2019\u201C\u201D]/.test(command.slice(0, i));
   // A folder is looked for in the call's folder and in each folder named before it, as cd a && cd b names a/b. One
   // not found is named as typed, unless it is a loose -C or starts with -, an option or cd -, not a folder.
   const dirs = [], missing = [];

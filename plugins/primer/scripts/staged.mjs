@@ -93,13 +93,9 @@ const FETCH_OPTIONS = /^(--all|--prune|-p|-q|--quiet|-v|--verbose|--no-tags|--pr
 // refs stand before it.
 const keeps = (sub, args) => (GIT_READS.has(sub) ? !args.some((x) => x.bad || x.w.startsWith('--output'))
   : Object.hasOwn(LISTS, sub) ? args.every((x) => LISTS[sub].test(x.w)) : sub === 'fetch' && args.every((x) => !x.bad && (FETCH_OPTIONS.test(x.w) || !(/^-|[:+]/.test(x.w) || x.w === 'tag'))));
-// The head a checkout or a switch leaves, as { rev, branch }: a branch named alone, or a new branch at its start point, rev null
-// where it names none, which leaves a new branch with no upstream. Null for any other form.
-function switched(args) {
-  const w = args.map((x) => x.w);
-  if (args.some((x) => x.bad) || w.some((x, i) => x.startsWith('-') && !(i === 0 && /^-[bBcC]$/.test(x)))) return null;
-  if (w.length === 1) return { rev: `refs/heads/${w[0]}`, branch: w[0] };
-  return /^-/.test(w[0] ?? '') && (w.length === 2 || w.length === 3) ? { rev: w[2] ?? null } : null;
+// The head a checkout or a switch leaves, as { rev, branch }, where it names a branch alone; null for any other form.
+function switched([x, ...more]) {
+  return x && !more.length && !x.bad && !x.w.startsWith('-') ? { rev: `refs/heads/${x.w}`, branch: x.w } : null;
 }
 
 // Collects each git add and git commit of a shell text with the directory it runs in, by the drift hook's grammar, following a
@@ -136,10 +132,10 @@ function analyze(words, st) {
   const b = base(words[i].w), rest = words.slice(i + 1);
   // What a merge, a cherry-pick, a rebase or an am brings is read before the command runs, so a call that runs before it in the
   // same command may change it. A change of directory, a git add, a git commit and a call that only reads change nothing that is
-  // read, a checkout or a switch to a branch says which head the later call is read against, a fetch leaves it read as the
-  // remote-tracking refs stand, and the text a shell is given has its own calls judged: these leave a later one readable. A call
-  // that writes a file or holds a command substitution, an assignment before the program included, leaves no later call readable,
-  // whatever the call, since the substitution may run any call.
+  // read, the first checkout or switch of the command, to a branch named alone, says which head the later call is read against,
+  // a fetch leaves it read as the remote-tracking refs stand, and the text a shell is given has its own calls judged: these leave
+  // a later one readable. A call that writes a file or holds a command substitution, an assignment before the program included,
+  // leaves no later call readable, whatever the call, since the substitution may run any call.
   const plain = !words.wrote && !words.some((x) => x.sub);
   let still = CDS.has(b);
   if (SHELLS.has(b)) {
@@ -164,10 +160,9 @@ function analyze(words, st) {
     const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1), first = args[0]?.w;
     if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) { st.calls.push({ sub, dir, args }); still = true; }
     // A call for help, and one that ends or steps over a merge under way, bring nothing in.
-    else if (brings(sub) && first !== '--help' && first !== '-h' && !ends(first)) { st.calls.push({ sub, dir, args, moved: st.moved, heads: [...st.heads], fresh: st.fresh, fetched: st.fetched, sh: st.sh, msys: st.msys, home: st.home }); still = true; }
-    else if (plain && (sub === 'checkout' || sub === 'switch') && switched(args)) {
-      const to = switched(args);
-      if (to.rev) st.heads.push(to); else st.fresh = true;
+    else if (brings(sub) && first !== '--help' && first !== '-h' && !ends(first)) { st.calls.push({ sub, dir, args, moved: st.moved, head: st.head, fetched: st.fetched, sh: st.sh, msys: st.msys, home: st.home }); still = true; }
+    else if (plain && (sub === 'checkout' || sub === 'switch') && !st.head && switched(args)) {
+      st.head = switched(args);
       still = true;
     } else {
       still = plain && keeps(sub, args);
@@ -223,9 +218,9 @@ const atFetch = (n) => sides(n).some((x) => /^FETCH_HEAD$/i.test(x));
 // head does not, with the upstream of the branch where it names none; a cherry-pick brings each commit it names and each commit
 // of a range, a merge among them read against each parent; an am brings what its patch files hold, and a file with no file header
 // is unread. A --continue is read as the commit it makes, and a call that ends one brings nothing new.
-function brought(c, { sub, dir, args, moved, heads, fresh, fetched, sh, msys, home }, top) {
+function brought(c, { sub, dir, args, moved, head, fetched, sh, msys, home }, top) {
   if (moved) return null;
-  const after = heads.length > 0 || fresh;
+  const after = !!head;
   const named = [];
   for (let i = 0; i < args.length; i++) {
     const { w, bad } = args[i];
@@ -241,12 +236,9 @@ function brought(c, { sub, dir, args, moved, heads, fresh, fetched, sh, msys, ho
   // A name that starts with a dash would reach git as an option.
   if (named.some((n) => n.startsWith('-'))) return null;
   // After a switch the index and the files are the new head's, and HEAD, @{upstream} and the like name the new head's: an am, a
-  // --continue and a name relative to the head are unread. A new branch has no upstream to take, and a fetch rewrote FETCH_HEAD.
-  // The start point of a switch that follows another is read as the head stands when the hook runs, so it is unread likewise.
-  const starts = heads.map((h) => h.rev);
-  if ((after && (sub === 'am' || named.some(relative))) || (fresh && !named.length)) return null;
-  if ((heads.length > 1 || fresh) && starts.some(relative)) return null;
-  if (fetched && [...named, ...starts].some(atFetch)) return null;
+  // --continue and a name relative to the head are unread. A fetch rewrote FETCH_HEAD.
+  if (after && (sub === 'am' || named.some(relative))) return null;
+  if (fetched && named.some(atFetch)) return null;
   // The form of the output is pinned, whatever the user's configuration sets.
   const out = (...a) => { const r = git(c, dir, ['-c', 'core.quotepath=off', '-c', 'diff.noprefix=false', '-c', 'diff.mnemonicPrefix=false', '-c', 'diff.relative=false', ...a]); return r.status === 0 ? r.stdout : null; };
   const log = ['log', '--format=', '-m', '--no-renames', '--no-color', '--no-ext-diff', '--no-textconv'], ignored = ':(top,glob)**/.gitignore';
@@ -256,17 +248,17 @@ function brought(c, { sub, dir, args, moved, heads, fresh, fetched, sh, msys, ho
     return p && { paths: names.split('\0').map((x) => x.replace(/^\n+/, '')).filter(Boolean), ignores: p.ignores };
   };
   // A ~ and, under Git Bash, a drive path such as /c/work are the shell's to place.
-  const file = (f, base) => { try { const p = patched(c, dir, readFileSync(resolve(dir, sh ? tilde(msys ? f.replace(/^\/([A-Za-z])(?=\/|$)/, '$1:/') : f, home) : f), 'utf8'), base); return p?.blocks ? p : null; } catch { return null; } };
+  const file = (f) => { try { const p = patched(c, dir, readFileSync(resolve(dir, sh ? tilde(msys ? f.replace(/^\/([A-Za-z])(?=\/|$)/, '$1:/') : f, home) : f), 'utf8')); return p?.blocks ? p : null; } catch { return null; } };
   // After a checkout or a switch in the same command the call runs on the head that leaves, or on the head as it stands where the
-  // switch fails, so it is read against HEAD and each head a switch of the command names; a head git cannot read is unread.
+  // switch fails, so it is read against HEAD and the head the switch names; a head git cannot read is unread.
   const known = (rev) => out('rev-parse', '-q', '--verify', `${rev}^{commit}`) !== null;
-  if (heads.some((h) => !known(h.rev))) return null;
-  const bases = [{ rev: 'HEAD', up: '@{upstream}' }, ...heads.map((h) => ({ rev: h.rev, up: h.branch ? `${h.branch}@{upstream}` : null }))];
-  // With no commit named, a merge or a rebase takes the upstream of the branch each head is on; where the switch fails and the
+  if (head && !known(head.rev)) return null;
+  const bases = [{ rev: 'HEAD', up: '@{upstream}' }, ...(head ? [{ rev: head.rev, up: `${head.branch}@{upstream}` }] : [])];
+  // With no commit named, a merge or a rebase takes the upstream of the branch each base is on; where the switch fails and the
   // branch as it stands has none, git brings nothing.
-  const ups = (b) => (heads.length && b.up === '@{upstream}' && !known(b.up) ? [] : [b.up]);
+  const ups = (b) => (head && b.up === '@{upstream}' && !known(b.up) ? [] : [b.up]);
   const plans = bases.flatMap((b) => {
-    if (sub === 'am') return named.length ? named.map((f) => file(f, b.rev)) : [null];
+    if (sub === 'am') return named.length ? named.map(file) : [null];
     if (sub === 'cherry-pick') return [named.length ? read(['--no-walk=unsorted'], named, b.rev) : null];
     return (named.length || args.some((x) => x.w === '--root') ? named : ups(b)).map((r) => r && read([], [`${b.rev}..${r}`], b.rev));
   });
@@ -336,10 +328,15 @@ function records(text) {
 const isAgent = (p) => { const s = p.toLowerCase().split('/'); return AGENT_NAMES.has(s.at(-1)) || s.some((x) => AGENT_DIRS.has(x)); };
 const namesAgent = (l) => !l.startsWith('#') && l.replace(/^!/, '').toLowerCase().split('/').some((x) => AGENT_NAMES.has(x) || AGENT_DIRS.has(x));
 
+// The remote a branch tracks, else origin, else the only remote, else null; the current branch where none is named.
+function remoteOf(c, repo, branch) {
+  const row = git(c, repo.top, ['for-each-ref', '--format=%(HEAD)%(refname:lstrip=2) %(upstream:remotename)', 'refs/heads']).stdout.split('\n').map((l) => /^(.)(\S+) (.*)$/.exec(l)).find((m) => m && (branch === undefined ? m[1] === '*' : m[2] === branch));
+  return row?.[3] || (repo.names.includes('origin') ? 'origin' : new Set(repo.names).size === 1 ? repo.names[0] : null);
+}
+
 // The upstream's tree: refs/remotes/<remote>/HEAD of the remote the current branch tracks, else origin, else the only remote.
 function upstream(c, repo) {
-  const tracked = git(c, repo.top, ['for-each-ref', '--format=%(HEAD)%(upstream:remotename)', 'refs/heads']).stdout.split('\n').find((l) => l.startsWith('*'))?.slice(1);
-  const name = tracked || (repo.names.includes('origin') ? 'origin' : new Set(repo.names).size === 1 ? repo.names[0] : null), ref = `refs/remotes/${name}/HEAD`;
+  const name = remoteOf(c, repo), ref = `refs/remotes/${name}/HEAD`;
   if (!name) return { why: 'no remote names it' };
   return git(c, repo.top, ['rev-parse', '-q', '--verify', `${ref}^{tree}`]).status === 0 ? { ref } : { why: `${ref} cannot be read` };
 }
@@ -373,7 +370,7 @@ export function staged(c, input) {
   const own = join(configOf(c, input), 'reimagine-primer'), command = input.tool_input?.command;
   if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/.test(command)) return [];
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;
-  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false, sh: !ps, moved: false, heads: [], fresh: false, fetched: false };
+  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false, sh: !ps, moved: false, head: undefined, fetched: false };
   scan(command, ps, st);
   if (!st.calls.length && !st.hidden) return [];
   const path = places(c, own).map, map = (() => { try { return loadMap(path, c.home); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
@@ -388,7 +385,8 @@ export function staged(c, input) {
     if (!repo || match(map, repo, c.platform)?.profile !== 'local') continue;
     // The calls of one directory are checked by what they would add together when each one resolves: an add extends the index a
     // later commit takes, and a commit holds no more than the index and what it names.
-    const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => planOf(c, { ...x, dir }, repo.top)), whole = !st.lost && plans.length && plans.every(Boolean);
+    // After a switch to a branch whose remote is not the current branch's, the upstream read is the wrong remote's, so the call is unread.
+    const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => (x.head && remoteOf(c, repo, x.head.branch) !== remoteOf(c, repo) ? null : planOf(c, { ...x, dir }, repo.top))), whole = !st.lost && plans.length && plans.every(Boolean);
     // What an unread merge brings is not in the work tree, so no count of the files there stands in for it.
     const blind = calls.find((x, i) => brings(x.sub) && !plans[i]);
     if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own`)];

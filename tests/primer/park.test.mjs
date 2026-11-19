@@ -240,6 +240,19 @@ describe('R411: list and done', () => {
     assert.equal(body(cfg), '');
   });
 
+  test('a line in day form set by hand inside an entry stays in it, and done removes the whole entry', () => {
+    const cfg = config([[ONE, RECORD, 16]]);
+    park(cfg, ['add', '--what', 'first', '--when', 'a']);
+    const head = readFileSync(cfg.file, 'utf8').split('\n')[0], command = 'claude --resume ' + ONE + ' --model example-model-1 --effort high';
+    const entry = ['2026-11-19  app  main', 'what: first', '2026-12-01  follow up', 'back when: a', 'in: ' + repo, 'record: under ~/' + cfg.name + ', last written 2026-11-16', command];
+    writeFileSync(cfg.file, [head, '', ...entry, ''].join('\n'));
+    assert.deepEqual(park(cfg, ['list']), ['primer: 1 save point in ' + cfg.file, '', '[1] 2026-11-19  app  main', 'what: first', '2026-12-01  follow up', 'back when: a', 'in: ' + repo,
+      'record: under ~/' + cfg.name + ', last written 2026-11-16, 3 days ago', command]);
+    assert.equal(body(cfg), ['', ...entry, ''].join('\n'));
+    park(cfg, ['done', '1']);
+    assert.equal(body(cfg), '');
+  });
+
   test('two runs at the same moment both keep their entry, and a lock a run left behind is taken over', async () => {
     const cfg = config([[ONE, RECORD, 16], [TWO, RECORD, 18]]);
     const add = (id) => new Promise((done) => spawn(process.execPath, [SCRIPT, 'add', '--what', 'a', '--when', 'b'], { cwd: repo, env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir, CLAUDE_CODE_SESSION_ID: id }, stdio: 'ignore' }).on('close', done));

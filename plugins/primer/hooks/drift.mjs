@@ -234,11 +234,11 @@ function check(c, root, adds, found, recheck) {
   recheck.push(...out);
 }
 
-export function drift(c, input) {
+function drift(c, input) {
   const command = input.tool_input?.command;
   if (typeof command !== 'string') return [];
   let first;
-  try { first = staged(c, input); } catch (e) { first = [deny(`primer: the staging check failed, so the call is denied: ${e?.message || 'a git call did not answer in time'}`)]; }
+  try { first = staged(c, input); } catch (e) { first = [deny(`primer: the staging check failed, so the call is denied: ${e?.message || e}`)]; }
   if (first.length) return first;
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd, { dirs, adds } = commits(command, ps);
   // A ~ is the shell's: HOME under sh, where a Git Bash path such as /c/work is the drive path it names.

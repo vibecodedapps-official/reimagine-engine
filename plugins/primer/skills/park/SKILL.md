@@ -13,7 +13,7 @@ allowed-tools:
 
 A save point is one short entry in `sessions.txt` of the machine's directory: what this session is, what it waits for, and the command that resumes it. The user typed: `$ARGUMENTS`
 
-`scripts/park.mjs` makes every write to that file. Never read or write the file with another tool, and never shape an entry on another session's. Run the script once for this command and not again until the user types the command again: an entry holds nothing of the session's progress, so later work changes nothing in it.
+`scripts/park.mjs` makes every write to that file. Never read or write the file with another tool, and never shape an entry on another session's. Run the script with the Bash tool, once for this command and not again until the user types the command again: an entry holds nothing of the session's progress, so later work changes nothing in it.
 
 - `list`: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/park.mjs" list`.
 - `done`, alone or with a number: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/park.mjs" done`, with the number after it when one was typed. Alone it removes this session's entry; a number is an entry's place in the list.

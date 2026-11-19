@@ -7,7 +7,7 @@ import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdir
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { main } from '../../plugins/primer/scripts/primer.mjs';
+import { main, notesOf } from '../../plugins/primer/scripts/primer.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../plugins/primer/scripts/primer.mjs', import.meta.url));
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -980,4 +980,14 @@ describe('the notice', () => {
     assert.notEqual(run(['session-start', 'all', data], { input: input('startup') }).stdout, '');
     assert.equal(run(['session-start', 'all', data], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }) }).stdout, '');
   });
+});
+
+test('R256: a note the review settings skip is named and never opened', () => {
+  const memory = mkdtempSync(join(tmpdir(), 'primer-notes-'));
+  try {
+    writeFileSync(join(memory, 'MEMORY.md'), '- [A](a.md) - one\n- [B](b.md) - two\n');
+    for (const [name, type] of [['a', 'feedback'], ['b', 'project']]) writeFileSync(join(memory, `${name}.md`), `---\nname: x\nmetadata:\n  type: ${type}\n---\n\nText.\n`);
+    assert.deepEqual(notesOf(memory, ['b.md'])[1], { name: 'b.md' });
+    assert.equal(notesOf(memory)[1].type, 'project');
+  } finally { rmSync(memory, { recursive: true, force: true }); }
 });

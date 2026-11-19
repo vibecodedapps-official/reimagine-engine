@@ -71,9 +71,9 @@ export function normalizeRemote(url) {
 // A git call that writes nothing: no optional lock, so no index refresh. One past the deadline throws Unknown.
 export function git(c, cwd, args, deadline) {
   const timeout = deadline ? deadline - Date.now() : 30000;
-  if (timeout <= 0) throw new Unknown();
+  if (timeout <= 0) throw new Unknown('a git call did not answer in time');
   const r = spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env: { ...c.env, GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C', LANGUAGE: 'C' }, timeout, maxBuffer: 1 << 28 });
-  if (r.error) throw r.error.code === 'ETIMEDOUT' ? new Unknown() : r.error;
+  if (r.error) throw r.error.code === 'ETIMEDOUT' ? new Unknown('a git call did not answer in time') : r.error;
   return r;
 }
 export const blob = (c, cwd, spec) => { const r = git(c, cwd, ['cat-file', 'blob', spec]); return r.status === 0 ? r.stdout : ''; };
@@ -188,13 +188,13 @@ export function reviewOf(c, p, root) {
 }
 
 // The topic files MEMORY.md links, each once, with the type and the modified time of its frontmatter; a name that leaves the
-// directory is none.
-export function notesOf(memory) {
+// directory is none, and a note of skip is named and not opened.
+export function notesOf(memory, skip = []) {
   const seen = new Set(), out = [];
   for (const [, name] of readText(join(memory, 'MEMORY.md')).matchAll(/\]\(([^()\r\n]+)\)/g)) {
     if (/^[/#]/.test(name) || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
     seen.add(name);
-    out.push({ name, ...frontOf(readText(join(memory, name))) });
+    out.push(skip.includes(name) ? { name } : { name, ...frontOf(readText(join(memory, name))) });
   }
   return out;
 }
@@ -250,7 +250,7 @@ export function notice(c, input, data, repo) {
   const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0];
   let rv;
   try { rv = reviewOf(c, places(c, join(config, 'reimagine-primer')), repo.root); } catch (e) { if (!(e instanceof Refusal)) throw e; return `primer: ${e.message}`; }
-  const n = notesOf(memory).filter((x) => !rv.skip.includes(x.name) && ['feedback', 'project'].includes(x.type) && (noted === null || (x.modified && x.modified > since))).length;
+  const n = notesOf(memory, rv.skip).filter((x) => !rv.skip.includes(x.name) && ['feedback', 'project'].includes(x.type) && (noted === null || (x.modified && x.modified > since))).length;
   const fb = feedbackOf(config, repo, rv.logs), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
   const what = n && m ? `auto memory has ${n} notes and ${m} feedback entries` : n ? `auto memory has ${n} notes` : `${m} feedback entries`;
   return n || m ? `primer: ${what} since the last review; run /primer` : null;

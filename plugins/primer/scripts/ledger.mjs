@@ -56,7 +56,7 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   }
   if (op === '--notes' && args.length === 1) {
     const repo = repoOf(c, cwd) ?? refuse(`${cwd} is in no git work tree`), rv = reviewOf(c, p, repo.root), dir = resolve(cwd, tilde(args[0], home));
-    const all = isDir(dir) ? notesOf(dir) : refuse(`${dir} is no directory`), read = all.filter((x) => !rv.skip.includes(x.name)), gone = rv.skip.filter((s) => !all.some((x) => x.name === s));
+    const all = isDir(dir) ? notesOf(dir, rv.skip) : refuse(`${dir} is no directory`), read = all.filter((x) => !rv.skip.includes(x.name)), gone = rv.skip.filter((s) => !all.some((x) => x.name === s));
     return [`notes: ${dir}`, ...read.map((x) => `${x.name} ${x.type ?? '?'} ${x.modified ?? '?'}`), `read: ${read.length} notes, ${all.length - read.length} left out${all.length > read.length ? ` by ${rv.path}` : ''}`,
       ...(gone.length ? [`left out and not listed in MEMORY.md: ${gone.length}`] : [])];
   }
@@ -68,7 +68,8 @@ export function main(argv, { env = process.env, platform = process.platform, hom
     if (!far) return /^[^/\\]+$/.test(name) && isLog(join(logs, name)) ? name : refuse(`${join(logs, name)} is not a feedback log`);
     // A log of the config folder goes by its name however it is given; any other is one the review reads.
     if (k(dirname(far)) === k(logs) && isLog(far)) return basename(far);
-    return reviewOf(c, p, '').logs.flatMap(logsIn).some((f) => k(f) === k(far)) ? homed(c, far) : refuse(`${name} is not a feedback log`);
+    const hit = reviewOf(c, p, '').logs.flatMap(logsIn).find((f) => k(f) === k(far));
+    return hit ? homed(c, hit) : refuse(`${name} is not a feedback log`);
   };
   let x, sign = '~';
   if (op === '--add' && args.length === 2) {

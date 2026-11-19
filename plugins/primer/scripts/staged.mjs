@@ -134,7 +134,7 @@ function analyze(words, st) {
     const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1), first = args[0]?.w;
     if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) { st.calls.push({ sub, dir, args }); still = true; }
     // A call for help, and one that ends or steps over a merge under way, bring nothing in.
-    else if (brings(sub) && first !== '--help' && first !== '-h' && !ENDS.has(first)) { st.calls.push({ sub, dir, args, moved: st.moved, sh: st.sh, msys: st.msys, home: st.home }); still = true; }
+    else if (brings(sub) && first !== '--help' && first !== '-h' && !ends(first)) { st.calls.push({ sub, dir, args, moved: st.moved, sh: st.sh, msys: st.msys, home: st.home }); still = true; }
   } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = st.hidden = true;
   // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
@@ -152,9 +152,10 @@ const BRINGS = {
 const brings = (sub) => Object.hasOwn(BRINGS, sub);
 // An option that runs a command, hands the steps to an editor, moves the paths of a patch or names another form of patch leaves
 // the call unread.
-const UNREAD = { rebase: /^(-[qvnfrpm]*[xi]|--exe?c?(=|$)|--in[a-z]*$)/, am: /^(--(directory|patch-format)(=|$)|-p\d*$)/ };
+const UNREAD = { rebase: /^(-[qvnfrpmk]*[xi]|--exe?c?(=|$)|--in[a-z]*$)/, am: /^(--(directory|patch-format)(=|$)|-p\d*$)/ };
 // A call that ends or steps over a merge, a cherry-pick, a rebase or an am under way brings nothing in.
 const ENDS = new Set(['--abort', '--skip', '--quit', '--edit-todo', '--show-current-patch']);
+const ends = (w) => ENDS.has(w) || (typeof w === 'string' && w.startsWith('--show-current-patch='));
 
 // What a patch in git's form holds: the files it creates, the target of a rename among them, and the lines it adds to each ignore
 // file; null for a new file or a target whose header the script cannot read.
@@ -184,7 +185,7 @@ function brought(c, { sub, dir, args, moved, sh, msys, home }, top) {
   for (let i = 0; i < args.length; i++) {
     const { w, bad } = args[i];
     if (bad || UNREAD[sub]?.test(w)) return null;
-    if (ENDS.has(w)) return { paths: [], ignores: [] };
+    if (ends(w)) return { paths: [], ignores: [] };
     if (w === '--continue' || (sub === 'am' && (w === '--resolved' || w === '-r'))) return planOf(c, { sub: 'commit', dir, args: [] }, top);
     if (sub === 'rebase' && w === '--onto') { if (!args[++i] || args[i].bad) return null; named.push(args[i].w); }
     else if (sub === 'rebase' && w.startsWith('--onto=')) named.push(w.slice(7));
@@ -344,7 +345,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
     const lines = staged({ env: process.env, platform: process.platform, home: homedir(), cwd: process.cwd() }, input);
     process.stdout.write(lines.length ? `${lines.join('\n')}\n` : '');
   } catch (e) {
-    process.stdout.write(`${deny(`primer: the staging check failed, so the call is denied: ${e?.message || 'a git call did not answer in time'}`)}\n`);
+    process.stdout.write(`${deny(`primer: the staging check failed, so the call is denied: ${e?.message || e}`)}\n`);
     process.exitCode = 2;
   }
 }

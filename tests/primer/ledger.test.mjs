@@ -235,6 +235,10 @@ describe('ledger', () => {
     for (const f of [join(more, 'a', 'b', 'c', 'too-deep.md'), join(more, 'notes.txt')]) assert.deepEqual(at('--add', f, 'A gap from a file no review reads.'), [1, `primer: ${f} is not a feedback log\n`], f);
     assert.deepEqual(at('--add', join(logs, '2026-11-01.md'), 'A gap from a log given by its path.').slice(0, 1), [0]);
     assert.deepEqual(lines(cfg).map((x) => x.logs), [['2026-11-01.md']]);
+    // A log found under another letter case is held by the name the review reads it by.
+    assert.deepEqual(at('--seen', 'L1', far).slice(0, 1), [0]);
+    if (process.platform === 'win32') assert.deepEqual(at('--seen', 'L1', far.toUpperCase()).slice(0, 1), [1]);
+    assert.deepEqual(lines(cfg).map((x) => x.logs.length), [2]);
   });
 
   test('R397: the entries that name this repository and came after its last review are listed, and --reviewed marks every log read for it', () => {

@@ -16,7 +16,6 @@ reimagine-engine/
   CHANGELOG.md                      one file, one heading per plugin release
   LICENSE                           Apache License 2.0, vibecodedapps.net
   README.md                         install, update, uninstall, development
-  CLAUDE.md                         the repository's own hub (primer form)
   package.json                      scripts test and lint; no dependencies
   docs/                             requirements, architecture, decisions, acceptance
   plugins/rules/                    house rules, output style, chat block
@@ -584,7 +583,7 @@ A declared copy of context text is checked against a snapshot of its source by `
 
 ### Migration from repo-docs
 
-A repository kept by repo-docs has a `## Spokes` index, spokes under `docs/` or beside code, and perhaps the `@AGENTS.md` adapter. One adopt run: the marker goes on line 1; each pointer becomes a path-scoped rule, a skill, a nested `CLAUDE.md` or one sentence in the opening paragraph by its condition; the index goes; the adapter stays when present. In this repository the hub keeps its commands and constraints and names the four design documents in its opening paragraph, and `.claude/settings.json` enables `primer@reimagine-engine`. The repo-docs plugin's tags and changelog headings stay, and lint accepts a heading for a retired name.
+A repository kept by repo-docs has a `## Spokes` index, spokes under `docs/` or beside code, and perhaps the `@AGENTS.md` adapter. One adopt run: the marker goes on line 1; each pointer becomes a path-scoped rule, a skill, a nested `CLAUDE.md` or one sentence in the opening paragraph by its condition; the index goes; the adapter stays when present. The repo-docs plugin's tags and changelog headings stay, and lint accepts a heading for a retired name.
 
 ## The `guard` plugin
 

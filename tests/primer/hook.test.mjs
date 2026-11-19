@@ -764,7 +764,7 @@ describe('primer drift hook', () => {
       for (const command of ['git merge notes', 'git merge', 'git cherry-pick notes', 'git rebase notes', `git am ${notes}`, 'git merge --abort', 'git rebase --continue', 'git cherry-pick --skip', 'git am --quit', 'git am --show-current-patch=diff', 'git merge-base main feat', 'git merge --help', 'git am -h', 'git cherry-pick -h', 'git rebase -Xignore-space-change notes']) {
         assert.equal(await check(command, dir), '', command);
       }
-      const blind = (sub) => deny(lead(dir) + `what git ${sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads`);
+      const blind = (sub) => deny(lead(dir) + `what git ${sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own`);
       for (const [sub, rest] of [['merge', '"$BRANCH"'], ['merge', 'no-such-branch'], ['cherry-pick', ''], ['rebase', '-x "npm test" notes'], ['rebase', "-x'npm test' notes"], ['rebase', '--exe "npm test" notes'], ['rebase', '-i notes'], ['rebase', '-ki notes'], ['rebase', '--interactive notes'], ['cherry-pick', '--onto --output=' + slash(join(patches, 'made.txt'))], ['am', ''], ['am', '--directory=sub ' + hub], ['am', slash(join(patches, 'none.patch'))], ['am', slash(join(patches, 'plain.patch'))], ['am', '--patch-format=mbox ' + hub]]) {
         assert.equal(await check(`git ${sub} ${rest}`.trim(), dir), blind(sub), `${sub} ${rest}`);
       }
@@ -777,7 +777,9 @@ describe('primer drift hook', () => {
         ['echo "$(git branch -f tmp feat)" && git merge notes', 'merge'], ['git branch tmp feat && git merge notes', 'merge'], ['npm test && git merge notes', 'merge'],
         ['git switch -c topic && git merge', 'merge'], ['git switch main && git merge HEAD', 'merge'], [`git switch main && git am ${notes}`, 'am'], ['git switch main && git rebase --continue', 'rebase'],
         ['git fetch . feat && git merge FETCH_HEAD', 'merge'], ['X="$(git branch -f tmp feat)" git status && git merge notes', 'merge'], ['X="$(git branch -f tmp feat)" && git merge notes', 'merge'],
-        ['./scripts/ls && git merge notes', 'merge'], ['git log "$OPTS" -1 && git merge notes', 'merge']]) {
+        ['./scripts/ls && git merge notes', 'merge'], ['git log "$OPTS" -1 && git merge notes', 'merge'],
+        [`bash -c "cat ${hub}" > ${notes} && git am ${notes}`, 'am'], [`(cat ${hub}; cd .) > ${notes} && git am ${notes}`, 'am'], [`{ cat ${hub}; git add -A; } > ${notes} && git am ${notes}`, 'am'],
+        ['git fetch -f --tags && git merge notes', 'merge'], ['git fetch origin tag v1 && git merge notes', 'merge']]) {
         assert.equal(await check(command, dir), blind(sub), command);
       }
       // A call that only reads, a fetch, and a checkout or a switch to a branch leave it read.

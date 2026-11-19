@@ -83,11 +83,13 @@ const CDS = new Set(['cd', 'chdir', 'pushd', 'popd', 'set-location', 'sl', 'push
 const READS = new Set(['echo', 'printf', 'pwd', 'true', 'ls', 'date', 'cat', 'head', 'tail', 'wc', 'grep', 'write-host', 'write-output', 'get-location']);
 const GIT_READS = new Set(['status', 'log', 'show', 'diff', 'rev-parse', 'rev-list', 'merge-base', 'describe', 'ls-files']);
 const LISTS = { branch: /^(--show-current|--list|-l|-a|--all|-r|--remotes|-v|-vv)$/, remote: /^-v$/ };
+const FETCH_OPTIONS = /^(--all|--prune|-p|-q|--quiet|-v|--verbose|--no-tags|--progress|--no-progress)$/;
 // A git call that leaves a later one of the four readable: a subcommand that only reads, with no option that names a file to
-// write and no argument the script cannot read; a branch or a remote call that only lists; and a fetch that names no branch to
-// write, which moves remote-tracking refs and FETCH_HEAD alone, so the later call is read as those refs stand before it.
+// write and no argument the script cannot read; a branch or a remote call that only lists; and a fetch of only those options and
+// names with no ':' or '+' and not 'tag', which moves remote-tracking refs and FETCH_HEAD alone, so the later call is read as those
+// refs stand before it.
 const keeps = (sub, args) => (GIT_READS.has(sub) ? !args.some((x) => x.bad || x.w.startsWith('--output'))
-  : Object.hasOwn(LISTS, sub) ? args.every((x) => LISTS[sub].test(x.w)) : sub === 'fetch' && !args.some((x) => x.bad || /[:+]/.test(x.w)));
+  : Object.hasOwn(LISTS, sub) ? args.every((x) => LISTS[sub].test(x.w)) : sub === 'fetch' && args.every((x) => !x.bad && (FETCH_OPTIONS.test(x.w) || !(/^-|[:+]/.test(x.w) || x.w === 'tag'))));
 // The head a checkout or a switch leaves, as { rev, branch }: a branch named alone, or a new branch at its start point, rev null
 // where it names none, which leaves a new branch with no upstream. Null for any other form.
 function switched(args) {
@@ -132,7 +134,8 @@ function analyze(words, st) {
   // What a merge, a cherry-pick, a rebase or an am brings is read before the command runs, so a call that runs before it in the
   // same command may change it. A change of directory, a git add, a git commit and a call that only reads change nothing that is
   // read, a checkout or a switch to a branch says which head the later call is read against, a fetch leaves it read as the
-  // remote-tracking refs stand, and the text a shell is given has its own calls judged: these leave a later one readable. A
+  // remote-tracking refs stand, and the text a shell is given has its own calls judged: these leave a later one readable, unless
+  // the call sends its output to a file. A
   // command substitution anywhere in the call, an assignment before the program included, may run any call.
   const plain = !words.wrote && !words.some((x) => x.sub);
   let still = CDS.has(b);
@@ -171,7 +174,7 @@ function analyze(words, st) {
   // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
   else still = plain && READS.has(words[i].w.toLowerCase());
-  if (!still) st.moved = true;
+  if (!still || words.wrote) st.moved = true;
 }
 
 // The commands that bring commits made elsewhere into the history, each with the options that take the next word as a value; any
@@ -381,7 +384,7 @@ export function staged(c, input) {
     const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => planOf(c, { ...x, dir }, repo.top)), whole = !st.lost && plans.length && plans.every(Boolean);
     // What an unread merge brings is not in the work tree, so no count of the files there stands in for it.
     const blind = calls.find((x, i) => brings(x.sub) && !plans[i]);
-    if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads`)];
+    if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own`)];
     const reason = whole ? verdict(c, repo, { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) }) : verdict(c, repo, null, plans.filter(Boolean));
     if (reason) return [deny(reason)];
   }

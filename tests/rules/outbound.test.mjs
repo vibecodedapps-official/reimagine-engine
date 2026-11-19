@@ -190,6 +190,8 @@ test('R405: a path inside a string or after a line break is searched, since it m
   denied(w.shell(HEREDOC('docs: pass --body-file zqxlisted/msg.txt')), 'zqxlisted', 'the command', w);
   denied(w.shell(`git commit -m "it's ok" -m 'see --file zqxlisted/msg.txt'`), 'zqxlisted', 'the command', w);
   denied(w.shell(`git commit -m 'C:\\' -m 'see --file zqxlisted/msg.txt'`), 'zqxlisted', 'the command', w);
+  denied(w.shell("git commit -m $'it\\'s in cd zqxlisted for now'"), 'zqxlisted', 'the command', w);
+  denied(w.shell('git commit -m \u201Cmoved, cd zqxlisted now\u201D', 'PowerShell'), 'zqxlisted', 'the command', w);
   denied(w.shell('git commit -m "C:\\" -m "see --file zqxlisted/msg.txt"', 'PowerShell'), 'zqxlisted', 'the command', w);
   // A raw field sends the text @<path> itself.
   denied(w.shell('gh api repos/o/r/issues -f title=@zqxlisted/msg.txt'), 'zqxlisted', 'the command', w);

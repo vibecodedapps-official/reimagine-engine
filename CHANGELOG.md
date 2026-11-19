@@ -2,6 +2,16 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.25 - 2026-11-19
+
+- In a `local` repository a `git merge`, `git cherry-pick`, `git rebase` or `git am` is read after a call that only reads, a fetch, and a checkout or a switch to a branch in the same command. It was denied as unread after anything but a `cd`, a `git add` and a `git commit`, so `git status && git merge feat`, `echo start && git rebase main` and `git switch main && git merge --ff-only origin/main` were denied though they brought no agent file. The calls that only read are a closed list, each with no `>` to a file. After a switch the call is read against the branch switched to and against the branch as it stands, and denied on what either would bring. After a fetch it is read as the remote-tracking branches stand before the fetch, so what the fetch itself brings is not read, as with a pull. Anything else before the call, a `git stash`, a `git reset` or a script among them, still leaves it denied.
+- The ledger and the copies record hold a path under the config folder as `<config>/`, read under the config folder of each run. They held it as a path under the home directory, so a fold into a file of the config folder, or a copy whose source sits there, wrote that folder's name into a store that may be versioned and shared. A record written before still reads.
+- A `skip` name in `review.json` counts in any letter case. One spelled in another case than `MEMORY.md` gives left its note listed and opened by a review, with a count of names not listed as the only sign.
+- `scripts/park.mjs` writes `sessions.txt` one run at a time, under a lock file beside it. Two `add` runs started together lost one entry while both printed that they saved.
+- A line set by hand inside a save point stays in its entry. A run dropped a line that began `record:` in a form of the user's own, and a line set between an entry's first line and its command split the entry in two.
+- The `/primer` skill pre-approves its runs of the ledger and the transcript reader that write nothing: the ledger with no argument, with `--unread` and with `--notes`, and `scripts/transcripts.mjs`. Each met the session's permission mode at every review.
+- The README says that the staging check's dry run of a commit with `-a` or a path can leave unreferenced objects under `.git/objects`, with the index, the refs and the work tree unchanged, and that a directory named under `logs` in `review.json` has every `.md` file read as a log, so it should hold logs alone.
+
 ## primer 0.1.24 - 2026-11-19
 
 - A save point names the directory its session started in. The entry's `in:` line, and the name and the branch on its first line, came from the directory the script ran in, and a `cd` holds from one shell call of a session to the next, so a session parked after `cd sub` was listed under `sub` and its command, pasted there, resumed it in `sub`. `scripts/park.mjs` now takes the directory from the first line of the session's record that gives one, where the run's directory is inside it and both are in one work tree or in none, and keeps the run's own otherwise.

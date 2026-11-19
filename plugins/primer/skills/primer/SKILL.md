@@ -39,7 +39,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 - Never edit code, configuration, settings, CI files, package manifests, `CLAUDE.local.md`, anything git ignores, or the auto memory directory. The exceptions are a memory note the user approves for deletion in its own question, and the review stamp of Maintain step 3.
 - Never install a git hook and never write a linter rule, a test or a hook. Where placement item 1 or 2 applies, the plan proposes the check, hook or settings key for the user.
 - Never run `/init`, `/doctor` or `/memory`.
-- Read `CLAUDE.local.md`, the user's own `CLAUDE.md` and `rules/`, and auto memory to avoid duplication, but no note that `ledger.mjs --notes` leaves out (Maintain, step 3); never write them.
+- Read `CLAUDE.local.md`, the user's own `CLAUDE.md` and `rules/`, and auto memory to avoid duplication; in every mode, open a note of auto memory only when `ledger.mjs --notes`, run as Maintain step 3 says, lists it. Never write them.
 - Obey every ask-first rule in the instruction files the session loaded. Anything outside the plan asks again.
 
 ## Commits

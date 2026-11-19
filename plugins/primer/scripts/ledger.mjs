@@ -15,9 +15,9 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Refusal, feedbackOf, held, homed, isDir, keyOf, notesOf, ownOf, places, repoOf, reviewOf, tilde, writeAtomic } from './primer.mjs';
+import { Refusal, feedbackOf, held, homed, isDir, keyOf, logsIn, notesOf, ownOf, places, repoOf, reviewOf, tilde, writeAtomic } from './primer.mjs';
 
 const STATUSES = ['open', 'folded', 'rejected', 'held', 'superseded'];
 const FORMS = 'ledger takes nothing, --unread, --reviewed, --notes <memory directory>, --add <log> <gap>, --seen <id> <log>, --worked <id> <log>, or --set <id> <status> '
@@ -47,7 +47,7 @@ export function main(argv, { env = process.env, platform = process.platform, hom
     const repo = repoOf(c, cwd) ?? refuse(`${cwd} is in no git work tree`), more = reviewOf(c, p, repo.root).logs, fb = feedbackOf(dirname(ownOf(c)), repo, more);
     if (op === '--unread') {
       const own = fb.logs.flatMap((l) => l.unread.filter((e) => e.own).map((e) => `${l.name} entry ${e.n}: ${e.heading}`));
-      return [`feedback: ${[logs, ...more].join(', ')}`, ...own, `unread: ${own.length} for this repository, ${fb.logs.reduce((n, l) => n + l.unread.filter((e) => !e.own).length, 0)} for another or none`];
+      return [`feedback: ${[...new Map([logs, ...more].map((d) => [keyOf(d, platform), d])).values()].join(', ')}`, ...own, `unread: ${own.length} for this repository, ${fb.logs.reduce((n, l) => n + l.unread.filter((e) => !e.own).length, 0)} for another or none`];
     }
     if (!fb.logs.length) return [`primer: ${logs} holds no log; nothing was written`];
     if (isDir(fb.stamp)) refuse(`${fb.stamp} is a directory, so the stamp cannot be written`);
@@ -66,7 +66,9 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   const log = (name) => {
     const far = isAbsolute(tilde(name, home)) ? resolve(tilde(name, home)) : null;
     if (!far) return /^[^/\\]+$/.test(name) && isLog(join(logs, name)) ? name : refuse(`${join(logs, name)} is not a feedback log`);
-    return isLog(far) && reviewOf(c, p, '').logs.some((d) => k(far).startsWith(`${k(d)}/`)) ? homed(c, far) : refuse(`${name} is not a feedback log`);
+    // A log of the config folder goes by its name however it is given; any other is one the review reads.
+    if (k(dirname(far)) === k(logs) && isLog(far)) return basename(far);
+    return reviewOf(c, p, '').logs.flatMap(logsIn).some((f) => k(f) === k(far)) ? homed(c, far) : refuse(`${name} is not a feedback log`);
   };
   let x, sign = '~';
   if (op === '--add' && args.length === 2) {

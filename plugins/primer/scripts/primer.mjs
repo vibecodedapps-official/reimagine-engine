@@ -187,18 +187,24 @@ export function reviewOf(c, p, root) {
   return { path, logs: (v.logs ?? []).map(at), entry: !!mine, skip: mine?.skip ?? [], transcripts: mine?.transcripts !== false };
 }
 
-// The topic files the list items of MEMORY.md link, each once, with the type and the modified time of its frontmatter; a name that leaves the
+// The topic files MEMORY.md links, each once, with the type and the modified time of its frontmatter; a name that leaves the
 // directory is none.
 export function notesOf(memory) {
   const seen = new Set(), out = [];
-  for (const l of readText(join(memory, 'MEMORY.md')).split('\n').map((x) => x.replace(/\r$/, ''))) {
-    const at = l.indexOf(']('), rest = l.slice(at + 2), name = rest.slice(0, rest.indexOf(')'));
-    if (!/^\s*[-*+] \[/.test(l) || at < 0 || !rest.includes(')') || !name || name.startsWith('/') || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
+  for (const [, name] of readText(join(memory, 'MEMORY.md')).matchAll(/\]\(([^()\r\n]+)\)/g)) {
+    if (/^[/#]/.test(name) || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
     seen.add(name);
     out.push({ name, ...frontOf(readText(join(memory, name))) });
   }
   return out;
 }
+
+// The files of a directory, a name that starts with a dot left out; with md its .md files alone, and with a depth those of its
+// subdirectories that many levels down.
+const logFiles = (d, depth, md) => { try { return readdirSync(d, { withFileTypes: true }).filter((e) => !e.name.startsWith('.')).flatMap((e) => (isFile(join(d, e.name)) ? (!md || e.name.toLowerCase().endsWith('.md') ? [join(d, e.name)] : []) : depth > 0 && e.isDirectory() ? logFiles(join(d, e.name), depth - 1, md) : [])); } catch { return []; } };
+// The feedback logs of a directory review.json names: read two levels down and for its .md files alone, so a broad directory
+// named by mistake costs a start little.
+export const logsIn = (d) => logFiles(d, 2, true);
 
 // The feedback logs as one repository reads them: the files of <config>/feedback/, each by its name, then the .md files of each
 // directory of more and of its subdirectories two levels down, each by its path, a name that starts with a dot left out. A log's
@@ -212,11 +218,9 @@ export function feedbackOf(config, repo, more = []) {
   const named = (h) => names.some((nm) => { for (let at = h.indexOf(nm); at >= 0; at = h.indexOf(nm, at + 1)) if (edge(h[at - 1]) && edge(h[at + nm.length])) return true; return false; });
   const marks = readText(stamp).split('\n').map((l) => l.replace(/\r$/, '').split('\t')).filter((f) => f.length === 3 && /^[0-9]+$/.test(f[1]));
   const read = new Map(marks.filter((f) => f[0] === key).map((f) => [f[2], Number(f[1])]));
-  // A directory of more is read two levels down and for its .md files alone, so a broad directory named by mistake costs a start little.
-  const under = (d, depth, md) => { try { return readdirSync(d, { withFileTypes: true }).filter((e) => !e.name.startsWith('.')).flatMap((e) => (isFile(join(d, e.name)) ? (!md || e.name.toLowerCase().endsWith('.md') ? [join(d, e.name)] : []) : depth > 0 && e.isDirectory() ? under(join(d, e.name), depth - 1, md) : [])); } catch { return []; } };
-  const byName = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0), own = under(dir, 0, false).map((f) => [basename(f), f]).sort(byName), held = new Set(own.map(([, f]) => real(f)));
+  const byName = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0), own = logFiles(dir, 0, false).map((f) => [basename(f), f]).sort(byName), held = new Set(own.map(([, f]) => real(f)));
   // A file reached a second time, as where a directory of more holds the config folder's own, is one log.
-  const far = more.flatMap((d) => under(d, 2, true)).filter((f) => !held.has(real(f)) && held.add(real(f))).map((f) => [slash(f), f]).sort(byName);
+  const far = more.flatMap(logsIn).filter((f) => !held.has(real(f)) && held.add(real(f))).map((f) => [slash(f), f]).sort(byName);
   const logs = [...own, ...far].map(([name, file]) => {
     const heads = readText(file).split('\n').map((l) => l.replace(/\r$/, '')).filter((l) => l.startsWith('## ') && !/^recommended([^a-z0-9_-]|$)/.test(low(l.slice(3)).replace(/^[ \t]+/, '')));
     return { name, total: heads.length, unread: heads.map((l, i) => ({ n: i + 1, heading: l.slice(3).trim(), own: named(low(l.slice(3))) })).slice(read.get(name) ?? 0) };

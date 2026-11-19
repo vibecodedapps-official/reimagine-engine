@@ -39,7 +39,7 @@ reimagine-engine/
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | twelve sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/resume.mjs`, `scripts/split.mjs` | none | own |
-| primer | project instructions, a docs fold-back review, save points for parked sessions | `/primer`, `/primer:fold`, `/primer:park` | `hooks/drift.mjs`, `hooks/notice.mjs`, `scripts/primer.mjs` | PreToolUse `Bash\|PowerShell` and `Edit\|Write\|NotebookEdit`; SessionStart; SubagentStart | own |
+| primer | project instructions, a docs fold-back review, save points for parked sessions | `/primer`, `/primer:fold`, `/primer:park` | `hooks/drift.mjs`, `hooks/notice.mjs`, `scripts/primer.mjs`, `scripts/staged.mjs`, `scripts/ledger.mjs`, `scripts/transcripts.mjs`, `scripts/park.mjs` | PreToolUse `Bash\|PowerShell` and `Edit\|Write\|NotebookEdit`; SessionStart; SubagentStart | own |
 | guard | the auto mode classifier's entries for listed repositories, and a prompt before a push or a post to one flagged `ask` | `/guard` | `scripts/guard.mjs`, `scripts/ask.mjs` | PreToolUse `Bash\|PowerShell\|mcp__.*`; PermissionDenied; SessionStart `startup` | own |
 | review | the review of someone else's pull request | `/review:run` (the skill itself), prose "reimagine review" | `scripts/posts.mjs` | none | own |
 

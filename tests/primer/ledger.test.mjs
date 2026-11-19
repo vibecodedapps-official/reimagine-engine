@@ -208,7 +208,7 @@ describe('ledger', () => {
     assert.equal(readFileSync(stamp, 'utf8'), `${key}\t0\t2026-11-01.md\n${key}\t0\t2026-11-02.md\n${key}\t0\t2026-11-03.md\n${key}\t1\t${slash(join(home, '2026-11-21.md'))}\n${key}\t1\t${deep}\n`);
     assert.deepEqual(at('--unread'), [0, `feedback: ${logs}, ${more}, ${home}\nunread: 0 for this repository, 0 for another or none\n`]);
     const memory = join(base, 'memory-kit'), note = (type) => `---\nname: x\nmetadata:\n  type: ${type}\n  modified: 2026-11-0${type.length}T00:00:00.000Z\n---\n\nText.\n`;
-    write(memory, 'MEMORY.md', '- [A](a.md) - one\n- [B](b.md) - two\n  * [C](c.md) - three\n- [Out](../out.md) - four\n- [None](none.md) - five\n');
+    write(memory, 'MEMORY.md', '- [A](a.md) - one\n- [B](b.md) - two\n  * [C](c.md) - three\n- [Out](../out.md) - four\n1. **[None](none.md)** - five\n');
     for (const [name, type] of [['a', 'feedback'], ['b', 'project'], ['c', 'user']]) write(memory, `${name}.md`, note(type));
     assert.deepEqual(at('--notes', memory), [0, `notes: ${memory}\na.md feedback 2026-11-08T00:00:00.000Z\nc.md user 2026-11-04T00:00:00.000Z\nnone.md ? ?\nread: 3 notes, 1 left out by ${review}\nleft out and not listed in MEMORY.md: 1\n`]);
     rmSync(review);
@@ -226,9 +226,15 @@ describe('ledger', () => {
     git(dir, 'init', '-q');
     write(more, '2026-11-01.md', '## twice: in the other directory\n');
     write(cfg.dir, 'reimagine-primer/review.json', JSON.stringify({ logs: [slash(logs), slash(more), slash(more)] }));
-    assert.deepEqual(at('--unread'), [0, `feedback: ${logs}, ${logs}, ${more}, ${more}\n${far} entry 1: twice: in the other directory\nunread: 1 for this repository, 0 for another or none\n`]);
+    assert.deepEqual(at('--unread'), [0, `feedback: ${logs}, ${more}\n${far} entry 1: twice: in the other directory\nunread: 1 for this repository, 0 for another or none\n`]);
     assert.deepEqual(at('--reviewed').slice(0, 1), [0]);
     assert.deepEqual(readFileSync(stamp, 'utf8').split('\n').map((l) => l.split('\t').slice(1).join(' ')), ['0 2026-11-01.md', '0 2026-11-02.md', '0 2026-11-03.md', `1 ${far}`, '']);
+    // The ledger takes by path only a log the review reads, and a log of the config folder by its name however it is given.
+    write(more, 'a/b/c/too-deep.md', '## twice: too deep\n');
+    write(more, 'notes.txt', '## twice: no log\n');
+    for (const f of [join(more, 'a', 'b', 'c', 'too-deep.md'), join(more, 'notes.txt')]) assert.deepEqual(at('--add', f, 'A gap from a file no review reads.'), [1, `primer: ${f} is not a feedback log\n`], f);
+    assert.deepEqual(at('--add', join(logs, '2026-11-01.md'), 'A gap from a log given by its path.').slice(0, 1), [0]);
+    assert.deepEqual(lines(cfg).map((x) => x.logs), [['2026-11-01.md']]);
   });
 
   test('R397: the entries that name this repository and came after its last review are listed, and --reviewed marks every log read for it', () => {

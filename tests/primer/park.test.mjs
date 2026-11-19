@@ -99,6 +99,55 @@ describe('R411: add', () => {
       'record: under ~/' + cfg.name + ', last written 2026-11-18', 'claude --resume ' + TWO + ' --model example-model-3 --effort low', '', 'A note of my own.', ''].join('\n'));
   });
 
+  test('names the directory the session started in where the run is in a directory inside it', () => {
+    const src = join(repo, 'src', 'lib'), sub = join(plain, 'sub');
+    for (const d of [src, sub]) mkdirSync(d, { recursive: true });
+    const started = (dir) => ['{"type":"queue-operation"}', JSON.stringify({ type: 'attachment', attachment: { cwd: plain } }), '{"type":"user","cwd', JSON.stringify({ type: 'user', cwd: dir }),
+      JSON.stringify({ type: 'user', cwd: src }), reply('example-model-1', 'medium')];
+    const cfg = config([[ONE, started(repo), 16], [TWO, started(plain), 16]]);
+    assert.deepEqual(park(cfg, ['add', '--what', 'a', '--when', 'b'], { cwd: src }).slice(1, 5), ['2026-11-19  app  main', 'what: a', 'back when: b', 'in: ' + repo]);
+    assert.deepEqual(park(cfg, ['add', '--what', 'a', '--when', 'b'], { id: TWO, cwd: sub }).slice(1, 5), ['2026-11-19  plain', 'what: a', 'back when: b', 'in: ' + plain]);
+  });
+
+  test('writes that directory as the path of the run spells it, whatever separators the record holds', () => {
+    const src = join(repo, 'src'), deep = join(base, 'pl', 'ain', 'sub');
+    for (const d of [src, deep]) mkdirSync(d, { recursive: true });
+    const started = (cwd) => [JSON.stringify({ type: 'user', cwd }), reply('example-model-1', 'medium')];
+    const at = (cwd, from) => park(config([[ONE, started(cwd), 16]]), ['add', '--what', 'a', '--when', 'b'], { cwd: from }).slice(1, 5);
+    assert.deepEqual(at(repo + '//', src), ['2026-11-19  app  main', 'what: a', 'back when: b', 'in: ' + repo]);
+    assert.deepEqual(at(join(base, 'pl') + '\\ain', deep), ['2026-11-19  ain', 'what: a', 'back when: b', 'in: ' + join(base, 'pl', 'ain')]);
+  });
+
+  test('keeps the directory of the run where git cannot run', () => {
+    const src = join(repo, 'src');
+    mkdirSync(src, { recursive: true });
+    const cfg = config([[ONE, [JSON.stringify({ type: 'user', cwd: repo }), reply('example-model-1', 'medium')], 16]]);
+    const bare = Object.fromEntries(Object.entries(env).filter(([k]) => k.toLowerCase() !== 'path'));
+    const out = main(['add', '--what', 'a', '--when', 'b'], { env: { ...bare, PATH: '', CLAUDE_CONFIG_DIR: cfg.dir, CLAUDE_CODE_SESSION_ID: ONE }, home, cwd: src, now: NOON(19) });
+    assert.deepEqual(out.slice(1, 5), ['2026-11-19  src', 'what: a', 'back when: b', 'in: ' + src]);
+  });
+
+  test('keeps the directory of the run where the record names a directory it is not inside, one of another work tree, or none', () => {
+    const inner = join(repo, 'inner'), deep = join(inner, 'deep');
+    mkdirSync(deep, { recursive: true });
+    assert.equal(spawnSync('git', ['-c', 'init.defaultBranch=side', 'init', '-q'], { cwd: inner, env, encoding: 'utf8' }).status, 0);
+    const started = (cwd) => [JSON.stringify({ type: 'user', cwd }), reply('example-model-1', 'medium')];
+    const at = (cwd, from) => park(config([[ONE, started(cwd), 16]]), ['add', '--what', 'a', '--when', 'b'], { cwd: from }).slice(1, 5);
+    assert.deepEqual(at(plain, repo), ['2026-11-19  app  main', 'what: a', 'back when: b', 'in: ' + repo]);
+    assert.deepEqual(at(repo + '-old', repo), ['2026-11-19  app  main', 'what: a', 'back when: b', 'in: ' + repo]);
+    assert.deepEqual(at(repo, deep), ['2026-11-19  deep  side', 'what: a', 'back when: b', 'in: ' + deep]);
+    assert.deepEqual(at(inner, deep), ['2026-11-19  inner  side', 'what: a', 'back when: b', 'in: ' + inner]);
+    assert.deepEqual(at('', plain), ['2026-11-19  plain', 'what: a', 'back when: b', 'in: ' + plain]);
+    assert.deepEqual(at('\n\nclaude --resume ' + TWO + '\n', plain), ['2026-11-19  plain', 'what: a', 'back when: b', 'in: ' + plain]);
+  });
+
+  test('takes the session\'s directory in another letter case on Windows', { skip: process.platform !== 'win32' }, () => {
+    const cfg = config([[ONE, [JSON.stringify({ type: 'user', cwd: repo.toUpperCase() }), reply('example-model-1', 'medium')], 16]]);
+    const src = join(repo, 'src');
+    mkdirSync(src, { recursive: true });
+    assert.equal(park(cfg, ['add', '--what', 'a', '--when', 'b'], { cwd: src })[4], 'in: ' + repo);
+  });
+
   test('refuses without a session id, without both texts, and a text over 120 characters', () => {
     const cfg = config();
     assert.equal(refusal(() => park(cfg, ['add', '--what', 'a', '--when', 'b'], { id: null })), 'CLAUDE_CODE_SESSION_ID holds no session id; run this from the session it is for');

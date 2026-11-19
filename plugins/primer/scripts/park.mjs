@@ -2,7 +2,8 @@
 // Primer's save points: one short entry for each parked session in sessions.txt of the machine's directory, written by this
 // script alone, with no model call. An entry holds the day, what the session is, what it waits for, its directory, where its
 // record is and the command that resumes it. The host's record format is internal and changes between versions, so the model
-// and the effort level are read from it only in a form a shell takes as one word, and the command leaves out what was not read.
+// and the effort level are read from it only in a form a shell takes as one word, the directory the session started in only
+// where it holds the directory of the run, and the command leaves out what was not read.
 // Usage: node park.mjs <verb> [args], run from the session it serves
 //   add --what <text> --when <text>  writes this session's entry, in place of an earlier one of the same session
 //   list                             prints every entry, numbered in the file's order, the newest first
@@ -10,9 +11,9 @@
 // Every verb marks each entry again with the day its record was last written, or the day a run first did not find it.
 import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Refusal, git, homed, ownOf, places, readText, tilde, writeAtomic } from './primer.mjs';
+import { Refusal, git, homed, keyOf, ownOf, places, readText, tilde, writeAtomic } from './primer.mjs';
 
 const FORMS = 'park takes add --what <text> --when <text>, list, or done [<n>]';
 // The file's first line. A session that finds the file reads it, so it says which command writes the file.
@@ -40,9 +41,9 @@ function recordOf(config, id) {
   return null;
 }
 
-// The model and the effort level of the session's last reply that gives each, a subagent's reply apart.
-function lastReply(file) {
-  const out = {}, lines = readText(file).split('\n');
+// The model and the effort level of the last reply that gives each among a record's lines, a subagent's reply apart.
+function lastReply(lines) {
+  const out = {};
   for (let i = lines.length - 1; i >= 0 && !(out.model && out.effort); i--) {
     if (!lines[i].includes('"assistant"')) continue;
     let v;
@@ -52,6 +53,25 @@ function lastReply(file) {
     if (!out.effort && EFFORTS.includes(v.effort)) out.effort = v.effort;
   }
   return out;
+}
+
+// The directory the session started in: the one the first of a record's lines that gives a working directory holds. A cd holds
+// from one shell call to the next, so a run can start in a directory inside that one. It is taken, as the run's own path spells
+// it, where both are in one work tree or in none, and else the run's own stays, as after a resume from another directory and
+// where git cannot run.
+function startOf(c, lines) {
+  const top = (d) => { const r = git(c, d, ['rev-parse', '--show-toplevel']); return r.status === 0 ? keyOf(r.stdout.trim(), c.platform) : ''; };
+  for (const l of lines) {
+    if (!l.includes('"cwd"')) continue;
+    let v;
+    try { v = JSON.parse(l); } catch { continue; }
+    if (typeof v?.cwd !== 'string') continue;
+    const want = keyOf(v.cwd, c.platform);
+    let d = dirname(c.cwd);
+    while (keyOf(d, c.platform) !== want && dirname(d) !== d) d = dirname(d);
+    try { return isAbsolute(v.cwd) && keyOf(d, c.platform) === want && top(d) === top(c.cwd) ? d : c.cwd; } catch { return c.cwd; }
+  }
+  return c.cwd;
 }
 
 // The file's bytes as text, none where there is no file. A file that cannot be read is refused, since a run writes the file
@@ -113,10 +133,10 @@ function entryOf(c, config, rest, now) {
     if ([...o[k]].length > CAP) refuse(k + ' takes at most ' + CAP + ' characters, not ' + [...o[k]].length);
   }
   if (CONTROL.test(c.cwd)) refuse('the working directory has a control character in its name');
-  const id = sessionOf(c), record = recordOf(config, id), seen = record ? lastReply(record.file) : {};
+  const id = sessionOf(c), record = recordOf(config, id), told = record ? readText(record.file).split('\n') : [], seen = lastReply(told), dir = startOf(c, told);
   const effort = EFFORTS.includes(c.env.CLAUDE_EFFORT) ? c.env.CLAUDE_EFFORT : seen.effort;
-  const branch = (() => { try { const r = git(c, c.cwd, ['branch', '--show-current']); return r.status === 0 && !CONTROL.test(r.stdout.trim()) ? r.stdout.trim() : ''; } catch { return ''; } })();
-  const lines = [[day(now), basename(c.cwd), branch].filter(Boolean).join('  '), 'what: ' + o['--what'], 'back when: ' + o['--when'], 'in: ' + c.cwd,
+  const branch = (() => { try { const r = git(c, dir, ['branch', '--show-current']); return r.status === 0 && !CONTROL.test(r.stdout.trim()) ? r.stdout.trim() : ''; } catch { return ''; } })();
+  const lines = [[day(now), basename(dir), branch].filter(Boolean).join('  '), 'what: ' + o['--what'], 'back when: ' + o['--when'], 'in: ' + dir,
     'claude --resume ' + id + (seen.model ? ' --model ' + seen.model : '') + (effort ? ' --effort ' + effort : '')];
   const left = [seen.model ? null : '--model', effort ? null : '--effort'].filter(Boolean);
   return { entry: { lines, id }, note: left.length ? 'primer: the command leaves out ' + left.join(' and ') + ', which ' + (record ? 'the record of this session did not give' : 'no record of this session gave') : null };

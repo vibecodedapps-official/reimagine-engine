@@ -54,6 +54,10 @@ test('R245: the frontmatter names the skill, leaves its start to the command, an
     'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status *)',
     'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" measure *)',
     'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" copies --spans *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs")',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs" --unread *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs" --notes *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/transcripts.mjs" *)',
   ]);
 });
 

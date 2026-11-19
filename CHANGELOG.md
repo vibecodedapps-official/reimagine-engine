@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.24 - 2026-11-19
+
+- A save point names the directory its session started in. The entry's `in:` line, and the name and the branch on its first line, came from the directory the script ran in, and a `cd` holds from one shell call of a session to the next, so a session parked after `cd sub` was listed under `sub` and its command, pasted there, resumed it in `sub`. `scripts/park.mjs` now takes the directory from the first line of the session's record that gives one, where the run's directory is inside it and both are in one work tree or in none, and keeps the run's own otherwise.
+
 ## primer 0.1.23 - 2026-11-19
 
 - `/primer:park` keeps a save point for a parked session: one short entry in `sessions.txt` of the machine's directory, with what the session is, what it waits for, its directory, and the command that resumes it by id at its model and effort level. A list of this kind kept by hand had each session copy the shape of the entries it found, so entries grew; a session asked once rewrote its entry in later turns, and one change rewrote the whole file. `scripts/park.mjs` now makes every write, only the command starts the skill, and an entry holds nothing of the session's progress. `/primer:park list` prints the entries with the age of each session's record, which Claude Code deletes once it is older than `cleanupPeriodDays`, and `/primer:park done` removes one.

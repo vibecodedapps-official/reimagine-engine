@@ -67,7 +67,7 @@ It blocks the commit, with the reason, when:
 
 When the commit touches files that a path-scoped rule, a skill's `paths` or a nested `CLAUDE.md` covers, and that file is not part of the commit, it lets the commit run and tells Claude which files to recheck.
 
-Without the marker it does nothing but the staging check of the `local` profile, below. It never writes a file. It is not a git hook: commits made outside Claude Code are not checked.
+Without the marker it does nothing but the staging check of the `local` profile, below. It never writes a file of the work tree, the index or a ref; where the staging check reads a `git commit` with `-a` or a path, git's dry run can leave a few unreferenced objects under `.git/objects`, which `git gc` removes. It is not a git hook: commits made outside Claude Code are not checked.
 
 ## Memory notice
 
@@ -102,7 +102,7 @@ The fold-back review in `maintain` reads this repository's entries, classes each
 }
 ```
 
-- `logs` names more directories of feedback logs, each absolute or `~/`. They are read two levels of subdirectory down and for their `.md` files alone, beside `feedback/` of the config folder, and a file or directory whose name starts with a dot is left out. `scripts/ledger.mjs --unread` prints such a log by its path; give the ledger verbs that path, which they take only for a log the review reads, and the ledger holds it with `~/` for your home directory.
+- `logs` names more directories of feedback logs, each absolute or `~/`. They are read two levels of subdirectory down and for their `.md` files alone, beside `feedback/` of the config folder, and a file or directory whose name starts with a dot is left out. Every `.md` file found there counts as a log, each `## ` heading in it as an entry, and a review marks it as read, so name a directory that holds logs and nothing else. `scripts/ledger.mjs --unread` prints such a log by its path; give the ledger verbs that path, which they take only for a log the review reads, and the ledger holds it with `~/` for your home directory.
 - `repositories` is keyed by the root of a repository's main work tree, and an entry holds in every work tree of it.
 - `skip` lists auto memory notes by the file name `MEMORY.md` gives them, in any letter case. The notice does not count them, and `/primer` reads only the notes that `scripts/ledger.mjs --notes <memory directory>` lists, which names none it leaves out. Claude Code still loads `MEMORY.md` into every session and can open any note it lists, so `skip` keeps a note out of primer's review and its proposals, and out of no session.
 - `"transcripts": false` keeps `scripts/transcripts.mjs` from reading the session files of that repository, and the fold-back review goes on without your past messages.

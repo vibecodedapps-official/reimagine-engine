@@ -165,12 +165,14 @@ test('R405: the script node runs and a path given to a git -c key are left out w
   none(w.shell(`node ${script} --add 2026-11-19.md "a git commit was made before the check"`));
   none(w.shell(`git -c core.hooksPath="${hooks}" -c core.longpaths=true -C "${tree}" merge --no-commit --no-ff 1234567`));
   none(w.shell(`git -c core.hooksPath="${hooks}" cat-file -e "1234567^{commit}"`, 'PowerShell'));
+  none(w.shell(`git -C "${tree}" -c core.hooksPath="${hooks}" merge --no-commit --no-ff 1234567`));
   // The text the command carries is still searched, and so is a path that names nothing or stands inside a string.
   denied(w.shell(`node "${script}" add --what "git merge by zqxlisted"`), 'zqxlisted', 'the command, which holds "git" and "merge" and so is read as a post', w);
   denied(w.shell(`node "${at('scripts')}/gone.mjs" add --what "git merge"`), 'zqxlisted', 'the command', w);
   denied(w.shell(`git commit -m "ran node ${script}"`), 'zqxlisted', 'the command', w);
   denied(w.shell('git -c user.name=zqxlisted commit -m x'), 'zqxlisted', 'the command', w);
   denied(w.shell(`git -c core.hooksPath="${hooks}" commit -m "by zqxlisted"`), 'zqxlisted', 'the command', w);
+  denied(w.shell(`git commit -m x; tool -c out=${hooks}`), 'zqxlisted', 'the command', w);
 });
 
 test('R405: a path inside a string or after a line break is searched, since it may be a message, though what it names exists', () => {

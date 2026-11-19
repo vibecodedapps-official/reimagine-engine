@@ -248,7 +248,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     }
     // The script node runs and a path given to a git -c key stay on the machine too, where they exist.
     const there = (v) => [cwd, ...dirs.map((d) => d.dir)].some((base) => { try { return !!statSync(local(v, base)); } catch { return false; } });
-    for (const m of all(command, String.raw`(?:(?<![${EDGE}])node(?:\.exe)?\s+|(?<=^|\s)-c\s+[\w.-]+=)${VALUE}`, 'dgi')) if (/[\\/]/.test(m[1]) && typed(m.indices[1]) && there(unquote(m[1]))) kept.push(m.indices[1]);
+    for (const m of all(command, String.raw`(?:(?<![${EDGE}])node(?:\.exe)?\s+|(?<=(?<![${EDGE}])git(?:\.exe)?\s+(?:-[Cc]\s+\S+\s+)*)-c\s+[\w.-]+=)${VALUE}`, 'dgi')) if (/[\\/]/.test(m[1]) && typed(m.indices[1]) && there(unquote(m[1]))) kept.push(m.indices[1]);
     // Searched again with a joined short option such as -mtext split, so the option's letter does not hide a word.
     const sent = without(command, kept);
     texts.unshift({ where: `the command, which holds ${why} and so is read as a post`, text: `${sent}\n${sent.replace(/(?<=^|\s)-([A-Za-z])(?=[^\s=-])/g, '-$1 ')}` });

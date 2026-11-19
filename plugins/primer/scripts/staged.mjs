@@ -25,8 +25,10 @@ function commands(s, ps) {
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = '';
   const end = () => {
     if (inw && !skip) words.push({ w: cur, bad, sub, git: sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\b(add|stage|commit)\b/.test(cur) });
-    // What a > sends to a file may be a patch or a ref a later call reads, so its command wrote; a stream and the null device hold nothing.
-    if (inw && skip === '>' && !/^(\d*|\/dev\/null|\$null|nul)$/i.test(cur)) words.wrote = true;
+    // What a > sends to a file may be a patch or a ref a later call reads, so its command wrote; the null device holds nothing, and
+    // after >& a descriptor number or - names a stream, not a file.
+    if (inw && skip === '>' && !/^(\/dev\/null|\$null|nul)$/i.test(cur)) words.wrote = true;
+    if (inw && skip === '>&' && !/^(\d+|-)$/.test(cur)) words.wrote = true;
     [skip, cur, inw, bad, sub] = [inw ? '' : skip, '', false, false, false];
   };
   const cut = () => { end(); if (words.length) out.push(words); else if (words.wrote && out.findLast(Array.isArray)) out.findLast(Array.isArray).wrote = true; words = []; };
@@ -60,8 +62,9 @@ function commands(s, ps) {
       if (ch === '<' && nx === '<') { cut(); [out.lost, out.hidden] = [true, out.hidden || hides(s.slice(i))]; return out; }
       if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
       end();
-      while ('>&|'.includes(s[i + 1] ?? 'x')) i++;
-      skip = ch;
+      let amp = false;
+      while ('>&|'.includes(s[i + 1] ?? 'x')) amp = s[++i] === '&' || amp;
+      skip = ch === '>' && amp ? '>&' : ch;
     } else if (' \t\r\n;&|()'.includes(ch) || (!ps && ch === '`') || ('{}'.includes(ch) && (ps || (!inw && (ch === '}' || nx === undefined || ' \t\r\n'.includes(nx)))))) {
       end();
       if (!' \t\r'.includes(ch)) { cut(); if (ch === '(' || ch === ')') out.push(ch); }
@@ -134,9 +137,9 @@ function analyze(words, st) {
   // What a merge, a cherry-pick, a rebase or an am brings is read before the command runs, so a call that runs before it in the
   // same command may change it. A change of directory, a git add, a git commit and a call that only reads change nothing that is
   // read, a checkout or a switch to a branch says which head the later call is read against, a fetch leaves it read as the
-  // remote-tracking refs stand, and the text a shell is given has its own calls judged: these leave a later one readable, unless
-  // the call sends its output to a file. A
-  // command substitution anywhere in the call, an assignment before the program included, may run any call.
+  // remote-tracking refs stand, and the text a shell is given has its own calls judged: these leave a later one readable. A call
+  // that writes a file or holds a command substitution, an assignment before the program included, leaves no later call readable,
+  // whatever the call, since the substitution may run any call.
   const plain = !words.wrote && !words.some((x) => x.sub);
   let still = CDS.has(b);
   if (SHELLS.has(b)) {
@@ -174,7 +177,7 @@ function analyze(words, st) {
   // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
   else still = plain && READS.has(words[i].w.toLowerCase());
-  if (!still || words.wrote) st.moved = true;
+  if (!still || !plain) st.moved = true;
 }
 
 // The commands that bring commits made elsewhere into the history, each with the options that take the next word as a value; any
@@ -212,6 +215,7 @@ function patched(c, dir, text, base = 'HEAD') {
 // The revisions a name holds, a range two, each cut before its first ~, ^ or :; relative where one names the head or a ref of it.
 const sides = (n) => n.split(/\.{2,3}/).map((x) => x.split(/[~^:]/)[0]);
 const relative = (n) => sides(n).some((x) => x === '' || x.includes('@') || /^(\w+_)?HEAD$/i.test(x));
+const atFetch = (n) => sides(n).some((x) => /^FETCH_HEAD$/i.test(x));
 
 // What a merge, a cherry-pick, a rebase or an am would add to the history: the files the commits it names add, a rename read as a
 // new file, and the lines they add to an ignore file; null where the command does not say which commits, git cannot read them, or
@@ -238,8 +242,11 @@ function brought(c, { sub, dir, args, moved, heads, fresh, fetched, sh, msys, ho
   if (named.some((n) => n.startsWith('-'))) return null;
   // After a switch the index and the files are the new head's, and HEAD, @{upstream} and the like name the new head's: an am, a
   // --continue and a name relative to the head are unread. A new branch has no upstream to take, and a fetch rewrote FETCH_HEAD.
+  // The start point of a switch that follows another is read as the head stands when the hook runs, so it is unread likewise.
+  const starts = heads.map((h) => h.rev);
   if ((after && (sub === 'am' || named.some(relative))) || (fresh && !named.length)) return null;
-  if (fetched && named.some((n) => sides(n).some((x) => /^FETCH_HEAD$/i.test(x)))) return null;
+  if ((heads.length > 1 || fresh) && starts.some(relative)) return null;
+  if (fetched && [...named, ...starts].some(atFetch)) return null;
   // The form of the output is pinned, whatever the user's configuration sets.
   const out = (...a) => { const r = git(c, dir, ['-c', 'core.quotepath=off', '-c', 'diff.noprefix=false', '-c', 'diff.mnemonicPrefix=false', '-c', 'diff.relative=false', ...a]); return r.status === 0 ? r.stdout : null; };
   const log = ['log', '--format=', '-m', '--no-renames', '--no-color', '--no-ext-diff', '--no-textconv'], ignored = ':(top,glob)**/.gitignore';

@@ -11,7 +11,7 @@ Keeps a repository's project instructions in the forms Claude Code loads: a shor
 
 ## Requirements
 
-Git. On Windows, Git for Windows: the hooks run under its `sh`. Node 22 or later: the loader's SessionStart and SubagentStart entries start `scripts/primer.mjs` in every session and at every subagent's start, whatever the profile, and the `local` profile's staging check of `scripts/staged.mjs`, the reach hook, the ledger of `scripts/ledger.mjs`, the copy check and the transcript reader of `scripts/transcripts.mjs` run on it. No `jq`.
+Git. On Windows, Git for Windows: the hooks run under its `sh`. Node 22 or later: the loader's SessionStart and SubagentStart entries start `scripts/primer.mjs` in every session and at every subagent's start, whatever the profile, and the `local` profile's staging check of `scripts/staged.mjs`, the reach hook, the ledger of `scripts/ledger.mjs`, the copy check, the transcript reader of `scripts/transcripts.mjs` and the save points of `scripts/park.mjs` run on it. No `jq`.
 
 ## Use
 
@@ -109,6 +109,31 @@ In a `local` repository, the drift hook hands each `git add` and `git commit` to
 A copy of context text kept in a second place is declared with `scripts/primer.mjs copies --add <copy> <source>`, which keeps a snapshot of the source and the copy's digest in the store, once for each source where the copy has more than one; `copies --ported <copy>` takes them again after a port. `status` and `copies` report each copy as `current`, `source changed` with the source's diff from the snapshot, `copy changed` or `both changed`. `copies --spans` lists the runs of at least three lines that are not blank which two layers or documents share, longest first, as candidates for one home. The script ports nothing.
 
 `scripts/transcripts.mjs [--repo <dir>] [--from <YYYY-MM-DD>] [--to <YYYY-MM-DD>]` lists your own messages from the session files under `~/.claude/projects/` for every work tree of a repository and a span of days in UTC, with no model call. Claude Code documents that format as internal, so the reader skips a line it cannot read and prints the share it skipped. It counts nothing.
+
+## Save points
+
+Run `/primer:park` with what a session waits for when you park it:
+
+```
+/primer:park the reviewer's reply
+```
+
+It adds one entry for the session to `sessions.txt` in the machine's directory, which is `~/.claude/reimagine-primer/` (under `$CLAUDE_CONFIG_DIR` when set) unless `map --set --local <path>` named another, so two config folders that name one directory keep one list:
+
+```
+2026-11-19  app  main
+what: the release notes of the next version
+back when: the reviewer's reply
+in: /work/app
+record: under ~/.claude, last written 2026-11-19
+claude --resume 11111111-2222-4333-8444-555555555555 --model <model> --effort high
+```
+
+To go back, paste the last line in a shell in the entry's directory: a session resumed by its id from another directory runs there. `/primer:park list` prints the entries, numbered, with the age of each session's record, and `/primer:park done` removes this session's entry, or the entry of the number you give. You can also delete an entry's lines in the file yourself.
+
+Only the command starts the skill, and `scripts/park.mjs` makes every write, with no model call: the session supplies the two lines of words, and the rest comes from what Claude Code gives a shell call and from the session's record. Claude Code documents that record's format as internal, so the command leaves out `--model` or `--effort` when the script cannot read one, and says so; a resumed session keeps its model without the flag. An entry holds nothing of the session's progress, so a session has no reason to write it again until you run the command again.
+
+Claude Code deletes a session's record once it is older than `cleanupPeriodDays`, 30 days unless you set it, and that entry's command then resumes nothing. Every run marks each entry with the day its record was last written, or the day a run first did not find it. The script changes no setting.
 
 ## Uninstall
 

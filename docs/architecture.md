@@ -39,7 +39,7 @@ reimagine-engine/
 | loop | the build loop | `/loop:run` (the skill itself), prose "reimagine loop" | none | none | own |
 | audit | the audit | `/audit:run`, `/audit:resume`, `/audit:act`, `/audit:handoff`, prose "reimagine audit" | twelve sh scripts | none | own |
 | gate | the review gate | `/gate` (the skill itself), prose "reimagine gate" | `scripts/findings.mjs`, `scripts/next.mjs`, `scripts/resume.mjs`, `scripts/split.mjs` | none | own |
-| primer | project instructions, a docs fold-back review | `/primer`, `/primer:fold` | `hooks/drift.sh`, `hooks/notice.sh`, `scripts/primer.mjs` | PreToolUse `Bash\|PowerShell` and `Edit\|Write\|NotebookEdit`; SessionStart; SubagentStart | own |
+| primer | project instructions, a docs fold-back review, save points for parked sessions | `/primer`, `/primer:fold`, `/primer:park` | `hooks/drift.sh`, `hooks/notice.sh`, `scripts/primer.mjs` | PreToolUse `Bash\|PowerShell` and `Edit\|Write\|NotebookEdit`; SessionStart; SubagentStart | own |
 | guard | the auto mode classifier's entries for listed repositories, and a prompt before a push or a post to one flagged `ask` | `/guard` | `scripts/guard.mjs`, `scripts/ask.mjs` | PreToolUse `Bash\|PowerShell\|mcp__.*`; PermissionDenied; SessionStart `startup` | own |
 | review | the review of someone else's pull request | `/review:run` (the skill itself), prose "reimagine review" | `scripts/posts.mjs` | none | own |
 
@@ -59,7 +59,7 @@ Only nine hooks run outside a session request: the rules staleness notice at `st
 
 ## Prompt first
 
-Prose carries the process. Scripts exist only where a model cannot be trusted to do the job byte for byte: editing the user's `CLAUDE.md` (`rules.mjs`), checking what a commit, a push or a post would send against the user's list (`outbound.mjs`), writing the `autoMode` value of the user settings file while keeping every byte outside it (`plugins/guard/scripts/guard.mjs`), deciding whether a shell or MCP call pushes or posts to a repository flagged to ask (`plugins/guard/scripts/ask.mjs`), snapshotting and checking a repository's state (`readonly.sh`), building ledgers and gates from many files (`ledger.sh`), the other audit scripts, and turning a review's output into ledger entries, the next pass level and the place a later run starts (`findings.mjs`, `next.mjs`, `resume.mjs`), each with a suite behind it. The two primer hooks are scripts because a hook has no model. No new script ships without a test under `tests/`.
+Prose carries the process. Scripts exist only where a model cannot be trusted to do the job byte for byte: editing the user's `CLAUDE.md` (`rules.mjs`), checking what a commit, a push or a post would send against the user's list (`outbound.mjs`), writing the `autoMode` value of the user settings file while keeping every byte outside it (`plugins/guard/scripts/guard.mjs`), deciding whether a shell or MCP call pushes or posts to a repository flagged to ask (`plugins/guard/scripts/ask.mjs`), snapshotting and checking a repository's state (`readonly.sh`), building ledgers and gates from many files (`ledger.sh`), the other audit scripts, and turning a review's output into ledger entries, the next pass level and the place a later run starts (`findings.mjs`, `next.mjs`, `resume.mjs`), and writing the command that resumes a parked session from what the host gives a shell call and the session's record hold (`plugins/primer/scripts/park.mjs`), each with a suite behind it. The two primer hooks are scripts because a hook has no model. No new script ships without a test under `tests/`.
 
 Skills are user-invocable and carry their trigger phrases in `description` (verified: the phrase in the description invoked the skill in 2 of 2 runs, and the bare skill name also carried; decisions.md item 14). Rarely used paths live in their own files, read on demand, and each step file ends by naming the next read.
 
@@ -467,6 +467,7 @@ plugins/primer/
   skills/primer/placement.md       the eleven placement items and the tasks test
   skills/primer/shapes.md          hub, nested file, rule and skill templates with their caps
   skills/fold/SKILL.md             /primer:fold; disable-model-invocation: true; reads the docs live, writes nothing
+  skills/park/SKILL.md             /primer:park; disable-model-invocation: true; runs park.mjs, which alone writes the save points
   hooks/hooks.json                 PreToolUse Bash|PowerShell -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh", onFailure continue
                                    SessionStart startup -> sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"
                                    SessionStart -> node primer.mjs session-start all, one entry, no matcher, timeout 10
@@ -478,6 +479,7 @@ plugins/primer/
   scripts/staged.mjs               the staging check of the `local` profile, started by drift.sh with the hook's input
   scripts/ledger.mjs               the fold-back ledger in the store: list | --add | --seen | --worked | --set; the logs: --unread | --reviewed
   scripts/transcripts.mjs          the user's own messages from the session files, for a repository and a span of days
+  scripts/park.mjs                 the save points of parked sessions in the machine's directory: add | list | done
 ```
 
 Manifest:
@@ -493,7 +495,7 @@ Manifest:
 }
 ```
 
-The skill sets `disable-model-invocation: true`, so only `/primer` starts it (decision 318). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, `staged.mjs`, which is that profile's staging check, `ledger.mjs`, which keeps the fold-back ledger, and `transcripts.mjs`, which reads the session files.
+The skill sets `disable-model-invocation: true`, so only `/primer` starts it (decision 318). There is no command file. The two hooks are POSIX sh; the Node scripts are `primer.mjs`, which serves the `local` profile, the budget and the copies, `staged.mjs`, which is that profile's staging check, `ledger.mjs`, which keeps the fold-back ledger, `transcripts.mjs`, which reads the session files, and `park.mjs`, which keeps the save points of parked sessions (requirement 411).
 
 ### Shapes and caps
 
@@ -550,6 +552,7 @@ A repository has one of two profiles, picked once by the user on primer's first 
   machine.md           the layer of this machine: people, dates, paths
   machine/<group>.md   the layer of one group on this machine
   terms.txt            the user's list of what stays out of the store, one term a line (requirement 410)
+  sessions.txt         the save points of parked sessions, written by park.mjs alone (requirement 411)
 <store>/               the directory config.json names, else <config>/reimagine-primer/store/
   map.json             {"version": 2, "repos": [{"remotes", "path", "group", "profile"}], "roots": ["<path>"]}
   shared.md            the layer of every mapped repository

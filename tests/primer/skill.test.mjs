@@ -210,9 +210,9 @@ function readFold() {
   return read(new URL('SKILL.md', FOLD_DIR));
 }
 
-test('R237: the plugin holds the fold and primer skills only', () => {
+test('R237: the plugin holds the fold, park and primer skills only', () => {
   const skills = new URL('../../plugins/primer/skills/', import.meta.url);
-  assert.deepEqual(readdirSync(skills).sort(), ['fold', 'primer']);
+  assert.deepEqual(readdirSync(skills).sort(), ['fold', 'park', 'primer']);
 });
 
 test('R326: the fold skill directory holds SKILL.md only', () => {
@@ -253,4 +253,34 @@ test('R326: the fold frontmatter names the skill, sets the flag, takes no argume
 test('R326 and R240: the fold SKILL.md is within its cap of 150 lines', () => {
   const n = lineCount(readFold());
   assert.ok(n <= 150, `fold SKILL.md has ${n} lines`);
+});
+
+const PARK_DIR = new URL('../../plugins/primer/skills/park/', import.meta.url);
+
+test('R411: the park skill directory holds SKILL.md only, within its cap of 150 lines', () => {
+  assert.deepEqual(readdirSync(PARK_DIR), ['SKILL.md']);
+  const n = lineCount(read(new URL('SKILL.md', PARK_DIR)));
+  assert.ok(n <= 150, `park SKILL.md has ${n} lines`);
+});
+
+test('R411: the park frontmatter names the skill, sets the flag and pre-approves the three runs of its script alone', () => {
+  const lines = read(new URL('SKILL.md', PARK_DIR)).split('\n');
+  assert.equal(lines[0], '---');
+  const end = lines.indexOf('---', 1);
+  assert.ok(end > 1, 'the frontmatter has a closing ---');
+  const front = lines.slice(1, end);
+  assert.ok(front.includes('name: park'));
+  assert.ok(front.includes('disable-model-invocation: true'));
+  const at = front.findIndex((l) => l.startsWith('allowed-tools:'));
+  assert.ok(at >= 0, 'an allowed-tools line exists');
+  const tools = [];
+  for (const l of front.slice(at + 1)) {
+    if (!l.startsWith('  ')) break;
+    tools.push(l.replace(/^ {2}- /, ''));
+  }
+  assert.deepEqual(tools, [
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/park.mjs" add *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/park.mjs" list *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/park.mjs" done *)',
+  ]);
 });

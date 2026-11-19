@@ -36,7 +36,7 @@ export const isDir = (p) => typeof p === 'string' && p !== '' && !!statSync(p, {
 export const tilde = (p, home) => (p === '~' ? home : /^~[\\/]/.test(p) ? join(home, p.slice(2)) : p);
 // A path as a file of the store holds it: under the home directory as ~/, so a store that is shared names no home directory, else in full.
 // A home directory that is the root of a file system holds every path, so no path is written under it.
-const homed = (c, f) => {
+export const homed = (c, f) => {
   const h = keyOf(c.home, c.platform), k = keyOf(f, c.platform);
   return !h || /^[a-z]:$/i.test(h) ? slash(f) : k === h ? '~' : k.startsWith(`${h}/`) ? `~/${slash(f).slice(h.length + 1)}` : slash(f);
 };

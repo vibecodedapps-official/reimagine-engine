@@ -206,12 +206,8 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   const why = postWord(command, list), posts = why !== null, pushes = PUSH.test(command);
   const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
-  // A path the hook resolved stays on the machine, so it is left out of the search: a scratch folder may hold a listed
-  // name. Only where no quote and no line break comes before it: after one, the path may be a message's own text,
-  // and telling which would take a parse of each shell's quoting.
-  const typed = ([i]) => !/["'\n]/.test(command.slice(0, i));
   // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape
-  // character: after a line break or inside a string, cd and -C may be a message's words.
+  // character: after a line break or inside a string, a path, cd and -C may be a message's words.
   const esc = tool === 'Bash' ? '\\' : '`';
   const bare = (i) => {
     let quote = null;
@@ -223,6 +219,9 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     }
     return quote === null;
   };
+  // A path the hook resolved stays on the machine, so it is left out of the search where it stands outside a string
+  // and on the first line: a scratch folder may hold a listed name.
+  const typed = ([i]) => bare(i);
   // A folder is looked for in the call's folder and in each folder named before it, as cd a && cd b names a/b. One
   // not found is named as typed, unless it is a loose -C or starts with -, an option or cd -, not a folder.
   const dirs = [], missing = [];
@@ -246,6 +245,9 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
       if (read && !mention && typed(span)) kept.push(span);
       if (!read && loud) notes.push(local(file));
     }
+    // The script node runs and a path given to a git -c key stay on the machine too, where they exist.
+    const there = (v) => [cwd, ...dirs.map((d) => d.dir)].some((base) => { try { return !!statSync(local(v, base)); } catch { return false; } });
+    for (const m of all(command, String.raw`(?:(?<![${EDGE}])node(?:\.exe)?\s+|(?<=^|\s)-c\s+[\w.-]+=)${VALUE}`, 'dgi')) if (/[\\/]/.test(m[1]) && typed(m.indices[1]) && there(unquote(m[1]))) kept.push(m.indices[1]);
     // Searched again with a joined short option such as -mtext split, so the option's letter does not hide a word.
     const sent = without(command, kept);
     texts.unshift({ where: `the command, which holds ${why} and so is read as a post`, text: `${sent}\n${sent.replace(/(?<=^|\s)-([A-Za-z])(?=[^\s=-])/g, '-$1 ')}` });

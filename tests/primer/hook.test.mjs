@@ -769,11 +769,15 @@ describe('primer drift hook', () => {
         assert.equal(await check(`git ${sub} ${rest}`.trim(), dir), blind(sub), `${sub} ${rest}`);
       }
       assert.equal(existsSync(join(patches, 'made.txt')), false);
-      // A call that may move a branch, the index or a patch file before one of the four leaves it unread.
+      // A call that may move a branch, the index or a patch file before one of the four leaves it unread. A fetch rewrote FETCH_HEAD.
+      await git(dir, 'fetch', '-q', '.', 'notes');
       for (const [command, sub] of [[`git reset -q && git am ${notes}`, 'am'], ['git branch -f tmp feat && git merge tmp', 'merge'], [`echo x > ${slash(join(patches, 'other.patch'))} && git am ${notes}`, 'am'], ['git merge --abort; git merge notes', 'merge'],
         ['git stash && git merge notes', 'merge'], ['git pull && git rebase notes', 'rebase'], ['git checkout no-such && git merge notes', 'merge'], ['git switch main && git merge -', 'merge'], ['git checkout -- src/a.ts && git merge notes', 'merge'],
         [`git diff main feat > ${slash(join(patches, 'made.patch'))} && git am ${notes}`, 'am'], [`git log --output=${slash(join(patches, 'made.txt'))} && git merge notes`, 'merge'], ['git fetch origin feat:tmp && git merge notes', 'merge'],
-        ['echo "$(git branch -f tmp feat)" && git merge notes', 'merge'], ['git branch tmp feat && git merge notes', 'merge'], ['npm test && git merge notes', 'merge']]) {
+        ['echo "$(git branch -f tmp feat)" && git merge notes', 'merge'], ['git branch tmp feat && git merge notes', 'merge'], ['npm test && git merge notes', 'merge'],
+        ['git switch -c topic && git merge', 'merge'], ['git switch main && git merge HEAD', 'merge'], [`git switch main && git am ${notes}`, 'am'], ['git switch main && git rebase --continue', 'rebase'],
+        ['git fetch . feat && git merge FETCH_HEAD', 'merge'], ['X="$(git branch -f tmp feat)" git status && git merge notes', 'merge'], ['X="$(git branch -f tmp feat)" && git merge notes', 'merge'],
+        ['./scripts/ls && git merge notes', 'merge'], ['git log "$OPTS" -1 && git merge notes', 'merge']]) {
         assert.equal(await check(command, dir), blind(sub), command);
       }
       // A call that only reads, a fetch, and a checkout or a switch to a branch leave it read.
@@ -789,7 +793,8 @@ describe('primer drift hook', () => {
       // After a switch the call is read against the branch switched to and against the head as it stands.
       await git(dir, 'checkout', '-q', 'later');
       assert.equal(await check('git merge feat', dir), '');
-      for (const command of ['git switch main && git merge feat', 'git checkout main; git rebase feat', 'git switch -c topic main && git merge feat']) assert.equal(await check(command, dir), reason, command);
+      for (const command of ['git switch main && git merge feat', 'git checkout main; git rebase feat', 'git switch -c topic main && git merge feat', 'git switch main && cd src && git merge feat', 'git switch main && git -C src merge feat',
+        'git switch main; git switch later; git merge feat']) assert.equal(await check(command, dir), reason, command);
       await git(dir, 'checkout', '-q', 'main');
       assert.equal(await check('git switch later && git merge feat', dir), reason);
       assert.equal(await check('git switch main && git merge lines', dir), line);

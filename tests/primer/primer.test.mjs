@@ -367,6 +367,19 @@ describe('copies', () => {
     assert.equal(run(['copies'], at).stdout.split('\n')[1], `copy C1 ${slash(copy)} of <config>/rules/style.md: source changed`);
   });
 
+  test('a record that holds a file under the config folder as ~/ still matches that file', () => {
+    const cfg = config(local(), { shared: SOURCE }), name = `config-${seq}`, at = { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir, HOME: base, USERPROFILE: base } };
+    const copy = join(cfg.dir, 'rules', 'copy.md'), source = join(cfg.dir, 'rules', 'style.md'), record = join(cfg.store, 'copies.json');
+    write(cfg.dir, 'rules/copy.md', 'Rule one.\n');
+    write(cfg.dir, 'rules/style.md', 'Rule one.\n');
+    const old = `${JSON.stringify({ version: 1, copies: [{ id: 'C1', copy: `~/${name}/rules/copy.md`, source: `~/${name}/rules/style.md`, digest: 'x' }] }, null, 2)}\n`;
+    writeFileSync(record, old);
+    assert.equal(run(['copies', '--add', copy, source], at).stdout, `primer: C1 already declares ${slash(copy)}; after a port, use --ported\n`);
+    assert.equal(readFileSync(record, 'utf8'), old);
+    assert.equal(run(['copies', '--ported', copy], at).stdout,
+      `primer: wrote ${record} and ${join(cfg.store, 'copies', 'C1')}\n~ copy C1 ~/${name}/rules/copy.md of ~/${name}/rules/style.md: current\n`);
+  });
+
   test('a snapshot that is missing is named, and no diff is shown', () => {
     const cfg = config(local(), { shared: SOURCE });
     const copy = join(base, `loose-copy-${++seq}.md`), at = { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };

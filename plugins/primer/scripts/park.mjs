@@ -143,22 +143,26 @@ function entryOf(c, config, rest, now) {
   return { entry: { lines, id }, note: left.length ? 'primer: the command leaves out ' + left.join(' and ') + ', which ' + (record ? 'the record of this session did not give' : 'no record of this session gave') : null };
 }
 
-// Runs one read and write of the file at a time: a lock file beside it, made as a new file, is waited on for 5 seconds and
-// taken over once it is a minute old, as a run that died leaves one. Without the directory there is no file, and only make has
-// it created.
+// Runs one read and write of the file at a time: a lock file beside it, made as a new file with a token of this run in it, is
+// waited on for 5 seconds and taken over once it is a minute old, as a run that died leaves one. A takeover can remove a lock
+// another run just made, so run is given a function that says whether the lock still holds this run's token. Without the
+// directory there is no file, and only make has it created.
 function locked(path, make, run) {
-  const lock = path + '.lock', until = Date.now() + 5000;
+  const lock = path + '.lock', token = process.pid + '.' + Date.now(), until = Date.now() + 5000;
+  const mine = () => { try { return readFileSync(lock, 'utf8') === token; } catch { return false; } };
+  // A lock that cannot be read for its age is held, as on Windows while another run removes it.
+  const stale = () => { try { return Date.now() - statSync(lock).mtimeMs > 60000; } catch { return false; } };
+  const drop = () => { try { rmSync(lock, { force: true }); } catch {} };
   for (let held = false; !held;) {
-    try { writeFileSync(lock, String(process.pid), { flag: 'wx' }); held = true; } catch (e) {
-      if (e.code === 'ENOENT' && !make) return run();
+    try { writeFileSync(lock, token, { flag: 'wx' }); held = true; } catch (e) {
+      if (e.code === 'ENOENT' && !make) return run(() => true);
       if (e.code === 'ENOENT') mkdirSync(dirname(path), { recursive: true });
       else if (e.code !== 'EEXIST' && e.code !== 'EPERM') refuse(lock + ' cannot be written (' + e.code + ')');
-      else if (Date.now() - (statSync(lock, { throwIfNoEntry: false })?.mtimeMs ?? Infinity) > 60000) rmSync(lock, { force: true });
       else if (Date.now() > until) refuse(path + ' is in use by another run; run the command again');
-      else Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+      else { if (stale()) drop(); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50); }
     }
   }
-  try { return run(); } finally { rmSync(lock, { force: true }); }
+  try { return run(mine); } finally { if (mine()) drop(); }
 }
 
 // Returns the output lines; a refusal throws.
@@ -166,10 +170,10 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   const [verb, ...rest] = argv, c = { env, platform, home, cwd };
   if (!['add', 'list', 'done'].includes(verb) || (verb === 'list' && rest.length) || (verb === 'done' && rest.length > 1)) refuse(FORMS);
   const p = places(c, ownOf(c)), path = join(p.local, 'sessions.txt');
-  return locked(path, verb === 'add', () => write(c, verb, rest, path, dirname(p.own), now));
+  return locked(path, verb === 'add', (still) => write(c, verb, rest, path, dirname(p.own), now, still));
 }
 
-function write(c, verb, rest, path, config, now) {
+function write(c, verb, rest, path, config, now, still) {
   const before = textOf(path), today = day(now);
   let blocks = load(before), out;
   const entries = () => blocks.filter((b) => b.id);
@@ -189,7 +193,10 @@ function write(c, verb, rest, path, config, now) {
   }
   for (const e of entries()) mark(c, e, config, today);
   const text = [HEAD, ...blocks.map((b) => b.lines.join('\n'))].join('\n\n') + '\n';
-  if ((blocks.length || before) && text !== before) writeAtomic(path, text);
+  if ((blocks.length || before) && text !== before) {
+    if (!still()) refuse(path + ' was taken over by another run; nothing was written; run the command again');
+    writeAtomic(path, text);
+  }
   return out();
 }
 

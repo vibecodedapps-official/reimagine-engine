@@ -400,7 +400,8 @@ function copiesOf(c, p) {
   const ok = v && v.version === 1 && Array.isArray(v.copies) && v.copies.every((x) => x && /^C\d+$/.test(x.id) && ['copy', 'source', 'digest'].every((f) => typeof x[f] === 'string'));
   if (!ok) refuse(`${path} is not a primer copies record`);
   const real = (h) => (h.startsWith('<config>/') ? join(dirname(p.own), h.slice(9)) : h.startsWith('~/') ? join(c.home, h.slice(2)) : isAbsolute(h) ? h : join(p.store, h));
-  return { path, v, held: (f) => held(c, p, f), real, snap: (x) => join(p.store, 'copies', x.id), all: (f) => v.copies.filter((x) => k(x.copy) === k(held(c, p, f))) };
+  const key = (h) => k(real(h));
+  return { path, v, held: (f) => held(c, p, f), real, key, snap: (x) => join(p.store, 'copies', x.id), all: (f) => v.copies.filter((x) => key(x.copy) === key(held(c, p, f))) };
 }
 
 // One copy's state, by bytes: the source against its snapshot and the copy against its digest, with the source's diff from the
@@ -427,14 +428,14 @@ function copiesVerb(c, [op, ...args]) {
   if (op === '--add' && args.length === 2) {
     const [copy, source] = args.map(file);
     if (keyOf(copy, c.platform) === keyOf(source, c.platform)) refuse('a copy and its source are two files');
-    const same = rec.all(copy).find((y) => keyOf(y.source, c.platform) === keyOf(rec.held(source), c.platform));
+    const same = rec.all(copy).find((y) => rec.key(y.source) === rec.key(rec.held(source)));
     if (same) refuse(`${same.id} already declares ${slash(copy)}; after a port, use --ported`);
     xs = [{ id: `C${rec.v.copies.reduce((n, y) => Math.max(n, Number(y.id.slice(1))), 0) + 1}`, copy: rec.held(copy), source: rec.held(source), digest: '' }];
     rec.v.copies.push(xs[0]);
     sign = '+';
   } else if (op === '--ported' && args.length === 1) {
     xs = rec.all(at(args[0]));
-    if (!xs.length) xs = rec.v.copies.filter((y) => y.copy === args[0]);
+    if (!xs.length) xs = rec.v.copies.filter((y) => rec.key(y.copy) === rec.key(args[0]));
     if (!xs.length) refuse(`${slash(at(args[0]))} is not a declared copy`);
   } else refuse(COPIES);
   const srcs = xs.map((x) => readBuf(rec.real(x.source)) ?? refuse(`${rec.real(x.source)} cannot be read`)), cp = readBuf(rec.real(xs[0].copy)) ?? refuse(`${rec.real(xs[0].copy)} cannot be read`);

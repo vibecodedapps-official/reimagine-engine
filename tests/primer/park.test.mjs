@@ -253,6 +253,22 @@ describe('R411: list and done', () => {
     utimesSync(lock, old, old);
     assert.equal(park(cfg, ['list'])[0], 'primer: 2 save points in ' + cfg.file);
     assert.equal(existsSync(lock), false);
+    writeFileSync(lock, '1.1');
+    utimesSync(lock, old, old);
+    park(cfg, ['add', '--what', 'again', '--when', 'c']);
+    assert.ok(body(cfg).includes('what: again'));
+    assert.equal(existsSync(lock), false);
+  });
+
+  test('a fresh lock that holds another run\'s token makes add refuse after the wait, with nothing written and the lock left', () => {
+    const cfg = config([[ONE, RECORD, 16]]);
+    park(cfg, ['add', '--what', 'first', '--when', 'a']);
+    const before = readFileSync(cfg.file, 'utf8'), lock = cfg.file + '.lock';
+    writeFileSync(lock, '1.1');
+    assert.equal(refusal(() => park(cfg, ['add', '--what', 'second', '--when', 'b'])), cfg.file + ' is in use by another run; run the command again');
+    assert.equal(readFileSync(cfg.file, 'utf8'), before);
+    assert.equal(readFileSync(lock, 'utf8'), '1.1');
+    rmSync(lock);
   });
 
   test('a file that cannot be read is refused and left as it is', () => {

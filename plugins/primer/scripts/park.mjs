@@ -9,7 +9,7 @@
 //   list                             prints every entry, numbered in the file's order, the newest first
 //   done [<n>]                       removes entry n of the list, or this session's entry
 // Every verb marks each entry again with the day its record was last written, or the day a run first did not find it.
-import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -85,8 +85,8 @@ const DAY = /^\d{4}-\d{2}-\d{2}(  |$)/;
 const PART = /^(what|back when|in|record): /;
 
 // The text as the blocks of lines that blank lines part, without the file's first line. An entry is its resume command and the
-// lines of an entry right above it, up to its day line, so two entries with no blank line between them are still two; any other
-// line is in a block kept as it is.
+// lines above it from its day line on, or with no day line the lines of an entry right above it, so two entries with no blank
+// line between them are still two; any other line is in a block kept as it is.
 function load(text) {
   const out = [], all = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split('\n');
   if (all[0].startsWith(HEAD.slice(0, 30))) all.shift();
@@ -95,8 +95,9 @@ function load(text) {
     for (const l of b.split('\n')) {
       const id = COMMAND.exec(l)?.[1].toLowerCase();
       if (!id) { lines.push(l); continue; }
-      let k = lines.length;
-      while (k > 0 && (PART.test(lines[k - 1]) || DAY.test(lines[k - 1]))) if (DAY.test(lines[--k])) break;
+      // An entry starts at the last day line above its command, so a line set inside it by hand stays in it.
+      let k = lines.findLastIndex((x) => DAY.test(x));
+      if (k < 0) for (k = lines.length; k > 0 && PART.test(lines[k - 1]); k--);
       if (k) out.push({ lines: lines.slice(0, k) });
       out.push({ lines: [...lines.slice(k), l], id });
       lines = [];
@@ -112,7 +113,7 @@ function mark(c, e, config, today) {
   const old = e.lines.map((l) => RECORD.exec(l)).find(Boolean), folder = old ? old[1] : homed(c, config);
   e.record = recordOf(resolve(tilde(folder, c.home)), e.id);
   const line = e.record ? 'record: under ' + folder + ', last written ' + day(e.record.at) : old?.[2] === 'not found on' ? old[0] : 'record: under ' + folder + ', not found on ' + today;
-  const rest = e.lines.filter((l) => !l.startsWith('record: '));
+  const rest = e.lines.filter((l) => !RECORD.test(l));
   e.lines = [...rest.slice(0, -1), line, rest.at(-1)];
 }
 
@@ -142,12 +143,34 @@ function entryOf(c, config, rest, now) {
   return { entry: { lines, id }, note: left.length ? 'primer: the command leaves out ' + left.join(' and ') + ', which ' + (record ? 'the record of this session did not give' : 'no record of this session gave') : null };
 }
 
+// Runs one read and write of the file at a time: a lock file beside it, made as a new file, is waited on for 5 seconds and
+// taken over once it is a minute old, as a run that died leaves one. Without the directory there is no file, and only make has
+// it created.
+function locked(path, make, run) {
+  const lock = path + '.lock', until = Date.now() + 5000;
+  for (let held = false; !held;) {
+    try { writeFileSync(lock, String(process.pid), { flag: 'wx' }); held = true; } catch (e) {
+      if (e.code === 'ENOENT' && !make) return run();
+      if (e.code === 'ENOENT') mkdirSync(dirname(path), { recursive: true });
+      else if (e.code !== 'EEXIST' && e.code !== 'EPERM') refuse(lock + ' cannot be written (' + e.code + ')');
+      else if (Date.now() - (statSync(lock, { throwIfNoEntry: false })?.mtimeMs ?? Infinity) > 60000) rmSync(lock, { force: true });
+      else if (Date.now() > until) refuse(path + ' is in use by another run; run the command again');
+      else Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+    }
+  }
+  try { return run(); } finally { rmSync(lock, { force: true }); }
+}
+
 // Returns the output lines; a refusal throws.
 export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd(), now = new Date() } = {}) {
   const [verb, ...rest] = argv, c = { env, platform, home, cwd };
   if (!['add', 'list', 'done'].includes(verb) || (verb === 'list' && rest.length) || (verb === 'done' && rest.length > 1)) refuse(FORMS);
-  const p = places(c, ownOf(c)), path = join(p.local, 'sessions.txt'), config = dirname(p.own), today = day(now);
-  const before = textOf(path);
+  const p = places(c, ownOf(c)), path = join(p.local, 'sessions.txt');
+  return locked(path, verb === 'add', () => write(c, verb, rest, path, dirname(p.own), now));
+}
+
+function write(c, verb, rest, path, config, now) {
+  const before = textOf(path), today = day(now);
   let blocks = load(before), out;
   const entries = () => blocks.filter((b) => b.id);
   if (verb === 'add') {
@@ -162,7 +185,7 @@ export function main(argv, { env = process.env, platform = process.platform, hom
     out = () => ['primer: removed the save point of ' + gone.lines[0] + ', ' + (gone.lines.find((l) => l.startsWith('what: ')) ?? gone.lines.at(-1)) + '; ' + entries().length + ' left in ' + path];
   } else {
     out = () => (entries().length ? ['primer: ' + points(entries().length) + ' in ' + path, ...entries().flatMap((e, i) => ['', '[' + (i + 1) + '] ' + e.lines[0],
-      ...e.lines.slice(1).map((l) => (e.record && l.startsWith('record: ') ? l + ', ' + ago(daysBetween(e.record.at, now)) : l))])] : ['primer: no save point in ' + path]);
+      ...e.lines.slice(1).map((l) => (e.record && RECORD.test(l) ? l + ', ' + ago(daysBetween(e.record.at, now)) : l))])] : ['primer: no save point in ' + path]);
   }
   for (const e of entries()) mark(c, e, config, today);
   const text = [HEAD, ...blocks.map((b) => b.lines.join('\n'))].join('\n\n') + '\n';

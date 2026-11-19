@@ -2,7 +2,7 @@
 // whose session records are written here with made-up content, and holds what it prints and writes to literals.
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -225,6 +225,34 @@ describe('R411: list and done', () => {
     assert.equal(body(cfg), ['', 'A note under the first line.', '', 'Mine: call them first.', '', ...entry, ''].join('\n'));
     park(cfg, ['done', '1']);
     assert.equal(body(cfg), ['', 'A note under the first line.', '', 'Mine: call them first.', ''].join('\n'));
+  });
+
+  test('a line set by hand inside an entry stays in it, a record line of another form among them', () => {
+    const cfg = config([[ONE, RECORD, 16]]);
+    park(cfg, ['add', '--what', 'first', '--when', 'a']);
+    const head = readFileSync(cfg.file, 'utf8').split('\n')[0], command = 'claude --resume ' + ONE + ' --model example-model-1 --effort high';
+    const entry = ['2026-11-19  app  main', 'what: first', 'my own note about this one', 'back when: a', 'in: ' + repo, 'record: see the ticket', 'record: under ~/' + cfg.name + ', last written 2026-11-16', command];
+    writeFileSync(cfg.file, [head, '', ...entry, ''].join('\n'));
+    assert.deepEqual(park(cfg, ['list']), ['primer: 1 save point in ' + cfg.file, '', '[1] 2026-11-19  app  main', 'what: first', 'my own note about this one', 'back when: a', 'in: ' + repo, 'record: see the ticket',
+      'record: under ~/' + cfg.name + ', last written 2026-11-16, 3 days ago', command]);
+    assert.equal(body(cfg), ['', ...entry, ''].join('\n'));
+    park(cfg, ['done', '1']);
+    assert.equal(body(cfg), '');
+  });
+
+  test('two runs at the same moment both keep their entry, and a lock a run left behind is taken over', async () => {
+    const cfg = config([[ONE, RECORD, 16], [TWO, RECORD, 18]]);
+    const add = (id) => new Promise((done) => spawn(process.execPath, [SCRIPT, 'add', '--what', 'a', '--when', 'b'], { cwd: repo, env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir, CLAUDE_CODE_SESSION_ID: id }, stdio: 'ignore' }).on('close', done));
+    for (let i = 0; i < 5; i++) {
+      rmSync(cfg.file, { force: true });
+      assert.deepEqual(await Promise.all([add(ONE), add(TWO)]), [0, 0]);
+      assert.equal(readFileSync(cfg.file, 'utf8').split('claude --resume ').length, 3);
+    }
+    const lock = cfg.file + '.lock', old = new Date(Date.now() - 120000);
+    writeFileSync(lock, '1');
+    utimesSync(lock, old, old);
+    assert.equal(park(cfg, ['list'])[0], 'primer: 2 save points in ' + cfg.file);
+    assert.equal(existsSync(lock), false);
   });
 
   test('a file that cannot be read is refused and left as it is', () => {

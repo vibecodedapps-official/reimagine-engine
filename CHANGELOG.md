@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.23 - 2026-11-19
+
+- `/primer:park` keeps a save point for a parked session: one short entry in `sessions.txt` of the machine's directory, with what the session is, what it waits for, its directory, and the command that resumes it by id at its model and effort level. A list of this kind kept by hand had each session copy the shape of the entries it found, so entries grew; a session asked once rewrote its entry in later turns, and one change rewrote the whole file. `scripts/park.mjs` now makes every write, only the command starts the skill, and an entry holds nothing of the session's progress. `/primer:park list` prints the entries with the age of each session's record, which Claude Code deletes once it is older than `cleanupPeriodDays`, and `/primer:park done` removes one.
+
 ## primer 0.1.22 - 2026-11-18
 
 - `measure --with` gives a group's proposed layer a size line when no `local` entry of the map holds that group. `/primer move` writes the group layer and makes its removal commit before the map entry, so the plan of a move had no measured size to show for the layer it proposed: the output was the cap line alone, or the unchanged sizes of other repositories. The line gives the string a repository of that group would be given, before and after, against the cap.

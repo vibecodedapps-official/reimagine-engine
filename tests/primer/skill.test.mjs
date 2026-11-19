@@ -12,8 +12,8 @@ const PLACEMENT = FILES['placement.md'];
 const LOCAL = FILES['local.md'];
 const SCRIPTS = new URL('../../plugins/primer/scripts/', import.meta.url);
 const SOURCE = Object.fromEntries(readdirSync(SCRIPTS).filter((name) => name.endsWith('.mjs')).map((name) => [name, read(new URL(name, SCRIPTS))]));
-const DRIFT = read(new URL('../../plugins/primer/hooks/drift.sh', import.meta.url));
-const NOTICE = read(new URL('../../plugins/primer/hooks/notice.sh', import.meta.url));
+const { CAPS } = await import('../../plugins/primer/hooks/drift.mjs');
+const { MARK } = await import('../../plugins/primer/scripts/primer.mjs');
 
 function lineCount(text) {
   if (text === '') return 0;
@@ -128,13 +128,13 @@ test('every script command the skill files show names a script that exists, a ve
   assert.ok(optionSpans >= 2, `only ${optionSpans} options shown alone were found`);
 });
 
-test('R256, R257 and R397: the stamps the skill writes are the ones the notice hook reads', () => {
+test('R256, R257 and R397: the stamps the skill writes are the ones the notice reads', () => {
   for (const [written, held] of [
-    ['`${CLAUDE_PLUGIN_DATA}/reviewed/<key>`', '"$CLAUDE_PLUGIN_DATA/reviewed/$key"'],
-    ['`<config>/feedback/.reviewed`', '"${projects%/*}/feedback/.reviewed"'],
+    ['`${CLAUDE_PLUGIN_DATA}/reviewed/<key>`', "join(data, 'reviewed', name)"],
+    ['`<config>/feedback/.reviewed`', "'.reviewed'"],
   ]) {
     assert.ok(SKILL.includes(written), `SKILL.md does not name ${written}`);
-    assert.ok(NOTICE.includes(held), `notice.sh does not read ${held}`);
+    assert.ok(SOURCE['primer.mjs'].includes(held), `primer.mjs does not read ${held}`);
   }
 });
 
@@ -167,26 +167,16 @@ test('R237: every skill file SKILL.md names exists', () => {
 });
 
 test('R238: the hub template of shapes.md opens with the marker the hooks test for', () => {
-  const marks = [DRIFT, NOTICE].map((text) => /\[ "\$mark" = "([^"]+)" \]/.exec(text)?.[1]);
-  assert.deepEqual(marks, ['<!-- primer -->', '<!-- primer -->']);
-  assert.ok(SHAPES.includes(`\`\`\`\n${marks[0]}\n# `), 'no fence of shapes.md opens with the marker and a heading');
+  assert.equal(MARK, '<!-- primer -->');
+  assert.ok(SHAPES.includes('```\n<!-- primer -->\n# '), 'no fence of shapes.md opens with the marker and a heading');
 });
 
 test('R240 and R262: shapes.md gives each kind of file the cap the drift hook holds for it', () => {
-  // The hook caps the hub by its own variable and every other kind inside the loop over the list it last filled with `tracked`.
-  const caps = (fn) =>
-    Object.fromEntries(
-      [...DRIFT.matchAll(new RegExp(`^\\s*${fn} "\\$(\\w+)" (\\d+)$`, 'gm'))].map((m) => {
-        const lists = [...DRIFT.slice(0, m.index).matchAll(/^\s*(\w+)=\$\(tracked /gm)];
-        return [m[1] === 'f' ? lists[lists.length - 1][1] : m[1], Number(m[2])];
-      }),
-    );
-  assert.deepEqual(caps('lines_over'), { hub: 60, nested: 60, rules: 200, skills: 150 });
-  assert.deepEqual(caps('chars_over'), { nested: 40000, rules: 40000 });
+  assert.deepEqual(CAPS, { hub: { lines: 60 }, nested: { lines: 60, chars: 40000 }, rules: { lines: 200, chars: 40000 }, skills: { lines: 150 } });
   const section = /^## Counting and caps\n([^]*?)(?=^## )/m.exec(SHAPES)?.[1] ?? '';
   const kinds = { Hub: 'hub', 'Nested `CLAUDE.md`': 'nested', Rule: 'rules', '`SKILL.md`': 'skills' };
   const shown = [...section.matchAll(/((?:`[^`\n]+`|[^.:`\n])+): (\d+) lines/g)].map((m) => [m[1].replace(/^[\s-]+/, '').trim(), Number(m[2])]);
-  assert.deepEqual(Object.fromEntries(shown.map(([label, cap]) => [kinds[label] ?? label, cap])), caps('lines_over'), 'the line caps of Counting and caps differ from the hook');
+  assert.deepEqual(Object.fromEntries(shown.map(([label, cap]) => [kinds[label] ?? label, cap])), { hub: 60, nested: 60, rules: 200, skills: 150 }, 'the line caps of Counting and caps differ from the hook');
   assert.ok(section.includes('40,000 characters'), 'Counting and caps names no cap of 40,000 characters');
 });
 
@@ -210,9 +200,9 @@ function readFold() {
   return read(new URL('SKILL.md', FOLD_DIR));
 }
 
-test('R237: the plugin holds the fold and primer skills only', () => {
+test('R237: the plugin holds the fold, park and primer skills only', () => {
   const skills = new URL('../../plugins/primer/skills/', import.meta.url);
-  assert.deepEqual(readdirSync(skills).sort(), ['fold', 'primer']);
+  assert.deepEqual(readdirSync(skills).sort(), ['fold', 'park', 'primer']);
 });
 
 test('R326: the fold skill directory holds SKILL.md only', () => {
@@ -253,4 +243,34 @@ test('R326: the fold frontmatter names the skill, sets the flag, takes no argume
 test('R326 and R240: the fold SKILL.md is within its cap of 150 lines', () => {
   const n = lineCount(readFold());
   assert.ok(n <= 150, `fold SKILL.md has ${n} lines`);
+});
+
+const PARK_DIR = new URL('../../plugins/primer/skills/park/', import.meta.url);
+
+test('R411: the park skill directory holds SKILL.md only, within its cap of 150 lines', () => {
+  assert.deepEqual(readdirSync(PARK_DIR), ['SKILL.md']);
+  const n = lineCount(read(new URL('SKILL.md', PARK_DIR)));
+  assert.ok(n <= 150, `park SKILL.md has ${n} lines`);
+});
+
+test('R411: the park frontmatter names the skill, sets the flag and pre-approves the three runs of its script alone', () => {
+  const lines = read(new URL('SKILL.md', PARK_DIR)).split('\n');
+  assert.equal(lines[0], '---');
+  const end = lines.indexOf('---', 1);
+  assert.ok(end > 1, 'the frontmatter has a closing ---');
+  const front = lines.slice(1, end);
+  assert.ok(front.includes('name: park'));
+  assert.ok(front.includes('disable-model-invocation: true'));
+  const at = front.findIndex((l) => l.startsWith('allowed-tools:'));
+  assert.ok(at >= 0, 'an allowed-tools line exists');
+  const tools = [];
+  for (const l of front.slice(at + 1)) {
+    if (!l.startsWith('  ')) break;
+    tools.push(l.replace(/^ {2}- /, ''));
+  }
+  assert.deepEqual(tools, [
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/park.mjs" add *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/park.mjs" list *)',
+    'Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/park.mjs" done *)',
+  ]);
 });

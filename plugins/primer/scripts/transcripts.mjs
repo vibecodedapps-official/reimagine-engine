@@ -5,12 +5,13 @@
 // Usage: node transcripts.mjs [--repo <dir>] [--from <YYYY-MM-DD>] [--to <YYYY-MM-DD>]
 //   --repo  a directory of the repository, else the working directory; every work tree of it counts
 //   --from, --to  the first and last day, in UTC, both included
+// Where review.json in the machine's directory sets transcripts to false for the repository, it reads no file and says so.
 import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Refusal, ownOf } from './primer.mjs';
+import { Refusal, ownOf, places, reviewOf } from './primer.mjs';
 
 const FORMS = 'transcripts takes --repo <dir>, --from <YYYY-MM-DD> and --to <YYYY-MM-DD>, each at most once';
 // Texts the host writes into a user line: the output of a local or shell command, a background task's notice, an interruption.
@@ -56,6 +57,9 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   // it is the root the first line names.
   const list = git('worktree', 'list', '--porcelain').stdout.split('\n\n').map((b) => b.trim()).filter((b) => b.startsWith('worktree ')), at = (b) => slash(b.split('\n')[0].slice(9).trim());
   const root = list.length ? at(list[0]) : slash(dirname(common.stdout.trim())), trees = list.length ? list.filter((b) => !/\nbare$/m.test(b)).map(at) : [root];
+  // The review settings name a repository as the other readers do, by the parent of its common directory.
+  const c = { env, platform, home }, keyed = slash(dirname(common.stdout.trim())), rv = reviewOf(c, places(c, ownOf(c)), keyed);
+  if (!rv.transcripts) return [`primer: the transcript reader is off for ${keyed} in ${rv.path}; the review goes on without the user's past messages`];
   // A session's directory is named for the directory it started in, every character outside A-Za-z0-9 a -; one started in a
   // subdirectory has a longer name, so a candidate directory is kept by the cwd of each line. Beside CLAUDE_CONFIG_DIR, the host
   // takes the name from CLAUDE_CODE_PROJECT_DIR_NAME instead.

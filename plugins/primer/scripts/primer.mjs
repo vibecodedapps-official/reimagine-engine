@@ -20,6 +20,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:pat
 import { pathToFileURL } from 'node:url';
 
 export const CAP = 10000;
+export const MARK = '<!-- primer -->';
 const LAYERS = ['shared', 'group', 'machine', 'machine-group'];
 const PROFILES = ['shared', 'local'];
 const GROUP = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -36,13 +37,21 @@ export const isDir = (p) => typeof p === 'string' && p !== '' && !!statSync(p, {
 export const tilde = (p, home) => (p === '~' ? home : /^~[\\/]/.test(p) ? join(home, p.slice(2)) : p);
 // A path as a file of the store holds it: under the home directory as ~/, so a store that is shared names no home directory, else in full.
 // A home directory that is the root of a file system holds every path, so no path is written under it.
-const homed = (c, f) => {
+export const homed = (c, f) => {
   const h = keyOf(c.home, c.platform), k = keyOf(f, c.platform);
   return !h || /^[a-z]:$/i.test(h) ? slash(f) : k === h ? '~' : k.startsWith(`${h}/`) ? `~/${slash(f).slice(h.length + 1)}` : slash(f);
 };
 // The same for a file that may sit inside the store, which is held relative to it.
 export const held = (c, p, f) => { const s = keyOf(p.store, c.platform); return keyOf(f, c.platform).startsWith(`${s}/`) ? slash(f).slice(s.length + 1) : homed(c, f); };
 export const readText = (path) => { try { return readFileSync(path, 'utf8'); } catch { return ''; } };
+const isFile = (f) => !!statSync(f, { throwIfNoEntry: false })?.isFile();
+// The hub of a repository that opted in, its first line the marker: CLAUDE.md, or AGENTS.md where CLAUDE.md is the one line
+// @AGENTS.md or is missing. Null for any other root.
+export function hubOf(root) {
+  const lines = (f) => { const l = readText(join(root, f)).split('\n'); if (l.at(-1) === '') l.pop(); return l.map((x) => x.replace(/\r$/, '')); };
+  const own = isFile(join(root, 'CLAUDE.md')) ? lines('CLAUDE.md') : null, hub = own && !(own.length === 1 && own[0] === '@AGENTS.md') ? 'CLAUDE.md' : 'AGENTS.md';
+  return isFile(join(root, hub)) && lines(hub)[0] === MARK ? hub : null;
+}
 const real = (p) => { try { return realpathSync.native(p); } catch { return p; } };
 
 // A remote as host/path, or null for a local path; the rule guard writes remotes by.
@@ -62,9 +71,9 @@ export function normalizeRemote(url) {
 // A git call that writes nothing: no optional lock, so no index refresh. One past the deadline throws Unknown.
 export function git(c, cwd, args, deadline) {
   const timeout = deadline ? deadline - Date.now() : 30000;
-  if (timeout <= 0) throw new Unknown();
+  if (timeout <= 0) throw new Unknown('a git call did not answer in time');
   const r = spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env: { ...c.env, GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C', LANGUAGE: 'C' }, timeout, maxBuffer: 1 << 28 });
-  if (r.error) throw r.error.code === 'ETIMEDOUT' ? new Unknown() : r.error;
+  if (r.error) throw r.error.code === 'ETIMEDOUT' ? new Unknown('a git call did not answer in time') : r.error;
   return r;
 }
 export const blob = (c, cwd, spec) => { const r = git(c, cwd, ['cat-file', 'blob', spec]); return r.status === 0 ? r.stdout : ''; };
@@ -133,6 +142,14 @@ const fileOf = (p, name, group) => (name === 'machine' ? join(p.local, 'machine.
   : name === 'shared' ? join(p.store, 'shared.md') : join(p.store, 'groups', `${group}.md`));
 // A machine layer left in primer's own directory after config.json named another for the machine.
 const left = (c, p) => (keyOf(p.local, c.platform) !== keyOf(p.own, c.platform) && existsSync(join(p.own, 'machine.md')) ? `${join(p.own, 'machine.md')} is not read while ${p.cfgPath} names ${p.local}; move its text to ${join(p.local, 'machine.md')}` : null);
+// Machine layers the default config folder reads and this one does not: here config.json names no machine's directory and
+// primer's own holds no machine layer, while the default folder's names one or holds a machine.md.
+function apart(c, p) {
+  const other = join(c.home, '.claude', 'reimagine-primer'), holds = (d) => existsSync(join(d, 'machine.md'));
+  if (p.cfg.local || keyOf(other, c.platform) === keyOf(p.own, c.platform) || holds(p.own) || existsSync(join(p.own, 'machine'))) return null;
+  const there = (() => { try { return places(c, other); } catch { return null; } })(), dir = there?.cfg.local ? there.local : other;
+  return there && (holds(dir) || existsSync(join(dir, 'machine'))) ? `${p.cfgPath} names no machine's directory, so the machine layers that ${other} reads from ${dir} are not loaded here; name it with map --set --local` : null;
+}
 function layersOf(p, entry, swap) {
   const files = Object.fromEntries(LAYERS.map((name) => [name, fileOf(p, name, entry.group)]));
   return LAYERS.map((name) => {
@@ -157,28 +174,65 @@ function frontOf(text) {
   return out;
 }
 
-// The feedback logs of <config>/feedback/ as one repository reads them. A log's entries are its level-two sections, but one headed
-// Recommended, and an entry is the repository's when its heading holds, as a word, the name of the repository's directory or of a
-// remote. .reviewed holds, a line per repository and log, how many entries the log had at that repository's last review.
-export function feedbackOf(config, repo) {
+// The machine's review settings, review.json in the machine's directory, as one repository reads them: logs, the directories whose
+// files are feedback logs beside <config>/feedback/, and under repositories, by the path of a main work tree, skip, the auto
+// memory notes no review reads and no notice counts, and transcripts, false where the transcript reader stays off. A file in
+// any other form is refused, so a list that cannot be read is never taken for an empty one.
+export function reviewOf(c, p, root) {
+  const path = join(p.local, 'review.json'), read = readJson(path, 'a primer review file'), v = read === undefined ? {} : read, at = (d) => resolve(tilde(d, c.home)), placed = (s) => isAbsolute(tilde(s, c.home));
+  const plain = (x, keys) => !!x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).every(keys), list = (x, ok) => x === undefined || (Array.isArray(x) && x.every((s) => typeof s === 'string' && ok(s)));
+  const repos = plain(v, (k) => k === 'logs' || k === 'repositories') ? ('repositories' in v ? v.repositories : {}) : null;
+  if (!plain(repos, placed) || !list(v.logs, placed) || !Object.values(repos).every((r) => plain(r, (k) => k === 'skip' || k === 'transcripts') && list(r.skip, Boolean) && ['boolean', 'undefined'].includes(typeof r.transcripts))) refuse(`${path} is not a primer review file`);
+  const mine = Object.entries(repos).find(([k]) => keyOf(at(k), c.platform) === keyOf(root, c.platform))?.[1];
+  return { path, logs: (v.logs ?? []).map(at), entry: !!mine, skip: mine?.skip ?? [], transcripts: mine?.transcripts !== false };
+}
+
+// The topic files MEMORY.md links, each once, with the type and the modified time of its frontmatter; a name that leaves the
+// directory is none, and a note of skip is named and not opened.
+export function notesOf(memory, skip = []) {
+  const seen = new Set(), out = [];
+  for (const [, name] of readText(join(memory, 'MEMORY.md')).matchAll(/\]\(([^()\r\n]+)\)/g)) {
+    if (/^[/#]/.test(name) || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
+    seen.add(name);
+    out.push(skip.includes(name) ? { name } : { name, ...frontOf(readText(join(memory, name))) });
+  }
+  return out;
+}
+
+// The files of a directory, a name that starts with a dot left out; with md its .md files alone, and with a depth those of its
+// subdirectories that many levels down.
+const logFiles = (d, depth, md) => { try { return readdirSync(d, { withFileTypes: true }).filter((e) => !e.name.startsWith('.')).flatMap((e) => (isFile(join(d, e.name)) ? (!md || e.name.toLowerCase().endsWith('.md') ? [join(d, e.name)] : []) : depth > 0 && e.isDirectory() ? logFiles(join(d, e.name), depth - 1, md) : [])); } catch { return []; } };
+// The feedback logs of a directory review.json names: read two levels down and for its .md files alone, so a broad directory
+// named by mistake costs a start little.
+export const logsIn = (d) => logFiles(d, 2, true);
+
+// The feedback logs as one repository reads them: the files of <config>/feedback/, each by its name, then the .md files of each
+// directory of more and of its subdirectories two levels down, each by its path, a name that starts with a dot left out. A log's
+// entries are its level-two sections, but one headed Recommended, and an entry is the repository's when its heading holds, as a word,
+// the name of the repository's directory or of a remote. .reviewed holds, a line per repository and log, how many entries the log had
+// at that repository's last review.
+export function feedbackOf(config, repo, more = []) {
   const dir = join(config, 'feedback'), stamp = join(dir, '.reviewed'), key = repo.root.replace(/[^A-Za-z0-9]/g, '-'), low = (s) => s.replace(/[A-Z]/g, (ch) => ch.toLowerCase());
   const last = (u) => slash(u).replace(/\/+$/, '').replace(/\.git$/, '').replace(/\/+$/, '').replace(/^.*[/:]/, '');
   const names = [...new Set([repo.root, ...repo.urls].map((u) => low(last(u))).filter(Boolean))], edge = (ch) => !ch || !/[a-z0-9_-]/.test(ch);
   const named = (h) => names.some((nm) => { for (let at = h.indexOf(nm); at >= 0; at = h.indexOf(nm, at + 1)) if (edge(h[at - 1]) && edge(h[at + nm.length])) return true; return false; });
   const marks = readText(stamp).split('\n').map((l) => l.replace(/\r$/, '').split('\t')).filter((f) => f.length === 3 && /^[0-9]+$/.test(f[1]));
   const read = new Map(marks.filter((f) => f[0] === key).map((f) => [f[2], Number(f[1])]));
-  const files = (() => { try { return readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && !e.name.startsWith('.')).map((e) => e.name).sort(); } catch { return []; } })();
-  const logs = files.map((name) => {
-    const heads = readText(join(dir, name)).split('\n').map((l) => l.replace(/\r$/, '')).filter((l) => l.startsWith('## ') && !/^recommended([^a-z0-9_-]|$)/.test(low(l.slice(3)).replace(/^[ \t]+/, '')));
+  const byName = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0), own = logFiles(dir, 0, false).map((f) => [basename(f), f]).sort(byName), held = new Set(own.map(([, f]) => real(f)));
+  // A file reached a second time, as where a directory of more holds the config folder's own, is one log.
+  const far = more.flatMap(logsIn).filter((f) => !held.has(real(f)) && held.add(real(f))).map((f) => [slash(f), f]).sort(byName);
+  const logs = [...own, ...far].map(([name, file]) => {
+    const heads = readText(file).split('\n').map((l) => l.replace(/\r$/, '')).filter((l) => l.startsWith('## ') && !/^recommended([^a-z0-9_-]|$)/.test(low(l.slice(3)).replace(/^[ \t]+/, '')));
     return { name, total: heads.length, unread: heads.map((l, i) => ({ n: i + 1, heading: l.slice(3).trim(), own: named(low(l.slice(3))) })).slice(read.get(name) ?? 0) };
   });
   return { stamp, key, reviewed: read.size > 0, others: marks.filter((f) => f[0] !== key), logs };
 }
 
-// The notice of notice.sh for a local repository, which has no hub: the auto memory notes of type feedback or project modified
-// after the stamp, and the repository's feedback entries since its last review. After a review a single entry makes no notice:
+// The notice of a repository, which hooks/notice.mjs gives where the hub has the marker and the loader in a local repository, which
+// has no hub: the auto memory notes of type feedback or project modified after the stamp, and the repository's feedback entries
+// since its last review. After a review a single entry makes no notice:
 // it is taken for the reviewing session's own, which that session logs after the stamp is written.
-function notice(c, input, data, repo) {
+export function notice(c, input, data, repo) {
   const config = configOf(c, input), win = c.platform === 'win32', cwd = slash(isDir(input.cwd) ? input.cwd : c.cwd);
   const tp = typeof input.transcript_path === 'string' ? slash(input.transcript_path) : '', sdir = tp && dirname(tp), key = repo.root.replace(/[^A-Za-z0-9]/g, '-');
   let memory;
@@ -193,16 +247,11 @@ function notice(c, input, data, repo) {
   }
   memory ??= sdir && c.env.CLAUDE_CODE_PROJECT_DIR_NAME && basename(sdir) === c.env.CLAUDE_CODE_PROJECT_DIR_NAME ? `${sdir}/memory` : join(sdir ? dirname(sdir) : join(config, 'projects'), key, 'memory');
   const file = (f) => (statSync(f, { throwIfNoEntry: false })?.isFile() ? f : null), stamp = (name) => (data ? file(join(data, 'reviewed', name)) : null);
-  const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0], seen = new Set();
-  let n = 0;
-  for (const l of readText(join(memory, 'MEMORY.md')).split('\n').map((x) => x.replace(/\r$/, ''))) {
-    const at = l.indexOf(']('), rest = l.slice(at + 2), name = rest.slice(0, rest.indexOf(')'));
-    if (!l.startsWith('- [') || at < 0 || !rest.includes(')') || !name || name.startsWith('/') || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
-    seen.add(name);
-    const fm = frontOf(readText(join(memory, name)));
-    if (['feedback', 'project'].includes(fm.type) && (noted === null || (fm.modified && fm.modified > since))) n++;
-  }
-  const fb = feedbackOf(config, repo), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
+  const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0];
+  let rv;
+  try { rv = reviewOf(c, places(c, join(config, 'reimagine-primer')), repo.root); } catch (e) { if (!(e instanceof Refusal)) throw e; return `primer: ${e.message}`; }
+  const n = notesOf(memory, rv.skip).filter((x) => !rv.skip.includes(x.name) && ['feedback', 'project'].includes(x.type) && (noted === null || (x.modified && x.modified > since))).length;
+  const fb = feedbackOf(config, repo, rv.logs), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
   const what = n && m ? `auto memory has ${n} notes and ${m} feedback entries` : n ? `auto memory has ${n} notes` : `${m} feedback entries`;
   return n || m ? `primer: ${what} since the last review; run /primer` : null;
 }
@@ -229,8 +278,9 @@ function sessionStart(c, layer, input, data) {
     context = input.source === 'resume' ? undefined : layer === 'all' ? joined(parts) : parts.find((x) => x.name === layer)?.text;
     const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
+    if (apart(c, p)) msgs.push(`primer: ${apart(c, p)}`);
     for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
-    // notice.sh runs at startup alone, and so does this.
+    // The notice hook runs at startup alone, and so does this.
     const told = (input.source ?? 'startup') === 'startup' && !quiet && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
     if (told) msgs.push(told);
   }
@@ -249,7 +299,7 @@ const filesIn = (d) => {
 
 // What the text of a store that may be shared should not hold, by line and kind, the text never quoted: this machine's home
 // directory, the first label of its host name and its user name, each as a word, and a term of terms.txt in the machine's
-// directory, one a line.
+// directory, one a line. With listed, the terms alone: the script's own records hold paths of this machine by design.
 function ofMachine(c, p) {
   const low = (s) => slash(s).toLowerCase(), h = keyOf(c.home, 'win32'), edge = (ch) => !ch || !/[a-z0-9_]/.test(ch);
   const own = [[!h || /^[a-z]:$/.test(h) ? '' : h, 'the home directory'], [low(c.host).split('.')[0], 'the host name'], [low(c.user), 'the user name']];
@@ -260,10 +310,10 @@ function ofMachine(c, p) {
     for (let at = w ? t.indexOf(w) : -1; at >= 0; at = t.indexOf(w, at + 1)) if (at >= from && edge(t[at - 1]) && edge(t[at + w.length])) { out += `${t.slice(from, at)} `; from = at + w.length; }
     return from ? out + t.slice(from) : null;
   };
-  return (text) => (text.includes('\0') ? [] : text.split('\n').flatMap((l, i) => {
+  return (text, listed) => (text.includes('\0') ? [] : text.split('\n').flatMap((l, i) => {
     // A path under the home directory holds the user name, and a host name may: each is told once, by the longer.
     let t = low(l);
-    const kinds = own.filter(([w]) => { const rest = cut(t, w); if (rest !== null) t = rest; return rest !== null; }).map(([, kind]) => kind);
+    const kinds = (listed ? [] : own).filter(([w]) => { const rest = cut(t, w); if (rest !== null) t = rest; return rest !== null; }).map(([, kind]) => kind);
     if (terms.some((w) => cut(t, w) !== null)) kinds.push('a listed term');
     return kinds.map((kind) => `${i + 1} holds ${kind}`);
   }));
@@ -288,16 +338,21 @@ function delivery(c, p) {
   if (!repo) return [...lines, `repository: none, ${slash(c.cwd)} is in no git work tree`];
   const entry = match(map, repo, c.platform), root = under(map, repo.root, c.platform);
   lines.push(`repository: ${repo.root} (${repo.remotes.join(', ') || 'no remote'})`, `entry: ${entry ? shown(entry) : 'none'}`, `profile: ${entry?.profile ?? 'none'}`);
+  // A review file that cannot be read costs its own line and not the rest of the report.
+  let rv = null;
+  try { rv = reviewOf(c, p, repo.root); } catch (e) { if (!(e instanceof Refusal)) throw e; lines.push(`check review: ${e.message}`); }
+  if (rv && existsSync(rv.path)) lines.push(`review: ${rv.path}, ${rv.logs.length} log directories, ${rv.entry ? `${rv.skip.length} notes skipped and transcripts ${rv.transcripts ? 'on' : 'off'} for this repository` : 'no entry for this repository'}`);
   if (entry?.profile === 'local') {
     const parts = layersOf(p, entry), n = joined(parts).length;
     for (const x of parts) lines.push(`layer ${x.name}: ${x.file}, ${x.text ? `${x.text.length} characters, canary ${x.canary}` : 'missing or empty'}`);
     lines.push(`check size: ${n} characters as emitted, ${n > CAP ? 'over' : 'within'} the cap of ${CAP}`);
   }
-  if (left(c, p)) lines.push(`check machine: ${left(c, p)}`);
+  for (const said of [left(c, p), apart(c, p)]) if (said) lines.push(`check machine: ${said}`);
   const loose = skillsOf(c, p).filter((x) => x.state !== 'linked');
   if (loose.length) lines.push(`check skills: no link in ${join(dirname(p.own), 'skills')} for ${loose.map((x) => x.name).join(', ')}`);
   const mine = ofMachine(c, p);
   for (const f of [join(p.store, 'shared.md'), ...mdIn(join(p.store, 'groups')), ...filesIn(join(p.store, 'docs')), ...filesIn(join(p.store, 'skills')), join(p.store, 'ledger.jsonl'), ...filesIn(join(p.store, 'copies'))]) for (const hit of mine(readText(f))) lines.push(`check tracked: ${held(c, p, f)}:${hit}`);
+  for (const f of [p.map, join(p.store, 'copies.json')]) for (const hit of mine(readText(f), true)) lines.push(`check tracked: ${held(c, p, f)}:${hit}`);
   return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 

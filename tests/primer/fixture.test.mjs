@@ -117,8 +117,8 @@ describe('primer messy fixture', () => {
       assert.ok(readme.includes('## Notes for AI agents'));
 
       const event = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git commit -m x' }, cwd: repo });
-      const hookPath = 'plugins/primer/hooks/drift.sh';
-      const hook = spawnSync('sh', [hookPath], { cwd: root, input: event, encoding: 'utf8', env: { ...process.env, CLAUDE_CONFIG_DIR: join(dir, 'no-config') } });
+      const hookPath = 'plugins/primer/hooks/drift.mjs';
+      const hook = spawnSync(process.execPath, [hookPath], { cwd: root, input: event, encoding: 'utf8', env: { ...process.env, CLAUDE_CONFIG_DIR: join(dir, 'no-config') } });
       assert.equal(hook.status, 0, `${hookPath}: ${hook.stderr}`);
       assert.equal(hook.stdout, '', hookPath);
 

@@ -7,7 +7,7 @@ import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdir
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { main } from '../../plugins/primer/scripts/primer.mjs';
+import { main, notesOf } from '../../plugins/primer/scripts/primer.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../plugins/primer/scripts/primer.mjs', import.meta.url));
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -102,6 +102,44 @@ describe('session-start', () => {
     ].join('\n\n');
     assert.equal(start(cfg, dir).stdout, context(text));
     assert.equal(start(cfg, dir, {}, 'machine-group').stdout, context(last));
+  });
+
+  test('a config folder that names no machine\'s directory says so at load and in status while the default folder reads one', () => {
+    const dir = repo('second-folder', 'https://example.invalid/team/app.git'), home = join(base, 'home-two'), first = join(home, '.claude', 'reimagine-primer'), here = join(base, 'machine-shared');
+    const cfg = config(local(), { shared: SHARED, group: GROUP }), two = { HOME: home, USERPROFILE: home };
+    write(first, 'config.json', JSON.stringify({ local: here }));
+    write(here, 'machine.md', MACHINE);
+    write(cfg.own, 'config.json', JSON.stringify({ store: cfg.store }));
+    const layers = [part('shared', join(cfg.store, 'shared.md'), SHARED.trim(), 'c09a8e67'), part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e')];
+    const said = `${join(cfg.own, 'config.json')} names no machine's directory, so the machine layers that ${first} reads from ${here} are not loaded here; name it with map --set --local`;
+    const checks = () => run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir, ...two } }).stdout.split('\n').filter((l) => l.startsWith('check machine'));
+    assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n'), `primer: ${said}`));
+    assert.deepEqual(checks(), [`check machine: ${said}`]);
+    // The default folder with a machine.md of its own and no key is read the same way.
+    rmSync(join(first, 'config.json'));
+    write(first, 'machine.md', MACHINE);
+    assert.deepEqual(checks(), [`check machine: ${said.replace(here, first)}`]);
+    // No word once the key is set, where this folder holds a layer of its own, or where the default folder holds none.
+    write(cfg.own, 'config.json', JSON.stringify({ store: cfg.store, local: here }));
+    assert.equal(start(cfg, dir, two).stdout, context([...layers, part('machine', join(here, 'machine.md'), MACHINE.trim(), '3b656d6a')].join('\n\n')));
+    assert.deepEqual(checks(), []);
+    write(cfg.own, 'config.json', JSON.stringify({ store: cfg.store }));
+    write(cfg.own, 'machine/app.md', HERE);
+    assert.deepEqual(checks(), []);
+    rmSync(join(cfg.own, 'machine'), { recursive: true });
+    rmSync(join(first, 'machine.md'));
+    assert.deepEqual(checks(), []);
+    assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n')));
+    // A directory the default folder names that holds no machine file gives no word; a machine/ of its own with no machine.md does.
+    const empty = join(base, 'machine-empty');
+    write(empty, 'notes.md', 'x\n');
+    write(first, 'config.json', JSON.stringify({ local: empty }));
+    assert.deepEqual(checks(), []);
+    assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n')));
+    rmSync(join(first, 'config.json'));
+    write(first, 'machine/app.md', HERE);
+    assert.deepEqual(checks(), [`check machine: ${said.replace(here, first)}`]);
+    assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n'), `primer: ${said.replace(here, first)}`));
   });
 
   test('an empty or missing layer contributes nothing, and the last line is the last layer\'s canary', () => {
@@ -808,6 +846,16 @@ describe('the store check', () => {
     assert.deepEqual(tracked(main(['status'], opts(cfg, dir, { home: '/', user: '', host: '' }))), []);
   });
 
+  test('status tells a listed term in the map and the copies record, and nothing else of the machine there', () => {
+    const dir = repo('tracked-map', 'https://example.invalid/acme-rail/app.git');
+    const cfg = config({});
+    write(cfg.store, 'map.json', `${JSON.stringify({ version: 2, repos: [{ remotes: ['example.invalid/acme-rail/app'], path: '/home/fixture/work/app', group: 'app', profile: 'local' }], roots: ['/srv/pat'] }, null, 2)}\n`);
+    write(cfg.store, 'copies.json', `${JSON.stringify({ version: 1, copies: [{ id: 'C1', copy: '/srv/box-7/Acme-Rail/notes.md', source: 'docs/notes.md', digest: 'x' }] }, null, 2)}\n`);
+    assert.deepEqual(tracked(main(['status'], opts(cfg, dir))), []);
+    write(cfg.own, 'terms.txt', 'acme-rail\n');
+    assert.deepEqual(tracked(main(['status'], opts(cfg, dir))), ['check tracked: map.json:6 holds a listed term', 'check tracked: copies.json:6 holds a listed term']);
+  });
+
   test('measure --with gives the same lines under the layer\'s name for a proposed layer of the store, and none for a layer of the machine', () => {
     const cfg = config(local(), { group: GROUP }), next = join(base, `proposed-${++seq}.md`);
     write(cfg.own, 'terms.txt', 'Acme Rail\n');
@@ -817,7 +865,7 @@ describe('the store check', () => {
   });
 });
 
-// Requirement 397: notice.sh, where the hub has the marker, and the loader, in a local repository, give one message on one fixture.
+// Requirement 397: the notice hook, where the hub has the marker, and the loader, in a local repository, give one message on one fixture.
 describe('the notice', () => {
   let memory, dir, cfg, key;
   const day = 86400;
@@ -839,9 +887,9 @@ describe('the notice', () => {
   };
   const both = (data, extra = {}) => {
     const input = JSON.stringify({ session_id: 'test', transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SessionStart', source: 'startup', ...extra });
-    const sh = spawnSync('sh', ['plugins/primer/hooks/notice.sh'], { cwd: ROOT, env: { ...env, CLAUDE_PLUGIN_DATA: data }, input, encoding: 'utf8' });
-    assert.equal(sh.status, 0, sh.stderr);
-    return [sh.stdout, run(['session-start', 'all', data], { input }).stdout];
+    const hook = spawnSync(process.execPath, ['plugins/primer/hooks/notice.mjs'], { cwd: ROOT, env: { ...env, CLAUDE_PLUGIN_DATA: data }, input, encoding: 'utf8' });
+    assert.equal(hook.status, 0, hook.stderr);
+    return [hook.stdout, run(['session-start', 'all', data], { input }).stdout];
   };
   const message = (text) => `{"systemMessage":"${text}"}\n`;
 
@@ -890,6 +938,39 @@ describe('the notice', () => {
     assert.deepEqual(from(c), [said(1), said(1)]);
   });
 
+  test('review.json in the machine\'s directory leaves a note out of the count and names more log directories, for both hooks', () => {
+    const data = join(base, `notice-data-${++seq}`), a = config(local()), more = join(base, `more-logs-${seq}`), file = join(a.own, 'review.json');
+    const from = () => both(data, { transcript_path: join(a.dir, 'projects', key, 'test.jsonl') });
+    const notes = (n) => message(`primer: auto memory has ${n} notes since the last review; run /primer`);
+    cpSync(join(memory, 'memory'), join(a.dir, 'projects', key, 'memory'), { recursive: true });
+    stamps(data, {});
+    assert.deepEqual(from(), [notes(2), notes(2)]);
+    write(a.own, 'review.json', JSON.stringify({ repositories: { [slash(dir)]: { skip: ['item-ids-are-numbers.md'] } } }));
+    assert.deepEqual(from(), [notes(1), notes(1)]);
+    // A directory the file names is read two levels down and for its .md files, a name that starts with a dot left out, and a log
+    // there is held in the stamp by its path.
+    write(more, '2026-11/2026-11-20.md', '## app: one\n\n## app: two\n');
+    write(more, '.kept/2026-11-21.md', '## app: out of sight\n');
+    write(more, 'notes.txt', '## app: no log\n');
+    write(more, 'a/b/c/2026-11-22.md', '## app: too deep\n');
+    write(a.own, 'review.json', JSON.stringify({ logs: [slash(more)], repositories: { [slash(dir)]: { skip: ['item-ids-are-numbers.md', 'no-direct-push.md'], transcripts: false } } }));
+    const entries = message('primer: 2 feedback entries since the last review; run /primer');
+    assert.deepEqual(from(), [entries, entries]);
+    const status = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: a.dir } }).stdout.split('\n').filter((l) => l.startsWith('review:'));
+    assert.deepEqual(status, [`review: ${file}, 1 log directories, 2 notes skipped and transcripts off for this repository`]);
+    write(a.dir, 'feedback/.reviewed', `${key}\t2\t${slash(join(more, '2026-11', '2026-11-20.md'))}\n`);
+    assert.deepEqual(from(), ['', '']);
+    // A file in another form is said and never read as an empty list.
+    for (const text of [JSON.stringify({ skip: ['no-direct-push.md'] }), JSON.stringify({ logs: ['relative'] }), JSON.stringify({ repositories: { [slash(dir)]: { skips: [] } } }), '{', 'null', JSON.stringify({ repositories: null })]) {
+      write(a.own, 'review.json', text);
+      const said = message(`primer: ${file.replaceAll('\\', '\\\\')} is not a primer review file`);
+      assert.deepEqual(from(), [said, said], text);
+      const report = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: a.dir } }).stdout.split('\n');
+      assert.ok(report.includes(`check review: ${file} is not a primer review file`), text);
+      assert.ok(report.some((l) => l.startsWith('profile: ')), text);
+    }
+  });
+
   test('the loader gives no notice on a later source or in a session no one attends', () => {
     const data = join(base, `notice-data-${++seq}`);
     stamps(data, {});
@@ -899,4 +980,14 @@ describe('the notice', () => {
     assert.notEqual(run(['session-start', 'all', data], { input: input('startup') }).stdout, '');
     assert.equal(run(['session-start', 'all', data], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }) }).stdout, '');
   });
+});
+
+test('R256: a note the review settings skip is named and never opened', () => {
+  const memory = mkdtempSync(join(tmpdir(), 'primer-notes-'));
+  try {
+    writeFileSync(join(memory, 'MEMORY.md'), '- [A](a.md) - one\n- [B](b.md) - two\n');
+    for (const [name, type] of [['a', 'feedback'], ['b', 'project']]) writeFileSync(join(memory, `${name}.md`), `---\nname: x\nmetadata:\n  type: ${type}\n---\n\nText.\n`);
+    assert.deepEqual(notesOf(memory, ['b.md'])[1], { name: 'b.md' });
+    assert.equal(notesOf(memory)[1].type, 'project');
+  } finally { rmSync(memory, { recursive: true, force: true }); }
 });

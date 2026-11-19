@@ -150,7 +150,7 @@ describe('ledger', () => {
       `~ L1 folded in ${slash(join(here, 'machine', 'app.md'))}, seen 1: One. (2026-11-01.md)`);
   });
 
-  test('a fold is recorded by its path inside the store, as ~/ under the home directory, and else in full', () => {
+  test('a fold is recorded by its path inside the store, as <config>/ under the config folder, as ~/ under the home directory, and else in full', () => {
     const cfg = config();
     write(cfg.dir, 'reimagine-primer/store/groups/app.md', 'The app group builds with npm run build.\n');
     write(base, 'home/notes/machine.md', 'This machine keeps its checkouts on one disk.\n');
@@ -160,7 +160,8 @@ describe('ledger', () => {
     assert.equal(lines(cfg)[0].place, 'groups/app.md');
     write(cfg.dir, 'reimagine-primer/machine/app.md', 'The app group keeps its database on port 5433 here.\n');
     assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(cfg.dir, 'reimagine-primer', 'machine', 'app.md'))[1].split('\n')[1],
-      `~ L1 folded in ${slash(join(cfg.dir, 'reimagine-primer', 'machine', 'app.md'))}, seen 1: One. (2026-11-01.md)`);
+      '~ L1 folded in <config>/reimagine-primer/machine/app.md, seen 1: One. (2026-11-01.md)');
+    assert.equal(lines(cfg)[0].place, '<config>/reimagine-primer/machine/app.md');
     assert.equal(out(cfg, '--set', 'L1', 'folded', '--place', join(base, 'home', 'notes', 'machine.md'))[1].split('\n')[1],
       '~ L1 folded in ~/notes/machine.md, seen 1: One. (2026-11-01.md)');
   });
@@ -196,7 +197,7 @@ describe('ledger', () => {
     git(dir, 'init', '-q');
     write(more, '2026-11/2026-11-20.md', '## kit: from another directory\n');
     write(home, '2026-11-21.md', '## kit: under the home directory\n');
-    write(cfg.dir, 'reimagine-primer/review.json', JSON.stringify({ logs: [slash(more), '~/logs'], repositories: { [slash(dir)]: { skip: ['b.md', 'gone.md'] } } }));
+    write(cfg.dir, 'reimagine-primer/review.json', JSON.stringify({ logs: [slash(more), '~/logs'], repositories: { [slash(dir)]: { skip: ['B.md', 'gone.md'] } } }));
     assert.deepEqual(at('--unread'), [0, `feedback: ${logs}, ${more}, ${home}\n${slash(join(home, '2026-11-21.md'))} entry 1: kit: under the home directory\n${deep} entry 1: kit: from another directory\nunread: 2 for this repository, 0 for another or none\n`]);
     // The ledger holds such a log as the store holds a path, and takes no file outside the directories.
     assert.deepEqual(at('--add', deep, 'A gap.'), [0, `primer: wrote ${cfg.ledger}\n+ L1 open, seen 1: A gap. (${deep})\n`]);

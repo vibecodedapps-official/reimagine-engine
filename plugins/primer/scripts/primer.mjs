@@ -41,8 +41,12 @@ export const homed = (c, f) => {
   const h = keyOf(c.home, c.platform), k = keyOf(f, c.platform);
   return !h || /^[a-z]:$/i.test(h) ? slash(f) : k === h ? '~' : k.startsWith(`${h}/`) ? `~/${slash(f).slice(h.length + 1)}` : slash(f);
 };
-// The same for a file that may sit inside the store, which is held relative to it.
-export const held = (c, p, f) => { const s = keyOf(p.store, c.platform); return keyOf(f, c.platform).startsWith(`${s}/`) ? slash(f).slice(s.length + 1) : homed(c, f); };
+// The same for a file that may sit inside the store, which is held relative to it, or under the config folder, which is held as
+// <config>/ and read under the config folder of each run, so the folder's own name stays out of a store.
+export const held = (c, p, f) => {
+  const k = keyOf(f, c.platform), s = keyOf(p.store, c.platform), g = keyOf(dirname(p.own), c.platform);
+  return k.startsWith(`${s}/`) ? slash(f).slice(s.length + 1) : k.startsWith(`${g}/`) ? `<config>/${slash(f).slice(g.length + 1)}` : homed(c, f);
+};
 export const readText = (path) => { try { return readFileSync(path, 'utf8'); } catch { return ''; } };
 const isFile = (f) => !!statSync(f, { throwIfNoEntry: false })?.isFile();
 // The hub of a repository that opted in, its first line the marker: CLAUDE.md, or AGENTS.md where CLAUDE.md is the one line
@@ -184,17 +188,18 @@ export function reviewOf(c, p, root) {
   const repos = plain(v, (k) => k === 'logs' || k === 'repositories') ? ('repositories' in v ? v.repositories : {}) : null;
   if (!plain(repos, placed) || !list(v.logs, placed) || !Object.values(repos).every((r) => plain(r, (k) => k === 'skip' || k === 'transcripts') && list(r.skip, Boolean) && ['boolean', 'undefined'].includes(typeof r.transcripts))) refuse(`${path} is not a primer review file`);
   const mine = Object.entries(repos).find(([k]) => keyOf(at(k), c.platform) === keyOf(root, c.platform))?.[1];
-  return { path, logs: (v.logs ?? []).map(at), entry: !!mine, skip: mine?.skip ?? [], transcripts: mine?.transcripts !== false };
+  return { path, logs: (v.logs ?? []).map(at), entry: !!mine, skip: (mine?.skip ?? []).map((s) => s.toLowerCase()), transcripts: mine?.transcripts !== false };
 }
 
 // The topic files MEMORY.md links, each once, with the type and the modified time of its frontmatter; a name that leaves the
-// directory is none, and a note of skip is named and not opened.
+// directory is none, and a note of skip, which reviewOf gives in lower case so a name counts in any letter case, is named and
+// not opened.
 export function notesOf(memory, skip = []) {
   const seen = new Set(), out = [];
   for (const [, name] of readText(join(memory, 'MEMORY.md')).matchAll(/\]\(([^()\r\n]+)\)/g)) {
     if (/^[/#]/.test(name) || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
     seen.add(name);
-    out.push(skip.includes(name) ? { name } : { name, ...frontOf(readText(join(memory, name))) });
+    out.push(skip.includes(name.toLowerCase()) ? { name } : { name, ...frontOf(readText(join(memory, name))) });
   }
   return out;
 }
@@ -250,7 +255,7 @@ export function notice(c, input, data, repo) {
   const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0];
   let rv;
   try { rv = reviewOf(c, places(c, join(config, 'reimagine-primer')), repo.root); } catch (e) { if (!(e instanceof Refusal)) throw e; return `primer: ${e.message}`; }
-  const n = notesOf(memory, rv.skip).filter((x) => !rv.skip.includes(x.name) && ['feedback', 'project'].includes(x.type) && (noted === null || (x.modified && x.modified > since))).length;
+  const n = notesOf(memory, rv.skip).filter((x) => !rv.skip.includes(x.name.toLowerCase()) && ['feedback', 'project'].includes(x.type) && (noted === null || (x.modified && x.modified > since))).length;
   const fb = feedbackOf(config, repo, rv.logs), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
   const what = n && m ? `auto memory has ${n} notes and ${m} feedback entries` : n ? `auto memory has ${n} notes` : `${m} feedback entries`;
   return n || m ? `primer: ${what} since the last review; run /primer` : null;
@@ -388,13 +393,15 @@ const SPAN = 3;
 const readBuf = (path) => { try { return readFileSync(path); } catch { return null; } };
 
 // The declared copies, <store>/copies.json, with each source's snapshot at <store>/copies/<id>. A path inside the store is held
-// relative to it and one under the home directory as ~/, so a store shared between machines holds few paths of one machine.
+// relative to it, one under the config folder as <config>/ and one under the home directory as ~/, so a store shared between
+// machines holds few paths of one machine.
 function copiesOf(c, p) {
   const path = join(p.store, 'copies.json'), v = readJson(path, 'a primer copies record') ?? { version: 1, copies: [] }, k = (f) => keyOf(f, c.platform);
   const ok = v && v.version === 1 && Array.isArray(v.copies) && v.copies.every((x) => x && /^C\d+$/.test(x.id) && ['copy', 'source', 'digest'].every((f) => typeof x[f] === 'string'));
   if (!ok) refuse(`${path} is not a primer copies record`);
-  const real = (h) => (h.startsWith('~/') ? join(c.home, h.slice(2)) : isAbsolute(h) ? h : join(p.store, h));
-  return { path, v, held: (f) => held(c, p, f), real, snap: (x) => join(p.store, 'copies', x.id), all: (f) => v.copies.filter((x) => k(x.copy) === k(held(c, p, f))) };
+  const real = (h) => (h.startsWith('<config>/') ? join(dirname(p.own), h.slice(9)) : h.startsWith('~/') ? join(c.home, h.slice(2)) : isAbsolute(h) ? h : join(p.store, h));
+  const key = (h) => k(real(h));
+  return { path, v, held: (f) => held(c, p, f), real, key, snap: (x) => join(p.store, 'copies', x.id), all: (f) => v.copies.filter((x) => key(x.copy) === key(held(c, p, f))) };
 }
 
 // One copy's state, by bytes: the source against its snapshot and the copy against its digest, with the source's diff from the
@@ -421,14 +428,14 @@ function copiesVerb(c, [op, ...args]) {
   if (op === '--add' && args.length === 2) {
     const [copy, source] = args.map(file);
     if (keyOf(copy, c.platform) === keyOf(source, c.platform)) refuse('a copy and its source are two files');
-    const same = rec.all(copy).find((y) => keyOf(y.source, c.platform) === keyOf(rec.held(source), c.platform));
+    const same = rec.all(copy).find((y) => rec.key(y.source) === rec.key(rec.held(source)));
     if (same) refuse(`${same.id} already declares ${slash(copy)}; after a port, use --ported`);
     xs = [{ id: `C${rec.v.copies.reduce((n, y) => Math.max(n, Number(y.id.slice(1))), 0) + 1}`, copy: rec.held(copy), source: rec.held(source), digest: '' }];
     rec.v.copies.push(xs[0]);
     sign = '+';
   } else if (op === '--ported' && args.length === 1) {
     xs = rec.all(at(args[0]));
-    if (!xs.length) xs = rec.v.copies.filter((y) => y.copy === args[0]);
+    if (!xs.length) xs = rec.v.copies.filter((y) => rec.key(y.copy) === rec.key(args[0]));
     if (!xs.length) refuse(`${slash(at(args[0]))} is not a declared copy`);
   } else refuse(COPIES);
   const srcs = xs.map((x) => readBuf(rec.real(x.source)) ?? refuse(`${rec.real(x.source)} cannot be read`)), cp = readBuf(rec.real(xs[0].copy)) ?? refuse(`${rec.real(xs[0].copy)} cannot be read`);

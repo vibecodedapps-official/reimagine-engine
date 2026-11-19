@@ -155,7 +155,27 @@ test('R405: a path the hook resolved is left out of the search, so a folder that
   denied(w.shell('git commit -F zqxlisted/none.txt'), 'zqxlisted', 'the command', w);
 });
 
-test('R405: a path after a quote or a line break is searched, since it may be a message, though what it names exists', () => {
+test('R405: the script node runs and a path given to a git -c key are left out where they exist', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const at = (...parts) => { mkdirSync(join(w.home, '.zqxlisted', ...parts), { recursive: true }); return join(w.home, '.zqxlisted', ...parts).replaceAll('\\', '/'); };
+  const script = `${at('scripts')}/park.mjs`, hooks = at('record', 'hooks'), tree = at('record', 'worktree');
+  writeFileSync(script, '');
+  none(w.shell(`node "${script}" add --what "git merge of the release branch" --when "after the tag"`));
+  none(w.shell(`node ${script} --add 2026-11-19.md "a git commit was made before the check"`));
+  none(w.shell(`git -c core.hooksPath="${hooks}" -c core.longpaths=true -C "${tree}" merge --no-commit --no-ff 1234567`));
+  none(w.shell(`git -c core.hooksPath="${hooks}" cat-file -e "1234567^{commit}"`, 'PowerShell'));
+  none(w.shell(`git -C "${tree}" -c core.hooksPath="${hooks}" merge --no-commit --no-ff 1234567`));
+  // The text the command carries is still searched, and so is a path that names nothing or stands inside a string.
+  denied(w.shell(`node "${script}" add --what "git merge by zqxlisted"`), 'zqxlisted', 'the command, which holds "git" and "merge" and so is read as a post', w);
+  denied(w.shell(`node "${at('scripts')}/gone.mjs" add --what "git merge"`), 'zqxlisted', 'the command', w);
+  denied(w.shell(`git commit -m "ran node ${script}"`), 'zqxlisted', 'the command', w);
+  denied(w.shell('git -c user.name=zqxlisted commit -m x'), 'zqxlisted', 'the command', w);
+  denied(w.shell(`git -c core.hooksPath="${hooks}" commit -m "by zqxlisted"`), 'zqxlisted', 'the command', w);
+  denied(w.shell(`git commit -m x; tool -c out=${hooks}`), 'zqxlisted', 'the command', w);
+});
+
+test('R405: a path inside a string or after a line break is searched, since it may be a message, though what it names exists', () => {
   const w = world();
   w.list('zqxlisted');
   mkdirSync(join(w.work, 'zqxlisted'));
@@ -172,12 +192,18 @@ test('R405: a path after a quote or a line break is searched, since it may be a 
   denied(w.shell(HEREDOC('docs: pass --body-file zqxlisted/msg.txt')), 'zqxlisted', 'the command', w);
   denied(w.shell(`git commit -m "it's ok" -m 'see --file zqxlisted/msg.txt'`), 'zqxlisted', 'the command', w);
   denied(w.shell(`git commit -m 'C:\\' -m 'see --file zqxlisted/msg.txt'`), 'zqxlisted', 'the command', w);
+  denied(w.shell("git commit -m $'it\\'s in cd zqxlisted for now'"), 'zqxlisted', 'the command', w);
+  denied(w.shell('git commit -m \u201Cmoved, cd zqxlisted now\u201D', 'PowerShell'), 'zqxlisted', 'the command', w);
   denied(w.shell('git commit -m "C:\\" -m "see --file zqxlisted/msg.txt"', 'PowerShell'), 'zqxlisted', 'the command', w);
   // A raw field sends the text @<path> itself.
   denied(w.shell('gh api repos/o/r/issues -f title=@zqxlisted/msg.txt'), 'zqxlisted', 'the command', w);
-  // A real path after a quoted argument is searched too: a needless stop, and no leak.
-  denied(w.shell('gh pr create --title "a title" --body-file zqxlisted/msg.txt'), 'zqxlisted', 'the command', w);
-  denied(w.shell('git commit \\\n -F zqxlisted/msg.txt'), 'zqxlisted', 'the command', w);
+  // A real path after a quoted argument stands outside the string and is left out.
+  none(w.shell('gh pr create --title "a title" --body-file zqxlisted/msg.txt'));
+  // A path inside a command substitution may be a message's words too.
+  denied(w.shell('gh issue create --body "x" --title $(cd zqxlisted && pwd)'), 'zqxlisted', 'the command', w);
+  // A line continued with the tool's escape character is one line, and a path on a later line is searched.
+  none(w.shell('git commit \\\n -F zqxlisted/msg.txt'));
+  denied(w.shell('git commit -m x\ncat zqxlisted/msg.txt'), 'zqxlisted', 'the command', w);
 });
 
 test('R405: a short option joined to its text does not hide a word', () => {

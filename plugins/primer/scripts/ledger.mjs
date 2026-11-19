@@ -56,7 +56,7 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   }
   if (op === '--notes' && args.length === 1) {
     const repo = repoOf(c, cwd) ?? refuse(`${cwd} is in no git work tree`), rv = reviewOf(c, p, repo.root), dir = resolve(cwd, tilde(args[0], home));
-    const all = isDir(dir) ? notesOf(dir, rv.skip) : refuse(`${dir} is no directory`), read = all.filter((x) => !rv.skip.includes(x.name)), gone = rv.skip.filter((s) => !all.some((x) => x.name === s));
+    const all = isDir(dir) ? notesOf(dir, rv.skip) : refuse(`${dir} is no directory`), read = all.filter((x) => !rv.skip.includes(x.name.toLowerCase())), gone = rv.skip.filter((s) => !all.some((x) => x.name.toLowerCase() === s));
     return [`notes: ${dir}`, ...read.map((x) => `${x.name} ${x.type ?? '?'} ${x.modified ?? '?'}`), `read: ${read.length} notes, ${all.length - read.length} left out${all.length > read.length ? ` by ${rv.path}` : ''}`,
       ...(gone.length ? [`left out and not listed in MEMORY.md: ${gone.length}`] : [])];
   }

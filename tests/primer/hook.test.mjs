@@ -715,6 +715,46 @@ describe('primer drift hook', () => {
       write(dir, '.gitignore', 'node_modules/\nCLAUDE.md\n\n');
       assert.equal(await check('git add .gitignore && git commit -m x', dir), deny(lead(dir) + 'the call would add the line CLAUDE.md in .gitignore, which names an agent file'));
     });
+    test('a merge, a cherry-pick, a rebase and an am are checked by the files their commits add', async () => {
+      const dir = await clone(), patches = join(base, `patches-${seqs}`);
+      await git(dir, 'checkout', '-q', '-b', 'feat');
+      await git(dir, 'add', '-f', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'hub');
+      const tip = (await git(dir, 'rev-parse', 'feat')).trim();
+      await git(dir, 'format-patch', '-q', '-1', 'feat', '-o', patches);
+      await git(dir, 'checkout', '-q', '-b', 'notes', 'main');
+      write(dir, 'docs/notes.md', '# Notes\n');
+      write(dir, 'AGENTS.md', '# Agents\n\nMore.\n');
+      await git(dir, 'add', 'docs/notes.md', 'AGENTS.md');
+      await git(dir, 'commit', '-q', '-m', 'notes');
+      await git(dir, 'format-patch', '-q', '-1', 'notes', '-o', patches);
+      await git(dir, 'checkout', '-q', '-b', 'later', 'feat');
+      write(dir, 'src/later.ts', 'export const later = 1;\n');
+      await git(dir, 'add', 'src/later.ts');
+      await git(dir, 'commit', '-q', '-m', 'later');
+      await git(dir, 'checkout', '-q', '-b', 'lines', 'main');
+      write(dir, '.gitignore', 'CLAUDE.md\n');
+      await git(dir, 'add', '.gitignore');
+      await git(dir, 'commit', '-q', '-m', 'lines');
+      await git(dir, 'format-patch', '-q', '-1', 'lines', '-o', patches);
+      await git(dir, 'checkout', '-q', 'main');
+      write(patches, 'plain.patch', 'A text with no file header.\n');
+      const reason = deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
+      const hub = slash(join(patches, '0001-hub.patch')), notes = slash(join(patches, '0001-notes.patch'));
+      for (const command of ['git merge feat', 'git merge --no-ff -m "take it" notes feat', `git cherry-pick ${tip}`, 'git cherry-pick -x main..feat', 'git cherry-pick main..later', 'git rebase feat', 'git rebase --onto feat main',
+        `git am ${hub}`, `git am -3 ${notes} ${hub}`, 'git stage src/a.ts && git merge feat']) {
+        assert.equal(await check(command, dir), reason, command);
+      }
+      const line = deny(lead(dir) + 'the call would add the line CLAUDE.md in .gitignore, which names an agent file');
+      for (const command of ['git merge lines', 'git cherry-pick lines', 'git rebase lines', `git am ${slash(join(patches, '0001-lines.patch'))}`]) assert.equal(await check(command, dir), line, command);
+      for (const command of ['git merge notes', 'git merge', 'git cherry-pick notes', 'git rebase notes', `git am ${notes}`, 'git merge --abort', 'git rebase --continue', 'git cherry-pick --skip', 'git am --quit', 'git merge-base main feat']) {
+        assert.equal(await check(command, dir), '', command);
+      }
+      const blind = (sub) => deny(lead(dir) + `what git ${sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read`);
+      for (const [sub, rest] of [['merge', '"$BRANCH"'], ['merge', 'no-such-branch'], ['cherry-pick', ''], ['rebase', '-x "npm test" notes'], ['am', ''], ['am', '--directory=sub ' + hub], ['am', slash(join(patches, 'none.patch'))], ['am', slash(join(patches, 'plain.patch'))], ['am', '--patch-format=mbox ' + hub]]) {
+        assert.equal(await check(`git ${sub} ${rest}`.trim(), dir), blind(sub), `${sub} ${rest}`);
+      }
+    });
     test('staging CLAUDE.md by name is denied', async () => {
       const dir = await clone();
       assert.equal(await check('git add CLAUDE.md', dir), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));

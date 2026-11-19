@@ -130,6 +130,16 @@ describe('session-start', () => {
     rmSync(join(first, 'machine.md'));
     assert.deepEqual(checks(), []);
     assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n')));
+    // A directory the default folder names that holds no machine file gives no word; a machine/ of its own with no machine.md does.
+    const empty = join(base, 'machine-empty');
+    write(empty, 'notes.md', 'x\n');
+    write(first, 'config.json', JSON.stringify({ local: empty }));
+    assert.deepEqual(checks(), []);
+    assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n')));
+    rmSync(join(first, 'config.json'));
+    write(first, 'machine/app.md', HERE);
+    assert.deepEqual(checks(), [`check machine: ${said.replace(here, first)}`]);
+    assert.equal(start(cfg, dir, two).stdout, context(layers.join('\n\n'), `primer: ${said.replace(here, first)}`));
   });
 
   test('an empty or missing layer contributes nothing, and the last line is the last layer\'s canary', () => {
@@ -937,10 +947,12 @@ describe('the notice', () => {
     assert.deepEqual(from(), [notes(2), notes(2)]);
     write(a.own, 'review.json', JSON.stringify({ repositories: { [slash(dir)]: { skip: ['item-ids-are-numbers.md'] } } }));
     assert.deepEqual(from(), [notes(1), notes(1)]);
-    // A directory the file names is read with its subdirectories, a name that starts with a dot left out, and a log there is
-    // held in the stamp by its path.
+    // A directory the file names is read two levels down and for its .md files, a name that starts with a dot left out, and a log
+    // there is held in the stamp by its path.
     write(more, '2026-11/2026-11-20.md', '## app: one\n\n## app: two\n');
     write(more, '.kept/2026-11-21.md', '## app: out of sight\n');
+    write(more, 'notes.txt', '## app: no log\n');
+    write(more, 'a/b/c/2026-11-22.md', '## app: too deep\n');
     write(a.own, 'review.json', JSON.stringify({ logs: [slash(more)], repositories: { [slash(dir)]: { skip: ['item-ids-are-numbers.md', 'no-direct-push.md'], transcripts: false } } }));
     const entries = message('primer: 2 feedback entries since the last review; run /primer');
     assert.deepEqual(from(), [entries, entries]);
@@ -949,10 +961,13 @@ describe('the notice', () => {
     write(a.dir, 'feedback/.reviewed', `${key}\t2\t${slash(join(more, '2026-11', '2026-11-20.md'))}\n`);
     assert.deepEqual(from(), ['', '']);
     // A file in another form is said and never read as an empty list.
-    for (const text of [JSON.stringify({ skip: ['no-direct-push.md'] }), JSON.stringify({ logs: ['relative'] }), JSON.stringify({ repositories: { [slash(dir)]: { skips: [] } } }), '{']) {
+    for (const text of [JSON.stringify({ skip: ['no-direct-push.md'] }), JSON.stringify({ logs: ['relative'] }), JSON.stringify({ repositories: { [slash(dir)]: { skips: [] } } }), '{', 'null', JSON.stringify({ repositories: null })]) {
       write(a.own, 'review.json', text);
-      const said = `${JSON.stringify({ systemMessage: `primer: ${file} is not a primer review file` })}\n`;
+      const said = message(`primer: ${file.replaceAll('\\', '\\\\')} is not a primer review file`);
       assert.deepEqual(from(), [said, said], text);
+      const report = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: a.dir } }).stdout.split('\n');
+      assert.ok(report.includes(`check review: ${file} is not a primer review file`), text);
+      assert.ok(report.some((l) => l.startsWith('profile: ')), text);
     }
   });
 

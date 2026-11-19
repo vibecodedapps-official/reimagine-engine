@@ -208,14 +208,27 @@ describe('ledger', () => {
     assert.equal(readFileSync(stamp, 'utf8'), `${key}\t0\t2026-11-01.md\n${key}\t0\t2026-11-02.md\n${key}\t0\t2026-11-03.md\n${key}\t1\t${slash(join(home, '2026-11-21.md'))}\n${key}\t1\t${deep}\n`);
     assert.deepEqual(at('--unread'), [0, `feedback: ${logs}, ${more}, ${home}\nunread: 0 for this repository, 0 for another or none\n`]);
     const memory = join(base, 'memory-kit'), note = (type) => `---\nname: x\nmetadata:\n  type: ${type}\n  modified: 2026-11-0${type.length}T00:00:00.000Z\n---\n\nText.\n`;
-    write(memory, 'MEMORY.md', '- [A](a.md) - one\n- [B](b.md) - two\n- [C](c.md) - three\n- [Out](../out.md) - four\n- [None](none.md) - five\n');
+    write(memory, 'MEMORY.md', '- [A](a.md) - one\n- [B](b.md) - two\n  * [C](c.md) - three\n- [Out](../out.md) - four\n- [None](none.md) - five\n');
     for (const [name, type] of [['a', 'feedback'], ['b', 'project'], ['c', 'user']]) write(memory, `${name}.md`, note(type));
     assert.deepEqual(at('--notes', memory), [0, `notes: ${memory}\na.md feedback 2026-11-08T00:00:00.000Z\nc.md user 2026-11-04T00:00:00.000Z\nnone.md ? ?\nread: 3 notes, 1 left out by ${review}\nleft out and not listed in MEMORY.md: 1\n`]);
     rmSync(review);
     assert.deepEqual(at('--notes', memory).slice(0, 1).concat(at('--notes', memory)[1].split('\n').slice(-2)), [0, 'read: 4 notes, 0 left out', '']);
     assert.deepEqual(at('--notes', join(base, 'no-memory')), [1, `primer: ${join(base, 'no-memory')} is no directory\n`]);
+    assert.deepEqual(at('--notes', '~/no-memory'), [1, `primer: ${join(base, 'home', 'no-memory')} is no directory\n`]);
     write(cfg.dir, 'reimagine-primer/review.json', '[]');
     for (const args of [['--unread'], ['--notes', memory], ['--add', deep, 'Another gap.']]) assert.deepEqual(at(...args), [1, `primer: ${review} is not a primer review file\n`], args[0]);
+  });
+
+  test('a log reached twice is one log, and a log of another directory named as one of the config folder stays apart', () => {
+    const cfg = config(), dir = join(base, 'twice'), logs = join(cfg.dir, 'feedback'), stamp = join(logs, '.reviewed'), more = join(base, 'twice-logs'), far = slash(join(more, '2026-11-01.md'));
+    const at = (...args) => { const r = spawnSync(process.execPath, [SCRIPT, ...args], { cwd: dir, env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, encoding: 'utf8' }); return [r.status, r.stdout]; };
+    write(dir, 'README.md', '# x\n');
+    git(dir, 'init', '-q');
+    write(more, '2026-11-01.md', '## twice: in the other directory\n');
+    write(cfg.dir, 'reimagine-primer/review.json', JSON.stringify({ logs: [slash(logs), slash(more), slash(more)] }));
+    assert.deepEqual(at('--unread'), [0, `feedback: ${logs}, ${logs}, ${more}, ${more}\n${far} entry 1: twice: in the other directory\nunread: 1 for this repository, 0 for another or none\n`]);
+    assert.deepEqual(at('--reviewed').slice(0, 1), [0]);
+    assert.deepEqual(readFileSync(stamp, 'utf8').split('\n').map((l) => l.split('\t').slice(1).join(' ')), ['0 2026-11-01.md', '0 2026-11-02.md', '0 2026-11-03.md', `1 ${far}`, '']);
   });
 
   test('R397: the entries that name this repository and came after its last review are listed, and --reviewed marks every log read for it', () => {

@@ -127,8 +127,12 @@ function analyze(words, st) {
       }
       else if (t === '-c' || t === '--namespace' || t === '--config-env') j++;
     }
-    const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1);
-    if (sub === 'add' || brings(sub) || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) st.calls.push({ sub, dir, args });
+    const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1), first = args[0]?.w;
+    // A call that moves the head or a ref leaves a later merge, cherry-pick, rebase or am of the same command unread.
+    if (MOVES.has(sub)) st.moved = true;
+    if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) st.calls.push({ sub, dir, args });
+    // A call for help, and one that ends or steps over a merge under way, bring nothing in.
+    else if (brings(sub) && first !== '--help' && first !== '-h' && !ENDS.has(first)) st.calls.push({ sub, dir, args, moved: st.moved, sh: st.sh, msys: st.msys, home: st.home });
   } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = st.hidden = true;
   // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
@@ -144,45 +148,63 @@ const BRINGS = {
 };
 const brings = (sub) => Object.hasOwn(BRINGS, sub);
 // An option that runs a command, moves the paths of a patch or names another form of patch leaves the call unread.
-const UNREAD = { rebase: /^(-x|--exec)(=|$)/, am: /^(--(directory|patch-format)(=|$)|-p\d*$)/ };
-const RESUMES = new Set(['--continue', '--abort', '--skip', '--quit', '--edit-todo', '--show-current-patch']);
+const UNREAD = { rebase: /^(-[A-Za-z]*x|--exe?c?(=|$))/, am: /^(--(directory|patch-format)(=|$)|-p\d*$)/ };
+// A call that ends or steps over a merge, a cherry-pick, a rebase or an am under way brings nothing in.
+const ENDS = new Set(['--abort', '--skip', '--quit', '--edit-todo', '--show-current-patch']);
+const MOVES = new Set(['checkout', 'switch', 'fetch', 'pull', 'reset', 'remote']);
 
 // What a patch in git's form holds: the files it creates, the target of a rename among them, and the lines it adds to each ignore
-// file; null for a new file whose header the script cannot read.
+// file; null for a new file or a target whose header the script cannot read.
 function patched(c, dir, text) {
   const paths = [], ignores = [], blocks = text.replace(/\r\n/g, '\n').split(/^diff --git /m).slice(1);
   for (const b of blocks) {
-    const named = /^a\/(.+) b\/\1\n/.exec(b)?.[1], to = /^(?:rename|copy) to (.+)$/m.exec(b)?.[1], f = to ?? named ?? b.split('\n')[0].replace(/"$/, '');
-    if (to) paths.push(to); else if (/^new file mode /m.test(b)) { if (!named) return null; paths.push(named); }
+    // The header ends where the content starts: past it a block of a mailbox holds the next message, whose words are no header.
+    const cut = b.search(/^(@@ |--- |Binary files |GIT binary patch|-- $)/m), head = cut < 0 ? b : b.slice(0, cut);
+    const named = /^a\/(.+) b\/\1\n/.exec(b)?.[1], to = /^(?:rename|copy) to (.+)$/m.exec(head)?.[1], f = to ?? named ?? b.split('\n')[0].replace(/"$/, '');
+    if (to?.startsWith('"')) return null;
+    if (to) paths.push(to);
+    if (/^new file mode /m.test(head)) { if (!named) return null; paths.push(named); }
     if (isIgnore(f)) ignores.push({ file: f, now: (b.match(/^\+(?!\+\+ ).*$/gm) ?? []).map((l) => l.slice(1)).join('\n'), was: blob(c, dir, `HEAD:${f}`) });
   }
   return { paths, ignores, blocks: blocks.length };
 }
 
 // What a merge, a cherry-pick, a rebase or an am would add to the history: the files the commits it names add, a rename read as a
-// new file, and the lines they add to an ignore file; null where the command does not say which commits, or git cannot read
-// them. A merge or a rebase brings what each commit it names holds past the merge base, with the upstream of the branch where
-// it names none; an am brings what its patch files hold, and a file with no file header is unread. A call that only resumes or
-// ends one brings nothing new.
-function brought(c, { sub, dir, args }) {
+// new file, and the lines they add to an ignore file; null where the command does not say which commits, git cannot read them,
+// or a call before it in the command moves what they are read against. A merge or a rebase brings each commit that a commit it
+// names holds and the head does not, with the upstream of the branch where it names none; an am brings what its patch files
+// hold, and a file with no file header is unread. A --continue is read as the commit it makes, and a call that ends one brings
+// nothing new.
+function brought(c, { sub, dir, args, moved, sh, msys, home }, top) {
+  if (moved) return null;
   const named = [];
   for (let i = 0; i < args.length; i++) {
     const { w, bad } = args[i];
     if (bad || UNREAD[sub]?.test(w)) return null;
-    if (RESUMES.has(w)) return { paths: [], ignores: [] };
+    if (ENDS.has(w)) return { paths: [], ignores: [] };
+    if (w === '--continue' || (sub === 'am' && (w === '--resolved' || w === '-r'))) return planOf(c, { sub: 'commit', dir, args: [] }, top);
+    // A picked commit is read against its first parent, which is mainline 1.
+    if (sub === 'cherry-pick' && /^(-m|--mainline(=|$))/.test(w)) { if ((/^(?:-m|--mainline=)(.+)$/.exec(w)?.[1] ?? args[++i]?.w) !== '1') return null; continue; }
     if (w === '--onto') { if (!args[++i] || args[i].bad) return null; named.push(args[i].w); }
     else if (w.startsWith('--onto=')) named.push(w.slice(7));
     else if (BRINGS[sub].test(w)) i++;
+    else if (w === '-' && sub !== 'am') named.push('@{-1}');
     else if (!w.startsWith('-')) named.push(w);
   }
-  const out = (...a) => { const r = git(c, dir, ['-c', 'core.quotepath=off', ...a]); return r.status === 0 ? r.stdout : null; }, ignored = ':(top,glob)**/.gitignore';
-  const added = ['--name-only', '--diff-filter=A', '--no-renames', '-z'], picked = ['log', '--no-walk=unsorted', '--format=', '-m', '--first-parent', '--no-renames'];
-  const of = (names, patch) => (names === null || patch === null ? null : { paths: names.split('\0').map((x) => x.replace(/^\n+/, '')).filter(Boolean), ignores: patched(c, dir, patch)?.ignores ?? [] });
-  const file = (f) => { try { const p = patched(c, dir, readFileSync(resolve(dir, c.platform === 'win32' ? f.replace(/^\/([A-Za-z])(?=\/)/, '$1:') : f), 'utf8')); return p?.blocks ? p : null; } catch { return null; } };
+  // The form of the output is pinned, whatever the user's configuration sets.
+  const out = (...a) => { const r = git(c, dir, ['-c', 'core.quotepath=off', '-c', 'diff.noprefix=false', '-c', 'diff.mnemonicPrefix=false', '-c', 'diff.relative=false', ...a]); return r.status === 0 ? r.stdout : null; };
+  const log = ['log', '--format=', '-m', '--no-renames', '--no-color', '--no-ext-diff', '--no-textconv'], ignored = ':(top,glob)**/.gitignore';
+  // Each commit is read by itself, so a file that one commit adds and a later one removes is told.
+  const read = (...revs) => {
+    const names = out(...log, '--name-only', '--diff-filter=A', '-z', ...revs, '--'), patch = names === null ? null : out(...log, '-p', ...revs, '--', ignored), p = patch === null ? null : patched(c, dir, patch);
+    return p && { paths: names.split('\0').map((x) => x.replace(/^\n+/, '')).filter(Boolean), ignores: p.ignores };
+  };
+  // A ~ and, under Git Bash, a drive path such as /c/work are the shell's to place.
+  const file = (f) => { try { const p = patched(c, dir, readFileSync(resolve(dir, sh ? tilde(msys ? f.replace(/^\/([A-Za-z])(?=\/|$)/, '$1:/') : f, home) : f), 'utf8')); return p?.blocks ? p : null; } catch { return null; } };
   let plans;
   if (sub === 'am') plans = named.length ? named.map(file) : [null];
-  else if (sub === 'cherry-pick') plans = [named.length ? of(out(...picked, ...added, ...named, '--'), out(...picked, '-p', ...named, '--', ignored)) : null];
-  else plans = (named.length || args.some((x) => x.w === '--root') ? named : ['@{upstream}']).map((r) => of(out('diff', ...added, `HEAD...${r}`, '--'), out('diff', '--no-renames', `HEAD...${r}`, '--', ignored)));
+  else if (sub === 'cherry-pick') plans = [named.length ? read('--no-walk=unsorted', '--first-parent', ...named) : null];
+  else plans = (named.length || args.some((x) => x.w === '--root') ? named : ['@{upstream}']).map((r) => read(`HEAD..${r}`));
   return plans.every(Boolean) ? { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) } : null;
 }
 
@@ -194,8 +216,9 @@ const isIgnore = (p) => p.split('/').at(-1) === '.gitignore';
 
 // What one git add or git commit would put in the index or the commit, as top-level paths with the ignore files it changes, or
 // what a command of BRINGS would bring; null when the call cannot be resolved.
-function planOf(c, { sub, dir, args }, top) {
-  if (brings(sub)) return brought(c, { sub, dir, args });
+function planOf(c, call, top) {
+  const { sub, dir, args } = call;
+  if (brings(sub)) return brought(c, call, top);
   const opts = [], specs = [];
   let dashed = false;
   for (let i = 0; i < args.length; i++) {
@@ -264,7 +287,7 @@ function verdict(c, repo, plan, parts = []) {
     const r = git(c, repo.top, ['status', '--porcelain=v1', '-z', '-uall']);
     if (r.status !== 0) throw new Error(`git status exited ${r.status}`);
     const paths = records(r.stdout).filter((x) => x.xy[0] !== 'D' && x.xy !== ' D').map((x) => x.path);
-    all = { paths: [...paths, ...parts.flatMap((p) => p.paths)], ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: `${readText(join(repo.top, f))}\n${blob(c, repo.top, `:${f}`)}`, was: blob(c, repo.top, `HEAD:${f}`) })) };
+    all = { paths: [...paths, ...parts.flatMap((p) => p.paths)], ignores: [...paths.filter(isIgnore).map((f) => ({ file: f, now: `${readText(join(repo.top, f))}\n${blob(c, repo.top, `:${f}`)}`, was: blob(c, repo.top, `HEAD:${f}`) })), ...parts.flatMap((p) => p.ignores)] };
   }
   const agents = [...new Set(all.paths.filter(isAgent))].sort();
   const lines = [...new Set(all.ignores.flatMap((g) => {
@@ -285,12 +308,11 @@ export function staged(c, input) {
   const own = join(configOf(c, input), 'reimagine-primer'), command = input.tool_input?.command;
   if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/.test(command)) return [];
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;
-  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false };
+  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false, sh: !ps, moved: false };
   scan(command, ps, st);
   if (!st.calls.length && !st.hidden) return [];
   const path = places(c, own).map, map = (() => { try { return loadMap(path, c.home); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
-  if (!map) return [deny(`primer: ${path} is not a primer map, so the staging check cannot tell which repositories have the local profile and denies every git add `
-    + 'and git commit; restore the file from a copy or from the store\'s history, or correct it to the form primer map writes')];
+  if (!map) return [deny(`primer: ${path} is not a primer map, so the staging check cannot tell which repositories have the local profile and denies every git add and git commit, and each git merge, cherry-pick, rebase and am that starts or continues one; restore the file from a copy or from the store's history, or correct it to the form primer map writes`)];
   if (!map.repos.some((e) => e.profile === 'local')) return [];
   if (st.hidden || st.calls.some((x) => !isDir(x.dir))) st.lost = st.far = true;
   const dirs = new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd]);
@@ -304,7 +326,7 @@ export function staged(c, input) {
     const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => planOf(c, { ...x, dir }, repo.top)), whole = !st.lost && plans.length && plans.every(Boolean);
     // What an unread merge brings is not in the work tree, so no count of the files there stands in for it.
     const blind = calls.find((x, i) => brings(x.sub) && !plans[i]);
-    if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read`)];
+    if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where no checkout, switch, fetch, pull, reset or remote call comes before it in the command`)];
     const reason = whole ? verdict(c, repo, { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) }) : verdict(c, repo, null, plans.filter(Boolean));
     if (reason) return [deny(reason)];
   }
@@ -319,7 +341,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
     const lines = staged({ env: process.env, platform: process.platform, home: homedir(), cwd: process.cwd() }, input);
     process.stdout.write(lines.length ? `${lines.join('\n')}\n` : '');
   } catch (e) {
-    process.stdout.write(`${deny(`primer: the staging check failed, so the call is denied: ${e?.message ?? e}`)}\n`);
+    process.stdout.write(`${deny(`primer: the staging check failed, so the call is denied: ${e?.message || e?.name || e}`)}\n`);
     process.exitCode = 2;
   }
 }

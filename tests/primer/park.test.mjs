@@ -161,6 +161,23 @@ describe('R411: list and done', () => {
       'record: under ~/' + cfg.name + ', last written 2026-11-16', 'claude --resume ' + ONE + ' --model example-model-1 --effort high', ''].join('\n'));
   });
 
+  test('a line under the first line or right above an entry is kept and is no part of the entry, and an entry right under the first line stays', () => {
+    const cfg = config([[ONE, RECORD, 16]]);
+    park(cfg, ['add', '--what', 'first', '--when', 'a']);
+    const head = readFileSync(cfg.file, 'utf8').split('\n')[0];
+    const entry = ['2026-11-19  app  main', 'what: first', 'back when: a', 'in: ' + repo, 'record: under ~/' + cfg.name + ', last written 2026-11-16', 'claude --resume ' + ONE + ' --model example-model-1 --effort high'];
+    const listed = ['primer: 1 save point in ' + cfg.file, '', '[1] 2026-11-19  app  main', 'what: first', 'back when: a', 'in: ' + repo,
+      'record: under ~/' + cfg.name + ', last written 2026-11-16, 3 days ago', 'claude --resume ' + ONE + ' --model example-model-1 --effort high'];
+    writeFileSync(cfg.file, [head, ...entry, ''].join('\n'));
+    assert.deepEqual(park(cfg, ['list']), listed);
+    assert.equal(body(cfg), ['', ...entry, ''].join('\n'));
+    writeFileSync(cfg.file, [head, 'A note under the first line.', '', 'Mine: call them first.', ...entry, ''].join('\n'));
+    assert.deepEqual(park(cfg, ['list']), listed);
+    assert.equal(body(cfg), ['', 'A note under the first line.', '', 'Mine: call them first.', '', ...entry, ''].join('\n'));
+    park(cfg, ['done', '1']);
+    assert.equal(body(cfg), ['', 'A note under the first line.', '', 'Mine: call them first.', ''].join('\n'));
+  });
+
   test('a file that cannot be read is refused and left as it is', () => {
     const cfg = config([[ONE, RECORD, 16]]);
     mkdirSync(cfg.file, { recursive: true });

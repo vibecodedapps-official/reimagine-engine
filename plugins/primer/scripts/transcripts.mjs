@@ -57,8 +57,9 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   // it is the root the first line names.
   const list = git('worktree', 'list', '--porcelain').stdout.split('\n\n').map((b) => b.trim()).filter((b) => b.startsWith('worktree ')), at = (b) => slash(b.split('\n')[0].slice(9).trim());
   const root = list.length ? at(list[0]) : slash(dirname(common.stdout.trim())), trees = list.length ? list.filter((b) => !/\nbare$/m.test(b)).map(at) : [root];
-  const c = { env, platform, home }, rv = reviewOf(c, places(c, ownOf(c)), root);
-  if (!rv.transcripts) return [`primer: the transcript reader is off for ${root} in ${rv.path}; the review goes on without the user's past messages`];
+  // The review settings name a repository as the other readers do, by the parent of its common directory.
+  const c = { env, platform, home }, keyed = slash(dirname(common.stdout.trim())), rv = reviewOf(c, places(c, ownOf(c)), keyed);
+  if (!rv.transcripts) return [`primer: the transcript reader is off for ${keyed} in ${rv.path}; the review goes on without the user's past messages`];
   // A session's directory is named for the directory it started in, every character outside A-Za-z0-9 a -; one started in a
   // subdirectory has a longer name, so a candidate directory is kept by the cwd of each line. Beside CLAUDE_CONFIG_DIR, the host
   // takes the name from CLAUDE_CODE_PROJECT_DIR_NAME instead.

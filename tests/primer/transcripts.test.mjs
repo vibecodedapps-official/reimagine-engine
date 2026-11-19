@@ -108,6 +108,16 @@ describe('transcripts', () => {
     assert.deepEqual(run([], root, off), [1, `primer: ${review} is not a primer review file\n`]);
   });
 
+  test('review.json is read from the machine\'s directory that config.json names, and from no other', () => {
+    const cfg = join(base, 'config-named'), machine = join(base, 'machine-named'), entry = JSON.stringify({ repositories: { [slash(root)]: { transcripts: false } } });
+    write(project(root, cfg), 's-named.jsonl', `${user('Seen while the named directory has no file.', '2026-11-03T09:00:00.000Z', 's-named', root)}\n`);
+    write(cfg, 'reimagine-primer/config.json', JSON.stringify({ local: slash(machine) }));
+    write(cfg, 'reimagine-primer/review.json', entry);
+    assert.equal(run([], root, cfg)[1].split('\n')[1], '2026-11-03T09:00:00.000Z s-named "Seen while the named directory has no file."');
+    write(machine, 'review.json', entry);
+    assert.deepEqual(run([], root, cfg), [0, `primer: the transcript reader is off for ${slash(root)} in ${join(machine, 'review.json')}; the review goes on without the user's past messages\n`]);
+  });
+
   test('a span of one day, given from a work tree', () => {
     assert.deepEqual(run(['--from', '2026-11-03', '--to', '2026-11-03'], join(base, 'app-wt')), [0, [
       `primer: 2 messages of the user in 2 sessions of ${slash(root)}, 2026-11-03 to 2026-11-03, from 4 files under ${join(cfg, 'projects')}`,

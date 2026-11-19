@@ -5,7 +5,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -732,6 +732,17 @@ describe('primer drift hook', () => {
       write(dir, 'src/later.ts', 'export const later = 1;\n');
       await git(dir, 'add', 'src/later.ts');
       await git(dir, 'commit', '-q', '-m', 'later');
+      await git(dir, 'checkout', '-q', '-b', 'gone', 'main');
+      write(dir, 'CLAUDE.md', '# Mine\n');
+      await git(dir, 'add', '-f', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'hub in');
+      await git(dir, 'rm', '-q', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'hub out');
+      await git(dir, 'checkout', '-q', '-b', 'said', 'feat');
+      write(dir, 'src/said.ts', 'export const said = 1;\n');
+      await git(dir, 'add', 'src/said.ts');
+      await git(dir, 'commit', '-q', '-m', 'said', '-m', 'copy to the new location');
+      write(patches, 'all.mbox', await git(dir, 'format-patch', '--stdout', 'main..said'));
       await git(dir, 'checkout', '-q', '-b', 'lines', 'main');
       write(dir, '.gitignore', 'CLAUDE.md\n');
       await git(dir, 'add', '.gitignore');
@@ -742,18 +753,29 @@ describe('primer drift hook', () => {
       const reason = deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
       const hub = slash(join(patches, '0001-hub.patch')), notes = slash(join(patches, '0001-notes.patch'));
       for (const command of ['git merge feat', 'git merge --no-ff -m "take it" notes feat', `git cherry-pick ${tip}`, 'git cherry-pick -x main..feat', 'git cherry-pick main..later', 'git rebase feat', 'git rebase --onto feat main',
-        `git am ${hub}`, `git am -3 ${notes} ${hub}`, 'git stage src/a.ts && git merge feat']) {
+        `git am ${hub}`, `git am -3 ${notes} ${hub}`, 'git stage src/a.ts && git merge feat', 'git merge gone', 'git rebase gone', `git am ${slash(join(patches, 'all.mbox'))}`,
+        'git cherry-pick -m 1 feat', 'git cherry-pick --mainline=1 feat']) {
         assert.equal(await check(command, dir), reason, command);
       }
       const line = deny(lead(dir) + 'the call would add the line CLAUDE.md in .gitignore, which names an agent file');
-      for (const command of ['git merge lines', 'git cherry-pick lines', 'git rebase lines', `git am ${slash(join(patches, '0001-lines.patch'))}`]) assert.equal(await check(command, dir), line, command);
-      for (const command of ['git merge notes', 'git merge', 'git cherry-pick notes', 'git rebase notes', `git am ${notes}`, 'git merge --abort', 'git rebase --continue', 'git cherry-pick --skip', 'git am --quit', 'git merge-base main feat']) {
+      for (const command of ['git merge lines', 'git cherry-pick lines', 'git rebase lines', `git am ${slash(join(patches, '0001-lines.patch'))}`, 'git merge -', 'git cherry-pick -']) assert.equal(await check(command, dir), line, command);
+      for (const command of ['git merge notes', 'git merge', 'git cherry-pick notes', 'git rebase notes', `git am ${notes}`, 'git merge --abort', 'git rebase --continue', 'git cherry-pick --skip', 'git am --quit', 'git merge-base main feat', 'git merge --help', 'git am -h', 'git cherry-pick -h']) {
         assert.equal(await check(command, dir), '', command);
       }
-      const blind = (sub) => deny(lead(dir) + `what git ${sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read`);
-      for (const [sub, rest] of [['merge', '"$BRANCH"'], ['merge', 'no-such-branch'], ['cherry-pick', ''], ['rebase', '-x "npm test" notes'], ['am', ''], ['am', '--directory=sub ' + hub], ['am', slash(join(patches, 'none.patch'))], ['am', slash(join(patches, 'plain.patch'))], ['am', '--patch-format=mbox ' + hub]]) {
+      const blind = (sub) => deny(lead(dir) + `what git ${sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where no checkout, switch, fetch, pull, reset or remote call comes before it in the command`);
+      for (const [sub, rest] of [['merge', '"$BRANCH"'], ['merge', 'no-such-branch'], ['cherry-pick', ''], ['rebase', '-x "npm test" notes'], ['rebase', "-x'npm test' notes"], ['rebase', '--exe "npm test" notes'], ['cherry-pick', '-m 2 feat'], ['cherry-pick', '--mainline 2 feat'], ['am', ''], ['am', '--directory=sub ' + hub], ['am', slash(join(patches, 'none.patch'))], ['am', slash(join(patches, 'plain.patch'))], ['am', '--patch-format=mbox ' + hub]]) {
         assert.equal(await check(`git ${sub} ${rest}`.trim(), dir), blind(sub), `${sub} ${rest}`);
       }
+      for (const [command, sub] of [['git checkout main && git merge notes', 'merge'], ['git fetch origin && git rebase notes', 'rebase'], ['git switch main; git cherry-pick notes', 'cherry-pick'], [`git reset -q && git am ${notes}`, 'am']]) {
+        assert.equal(await check(command, dir), blind(sub), command);
+      }
+      // Where another call of the command cannot be resolved, the lines a merge adds to an ignore file still count.
+      assert.equal(await check('git merge lines && git add "$F"', dir), deny(lead(dir) + unresolved
+        + 'the call would add .claude/settings.local.json, which refs/remotes/origin/HEAD does not hold; the line CLAUDE.md in .gitignore, which names an agent file'));
+      // A --continue commits the index.
+      await git(dir, 'checkout', '-q', 'feat', '--', 'CLAUDE.md');
+      for (const command of ['git merge --continue', 'git cherry-pick --continue', 'git rebase --continue', 'git am --resolved', 'git am -r']) assert.equal(await check(command, dir), reason, command);
+      for (const command of ['git merge --abort', 'git am --skip']) assert.equal(await check(command, dir), '', command);
     });
     test('staging CLAUDE.md by name is denied', async () => {
       const dir = await clone();
@@ -821,6 +843,23 @@ describe('primer drift hook', () => {
       const dir = await clone();
       assert.equal(await check('git add -A && git commit -m x', dir, { env: { CLAUDE_CONFIG_DIR: broken } }),
         deny(`the staging check failed, so the call is denied: ${join(broken, 'reimagine-primer', 'config.json').replaceAll('\\', '\\\\')} is not a primer configuration`));
+    });
+    test('a script of the plugin that cannot be loaded denies a command the staging check reads and passes any other', async () => {
+      const copy = join(base, 'plugin-copy');
+      cpSync(join(root, 'plugins/primer/hooks'), join(copy, 'hooks'), { recursive: true });
+      cpSync(join(root, 'plugins/primer/scripts'), join(copy, 'scripts'), { recursive: true });
+      writeFileSync(join(copy, 'scripts', 'staged.mjs'), 'export const deny = ;\n');
+      const at = async (command) => {
+        const r = await exec(process.execPath, [join(copy, 'hooks', 'drift.mjs')], { cwd: root, env }, JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd: fixture }));
+        assert.equal(r.status, 0, r.stderr);
+        return r.stdout;
+      };
+      for (const command of ['git commit -m x', 'git add -A', 'git merge feat']) {
+        const out = JSON.parse(await at(command)).hookSpecificOutput;
+        assert.equal(out.permissionDecision, 'deny', command);
+        assert.match(out.permissionDecisionReason, /^primer: the staging check cannot be loaded, so the call is denied: \S/, command);
+      }
+      assert.equal(await at('git status'), '');
     });
     test('without primer\'s own directory the staging check does not run', async () => {
       const dir = await clone();
@@ -918,11 +957,11 @@ describe('primer drift hook', () => {
       const bad = join(base, 'bad-map-config');
       write(bad, 'reimagine-primer/store/map.json', '{');
       const reason = `primer: ${join(bad, 'reimagine-primer', 'store', 'map.json')} is not a primer map, so the staging check cannot tell which repositories have the local profile `
-        + 'and denies every git add and git commit; restore the file from a copy or from the store\'s history, or correct it to the form primer map writes';
-      for (const command of ['git commit -m x', 'git add src/a.ts']) {
+        + 'and denies every git add and git commit, and each git merge, cherry-pick, rebase and am that starts or continues one; restore the file from a copy or from the store\'s history, or correct it to the form primer map writes';
+      for (const command of ['git commit -m x', 'git add src/a.ts', 'git merge feat', 'git rebase --continue']) {
         assert.deepEqual(decided(await check(command, dir, { env: { CLAUDE_CONFIG_DIR: bad } })), { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason }, command);
       }
-      for (const command of ['git log --grep commit', 'echo "a commit note" > notes.txt']) {
+      for (const command of ['git log --grep commit', 'echo "a commit note" > notes.txt', 'git merge --abort', 'git rebase --skip', 'git am --help']) {
         assert.equal(await check(command, dir, { env: { CLAUDE_CONFIG_DIR: bad } }), '', command);
       }
     });

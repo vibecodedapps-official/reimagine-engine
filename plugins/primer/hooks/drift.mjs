@@ -1,19 +1,25 @@
 #!/usr/bin/env node
 // Primer's drift hook, the PreToolUse hook for Bash and PowerShell calls. Usage: node drift.mjs, with the hook's input on stdin.
-// It first runs the staging check of scripts/staged.mjs and prints its deny; an error of that check denies the call. Then it acts
-// only when the command runs `git commit`: for each repository the command commits in whose hub opens with the marker, it reads
-// the hub, the tracked nested CLAUDE.md files, rules and skills, `git ls-files` for their globs and the changed file list. It
-// never reads git history and never writes a file. Prints at most one JSON object and exits 0:
+// It first runs the staging check of scripts/staged.mjs and prints its deny; an error of that check denies the call, as a script
+// of the plugin that cannot be loaded does for a command that check would read. Then it acts only when the command runs `git
+// commit`: for each repository the command commits in whose hub opens with the marker, it reads the hub, the tracked nested
+// CLAUDE.md files, rules and skills, `git ls-files` for their globs and the changed file list. The commit check never reads git
+// history and the hook never writes a file. Prints at most one JSON object and exits 0, an error of the commit check printing
+// nothing:
 //   deny:    a file is over its line cap, a nested CLAUDE.md or rule is over its character cap, the hub names a missing path,
 //            a paths value cannot be read or matches no tracked file, or a skill has no description
 //   advise:  additionalContext names rules, skills and nested files that cover changed paths and are not changed
 //   nothing: not a commit, no opted-in hub, or no finding
-import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { git, hubOf, isDir } from '../scripts/primer.mjs';
-import { deny, staged } from '../scripts/staged.mjs';
+
+// The plugin's scripts are loaded by a call and not by an import statement: where one cannot load, the hook still runs and
+// denies each command the staging check would read, in place of ending with no word, which lets the call through.
+const loaded = await Promise.all([import('../scripts/primer.mjs'), import('../scripts/staged.mjs')]).then((m) => ({ m }), (error) => ({ error }));
+const [{ git, hubOf, isDir }, { deny, staged }] = loaded.m ?? [{}, {}];
+const READS = /commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/;
 
 export const CAPS = { hub: { lines: 60 }, nested: { lines: 60, chars: 40000 }, rules: { lines: 200, chars: 40000 }, skills: { lines: 150 } };
 
@@ -189,7 +195,7 @@ function check(c, root, adds, found, recheck) {
   const hub = hubOf(root);
   if (!hub) return;
   const ls = (...a) => { const r = git(c, root, ['-c', 'core.quotepath=off', ...a]); return r.status === 0 ? r.stdout.split('\n').filter(Boolean) : []; };
-  const tracked = (spec) => ls('ls-files', '--', spec).sort(bytewise).filter((f) => existsSync(join(root, f))), read = (f) => { try { return readFileSync(join(root, f), 'utf8'); } catch { return ''; } };
+  const tracked = (spec) => ls('ls-files', '--', spec).sort(bytewise).filter((f) => { try { return statSync(join(root, f)).isFile(); } catch { return false; } }), read = (f) => { try { return readFileSync(join(root, f), 'utf8'); } catch { return ''; } };
   const tops = names(root).map((n) => n.toLowerCase()), cover = [], nested = [];
   found.push(...over(root, hub, CAPS.hub));
   for (const tok of tokens(read(hub))) {
@@ -208,7 +214,8 @@ function check(c, root, adds, found, recheck) {
     if (fm.unread) found.push(`${f} has a paths value the host cannot read`);
     else for (const g of fm.globs) {
       const files = expand(g).flatMap((p) => ls('ls-files', '--cached', ...(adds ? ['--others', '--exclude-standard'] : []), '--', `:(glob)${p}`));
-      if (files.length) cover.push(...files.map((x) => [f, x])); else found.push(`${f} paths glob ${g} matches no tracked file`);
+      if (!files.length) found.push(`${f} paths glob ${g} matches no tracked file`);
+      for (const x of files) cover.push([f, x]);
     }
     if (skill && !fm.described) found.push(`${f} has no description`);
     return fm.paths && !fm.unread;
@@ -228,7 +235,7 @@ export function drift(c, input) {
   const command = input.tool_input?.command;
   if (typeof command !== 'string') return [];
   let first;
-  try { first = staged(c, input); } catch (e) { first = [deny(`primer: the staging check failed, so the call is denied: ${e?.message ?? e}`)]; }
+  try { first = staged(c, input); } catch (e) { first = [deny(`primer: the staging check failed, so the call is denied: ${e?.message || e?.name || e}`)]; }
   if (first.length) return first;
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd, { dirs, adds } = commits(command, ps);
   // A ~ is the shell's: HOME under sh, where a Git Bash path such as /c/work is the drive path it names.
@@ -248,9 +255,16 @@ export function drift(c, input) {
   return [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: `primer: the staged change touches files these cover; recheck them: ${said([...new Set(recheck)].sort(bytewise), ', ')}` } })];
 }
 
-// Node resolves the entry point through symlinks, so compare with the resolved path.
+// Node resolves the entry point through symlinks, so compare with the resolved path. An error of the commit check prints nothing.
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   const input = (() => { try { const v = JSON.parse(readFileSync(0, 'utf8')); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } })();
-  const lines = drift({ env: process.env, platform: process.platform, home: homedir(), cwd: process.cwd() }, input);
+  let lines = [];
+  if (loaded.error) {
+    if (typeof input.tool_input?.command === 'string' && READS.test(input.tool_input.command)) {
+      lines = [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: `primer: the staging check cannot be loaded, so the call is denied: ${loaded.error?.message || loaded.error}` } })];
+    }
+  } else {
+    try { lines = drift({ env: process.env, platform: process.platform, home: homedir(), cwd: process.cwd() }, input); } catch { lines = []; }
+  }
   process.stdout.write(lines.length ? `${lines.join('\n')}\n` : '');
 }

@@ -259,6 +259,18 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     put(dir, 'plugins/primer/scripts/transcripts.mjs', '// x\n'.repeat(701));
     bump(dir, 'primer');
   }, 1, ['plugins/primer/scripts/transcripts.mjs: 701 lines, over the 700-line budget']);
+  negative('R387: park.mjs over the 700-line budget', (dir) => {
+    put(dir, 'plugins/primer/scripts/park.mjs', '// x\n'.repeat(701));
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/scripts/park.mjs: 701 lines, over the 700-line budget']);
+  negative('R265: drift.mjs over the 700-line budget', (dir) => {
+    put(dir, 'plugins/primer/hooks/drift.mjs', '// x\n'.repeat(701));
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/hooks/drift.mjs: 701 lines, over the 700-line budget']);
+  negative('R265: notice.mjs over the 700-line budget', (dir) => {
+    put(dir, 'plugins/primer/hooks/notice.mjs', '// x\n'.repeat(701));
+    bump(dir, 'primer');
+  }, 1, ['plugins/primer/hooks/notice.mjs: 701 lines, over the 700-line budget']);
   negative('R379: posts.mjs over the 300-line budget', (dir) => {
     put(dir, 'plugins/review/scripts/posts.mjs', '// x\n'.repeat(301));
     bump(dir, 'review');

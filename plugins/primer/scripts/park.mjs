@@ -60,16 +60,26 @@ function textOf(path) {
   try { return readFileSync(path, 'utf8'); } catch (e) { return e.code === 'ENOENT' ? '' : refuse(path + ' cannot be read (' + e.code + ')'); }
 }
 
-// The text as the blocks of lines that blank lines part. An entry ends at its resume command, so two entries with no blank
-// line between them are still two; lines that end in no command are a block kept as it is, but for the file's first line.
+// A line of an entry above its command: the day line, then the lines the script writes, by their lead.
+const DAY = /^\d{4}-\d{2}-\d{2}(  |$)/;
+const PART = /^(what|back when|in|record): /;
+
+// The text as the blocks of lines that blank lines part, without the file's first line. An entry is its resume command and the
+// lines of an entry right above it, up to its day line, so two entries with no blank line between them are still two; any other
+// line is in a block kept as it is.
 function load(text) {
-  const out = [];
-  for (const b of text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split(/\n[ \t]*\n/).map((x) => x.replace(/^\n+/, '').trimEnd()).filter((x) => x && !x.startsWith(HEAD.slice(0, 30)))) {
+  const out = [], all = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').split('\n');
+  if (all[0].startsWith(HEAD.slice(0, 30))) all.shift();
+  for (const b of all.join('\n').split(/\n[ \t]*\n/).map((x) => x.replace(/^\n+/, '').trimEnd()).filter(Boolean)) {
     let lines = [];
     for (const l of b.split('\n')) {
-      lines.push(l);
       const id = COMMAND.exec(l)?.[1].toLowerCase();
-      if (id) { out.push({ lines, id }); lines = []; }
+      if (!id) { lines.push(l); continue; }
+      let k = lines.length;
+      while (k > 0 && (PART.test(lines[k - 1]) || DAY.test(lines[k - 1]))) if (DAY.test(lines[--k])) break;
+      if (k) out.push({ lines: lines.slice(0, k) });
+      out.push({ lines: [...lines.slice(k), l], id });
+      lines = [];
     }
     if (lines.length) out.push({ lines });
   }

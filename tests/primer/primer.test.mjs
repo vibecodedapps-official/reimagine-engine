@@ -836,6 +836,16 @@ describe('the store check', () => {
     assert.deepEqual(tracked(main(['status'], opts(cfg, dir, { home: '/', user: '', host: '' }))), []);
   });
 
+  test('status tells a listed term in the map and the copies record, and nothing else of the machine there', () => {
+    const dir = repo('tracked-map', 'https://example.invalid/acme-rail/app.git');
+    const cfg = config({});
+    write(cfg.store, 'map.json', `${JSON.stringify({ version: 2, repos: [{ remotes: ['example.invalid/acme-rail/app'], path: '/home/fixture/work/app', group: 'app', profile: 'local' }], roots: ['/srv/pat'] }, null, 2)}\n`);
+    write(cfg.store, 'copies.json', `${JSON.stringify({ version: 1, copies: [{ id: 'C1', copy: '/srv/box-7/Acme-Rail/notes.md', source: 'docs/notes.md', digest: 'x' }] }, null, 2)}\n`);
+    assert.deepEqual(tracked(main(['status'], opts(cfg, dir))), []);
+    write(cfg.own, 'terms.txt', 'acme-rail\n');
+    assert.deepEqual(tracked(main(['status'], opts(cfg, dir))), ['check tracked: map.json:6 holds a listed term', 'check tracked: copies.json:6 holds a listed term']);
+  });
+
   test('measure --with gives the same lines under the layer\'s name for a proposed layer of the store, and none for a layer of the machine', () => {
     const cfg = config(local(), { group: GROUP }), next = join(base, `proposed-${++seq}.md`);
     write(cfg.own, 'terms.txt', 'Acme Rail\n');

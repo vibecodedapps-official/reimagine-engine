@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.39 - 2026-11-19
+
+- The outbound check leaves the script that `node` runs and a path given to a git `-c` key out of its search, where they exist, and leaves a resolved path out wherever it stands outside a quoted string on the command's first line. A run of a plugin's own script whose arguments held `git` with `commit`, `merge` or `tag` was read as a post and denied where the script's folder held a listed string, and so were git calls with a hooks path and a work tree under such a folder. A resolved path after a quoted argument was searched too. The words a command carries, a path inside a message and a path that names nothing are searched as before.
+
 ## primer 0.1.25 - 2026-11-19
 
 - In a `local` repository a `git merge`, `git cherry-pick`, `git rebase` or `git am` is read after a call that only reads, a fetch, and a checkout or a switch to a branch in the same command. It was denied as unread after anything but a `cd`, a `git add` and a `git commit`, so `git status && git merge feat`, `echo start && git rebase main` and `git switch main && git merge --ff-only origin/main` were denied though they brought no agent file. The calls that only read are a closed list, each with no `>` to a file. After a switch the call is read against the branch switched to and against the branch as it stands, and denied on what either would bring. After a fetch it is read as the remote-tracking branches stand before the fetch, so what the fetch itself brings is not read, as with a pull. Anything else before the call, a `git stash`, a `git reset` or a script among them, still leaves it denied.

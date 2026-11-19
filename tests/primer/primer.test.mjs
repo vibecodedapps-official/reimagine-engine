@@ -355,6 +355,18 @@ describe('copies', () => {
     assert.equal(r.stdout.split('\n')[1], `+ copy C1 ${slash(copy)} of shared.md: current`);
   });
 
+  test('a file under the config folder is held as <config>/ and read under the config folder of the run', () => {
+    const cfg = config(local(), { shared: SOURCE });
+    const copy = join(base, `loose-copy-${++seq}.md`), at = { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };
+    writeFileSync(copy, 'Rule one.\n');
+    write(cfg.dir, 'rules/style.md', 'Rule one.\n');
+    const r = run(['copies', '--add', copy, join(cfg.dir, 'rules', 'style.md')], at);
+    assert.equal(r.stdout.split('\n')[1], `+ copy C1 ${slash(copy)} of <config>/rules/style.md: current`);
+    assert.equal(JSON.parse(readFileSync(join(cfg.store, 'copies.json'), 'utf8')).copies[0].source, '<config>/rules/style.md');
+    write(cfg.dir, 'rules/style.md', 'Rule two.\n');
+    assert.equal(run(['copies'], at).stdout.split('\n')[1], `copy C1 ${slash(copy)} of <config>/rules/style.md: source changed`);
+  });
+
   test('a snapshot that is missing is named, and no diff is shown', () => {
     const cfg = config(local(), { shared: SOURCE });
     const copy = join(base, `loose-copy-${++seq}.md`), at = { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } };

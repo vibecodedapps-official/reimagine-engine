@@ -540,8 +540,8 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'gate');
   }, 1, [`${gateSkill}: description holds < or >; write a placeholder as [name]`]);
   negative('R219: <file>: description holds < or >; write a placeholder as [name] (project skill)', (dir) => {
-    edit(dir, '.claude/skills/rules-feedback/SKILL.md', 'pasted feedback about', 'pasted feedback about <n>');
-  }, 1, ['.claude/skills/rules-feedback/SKILL.md: description holds < or >; write a placeholder as [name]']);
+    put(dir, '.claude/skills/sample/SKILL.md', '---\nname: sample\ndescription: Sorts <n> notes by date.\n---\n# sample\n');
+  }, 1, ['.claude/skills/sample/SKILL.md: description holds < or >; write a placeholder as [name]']);
 
   negative('R43: <file>: name is not Concise Plain', (dir) => {
     edit(dir, 'plugins/rules/output-styles/concise-plain.md', '\nname: Concise Plain\n', '\nname: Plain\n');

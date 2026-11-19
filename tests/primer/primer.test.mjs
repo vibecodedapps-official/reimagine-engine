@@ -817,7 +817,7 @@ describe('the store check', () => {
   });
 });
 
-// Requirement 397: notice.sh, where the hub has the marker, and the loader, in a local repository, give one message on one fixture.
+// Requirement 397: the notice hook, where the hub has the marker, and the loader, in a local repository, give one message on one fixture.
 describe('the notice', () => {
   let memory, dir, cfg, key;
   const day = 86400;
@@ -839,9 +839,9 @@ describe('the notice', () => {
   };
   const both = (data, extra = {}) => {
     const input = JSON.stringify({ session_id: 'test', transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SessionStart', source: 'startup', ...extra });
-    const sh = spawnSync('sh', ['plugins/primer/hooks/notice.sh'], { cwd: ROOT, env: { ...env, CLAUDE_PLUGIN_DATA: data }, input, encoding: 'utf8' });
-    assert.equal(sh.status, 0, sh.stderr);
-    return [sh.stdout, run(['session-start', 'all', data], { input }).stdout];
+    const hook = spawnSync(process.execPath, ['plugins/primer/hooks/notice.mjs'], { cwd: ROOT, env: { ...env, CLAUDE_PLUGIN_DATA: data }, input, encoding: 'utf8' });
+    assert.equal(hook.status, 0, hook.stderr);
+    return [hook.stdout, run(['session-start', 'all', data], { input }).stdout];
   };
   const message = (text) => `{"systemMessage":"${text}"}\n`;
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Primer's staging check, the drift hook's hand-off: denies a git add or commit that puts an agent file the upstream lacks in the
+// Primer's staging check, which the drift hook runs first: denies a git add or commit that puts an agent file the upstream lacks in the
 // history of a repository with the local profile. It is a script of its own because primer.mjs is at its budget.
 // Usage: node staged.mjs, with the hook's input on stdin. Prints a deny as the hook's JSON, or nothing.
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
@@ -227,8 +227,8 @@ function verdict(c, repo, plan, parts = []) {
     : 'the command cannot be resolved, so it counts as staging every file git does not ignore; '}the call would add ${items.join('; ')}`;
 }
 
-const deny = (reason) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } });
-function staged(c, input) {
+export const deny = (reason) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } });
+export function staged(c, input) {
   const own = join(configOf(c, input), 'reimagine-primer'), command = input.tool_input?.command;
   if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage)/.test(command)) return [];
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;

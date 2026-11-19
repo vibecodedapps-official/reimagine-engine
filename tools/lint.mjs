@@ -45,8 +45,8 @@ const EXECUTABLES = [
   'plugins/rules/scripts/outbound.mjs',
   ...['readonly', 'handoff', 'ledger', 'working-tree', 'revert-tests', 'live', 'memory', 'work-items', 'collisions', 'run-copies', 'report', 'registry']
     .map((n) => `plugins/audit/scripts/${n}.sh`),
-  'plugins/primer/hooks/drift.sh',
-  'plugins/primer/hooks/notice.sh',
+  'plugins/primer/hooks/drift.mjs',
+  'plugins/primer/hooks/notice.mjs',
   'plugins/primer/scripts/primer.mjs',
   'plugins/primer/scripts/ledger.mjs',
   'plugins/primer/scripts/staged.mjs',
@@ -97,11 +97,11 @@ const GUARD_HOOK = {
 const PRIMER_HOOK = {
   hooks: {
     PreToolUse: [
-      { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] },
+      { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/hooks/drift.mjs'], onFailure: 'continue' }] },
       { matcher: 'Edit|Write|NotebookEdit', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'reach', '${CLAUDE_PLUGIN_DATA}'], timeout: 10, onFailure: 'continue' }] },
     ],
     SessionStart: [
-      { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
+      { matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/hooks/notice.mjs'] }] },
       { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
     ],
     SubagentStart: [{ hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] }],
@@ -277,7 +277,7 @@ function importFailures(ctx) {
 
 function budgetFailures(ctx) {
   const out = [];
-  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/rules/scripts/outbound.mjs', 300], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/guard/scripts/ask.mjs', 520], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/staged.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/primer/scripts/park.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
+  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/rules/scripts/outbound.mjs', 300], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/guard/scripts/ask.mjs', 520], ['plugins/primer/hooks/drift.mjs', 700], ['plugins/primer/hooks/notice.mjs', 700], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/staged.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/primer/scripts/park.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
     const source = ctx.text(script);
     if (source === null) continue;
     const lines = source.split('\n').length - 1 + (source !== '' && !source.endsWith('\n') ? 1 : 0);

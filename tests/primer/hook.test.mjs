@@ -1,6 +1,6 @@
-// Runs the primer drift hook (plugins/primer/hooks/drift.sh) against throwaway repositories, one test per rule, and its hand-off to
-// the staging check of plugins/primer/scripts/staged.mjs.
-// The hook needs sh, git, awk and sed on PATH. Every repository lives under one temporary base that is removed at the end.
+// Runs the primer drift hook (plugins/primer/hooks/drift.mjs) against throwaway repositories, one test per rule, and the staging
+// check of plugins/primer/scripts/staged.mjs that it runs first.
+// The hook needs git on PATH. Every repository lives under one temporary base that is removed at the end.
 // The groups whose cases build their own repository or only read a shared one run their cases concurrently.
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -57,8 +57,7 @@ const repo = async (name, files) => {
 };
 
 const hook = async (input, envOverride = {}) => {
-  // A forward-slash path relative to cwd, which Git Bash on Windows reads as given.
-  const r = await exec('sh', ['plugins/primer/hooks/drift.sh'], { cwd: root, env: { ...env, ...envOverride } }, input);
+  const r = await exec(process.execPath, ['plugins/primer/hooks/drift.mjs'], { cwd: root, env: { ...env, ...envOverride } }, input);
   assert.equal(r.status, 0, `hook exited ${r.status}\n${r.stderr}`);
   return r.stdout;
 };
@@ -171,11 +170,11 @@ describe('primer drift hook', () => {
       assert.deepEqual(json, {
         hooks: {
           PreToolUse: [
-            { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/drift.sh"', onFailure: 'continue' }] },
+            { matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/hooks/drift.mjs'], onFailure: 'continue' }] },
             { matcher: 'Edit|Write|NotebookEdit', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'reach', '${CLAUDE_PLUGIN_DATA}'], timeout: 10, onFailure: 'continue' }] },
           ],
           SessionStart: [
-            { matcher: 'startup', hooks: [{ type: 'command', command: 'sh "${CLAUDE_PLUGIN_ROOT}/hooks/notice.sh"' }] },
+            { matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/hooks/notice.mjs'] }] },
             { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
           ],
           SubagentStart: [
@@ -683,8 +682,8 @@ describe('primer drift hook', () => {
         ],
         roots: [],
       }));
-      broken = join(base, 'broken-plugin');
-      write(broken, 'scripts/staged.mjs', "throw new Error('broken');\n");
+      broken = join(base, 'broken-config');
+      write(broken, 'reimagine-primer/config.json', '{');
     });
     const clone = async (url = remote) => {
       const dir = join(base, `clone-${++seqs}`);
@@ -769,12 +768,12 @@ describe('primer drift hook', () => {
     });
     test('a staging check that fails denies the call', async () => {
       const dir = await clone();
-      assert.equal(await check('git add -A && git commit -m x', dir, { env: { CLAUDE_PLUGIN_ROOT: broken } }),
-        deny('the staging check failed with exit status 1, so the call is denied'));
+      assert.equal(await check('git add -A && git commit -m x', dir, { env: { CLAUDE_CONFIG_DIR: broken } }),
+        deny(`the staging check failed, so the call is denied: ${join(broken, 'reimagine-primer', 'config.json').replaceAll('\\', '\\\\')} is not a primer configuration`));
     });
     test('without primer\'s own directory the staging check does not run', async () => {
       const dir = await clone();
-      assert.equal(await check('git add CLAUDE.md', dir, { env: { CLAUDE_CONFIG_DIR: join(base, 'no-config'), CLAUDE_PLUGIN_ROOT: broken } }), '');
+      assert.equal(await check('git add CLAUDE.md', dir, { env: { CLAUDE_CONFIG_DIR: join(base, 'no-config') } }), '');
     });
     test('a repository whose hub has the marker and that the map does not give the local profile gets the drift check alone', async () => {
       assert.equal(await check('git add -A && git commit -m x', fixture), '');

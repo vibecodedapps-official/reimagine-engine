@@ -1,5 +1,5 @@
-// Runs the primer notice hook (plugins/primer/hooks/notice.sh) against throwaway repositories and the memory fixture
-// (tests/primer/fixture/memory/build.sh) placed where the host keeps auto memory. The hook needs sh, git, awk and sed on PATH.
+// Runs the primer notice hook (plugins/primer/hooks/notice.mjs) against throwaway repositories and the memory fixture
+// (tests/primer/fixture/memory/build.sh) placed where the host keeps auto memory. The hook needs git on PATH, and the fixture sh.
 // Everything lives under one temporary base that is removed at the end.
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -71,8 +71,7 @@ const notice = (cwd, config, data, transcriptKey, envOverride = {}) => {
     hook_event_name: 'SessionStart',
     source: 'startup',
   });
-  // A forward-slash path relative to cwd, which Git Bash on Windows reads as given.
-  const r = spawnSync('sh', ['plugins/primer/hooks/notice.sh'], { cwd: root, env: { ...env, CLAUDE_PLUGIN_DATA: data, ...envOverride }, input, encoding: 'utf8' });
+  const r = spawnSync(process.execPath, ['plugins/primer/hooks/notice.mjs'], { cwd: root, env: { ...env, CLAUDE_PLUGIN_DATA: data, ...envOverride }, input, encoding: 'utf8' });
   assert.equal(r.status, 0, `hook exited ${r.status}\n${r.stderr}`);
   return r.stdout;
 };

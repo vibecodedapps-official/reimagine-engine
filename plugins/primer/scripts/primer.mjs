@@ -20,6 +20,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:pat
 import { pathToFileURL } from 'node:url';
 
 export const CAP = 10000;
+export const MARK = '<!-- primer -->';
 const LAYERS = ['shared', 'group', 'machine', 'machine-group'];
 const PROFILES = ['shared', 'local'];
 const GROUP = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -43,6 +44,14 @@ export const homed = (c, f) => {
 // The same for a file that may sit inside the store, which is held relative to it.
 export const held = (c, p, f) => { const s = keyOf(p.store, c.platform); return keyOf(f, c.platform).startsWith(`${s}/`) ? slash(f).slice(s.length + 1) : homed(c, f); };
 export const readText = (path) => { try { return readFileSync(path, 'utf8'); } catch { return ''; } };
+const isFile = (f) => !!statSync(f, { throwIfNoEntry: false })?.isFile();
+// The hub of a repository that opted in, its first line the marker: CLAUDE.md, or AGENTS.md where CLAUDE.md is the one line
+// @AGENTS.md or is missing. Null for any other root.
+export function hubOf(root) {
+  const lines = (f) => { const l = readText(join(root, f)).split('\n'); if (l.at(-1) === '') l.pop(); return l.map((x) => x.replace(/\r$/, '')); };
+  const own = isFile(join(root, 'CLAUDE.md')) ? lines('CLAUDE.md') : null, hub = own && !(own.length === 1 && own[0] === '@AGENTS.md') ? 'CLAUDE.md' : 'AGENTS.md';
+  return isFile(join(root, hub)) && lines(hub)[0] === MARK ? hub : null;
+}
 const real = (p) => { try { return realpathSync.native(p); } catch { return p; } };
 
 // A remote as host/path, or null for a local path; the rule guard writes remotes by.
@@ -175,10 +184,11 @@ export function feedbackOf(config, repo) {
   return { stamp, key, reviewed: read.size > 0, others: marks.filter((f) => f[0] !== key), logs };
 }
 
-// The notice of notice.sh for a local repository, which has no hub: the auto memory notes of type feedback or project modified
-// after the stamp, and the repository's feedback entries since its last review. After a review a single entry makes no notice:
+// The notice of a repository, which hooks/notice.mjs gives where the hub has the marker and the loader in a local repository, which
+// has no hub: the auto memory notes of type feedback or project modified after the stamp, and the repository's feedback entries
+// since its last review. After a review a single entry makes no notice:
 // it is taken for the reviewing session's own, which that session logs after the stamp is written.
-function notice(c, input, data, repo) {
+export function notice(c, input, data, repo) {
   const config = configOf(c, input), win = c.platform === 'win32', cwd = slash(isDir(input.cwd) ? input.cwd : c.cwd);
   const tp = typeof input.transcript_path === 'string' ? slash(input.transcript_path) : '', sdir = tp && dirname(tp), key = repo.root.replace(/[^A-Za-z0-9]/g, '-');
   let memory;
@@ -230,7 +240,7 @@ function sessionStart(c, layer, input, data) {
     const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
     for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
-    // notice.sh runs at startup alone, and so does this.
+    // The notice hook runs at startup alone, and so does this.
     const told = (input.source ?? 'startup') === 'startup' && !quiet && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
     if (told) msgs.push(told);
   }

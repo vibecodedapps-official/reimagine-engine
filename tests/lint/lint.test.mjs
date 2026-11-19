@@ -585,7 +585,7 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     bump(dir, 'primer');
   }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
   negative('R259: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (SessionStart command)', (dir) => {
-    edit(dir, 'plugins/primer/hooks/hooks.json', '/hooks/notice.sh', '/hooks/drift.sh');
+    edit(dir, 'plugins/primer/hooks/hooks.json', '/hooks/notice.mjs', '/hooks/drift.mjs');
     bump(dir, 'primer');
   }, 1, ['plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape']);
   negative('R388: plugins/primer/hooks/hooks.json: not the PreToolUse Bash|PowerShell and Edit|Write|NotebookEdit, SessionStart startup, and SessionStart and SubagentStart loader shape (loader layer)', (dir) => {
@@ -725,9 +725,9 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
   }, 1, ['plugins/rules/skills/rules/extra.md: names scripts/nope.sh, which plugins/rules/scripts/nope.sh does not hold']);
   negative('R6: <path>: no test under tests/ names it', (dir) => {
     for (const path of files(dir, 'tests/')) {
-      if (basename(path) === 'drift.sh' || read(dir, path).includes('drift.sh')) rmSync(join(dir, path));
+      if (basename(path) === 'drift.mjs' || read(dir, path).includes('drift.mjs')) rmSync(join(dir, path));
     }
-  }, 1, ['plugins/primer/hooks/drift.sh: no test under tests/ names it']);
+  }, 1, ['plugins/primer/hooks/drift.mjs: no test under tests/ names it']);
   negative('R6: <path>: no test under tests/ names it (primer.mjs)', (dir) => {
     for (const path of files(dir, 'tests/')) {
       if (basename(path) === 'primer.mjs' || read(dir, path).includes('primer.mjs')) rmSync(join(dir, path));

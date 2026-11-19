@@ -214,10 +214,10 @@ function verdict(c, repo, plan, parts = []) {
     all = { paths: [...paths, ...parts.flatMap((p) => p.paths)], ignores: paths.filter(isIgnore).map((f) => ({ file: f, now: `${readText(join(repo.top, f))}\n${blob(c, repo.top, `:${f}`)}`, was: blob(c, repo.top, `HEAD:${f}`) })) };
   }
   const agents = [...new Set(all.paths.filter(isAgent))].sort();
-  const lines = all.ignores.flatMap((g) => {
+  const lines = [...new Set(all.ignores.flatMap((g) => {
     const was = new Set(g.was.split(/\r?\n/).map((l) => l.trim()));
     return [...new Set(g.now.split(/\r?\n/).map((l) => l.trim()))].filter((l) => l && namesAgent(l) && !was.has(l)).map((l) => `the line ${l} in ${g.file}, which names an agent file`);
-  });
+  }))];
   const tree = agents.length ? upstream(c, repo) : {};
   const held = new Set(tree.ref ? git(c, repo.top, ['ls-tree', '-r', '-z', '--name-only', '--full-tree', tree.ref, '--', ...agents]).stdout.split('\0') : []);
   const missing = agents.filter((x) => !held.has(x));
@@ -240,14 +240,16 @@ export function staged(c, input) {
     + 'and git commit; restore the file from a copy or from the store\'s history, or correct it to the form primer map writes')];
   if (!map.repos.some((e) => e.profile === 'local')) return [];
   if (st.hidden || st.calls.some((x) => !isDir(x.dir))) st.lost = st.far = true;
-  const one = st.calls.length === 1 && !st.lost ? st.calls[0] : null, dirs = new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd]);
+  const dirs = new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd]);
   // Where a directory is unknown the call may run in any local repository, so each one the map holds is checked too.
   if (st.far) for (const e of [{ path: cwd }, ...map.repos.filter((x) => x.profile === 'local')]) dirs.add(e.path);
   for (const dir of dirs) {
     const repo = isDir(dir) && repoOf(c, dir);
     if (!repo || match(map, repo, c.platform)?.profile !== 'local') continue;
-    const reason = one ? verdict(c, repo, planOf(c, one, repo.top))
-      : verdict(c, repo, null, st.calls.filter((x) => st.far || x.dir === dir).map((x) => planOf(c, { ...x, dir }, repo.top)).filter(Boolean));
+    // The calls of one directory are checked by what they would add together when each one resolves: an add extends the index a
+    // later commit takes, and a commit holds no more than the index and what it names.
+    const plans = st.calls.filter((x) => st.far || x.dir === dir).map((x) => planOf(c, { ...x, dir }, repo.top)), whole = !st.lost && plans.length && plans.every(Boolean);
+    const reason = whole ? verdict(c, repo, { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) }) : verdict(c, repo, null, plans.filter(Boolean));
     if (reason) return [deny(reason)];
   }
   return [];

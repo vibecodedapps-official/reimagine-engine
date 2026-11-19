@@ -700,9 +700,20 @@ describe('primer drift hook', () => {
     const both = '.claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold';
     const decided = (out) => (out ? JSON.parse(out).hookSpecificOutput : {});
 
-    test('staging and committing everything in one command is denied, as a command that cannot be resolved', async () => {
+    test('staging and committing everything in one command is denied', async () => {
       const dir = await clone();
-      assert.equal(await check('git add -A && git commit -m x', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
+      assert.equal(await check('git add -A && git commit -m x', dir), deny(lead(dir) + 'the call would add ' + both));
+    });
+    test('an add and a commit in one command that both resolve are checked by what the two would add', async () => {
+      const dir = await clone();
+      assert.equal(await check('git add src/a.ts && git commit -m "$(cat <<\'EOF\'\nsubject\n\nbody\nEOF\n)"', dir), '');
+      assert.equal(await check('git add src/a.ts && git commit -m x', dir), '');
+      assert.equal(await check('git add CLAUDE.md && git commit -m x', dir), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+      assert.equal(await check('git add src/a.ts && git add "$FILES"', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
+      write(dir, '.gitignore', 'node_modules/\nCLAUDE.md\n');
+      await git(dir, 'add', '.gitignore');
+      write(dir, '.gitignore', 'node_modules/\nCLAUDE.md\n\n');
+      assert.equal(await check('git add .gitignore && git commit -m x', dir), deny(lead(dir) + 'the call would add the line CLAUDE.md in .gitignore, which names an agent file'));
     });
     test('staging CLAUDE.md by name is denied', async () => {
       const dir = await clone();
@@ -810,8 +821,8 @@ describe('primer drift hook', () => {
     test('a forced add of an agent file git ignores is counted beside a commit in the same command', async () => {
       const dir = await clone();
       write(dir, '.git/info/exclude', 'CLAUDE.md\nCLAUDE.local.md\nAGENTS.md\n.claude/\n.agents/\n.reimagine/\n.reimagine.json\n.mcp.json\n');
-      assert.equal(await check('git add -f CLAUDE.md && git commit -m x', dir),
-        deny(lead(dir) + unresolved + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+      assert.equal(await check('git add -f CLAUDE.md && git commit -m x', dir), deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
+      assert.equal(await check('git add -f CLAUDE.md && git add "$FILES"', dir), deny(lead(dir) + unresolved + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
     });
     test('a brace expansion among the paths of an add leaves it unresolved, and a brace that stands alone groups commands', async () => {
       const dir = await clone();
@@ -860,7 +871,7 @@ describe('primer drift hook', () => {
       const dir = await clone();
       await git(dir, 'add', '.claude/settings.local.json');
       rmSync(join(dir, '.claude/settings.local.json'));
-      assert.equal(await check('git add src && git commit -m x', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
+      assert.equal(await check('git add src && git commit -m x', dir), deny(lead(dir) + 'the call would add .claude/settings.local.json, which refs/remotes/origin/HEAD does not hold'));
     });
     test('a map that cannot be read denies a git add or commit, naming the map, and passes any other command', async () => {
       const dir = await clone();

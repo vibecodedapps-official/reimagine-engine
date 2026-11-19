@@ -174,19 +174,50 @@ function frontOf(text) {
   return out;
 }
 
-// The feedback logs of <config>/feedback/ as one repository reads them. A log's entries are its level-two sections, but one headed
-// Recommended, and an entry is the repository's when its heading holds, as a word, the name of the repository's directory or of a
-// remote. .reviewed holds, a line per repository and log, how many entries the log had at that repository's last review.
-export function feedbackOf(config, repo) {
+// The machine's review settings, review.json in the machine's directory, as one repository reads them: logs, the directories whose
+// files are feedback logs beside <config>/feedback/, and under repositories, by the path of a main work tree, skip, the auto
+// memory notes no review reads and no notice counts, and transcripts, false where the transcript reader stays off. A file in
+// any other form is refused, so a list that cannot be read is never taken for an empty one.
+export function reviewOf(c, p, root) {
+  const path = join(p.local, 'review.json'), v = readJson(path, 'a primer review file') ?? {}, at = (d) => resolve(tilde(d, c.home)), placed = (s) => isAbsolute(tilde(s, c.home));
+  const plain = (x, keys) => !!x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).every(keys), list = (x, ok) => x === undefined || (Array.isArray(x) && x.every((s) => typeof s === 'string' && ok(s)));
+  const repos = plain(v, (k) => k === 'logs' || k === 'repositories') ? v.repositories ?? {} : null;
+  if (!plain(repos, placed) || !list(v.logs, placed) || !Object.values(repos).every((r) => plain(r, (k) => k === 'skip' || k === 'transcripts') && list(r.skip, Boolean) && ['boolean', 'undefined'].includes(typeof r.transcripts))) refuse(`${path} is not a primer review file`);
+  const mine = Object.entries(repos).find(([k]) => keyOf(at(k), c.platform) === keyOf(root, c.platform))?.[1];
+  return { path, logs: (v.logs ?? []).map(at), entry: !!mine, skip: mine?.skip ?? [], transcripts: mine?.transcripts !== false };
+}
+
+// The topic files MEMORY.md lists, each once, with the type and the modified time of its frontmatter; a name that leaves the
+// directory is none.
+export function notesOf(memory) {
+  const seen = new Set(), out = [];
+  for (const l of readText(join(memory, 'MEMORY.md')).split('\n').map((x) => x.replace(/\r$/, ''))) {
+    const at = l.indexOf(']('), rest = l.slice(at + 2), name = rest.slice(0, rest.indexOf(')'));
+    if (!l.startsWith('- [') || at < 0 || !rest.includes(')') || !name || name.startsWith('/') || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
+    seen.add(name);
+    out.push({ name, ...frontOf(readText(join(memory, name))) });
+  }
+  return out;
+}
+
+// The feedback logs as one repository reads them: the files of <config>/feedback/, each by its name, then those of each directory
+// of more with its subdirectories, each by its path, a name that starts with a dot left out. A log's entries are its level-two
+// sections, but one headed Recommended, and an entry is the repository's when its heading holds, as a word, the name of the
+// repository's directory or of a remote. .reviewed holds, a line per repository and log, how many entries the log had at that
+// repository's last review.
+export function feedbackOf(config, repo, more = []) {
   const dir = join(config, 'feedback'), stamp = join(dir, '.reviewed'), key = repo.root.replace(/[^A-Za-z0-9]/g, '-'), low = (s) => s.replace(/[A-Z]/g, (ch) => ch.toLowerCase());
   const last = (u) => slash(u).replace(/\/+$/, '').replace(/\.git$/, '').replace(/\/+$/, '').replace(/^.*[/:]/, '');
   const names = [...new Set([repo.root, ...repo.urls].map((u) => low(last(u))).filter(Boolean))], edge = (ch) => !ch || !/[a-z0-9_-]/.test(ch);
   const named = (h) => names.some((nm) => { for (let at = h.indexOf(nm); at >= 0; at = h.indexOf(nm, at + 1)) if (edge(h[at - 1]) && edge(h[at + nm.length])) return true; return false; });
   const marks = readText(stamp).split('\n').map((l) => l.replace(/\r$/, '').split('\t')).filter((f) => f.length === 3 && /^[0-9]+$/.test(f[1]));
   const read = new Map(marks.filter((f) => f[0] === key).map((f) => [f[2], Number(f[1])]));
-  const files = (() => { try { return readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && !e.name.startsWith('.')).map((e) => e.name).sort(); } catch { return []; } })();
-  const logs = files.map((name) => {
-    const heads = readText(join(dir, name)).split('\n').map((l) => l.replace(/\r$/, '')).filter((l) => l.startsWith('## ') && !/^recommended([^a-z0-9_-]|$)/.test(low(l.slice(3)).replace(/^[ \t]+/, '')));
+  const under = (d, deep) => { try { return readdirSync(d, { withFileTypes: true }).filter((e) => !e.name.startsWith('.')).flatMap((e) => (isFile(join(d, e.name)) ? [join(d, e.name)] : deep && e.isDirectory() ? under(join(d, e.name), deep) : [])); } catch { return []; } };
+  const byName = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0), own = under(dir, false).map((f) => [basename(f), f]).sort(byName), held = new Set(own.map(([, f]) => real(f)));
+  // A file reached a second time, as where a directory of more holds the config folder's own, is one log.
+  const far = more.flatMap((d) => under(d, true)).filter((f) => !held.has(real(f)) && held.add(real(f))).map((f) => [slash(f), f]).sort(byName);
+  const logs = [...own, ...far].map(([name, file]) => {
+    const heads = readText(file).split('\n').map((l) => l.replace(/\r$/, '')).filter((l) => l.startsWith('## ') && !/^recommended([^a-z0-9_-]|$)/.test(low(l.slice(3)).replace(/^[ \t]+/, '')));
     return { name, total: heads.length, unread: heads.map((l, i) => ({ n: i + 1, heading: l.slice(3).trim(), own: named(low(l.slice(3))) })).slice(read.get(name) ?? 0) };
   });
   return { stamp, key, reviewed: read.size > 0, others: marks.filter((f) => f[0] !== key), logs };
@@ -211,16 +242,11 @@ export function notice(c, input, data, repo) {
   }
   memory ??= sdir && c.env.CLAUDE_CODE_PROJECT_DIR_NAME && basename(sdir) === c.env.CLAUDE_CODE_PROJECT_DIR_NAME ? `${sdir}/memory` : join(sdir ? dirname(sdir) : join(config, 'projects'), key, 'memory');
   const file = (f) => (statSync(f, { throwIfNoEntry: false })?.isFile() ? f : null), stamp = (name) => (data ? file(join(data, 'reviewed', name)) : null);
-  const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0], seen = new Set();
-  let n = 0;
-  for (const l of readText(join(memory, 'MEMORY.md')).split('\n').map((x) => x.replace(/\r$/, ''))) {
-    const at = l.indexOf(']('), rest = l.slice(at + 2), name = rest.slice(0, rest.indexOf(')'));
-    if (!l.startsWith('- [') || at < 0 || !rest.includes(')') || !name || name.startsWith('/') || /\.\.|\\|:/.test(name) || seen.has(name)) continue;
-    seen.add(name);
-    const fm = frontOf(readText(join(memory, name)));
-    if (['feedback', 'project'].includes(fm.type) && (noted === null || (fm.modified && fm.modified > since))) n++;
-  }
-  const fb = feedbackOf(config, repo), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
+  const noted = stamp(key), since = noted && readText(noted).split(/\r?\n/)[0];
+  let rv;
+  try { rv = reviewOf(c, places(c, join(config, 'reimagine-primer')), repo.root); } catch (e) { if (!(e instanceof Refusal)) throw e; return `primer: ${e.message}`; }
+  const n = notesOf(memory).filter((x) => !rv.skip.includes(x.name) && ['feedback', 'project'].includes(x.type) && (noted === null || (x.modified && x.modified > since))).length;
+  const fb = feedbackOf(config, repo, rv.logs), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
   const what = n && m ? `auto memory has ${n} notes and ${m} feedback entries` : n ? `auto memory has ${n} notes` : `${m} feedback entries`;
   return n || m ? `primer: ${what} since the last review; run /primer` : null;
 }
@@ -307,6 +333,8 @@ function delivery(c, p) {
   if (!repo) return [...lines, `repository: none, ${slash(c.cwd)} is in no git work tree`];
   const entry = match(map, repo, c.platform), root = under(map, repo.root, c.platform);
   lines.push(`repository: ${repo.root} (${repo.remotes.join(', ') || 'no remote'})`, `entry: ${entry ? shown(entry) : 'none'}`, `profile: ${entry?.profile ?? 'none'}`);
+  const rv = reviewOf(c, p, repo.root);
+  if (existsSync(rv.path)) lines.push(`review: ${rv.path}, ${rv.logs.length} log directories, ${rv.entry ? `${rv.skip.length} notes skipped and transcripts ${rv.transcripts ? 'on' : 'off'} for this repository` : 'no entry for this repository'}`);
   if (entry?.profile === 'local') {
     const parts = layersOf(p, entry), n = joined(parts).length;
     for (const x of parts) lines.push(`layer ${x.name}: ${x.file}, ${x.text ? `${x.text.length} characters, canary ${x.canary}` : 'missing or empty'}`);

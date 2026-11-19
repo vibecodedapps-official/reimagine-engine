@@ -3,7 +3,9 @@
 // Usage: node ledger.mjs                 lists the items
 //   --unread                             lists the feedback entries that name this repository and came after its last review
 //   --reviewed                           marks every entry of every log read for this repository, in <config>/feedback/.reviewed
-//   --add <log> <gap>                    a new open item, seen once in <config>/feedback/<log>
+//   --notes <memory directory>           lists the notes MEMORY.md names there but those review.json has this repository skip
+//   --add <log> <gap>                    a new open item, seen once in <log>: a file of <config>/feedback/ by its name, or a
+//                                        file under a directory review.json names by its path
 //   --seen <id> <log>                    another log states the item's gap: a held item opens again, a folded one counts a failure
 //   --worked <id> <log>                  a log says the folded rule worked
 //   --set <id> <status> [--place <file> [--commit <sha>]] [--by <id>]
@@ -13,12 +15,12 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { Refusal, feedbackOf, held, isDir, keyOf, ownOf, places, repoOf, writeAtomic } from './primer.mjs';
+import { Refusal, feedbackOf, held, homed, isDir, keyOf, notesOf, ownOf, places, repoOf, reviewOf, tilde, writeAtomic } from './primer.mjs';
 
 const STATUSES = ['open', 'folded', 'rejected', 'held', 'superseded'];
-const FORMS = 'ledger takes nothing, --unread, --reviewed, --add <log> <gap>, --seen <id> <log>, --worked <id> <log>, or --set <id> <status> '
+const FORMS = 'ledger takes nothing, --unread, --reviewed, --notes <memory directory>, --add <log> <gap>, --seen <id> <log>, --worked <id> <log>, or --set <id> <status> '
   + 'with --place <file> [--commit <sha>] for folded and --by <id> for superseded';
 const refuse = (message) => { throw new Refusal(message); };
 
@@ -42,18 +44,30 @@ export function main(argv, { env = process.env, platform = process.platform, hom
   const [op, ...args] = argv, logs = join(dirname(ownOf(c)), 'feedback');
   if (op === undefined) return [`ledger: ${path}`, ...(items.length ? items.map(shown) : ['no items'])];
   if ((op === '--unread' || op === '--reviewed') && !args.length) {
-    const repo = repoOf(c, cwd) ?? refuse(`${cwd} is in no git work tree`), fb = feedbackOf(dirname(ownOf(c)), repo);
+    const repo = repoOf(c, cwd) ?? refuse(`${cwd} is in no git work tree`), more = reviewOf(c, p, repo.root).logs, fb = feedbackOf(dirname(ownOf(c)), repo, more);
     if (op === '--unread') {
       const own = fb.logs.flatMap((l) => l.unread.filter((e) => e.own).map((e) => `${l.name} entry ${e.n}: ${e.heading}`));
-      return [`feedback: ${logs}`, ...own, `unread: ${own.length} for this repository, ${fb.logs.reduce((n, l) => n + l.unread.filter((e) => !e.own).length, 0)} for another or none`];
+      return [`feedback: ${[logs, ...more].join(', ')}`, ...own, `unread: ${own.length} for this repository, ${fb.logs.reduce((n, l) => n + l.unread.filter((e) => !e.own).length, 0)} for another or none`];
     }
     if (!fb.logs.length) return [`primer: ${logs} holds no log; nothing was written`];
     if (isDir(fb.stamp)) refuse(`${fb.stamp} is a directory, so the stamp cannot be written`);
     writeAtomic(fb.stamp, [...fb.others, ...fb.logs.map((l) => [fb.key, l.total, l.name])].map((f) => `${f.join('\t')}\n`).join(''));
     return [`primer: wrote ${fb.stamp}`, `reviewed: ${fb.logs.length} logs through their last entries, for ${repo.root}`];
   }
+  if (op === '--notes' && args.length === 1) {
+    const repo = repoOf(c, cwd) ?? refuse(`${cwd} is in no git work tree`), rv = reviewOf(c, p, repo.root), dir = resolve(cwd, args[0]);
+    const all = isDir(dir) ? notesOf(dir) : refuse(`${dir} is no directory`), read = all.filter((x) => !rv.skip.includes(x.name)), gone = rv.skip.filter((s) => !all.some((x) => x.name === s));
+    return [`notes: ${dir}`, ...read.map((x) => `${x.name} ${x.type ?? '?'} ${x.modified ?? '?'}`), `read: ${read.length} notes, ${all.length - read.length} left out${all.length > read.length ? ` by ${rv.path}` : ''}`,
+      ...(gone.length ? [`left out and not listed in MEMORY.md: ${gone.length}`] : [])];
+  }
   const item = (id) => items.find((x) => x.id === id) ?? refuse(`the ledger holds no item ${id}`);
-  const log = (name) => (/^[^/\\]+$/.test(name) && statSync(join(logs, name), { throwIfNoEntry: false })?.isFile() ? name : refuse(`${join(logs, name)} is not a feedback log`));
+  // A log of the config folder goes by its name; one under a directory review.json names goes by its path, as the store holds a path.
+  const isLog = (f) => !!statSync(f, { throwIfNoEntry: false })?.isFile(), k = (f) => keyOf(f, c.platform);
+  const log = (name) => {
+    const far = isAbsolute(tilde(name, home)) ? resolve(tilde(name, home)) : null;
+    if (!far) return /^[^/\\]+$/.test(name) && isLog(join(logs, name)) ? name : refuse(`${join(logs, name)} is not a feedback log`);
+    return isLog(far) && reviewOf(c, p, '').logs.some((d) => k(far).startsWith(`${k(d)}/`)) ? homed(c, far) : refuse(`${name} is not a feedback log`);
+  };
   let x, sign = '~';
   if (op === '--add' && args.length === 2) {
     const gap = args[1].trim(), same = items.find((y) => y.gap.toLowerCase() === gap.toLowerCase());

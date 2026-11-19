@@ -89,6 +89,25 @@ describe('transcripts', () => {
     ].join('\n')]);
   });
 
+  test('review.json in the machine\'s directory turns the reader off for a repository and each of its work trees', () => {
+    const off = join(base, 'config-off'), review = join(off, 'reimagine-primer', 'review.json');
+    write(project(root, off), 's-off.jsonl', `${user('Seen only while the reader is on.', '2026-11-02T09:00:00.000Z', 's-off', root)}\n`);
+    write(off, 'reimagine-primer/review.json', JSON.stringify({ repositories: { [slash(root)]: { transcripts: false } } }));
+    const said = [0, `primer: the transcript reader is off for ${slash(root)} in ${review}; the review goes on without the user's past messages\n`];
+    assert.deepEqual(run([], root, off), said);
+    assert.deepEqual(run(['--from', '2026-11-01'], join(base, 'app-wt'), off), said);
+    assert.deepEqual(run(['--repo', root], base, off), said);
+    write(off, 'reimagine-primer/review.json', JSON.stringify({ repositories: { [slash(join(base, 'another'))]: { transcripts: false } } }));
+    assert.deepEqual(run([], root, off), [0, [
+      `primer: 1 messages of the user in 1 sessions of ${slash(root)}, the first day to the last day, from 1 files under ${join(off, 'projects')}`,
+      '2026-11-02T09:00:00.000Z s-off "Seen only while the reader is on."',
+      'primer: skipped 0 of 1 lines (0.0%), which the reader could not read',
+      '',
+    ].join('\n')]);
+    write(off, 'reimagine-primer/review.json', JSON.stringify({ repositories: { [slash(root)]: { transcripts: 'no' } } }));
+    assert.deepEqual(run([], root, off), [1, `primer: ${review} is not a primer review file\n`]);
+  });
+
   test('a span of one day, given from a work tree', () => {
     assert.deepEqual(run(['--from', '2026-11-03', '--to', '2026-11-03'], join(base, 'app-wt')), [0, [
       `primer: 2 messages of the user in 2 sessions of ${slash(root)}, 2026-11-03 to 2026-11-03, from 4 files under ${join(cfg, 'projects')}`,

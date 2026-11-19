@@ -918,6 +918,34 @@ describe('the notice', () => {
     assert.deepEqual(from(c), [said(1), said(1)]);
   });
 
+  test('review.json in the machine\'s directory leaves a note out of the count and names more log directories, for both hooks', () => {
+    const data = join(base, `notice-data-${++seq}`), a = config(local()), more = join(base, `more-logs-${seq}`), file = join(a.own, 'review.json');
+    const from = () => both(data, { transcript_path: join(a.dir, 'projects', key, 'test.jsonl') });
+    const notes = (n) => message(`primer: auto memory has ${n} notes since the last review; run /primer`);
+    cpSync(join(memory, 'memory'), join(a.dir, 'projects', key, 'memory'), { recursive: true });
+    stamps(data, {});
+    assert.deepEqual(from(), [notes(2), notes(2)]);
+    write(a.own, 'review.json', JSON.stringify({ repositories: { [slash(dir)]: { skip: ['item-ids-are-numbers.md'] } } }));
+    assert.deepEqual(from(), [notes(1), notes(1)]);
+    // A directory the file names is read with its subdirectories, a name that starts with a dot left out, and a log there is
+    // held in the stamp by its path.
+    write(more, '2026-11/2026-11-20.md', '## app: one\n\n## app: two\n');
+    write(more, '.kept/2026-11-21.md', '## app: out of sight\n');
+    write(a.own, 'review.json', JSON.stringify({ logs: [slash(more)], repositories: { [slash(dir)]: { skip: ['item-ids-are-numbers.md', 'no-direct-push.md'], transcripts: false } } }));
+    const entries = message('primer: 2 feedback entries since the last review; run /primer');
+    assert.deepEqual(from(), [entries, entries]);
+    const status = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: a.dir } }).stdout.split('\n').filter((l) => l.startsWith('review:'));
+    assert.deepEqual(status, [`review: ${file}, 1 log directories, 2 notes skipped and transcripts off for this repository`]);
+    write(a.dir, 'feedback/.reviewed', `${key}\t2\t${slash(join(more, '2026-11', '2026-11-20.md'))}\n`);
+    assert.deepEqual(from(), ['', '']);
+    // A file in another form is said and never read as an empty list.
+    for (const text of [JSON.stringify({ skip: ['no-direct-push.md'] }), JSON.stringify({ logs: ['relative'] }), JSON.stringify({ repositories: { [slash(dir)]: { skips: [] } } }), '{']) {
+      write(a.own, 'review.json', text);
+      const said = `${JSON.stringify({ systemMessage: `primer: ${file} is not a primer review file` })}\n`;
+      assert.deepEqual(from(), [said, said], text);
+    }
+  });
+
   test('the loader gives no notice on a later source or in a session no one attends', () => {
     const data = join(base, `notice-data-${++seq}`);
     stamps(data, {});

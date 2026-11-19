@@ -18,7 +18,7 @@ Status: all seven plugins are released from `main`, each with its own version an
 - Node 22 or later.
 - For guard: `git` and the `claude` command on the PATH, since it runs both as child processes; its design was checked on Claude Code 2.1.318.
 - For review: `git`, and on GitHub `gh` with a login.
-- On Windows, Git for Windows (the primer hooks and the audit scripts run under its `sh`, and guard runs `git`).
+- On Windows, Git for Windows (the audit scripts run under its `sh`, and primer and guard run `git`).
 - For the audit's live checks, work-item validation and collision check: `jq` (on Windows, `winget install jqlang.jq`; on macOS, `brew install jq`, or the `/usr/bin/jq` that macOS 15 and later ship). Without it the audit still runs and says what it skipped.
 
 ## Install

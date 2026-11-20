@@ -4,7 +4,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## rules 0.1.41 - 2026-11-20
 
-- With `check: diff`, a `git push` that follows a `git commit`, `merge`, `cherry-pick`, `rebase`, `am`, `revert` or `pull` in the same command is denied, with a reason that says to send the push as a command of its own. The push has to follow the end of the commit-making call's own simple command, so a message that names a push is no push, and an `--abort`, a `--quit`, a `--dry-run`, a `--help` or an `-h` anywhere in the call is no commit. The check reads the commits that are there before a command runs, so in `node make-notes.js && git add -A && git commit -m x && git push` the commit did not exist yet, and its added lines and file names left unread. A push sent alone is read whole, as before.
+- With `check: diff`, a `git push` that follows a `git commit`, `merge`, `cherry-pick`, `rebase`, `am`, `revert` or `pull` in the same command is denied, with a reason that says to send the push as a command of its own. The push has to follow the end of the commit-making call's own simple command, so a message that names a push is no push, and the quoted value of `-m` or `--message` is emptied first, so a message that names a commit and a push is neither. An `--abort`, a `--quit`, a `--dry-run`, an `--edit-todo`, a `--show-current-patch`, a `--help` or an `-h` anywhere in the call is no commit. The check reads the commits that are there before a command runs, so in `node make-notes.js && git add -A && git commit -m x && git push` the commit did not exist yet, and its added lines and file names left unread. A push sent alone is read whole, as before.
 
 ## primer 0.1.27 - 2026-11-20
 

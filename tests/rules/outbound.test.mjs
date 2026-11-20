@@ -453,12 +453,12 @@ test('R405: with check: diff, a push after a call that makes a commit in the sam
   w.list('zqxlisted', 'check: diff');
   for (const command of ['git add -A && git commit -m "add notes" && git push origin main', 'git commit -m x; git push', 'git -C . commit -m x\ngit push', 'git -c user.name=x commit -m x && git push', 'git -c user.name="A B" commit -m x && git push', 'git cherry-pick abc && git push', 'git am 0001.patch && git push',
     'git merge topic && git push', 'git rebase main && git push', 'git revert HEAD && git push', 'git pull && git push',
-    "# don't push yet\ngit commit -m 'notes' && git push", 'git add -A && git commit -m x && out="$(git push 2>&1)"', "bash -c 'git commit -m x && git push'", 'git commit -m "fix --help output" && git push', "git commit -am wip # it's temporary\ngit push", "git commit -m $'don\\'t' && git push"]) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
+    "# don't push yet\ngit commit -m 'notes' && git push", 'git add -A && git commit -m x && out="$(git push 2>&1)"', "bash -c 'git commit -m x && git push'", 'git commit -m "fix --help output" && git push', "git commit -am wip # it's temporary\ngit push", "git commit -m $'don\\'t' && git push", 'git cherry-pick --no-commit abc && git push', 'git merge --no-commit topic && git push']) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
   assert.deepEqual(w.shell('git commit -m x; git push', 'PowerShell', dir), { decision: 'deny', reason });
   // A push alone, a push before the commit, and a call that only holds the word are read as before.
   for (const command of ['git push', 'git push && git commit -m x', 'git log --grep commit && git push', 'git merge-base main HEAD && git push', 'git stash && git push', 'git commit -m "push later"', 'git commit -m "teach the git hook to read a push"', 'git commit -m "see git push docs"',
     'git rebase --abort && git push', 'git merge --quit && git push', 'git commit --dry-run && git push', 'git commit --help && git push',
-    'git --no-pager log --oneline --grep revert && git push', 'git commit -a --dry-run && git push', 'git merge feat --help && git push', 'git cherry-pick --no-commit abc && git push', 'git merge --no-commit topic && git push', 'git rebase --edit-todo && git push']) none(w.shell(command, 'Bash', dir));
+    'git --no-pager log --oneline --grep revert && git push', 'git commit -a --dry-run && git push', 'git merge feat --help && git push', 'git rebase --edit-todo && git push', 'git commit -m "fix(rules): deny git commit && git push in one command"', 'git commit -m "docs: run git merge; then git push"']) none(w.shell(command, 'Bash', dir));
   // A commit that is there before the command is read first.
   writeFileSync(join(dir, 'zqxlisted.txt'), 'x\n');
   w.git(dir, 'add', 'zqxlisted.txt');

@@ -265,7 +265,7 @@ function analyze(typed, st, vars = new Map()) {
   if (still && (st.sh ? b === 'printf' && (rest[0]?.bad || rest[0]?.w.startsWith('-v')) : (READS.has(b) || CDS.has(b)) && rest.some((x) => NAMED.test(x.w)))) vars.clear();
   // A push is read from a git call; the word alone counts in any other program, which may be a script or an eval, in an assignment, in a
   // substitution that names git, and, in scan(), in a text not parsed to its end, since each may push out of sight.
-  if (!/^git(\.exe)?$/.test(b) && !(SHELLS.has(b) && still)) st.pushes ||= words.some((x) => /\bpush\b/i.test(x.w));
+  if (!/^git(\.exe)?$/.test(b) && !(SHELLS.has(b) && still) && !CDS.has(b)) st.pushes ||= words.some((x) => /\bpush\b/i.test(x.w));
   // A call that leaves no later one readable may also rewrite a followed variable, with no word that spells it.
   if (!still || !plain) { st.moved = true; vars.clear(); }
 }

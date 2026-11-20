@@ -975,6 +975,7 @@ describe('primer drift hook', () => {
       // A remote-tracking ref other than the upstream's holds the commit, so only a command that pushes is read against the upstream alone.
       await git(dir, 'update-ref', 'refs/remotes/origin/topic', 'HEAD');
       assert.equal(await after(command), '');
+      assert.equal(await check('Push-Location .; git commit -m x', dir, { event: 'PostToolUse', tool: 'PowerShell' }), '');
       const pushed = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds .claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; the command pushes, so a remote may already hold the commit` } }) + '\n';
       for (const c of [command + ' && git push', `git -C ${slash(dir)} commit -m x; git -C ${slash(dir)} push origin HEAD`, "git commit -F - <<'EOF'\nx\nEOF\ngit push", 'git commit -m x && bash -c "git push"', 'git commit -m x && out="$(git push 2>&1)"', 'git commit -m x && ./push.sh', 'CMD=\'git push origin topic\'; git commit -m x && eval "$CMD"']) assert.equal(await after(c), pushed, c);
       assert.equal(await after('git commit -m "push later"'), '');

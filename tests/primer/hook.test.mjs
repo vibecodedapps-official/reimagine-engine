@@ -842,6 +842,12 @@ describe('primer drift hook', () => {
         `R="${at}$X"; git -C "$R" merge notes`, `R=${at}; (R=.); git -C "$R" merge notes`, `R=${at}; bash -c 'R=.'; git -C "$R" merge notes`, `R=${at}; for R in .; do :; done; git -C "$R" merge notes`]) assert.equal(await check(command, other), blind, command);
       for (const command of [`$r = Get-Location; git -C $r merge notes`, `$r='${at}'; $R = '.'; git -C $r merge notes`, `$r='${at}'; set r .; git -C $r merge notes`, `$r='${at}'; git -C "$r\\." merge notes`,
         `$r="${at}$x"; git -C $r merge notes`, `$r='${at}'; foreach ($r in '.') { }; git -C $r merge notes`]) assert.equal(await check(command, other, { tool: 'PowerShell' }), blind, command);
+      // An add is not denied by an earlier call the check does not know, so these show that the name is not followed.
+      const unread = deny(lead(other) + unresolved + 'the call would add ' + both);
+      for (const command of [`R=${at}; read R; git -C "$R" add -f CLAUDE.md`, `R=${at}; source ./env.sh; git -C "$R" add -f CLAUDE.md`, `R=${at}; for R in .; do :; done; git -C "$R" add -f CLAUDE.md`,
+        `R=${at} & git -C "$R" add -f CLAUDE.md`, `R=${at} | git -C "$R" add -f CLAUDE.md`, 'R=`cat .target`; git -C "$R" add -f CLAUDE.md', `R=(${at}); git -C "$R" add -f CLAUDE.md`,
+        `A=${at}; AB=.; git -C "$A"B add -f CLAUDE.md`]) assert.equal(await check(command, other), unread, command);
+      for (const command of [`$r='${at}'; set r .; git -C $r add -f CLAUDE.md`, `$r='${at}'; . ./env.ps1; git -C $r add -f CLAUDE.md`]) assert.equal(await check(command, other, { tool: 'PowerShell' }), unread, command);
     });
     test('a merge is read after cut, set, Select-Object and Get-Content', async () => {
       const dir = await clone();

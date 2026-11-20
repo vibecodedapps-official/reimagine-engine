@@ -32,7 +32,7 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
 
 ## Beside the plan
 
-- Read `info/exclude` under the repository's common directory (`git rev-parse --git-common-dir`), which git never shares. Where it holds every line below, make no offer; else offer the missing ones, as its own question. On a yes, append them; where the host refuses that write, show them for the user to add; a no leaves it, and the next run offers them again. Without them, a `git add` or `git commit` the staging check cannot resolve is denied while an agent file is in the work tree.
+- Read `info/exclude` under the repository's common directory (`git rev-parse --git-common-dir`), which git never shares. Where it holds every line below and the exceptions after the list that each tracked agent file needs, make no offer; else offer what is missing, lines and exceptions alike, as its own question. On a yes, append the missing ones, except that a plain `<folder>/` line is replaced as the paragraph after the list says; where the host refuses that write, show them for the user to add; a no leaves it, and the next run offers them again. Without them, a `git add` or `git commit` the staging check cannot resolve is denied while an agent file is in the work tree.
 
   ```
   CLAUDE.md
@@ -45,6 +45,6 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
   .mcp.json
   ```
 
-  A content search honors these lines and passes over a file they match, though git tracks it. So for each agent file `git ls-files` lists, the offer holds an exception after the lines above: `!/<path>`. For a file under one of the three folders, write the folder's line as `**/<folder>/**`, which counts as that line, and before the file's exception add `!/<directory>/` for each directory between the folder and the file, since no exception is read under an excluded directory. Say with the offer that a search started inside such a folder still passes over its files, which are read by path.
+  A content search honors these lines and passes over a file they match, though git tracks it. So each agent file `git ls-files` lists needs an exception after the lines above: `!/<path>`. For a file under one of the three folders, the folder's line is `**/<folder>/**`, which counts as that line, and before the file's exception go `!/<directory>/` for each directory between the folder and the file, since no exception is read under an excluded directory. A plain `<folder>/` line excludes the folder itself, so no exception under it is read: for a folder that holds a tracked agent file, replace that line with `**/<folder>/**` instead of appending a second. Say with the offer that a search started inside such a folder still passes over its files, which are read by path.
 
 - The plan proposes the host's `attribution` setting with empty `commit` and `pr` values, by placement item 2, since a session attribution line in a commit message shows what the profile hides. Primer never writes it.

@@ -110,24 +110,26 @@ function scan(s, ps, st, top = false) {
 }
 
 // The variables a command sets to a plain text before any other call, as { n, at }: n commands that open the text and only
-// assign, NAME=text under sh and $name = 'text' in PowerShell, which change nothing a later call is read from, and at, the text of
+// assign, NAME=text under sh, one to a command and ended by ; or && or a line break, and $name = 'text' in PowerShell, which change
+// nothing a later call is read from, and at, the text of
 // each name the rest of the command only reads. A name is left out, and a word that holds it stays one the script cannot
 // resolve, where the text holds an expansion, or under sh a space or a pattern the shell would split or match, where the name
-// is assigned twice, or where a later word holds it in any form but $name alone as an argument with no assignment after it:
+// is assigned twice, or starts the name of another, or where a later word holds it in any form but $name alone as an argument with no assignment after it:
 // in a longer word, as a command's first word, as the name a read, a loop or another assignment writes, or in a text given to
 // a shell. The names of PowerShell count in any letter case.
 function followed(s, ps, list) {
   const at = new Map(), twice = new Set(), key = (name) => (ps ? name.toLowerCase() : name);
   const set = (name, text) => { if (at.has(key(name))) twice.add(key(name)); at.set(key(name), text); };
+  const one = ps ? /^\s*\$(\w+)[ \t]*=[ \t]*(?:'([^'\r\n]+)'|"([^"$`\r\n]+)")[ \t]*(?:;|\r?\n|$)/
+    : /^\s*((?!GIT_)[A-Za-z_]\w*)=(?:'([^'\r\n]+)'|"([^"$`\\\r\n]+)"|([^\s;&|()<>`$"'\\*?[\]{}~#!]+))[ \t]*(?:;|&&|\r?\n|$)/;
   let n = 0;
-  if (ps) {
-    const one = /^\s*\$(\w+)[ \t]*=[ \t]*(?:'([^'\r\n]+)'|"([^"$`\r\n]+)")[ \t]*(?:;|\r?\n|$)/;
-    for (let m, rest = s; (m = one.exec(rest)) && Array.isArray(list[n]); rest = rest.slice(m[0].length), n++) set(m[1], m[2] ?? m[3]);
-  } else {
-    for (; Array.isArray(list[n]) && !list[n].wrote && list[n].every((x) => !x.bad && !x.sub && /^(?!GIT_)[A-Za-z_]\w*=/.test(x.w)); n++) {
-      for (const { w } of list[n]) { const i = w.indexOf('='); set(w.slice(0, i), /[\s*?[\]]/.test(w.slice(i + 1)) ? null : w.slice(i + 1)); }
-    }
+  for (let m, rest = s; (m = one.exec(rest)); rest = rest.slice(m[0].length), n++) {
+    const text = m.slice(2).find((x) => x !== undefined), words = list[n];
+    if (!Array.isArray(words) || words.wrote || (!ps && !(words.length === 1 && !words[0].bad && !words[0].sub && words[0].w === `${m[1]}=${text}`))) break;
+    set(m[1], !ps && /[\s*?[\]]/.test(text) ? null : text);
   }
+  // A name that starts another is dropped with it, since the words of a text lose where a quote ended: "$A"B reads as $AB.
+  for (const a of [...at.keys()]) for (const b of [...at.keys()]) if (b.length > a.length && b.startsWith(a)) { at.delete(a); at.delete(b); }
   for (const name of at.keys()) {
     const held = new RegExp(`(?<![A-Za-z0-9_])${name}(?![A-Za-z0-9_])`, ps ? 'i' : ''), use = new RegExp(`^\\$(?:${name}|\\{${name}\\})$`, ps ? 'i' : '');
     const read = (words, j) => words[j].bad && !words[j].sub && use.test(words[j].w) && j > 0 && !/^[-+*/%?]*=/.test(words[j + 1]?.w ?? '');
@@ -201,7 +203,8 @@ function analyze(typed, st, vars = new Map()) {
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
   // set changes the options of sh; in PowerShell the word is a command that writes a variable.
   else still = plain && (READS.has(words[i].w.toLowerCase()) || (st.sh && words[i].w === 'set'));
-  if (!still || !plain) st.moved = true;
+  // A call that leaves no later one readable may also rewrite a followed variable, with no word that spells it.
+  if (!still || !plain) { st.moved = true; vars.clear(); }
 }
 
 // The commands that bring commits made elsewhere into the history, each with the options that take the next word as a value; any
@@ -402,7 +405,7 @@ function verdict(c, repo, plan, parts = []) {
 // What both checks read of a hook's input: the calls of its command, the map, and each local repository a call runs in with the
 // directory it was named by. Null where the command holds no call the checks read or the map holds no local repository; the map
 // is null where it cannot be read.
-function read(c, input) {
+function read(c, input, after = false) {
   const own = join(configOf(c, input), 'reimagine-primer'), command = input.tool_input?.command;
   if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/.test(command)) return null;
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;
@@ -414,6 +417,8 @@ function read(c, input) {
   if (!map.repos.some((e) => e.profile === 'local')) return null;
   if (st.hidden || st.calls.some((x) => !isDir(x.dir))) st.lost = st.far = true;
   const dirs = new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd]);
+  // After a call the hook's directory may be the one the call's own cd left, so it is read as well.
+  if (after) dirs.add(cwd);
   // Where a directory is unknown the call may run in any local repository, so each one the map holds is checked too.
   if (st.far) for (const e of [{ path: cwd }, ...map.repos.filter((x) => x.profile === 'local')]) dirs.add(e.path);
   const repos = [...dirs].map((dir) => ({ dir, repo: isDir(dir) && repoOf(c, dir) })).filter((x) => x.repo && match(map, x.repo, c.platform)?.profile === 'local');
@@ -440,21 +445,22 @@ export function staged(c, input) {
   return [];
 }
 
-// After the call, what the check before it could not see: a file the call itself made and committed. The commits HEAD holds and
-// no remote does are read for the agent files they add and the upstream lacks, in each local repository the command commits in,
-// and each is said to the session, since the commit is made. A command that only stages is left to the commit that follows.
+// After the call, what the check before it could not see: a file the call itself made and committed. The newest hundred commits HEAD
+// holds and no remote does, a merge read against its first parent, are read for the agent files they add and the upstream lacks, in
+// each local repository the command commits in, and each is said to the session, since the commit is made. A command that only
+// stages is left to the commit that follows.
 export function committed(c, input) {
-  const found = read(c, input), seen = new Set(), said = [];
+  const found = read(c, input, true), seen = new Set(), said = [];
   if (!found?.map || !(found.st.hidden || found.st.calls.some((x) => x.sub !== 'add'))) return [];
   for (const { repo } of found.repos) {
     if (seen.has(repo.top)) continue;
     seen.add(repo.top);
-    const r = git(c, repo.top, ['-c', 'core.quotepath=off', 'log', '--format=%x01%h%x02', '-m', '--no-renames', '--diff-filter=A', '--name-only', '-z', 'HEAD', '--not', '--remotes']);
+    const r = git(c, repo.top, ['-c', 'core.quotepath=off', 'log', '--format=%x01%h%x02', '--diff-merges=first-parent', '--no-renames', '--diff-filter=A', '--name-only', '-z', '--max-count=100', 'HEAD', '--not', '--remotes']);
     if (r.status !== 0) continue;
     const adds = r.stdout.split('\x01').slice(1).map((p) => p.split('\x02')).map(([id, names = '']) => ({ id, paths: names.split('\0').map((x) => x.replace(/^\n+/, '')).filter(isAgent) }));
     const { missing, lack } = lacking(c, repo, [...new Set(adds.flatMap((a) => a.paths))].sort());
     const items = adds.map((a) => ({ id: a.id, paths: [...new Set(a.paths)].filter((x) => missing.includes(x)).sort() })).filter((a) => a.paths.length);
-    if (items.length) said.push(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; ${items.map((a) => `commit ${a.id} adds ${a.paths.join(', ')}`).join('; ')}, ${lack}; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; no remote holds ${items.length === 1 ? 'the commit' : 'these commits'} yet`);
+    if (items.length) said.push(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; ${items.map((a) => `commit ${a.id} adds ${a.paths.map((x) => x.replace(/[\u0000-\u0008\u000a-\u001f\u007f]/g, '')).join(', ')}`).join('; ')}, ${lack}; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; no remote holds ${items.length === 1 ? 'the commit' : 'these commits'} yet`);
   }
   return said.length ? [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: said.join('\n') } })] : [];
 }

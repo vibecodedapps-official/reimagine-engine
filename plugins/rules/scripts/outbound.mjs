@@ -155,7 +155,7 @@ const TEXT = ['commit', 'commit-tree', 'merge', 'tag'], FORGE = ['gh', 'az', 'gl
 // git push in one simple command, but not git stash push.
 const PUSH = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?![${EDGE}])[^|;&\n]*?\s(?<!stash\s+)push(?![${EDGE}])`, 'i');
 // A call that makes a commit and, after the end of its own simple command, a push: no check before the command can read that commit. A message's words are inside that command, so the quoted value of -m or --message is emptied first, and a call with --abort, --quit, --dry-run, --edit-todo, --show-current-patch or help makes no commit.
-const MAKES = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-[Cc]|--git-dir|--work-tree|--namespace|--config-env)\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-\S+)*\s+(?:commit|merge|cherry-pick|rebase|am|revert|pull)(?![${EDGE}])`, 'gi');
+const MAKES = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-(?![Cc]\s|-(?:git-dir|work-tree|namespace|config-env)\s)\S+)*\s+(?:commit|merge|cherry-pick|rebase|am|revert|pull)(?![${EDGE}])`, 'gi');
 // Where the simple command that holds place i ends: the first ; & | or line break outside a quoted string, read with the tool's escape character; with a quote left open, the place itself.
 const simpleEnd = (s, i, esc) => { let q = null, k = i; for (; k < s.length; k++) { const c = s[k]; if (c === esc && q !== "'") k++; else if (q ? c === q : c === '"' || c === "'") q = q ? null : c; else if (!q && ';&|\n'.includes(c)) break; } return q ? i : k; };
 const firstText = (s) => TEXT.map((w) => [w, word(w).exec(s)?.index ?? Infinity]).reduce((a, b) => (b[1] < a[1] ? b : a), ['', Infinity])[0];

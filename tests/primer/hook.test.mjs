@@ -927,6 +927,11 @@ describe('primer drift hook', () => {
       // A body that runs a command under an unquoted end word, and an end word the script cannot read, leave the call unread.
       for (const command of ['cat > log.txt <<EOF\nmerged: $(git merge --no-edit feat)\nEOF', 'cat <<"E"OF\nbody\nEOF\ngit merge feat', 'cat <<EOF \\\n&& git merge feat\nbody\nEOF']) assert.equal(await check(command, dir), hidden('merge'), command);
       assert.equal(await check('<<EOF\n$(git branch -f feat notes)\nEOF\ngit merge feat', dir), unread('merge'));
+      // A word of an option's value is no subcommand, and options that repeat are read in linear time.
+      assert.equal(await check('cat <<"E"OF\nx\nEOF\ngit -c merge.ff=false pull', dir), '');
+      const started = Date.now();
+      assert.equal(await check('cat <<"E"OF\nx\nEOF\ngit' + ' -c -!'.repeat(30) + ' status', dir), '');
+      assert.ok(Date.now() - started < 10000);
       write(dir, 'CLAUDE.md', '# Mine\n');
       assert.equal(await check("cat > notes.txt <<'EOF'\nx\nEOF\ngit add src/a.ts && git commit -m \"merge the rest\"", dir), deny(lead(dir) + unresolved + one));
       assert.equal(await check('cat <<EOF\nx\nEOF\ngit commit -m "then git merge feat"', dir), deny(lead(dir) + unresolved + one));

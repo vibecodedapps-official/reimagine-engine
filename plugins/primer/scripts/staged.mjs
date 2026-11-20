@@ -27,7 +27,7 @@ const ran = (t) => { let out = '', d = 0, tick = false; for (let i = 0; i < t.le
 const hides = (t) => /\bgit(\.exe)?\b[^\n]*\b(add|stage|commit)\b/i.test(t.replace(/[\\`^]\r?\n/g, ' '));
 // A merge, a cherry-pick, a rebase or an am as the subcommand of a git call, after git's own options and the values of those that take
 // one, so a word of a message is no call; used where a here-document's body may run a command or its end word cannot be read.
-const BROUGHT = /\bgit(?:\.exe)?["']?(?:\s+(?:-[Cc]|--git-dir|--work-tree|--namespace|--config-env)\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-\S+)*\s+(merge|cherry-pick|rebase|am)(?![\w-])(?!\s+(?:--abort|--skip|--quit|--edit-todo|--show-current-patch|--help|-h)(?![\w-]))/i;
+const BROUGHT = /\bgit(?:\.exe)?["']?(?:\s+(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-(?![Cc]\s|-(?:git-dir|work-tree|namespace|config-env)\s)\S+)*\s+(merge|cherry-pick|rebase|am)(?![\w-])(?!\s+(?:--abort|--skip|--quit|--edit-todo|--show-current-patch|--help|-h)(?![\w-]))/i;
 // The operator and end word of a here-document: bare, quoted, after a backslash or after <<-, and ended by a space or an operator.
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))(?=[\s;&|()<>]|$)/;
 function commands(s, ps) {

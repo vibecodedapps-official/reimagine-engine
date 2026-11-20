@@ -458,7 +458,11 @@ test('R405: with check: diff, a push after a call that makes a commit in the sam
   // A push alone, a push before the commit, and a call that only holds the word are read as before.
   for (const command of ['git push', 'git push && git commit -m x', 'git log --grep commit && git push', 'git merge-base main HEAD && git push', 'git stash && git push', 'git commit -m "push later"', 'git commit -m "teach the git hook to read a push"', 'git commit -m "see git push docs"',
     'git rebase --abort && git push', 'git merge --quit && git push', 'git commit --dry-run && git push', 'git commit --help && git push',
-    'git --no-pager log --oneline --grep revert && git push', 'git commit -a --dry-run && git push', 'git merge feat --help && git push', 'git rebase --edit-todo && git push', 'git commit -m "fix(rules): deny git commit && git push in one command"', 'git commit -m "docs: run git merge; then git push"']) none(w.shell(command, 'Bash', dir));
+    'git --no-pager log --oneline --grep revert && git push', 'git commit -a --dry-run && git push', 'git merge feat --help && git push', 'git rebase --edit-todo && git push', 'git commit -m "fix(rules): deny git commit && git push in one command"', 'git commit -m "docs: run git merge; then git push"', 'git -c commit.gpgsign=false log && git push']) none(w.shell(command, 'Bash', dir));
+  // Options that repeat are read in linear time.
+  const started = Date.now();
+  none(w.shell('git' + ' -c -!'.repeat(30) + ' status && git push', 'Bash', dir));
+  assert.ok(Date.now() - started < 5000);
   // A commit that is there before the command is read first.
   writeFileSync(join(dir, 'zqxlisted.txt'), 'x\n');
   w.git(dir, 'add', 'zqxlisted.txt');

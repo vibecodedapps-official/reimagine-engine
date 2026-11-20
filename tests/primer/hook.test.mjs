@@ -847,8 +847,8 @@ describe('primer drift hook', () => {
       for (const command of [`R=${at}; read R; git -C "$R" add -f CLAUDE.md`, `IFS=:; R=${at}; git -C "$R" add -f CLAUDE.md`, `R=${at}; source ./env.sh; git -C "$R" add -f CLAUDE.md`, `R=${at}; for R in .; do :; done; git -C "$R" add -f CLAUDE.md`,
         `R=${at} & git -C "$R" add -f CLAUDE.md`, `R=${at} | git -C "$R" add -f CLAUDE.md`, 'R=`cat .target`; git -C "$R" add -f CLAUDE.md', `R=(${at}); git -C "$R" add -f CLAUDE.md`,
         `A=${at}; AB=.; git -C "$A"B add -f CLAUDE.md`,
-        `PWD=${at}; cd .; git -C "$PWD" add -f CLAUDE.md`, `R='~'; git -C "$R" add -f CLAUDE.md`]) assert.equal(await check(command, other), unread, command);
-      for (const command of [`$r='${at}'; set r .; git -C $r add -f CLAUDE.md`, `$r='${at}'; . ./env.ps1; git -C $r add -f CLAUDE.md`]) assert.equal(await check(command, other, { tool: 'PowerShell' }), unread, command);
+        `PWD=${at}; cd .; git -C "$PWD" add -f CLAUDE.md`, `R='~'; git -C "$R" add -f CLAUDE.md`, `RANDOM=${at}; git -C "$RANDOM" add -f CLAUDE.md`]) assert.equal(await check(command, other), unread, command);
+      for (const command of [`$r='${at}'; set r .; git -C $r add -f CLAUDE.md`, `$r='${at}'; . ./env.ps1; git -C $r add -f CLAUDE.md`, `$home='${at}'; git -C $home add -f CLAUDE.md`]) assert.equal(await check(command, other, { tool: 'PowerShell' }), unread, command);
     });
     test('a merge is read after cut, set, Select-Object and Get-Content', async () => {
       const dir = await clone();

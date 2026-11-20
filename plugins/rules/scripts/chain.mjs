@@ -15,9 +15,9 @@ const IDLE = /^(?:--abort|--quit|--dry-run|--edit-todo|--show-current-patch(?:=.
 // A program that runs the text it is given as a command; a . does where it starts the command.
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'ksh', 'fish', '$shell', '${shell}', 'eval', 'source', 'trap', 'pwsh', 'powershell', 'cmd', 'iex', 'invoke-expression', '[scriptblock]::create'].flatMap((n) => [n, n + '.exe']));
 const shell = (x, k) => { const name = base(x.w.split(/[<>]/)[0]); return SHELLS.has(name) || (k === 0 && name === '.'); };
-// The operator and end word of a here-document: bare, quoted, after a backslash or after <<-.
 // A redirect: the word it starts is no argument of a call.
 const REDIRECT = /^\d*[<>]/;
+// The operator and end word of a here-document: bare, quoted, after a backslash or after <<-.
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))/;
 // Whether the << at place i stands inside (( )) or $[ ] that closes on the same line, where it shifts a number and opens no here-document.
 const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i), rest = /^[^\n]*/.exec(s.slice(i))[0]; return (line.lastIndexOf('((') > line.lastIndexOf('))') && rest.includes('))')) || (line.lastIndexOf('$[') > line.lastIndexOf(']') && rest.includes(']')); };
@@ -53,8 +53,24 @@ function flags(words, loose = false) {
   return out;
 }
 
-// The place of the ) that closes each ( of a text, quotes not read.
-const pairs = (s) => { const at = new Map(), open = []; for (let i = 0; i < s.length; i++) { if (s[i] === '(') open.push(i); else if (s[i] === ')' && open.length) at.set(open.pop(), i); } return at; };
+// The place of the ) that closes each ( of a text, quotes not read. The parentheses in the body of a here-document pair among
+// themselves, since the shell reads none of them as its own.
+const DOCS = new RegExp('(?<!<)' + HEREDOC.source.slice(1), 'g');
+const pairs = (s, ps) => {
+  const at = new Map(), outer = [], ends = [];
+  let inner = null;
+  for (let a = 0; a <= s.length; ) {
+    const nl = s.indexOf('\n', a), b = nl < 0 ? s.length : nl, line = s.slice(a, b).replace(/\r$/, '');
+    if (inner && (ends[0][1] ? line.replace(/^\t+/, '') : line) === (ends[0][2] ?? ends[0][3] ?? ends[0][4])) { ends.shift(); inner = ends.length ? [] : null; }
+    else {
+      const open = inner ?? outer;
+      for (let i = a; i < b; i++) { if (s[i] === '(') open.push(i); else if (s[i] === ')' && open.length) at.set(open.pop(), i); }
+      if (!inner && !ps) { for (const m of line.matchAll(DOCS)) if (!shifts(s, a + m.index)) ends.push(m); if (ends.length) inner = []; }
+    }
+    a = b + 1;
+  }
+  return at;
+};
 
 // The simple commands of a text in the order they run, each as flags() reads it; null where a quote is left open. What a
 // substitution runs, and the quoted texts and here-document bodies of a command that names a shell, come before the command
@@ -83,7 +99,7 @@ function walk(s, ps, depth) {
   const ran = (i) => {
     const tick = !ps && s[i] === '`';
     if (!tick && !(s[i] === '$' && s[i + 1] === '(')) return -1;
-    const j = tick ? s.indexOf('`', i + 1) : (shut ??= pairs(s)).get(i + 1) ?? -1;
+    const j = tick ? s.indexOf('`', i + 1) : (shut ??= pairs(s, ps)).get(i + 1) ?? -1;
     if (j < 0) { lost ||= !tick; return tick ? -1 : s.length; }
     const inner = depth > 16 ? null : walk(s.slice(i + (tick ? 1 : 2), j), ps, depth + 1);
     if (inner) early.push(...inner); else lost = true;
@@ -119,7 +135,7 @@ function walk(s, ps, depth) {
       let t = '', j = i + 1;
       for (; j < s.length && s[j] !== '"'; j++) {
         const k = ran(j);
-        if (k >= 0) { t += '$'; j = k; } else if (s[j] === esc && (ps || '"\\$`\n'.includes(s[j + 1] ?? 'x'))) t += s[++j] ?? ''; else t += s[j];
+        if (k >= 0) { t += '$'; j = k; } else if (s[j] === esc && (ps || '"\\$`\n'.includes(s[j + 1] ?? 'x'))) { const e = s[++j] ?? ''; t += ps ? ({ n: '\n', r: '\r' })[e] ?? e : e; } else t += s[j];
       }
       if (j >= s.length) return null;
       add(t, true);

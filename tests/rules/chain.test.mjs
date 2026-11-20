@@ -121,6 +121,13 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ['git pull --ff-only 2>&1 && git push', false, false],
     ['git pull --ff-only > /dev/null && git push 2>&1', false, false],
     ['git pull --ff-only origin 2>&1 && git push', false, true],
+    // The parentheses in a here-document's body close no substitution, so a message with one unpaired is read as a message.
+    ["git commit -m \"$(cat <<'EOF'\nfix: x\n\n1) git push now reads\nEOF\n)\"", false, false],
+    ["git commit -m \"$(cat <<'EOF'\n1) x\nEOF\n)\" && git push", false, true],
+    ['git commit -m "$(cat <<EOF\n:) see $(git log -1 --format=%s) and git push\nEOF\n)"', false, false],
+    // In a PowerShell text in double quotes a backtick and n is a line break.
+    ['"git commit -m x`ngit push" | iex', true, true],
+    ['git commit -m "a`nb"; git push --dry-run', true, false],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });

@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.33 - 2026-11-20
+
+- An implementer or fix call has returned when its report arrives: `post-<n>` is written then, and the call's own completion notification, where it comes after the report, is a notification for a call that already returned, at which `duration_ms` is read and the checkout is compared. Where the host runs the call in the background it gives a launch line at once, its report later and its completion notification after that, and Step 4 named one moment: a run wrote `post-<n>` at the reports and compared the checkout at no completion notification, and another wrote none.
+- Checks discovery takes `dotnet build` and `dotnet test` where the root holds one solution file and no project file, or one project file and no solution file. A .NET repository with no `checks` key had no local check, and each of its CI jobs was deferred to CI.
+
 ## gate 0.1.23 - 2026-11-20
 
 - A level is capped by the run budget only when the time left is less than a pass of the run took. `next.mjs` takes the time of the decision as a fifth argument and measures the passes of the run from the record: the longest at the next level, else the longest at a higher level, the latest pass ending at that time. The cap compared the time left with the review budget for each `parallel` groups plus the subagent budget, which are limits and not durations: a run stopped with 32 minutes left where its passes at that level had taken 25 and 21, and ended `unconverged` with its last fixes pushed and read by no review. The figure of the budgets stays where the run has made no pass at the next level or above, and for the line the first pass prints, which now says the fixes may be pushed with no review after them.

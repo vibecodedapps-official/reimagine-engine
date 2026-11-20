@@ -155,6 +155,7 @@ before(async () => {
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   delete env.GIT_INDEX_FILE;
+  delete env.CDPATH;
   gitEnv = { ...env, GIT_AUTHOR_DATE: '2026-09-01T10:00:00Z', GIT_COMMITTER_DATE: '2026-09-01T10:00:00Z' };
   broken = await make('broken', { 'CLAUDE.md': brokenHub });
   brokenPath = broken;
@@ -886,21 +887,23 @@ describe('primer drift hook', () => {
       const at = slash(dir), reason = deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
       const blind = deny(lead(dir) + 'what git merge would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own');
       // printf -v and a common parameter that names a variable write the name another variable holds.
-      for (const command of ['B=notes; x=B; printf -v "$x" feat; git merge -q "$B"', 'B=notes; x=B; printf -v"$x" feat; git merge -q "$B"', 'B=notes; x=B; printf "$O" "$x" feat; git merge -q "$B"', 'B=notes; x=B; echo $[$x=1]; git merge -q "$B"']) assert.equal(await check(command, dir), blind, command);
+      for (const command of ['B=notes; x=B; printf -v "$x" feat; git merge -q "$B"', 'B=notes; x=B; printf -v"$x" feat; git merge -q "$B"', 'B=notes; x=B; printf "$O" "$x" feat; git merge -q "$B"', 'B=notes; x=B; echo $[$x=1]; git merge -q "$B"', 'B=notes; x=B; echo ${a[$x=1]}; git merge -q "$B"', 'B=notes; x=B; echo "${v:$x=1}"; git merge -q "$B"', 'B=notes; x=B; echo ${(P)x::=feat}; git merge -q "$B"']) assert.equal(await check(command, dir), blind, command);
       for (const command of ["$b='notes'; $n='b'; Write-Output feat -OutVariable $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -ov $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -OutVariable:$n; git merge -q $b", "$b='notes'; $n='b'; Get-Content README.md -OutV $n; git merge -q $b",
-        "$b='notes'; $n='b'; Write-Output feat -ErrorVariable $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -wv $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -InformationVariable $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -PipelineVariable $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -Pi $n; git merge -q $b", "$b='notes'; $n='b'; Write-Host feat -ErrorV $n; git merge -q $b", "$b='notes'; $n='b'; Get-Location -iv:$n; git merge -q $b", "$b='notes'; $n='b'; echo feat -ov $n; git merge -q $b"]) assert.equal(await check(command, dir, { tool: 'PowerShell' }), blind, command);
+        "$b='notes'; $n='b'; Write-Output feat -ErrorVariable $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -wv $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -InformationVariable $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -PipelineVariable $n; git merge -q $b", "$b='notes'; $n='b'; Write-Output feat -Pi $n; git merge -q $b", "$b='notes'; $n='b'; Write-Host feat -ErrorV $n; git merge -q $b", "$b='notes'; $n='b'; Get-Location -iv:$n; git merge -q $b", "$b='notes'; $n='b'; echo feat -ov $n; git merge -q $b", "$b='notes'; $n='b'; Set-Location . -ov $n; git merge -q $b"]) assert.equal(await check(command, dir, { tool: 'PowerShell' }), blind, command);
       // The call itself still only reads, so a merge named in the text is read after it.
       for (const [command, tool] of [['printf -v X feat; git merge notes', 'Bash'], ['Write-Output feat -OutVariable x; git merge notes', 'PowerShell']]) {
         assert.equal(await check(command, dir, { tool }), '', command);
         assert.equal(await check(command.replace('notes', 'feat'), dir, { tool }), reason, command);
       }
+      // A name in braces alone only reads.
+      assert.equal(await check('R=' + at + '; git -C "${R}" merge notes', dir), '');
       // An add is not denied by a name left unfollowed, so the directory it is checked in shows that.
       write(dir, 'CLAUDE.md', '# Mine\n');
       const unread = deny(lead(other) + unresolved + 'the call would add ' + both);
       for (const name of BASH_OWN) assert.equal(await check(name + '=' + at + '; git -C "$' + name + '" add -f CLAUDE.md', other), unread, name);
       for (const name of POWERSHELL_OWN) assert.equal(await check('$' + name + "='" + at + "'; git -C $" + name + ' add -f CLAUDE.md', other, { tool: 'PowerShell' }), unread, name);
     });
-    test('one of the four after a here-document or a here-string is unread, and one its body names is not a call', async () => {
+    test('one of the four after a here-document or a here-string is denied as unread, and one its body, a message or a later body names is not a call', async () => {
       const dir = await clone();
       await git(dir, 'checkout', '-q', '-b', 'feat');
       await git(dir, 'add', '-f', 'CLAUDE.md');
@@ -910,13 +913,14 @@ describe('primer drift hook', () => {
       await git(dir, 'add', 'docs/notes.md');
       await git(dir, 'commit', '-q', '-m', 'notes');
       await git(dir, 'checkout', '-q', 'main');
-      const blind = (sub) => deny(lead(dir) + 'what git ' + sub + ' would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own');
+      const blind = (sub) => deny(lead(dir) + 'a git ' + sub + ' in the text after a here-document or a here-string is not read, so the call is denied; run it as a command of its own');
       for (const [command, sub] of [['cat <<EOF\nbody\nEOF\ngit merge -q feat', 'merge'], ['cat <<EOF\nbody\nEOF\ngit merge -q notes', 'merge'], ['cat <<< x; git merge -q feat', 'merge'], ['cat <<EOF; git merge -q feat\nbody\nEOF', 'merge'],
-        ["cat <<-'EOF'\n\tbody\n\tEOF\ngit -C . rebase feat", 'rebase'], ['cat <<"EOF" | git am\nbody\nEOF', 'am'], ['cat <<EOF\nbody\nEOF\ncd . && git -c core.editor=true cherry-pick feat', 'cherry-pick'], ["bash -c 'cat <<EOF\nbody\nEOF\ngit merge feat'", 'merge']]) assert.equal(await check(command, dir), blind(sub), command);
+        ["cat <<-'EOF'\n\tbody\n\tEOF\ngit -C . rebase feat", 'rebase'], ['cat <<"EOF" | git am\nbody\nEOF', 'am'], ['cat <<EOF\nbody\nEOF\ncd . && git -c core.editor=true cherry-pick feat', 'cherry-pick'], ["bash -c 'cat <<EOF\nbody\nEOF\ngit merge feat'", 'merge'], ['cat <<EOF\nx\nEOF\ngit -c user.name="A B" merge feat', 'merge']]) assert.equal(await check(command, dir), blind(sub), command);
       // The body is text, and a word of a later message is no call.
-      for (const command of ["cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF", "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF\necho done", "cat <<EOF\nbody\nEOF\ngit merge-base main feat"]) assert.equal(await check(command, dir), '', command);
+      for (const command of ["cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF", "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF\necho done", "cat <<EOF\nbody\nEOF\ngit merge-base main feat", "cat > a.md <<'A'\nx\nA\ncat > b.md <<'B'\nthen run git merge feat\nB", 'cat <<< "git merge feat"']) assert.equal(await check(command, dir), '', command);
       write(dir, 'CLAUDE.md', '# Mine\n');
       assert.equal(await check("cat > notes.txt <<'EOF'\nx\nEOF\ngit add src/a.ts && git commit -m \"merge the rest\"", dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
+      assert.equal(await check('cat <<EOF\nx\nEOF\ngit commit -m "then git merge feat"', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
     });
     test('once a command names CDPATH, a cd leaves the directory unknown', async () => {
       const n = ++seqs, folder = join(base, 'cdpath-' + n), target = join(folder, 'app'), outer = join(base, 'cdpath-outer-' + n);
@@ -935,6 +939,9 @@ describe('primer drift hook', () => {
       assert.equal(await check('cd app && git merge -q feat', outer, far), '');
       for (const command of ['CDPATH=' + slash(folder) + '; cd app && git merge -q feat', 'CDPATH=' + slash(folder) + ' cd app && git merge -q feat', 'cd . && CDPATH=' + slash(folder) + ' && cd app && git merge -q feat']) assert.equal(await check(command, outer, far), brought, command);
       assert.equal(await check('export CDPATH=' + slash(folder) + '; cd app && git merge -q feat', outer, far), deny(lead(target) + 'what git merge would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own'));
+      // A CDPATH in the hook's environment reaches the shell as well, and an absolute name is still followed.
+      assert.equal(await check('cd app && git merge -q feat', outer, { ...far, env: { ...far.env, CDPATH: slash(folder) } }), brought);
+      assert.equal(await check('CDPATH=' + slash(folder) + '; cd ' + slash(target) + ' && git merge -q feat', outer, far), deny(lead(target) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold'));
       write(target, 'CLAUDE.md', '# Mine\n');
       assert.equal(await check('CDPATH=' + slash(folder) + '; cd app && git add -A', outer, far), brought);
     });
@@ -951,7 +958,7 @@ describe('primer drift hook', () => {
       const id = (await git(dir, 'rev-parse', '--short', 'HEAD')).trim();
       const said = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds .claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; no remote holds the commit yet` } }) + '\n';
       // The word push in a message is no push; in a text the check does not parse it may be one.
-      for (const c of [command, 'git commit -m x', 'git commit -m "push later"', 'git merge notes', `git -C ${slash(dir)} commit -m x`]) assert.equal(await after(c), said, c);
+      for (const c of [command, 'git commit -m x', 'git commit -m "push later"', 'git --git-dir=.git commit -m "push later"', 'git merge notes', `git -C ${slash(dir)} commit -m x`]) assert.equal(await after(c), said, c);
       // A command that only stages or only reads makes no commit, and outside a local repository nothing is read.
       for (const c of ['git add src/a.ts', 'git log --grep commit', 'npm test']) assert.equal(await after(c), '', c);
       assert.equal(await check(command, dir, { event: 'PostToolUse', env: { CLAUDE_CONFIG_DIR: join(base, 'no-such-config') } }), '');
@@ -959,7 +966,7 @@ describe('primer drift hook', () => {
       await git(dir, 'update-ref', 'refs/remotes/origin/topic', 'HEAD');
       assert.equal(await after(command), '');
       const pushed = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds .claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; the command pushes, so a remote may already hold the commit` } }) + '\n';
-      for (const c of [command + ' && git push', `git -C ${slash(dir)} commit -m x; git -C ${slash(dir)} push origin HEAD`, "git commit -F - <<'EOF'\nx\nEOF\ngit push", 'git commit -m x && bash -c "git push"']) assert.equal(await after(c), pushed, c);
+      for (const c of [command + ' && git push', `git -C ${slash(dir)} commit -m x; git -C ${slash(dir)} push origin HEAD`, "git commit -F - <<'EOF'\nx\nEOF\ngit push", 'git commit -m x && bash -c "git push"', 'git commit -m x && out="$(git push 2>&1)"', 'git commit -m x && ./push.sh']) assert.equal(await after(c), pushed, c);
       assert.equal(await after('git commit -m "push later"'), '');
       await git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
       assert.equal(await after(command), '');

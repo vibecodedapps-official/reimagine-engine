@@ -48,7 +48,7 @@ before(() => {
   const home = join(base, 'home');
   mkdirSync(home);
   env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: empty, GIT_CEILING_DIRECTORIES: base, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(base, 'xdg') };
-  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'CLAUDE_CODE_SESSION_ATTENDED', 'CLAUDE_PLUGIN_DATA', 'CLAUDE_PROJECT_DIR', 'CLAUDE_CODE_PROJECT_DIR_NAME']) delete env[k];
+  for (const k of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'CLAUDE_CODE_SESSION_ATTENDED', 'CLAUDE_PLUGIN_DATA', 'CLAUDE_PROJECT_DIR', 'CLAUDE_CODE_PROJECT_DIR_NAME', 'CDPATH']) delete env[k];
 });
 after(() => rmSync(base, { recursive: true, force: true, maxRetries: 15, retryDelay: 100 }));
 

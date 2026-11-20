@@ -11,27 +11,40 @@ import { Refusal, blob, configOf, git, isDir, loadMap, match, places, readText, 
 const AGENT_NAMES = new Set(['claude.md', 'claude.local.md', 'agents.md', '.reimagine.json', '.mcp.json']);
 const AGENT_DIRS = new Set(['.claude', '.agents', '.reimagine']);
 
+// What a here-document's body runs: the text inside $( ) and inside backticks.
+const ran = (t) => { let out = '', d = 0, tick = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (c === '\\') i++; else if (!tick && c === '$' && t[i + 1] === '(') { d++; i++; out += ' '; } else if (d && c === '(') d++; else if (d && c === ')') d--; else if (!d && c === '`') { tick = !tick; out += ' '; } else if (d || tick) out += c; } return out; };
 // The simple commands of a shell text, each a list of words { w, bad, sub, git }, with ( and ) kept: bad marks an expansion the
 // script cannot resolve, a brace expansion among them, sub a command substitution inside a quoted word, git one that stages or
-// commits with git; a list carries wrote where the command sends its output to a file. Null for a quote
-// left open or a process substitution outside quotes. A here-document ends the list, which then carries lost, and hidden when the
-// text from there on names a git add, stage or commit, so the calls before it keep their directories. A backtick outside quotes
+// commits with git, also in a redirect target, which sets lost and hidden; a list carries wrote where the command sends its output
+// to a file, and moved where a redirect or a here-document with no command before it wrote or ran. Null for a quote
+// left open or a process substitution outside quotes. A here-document's body is left out and the text after its end line is read
+// on; the list carries lost, hidden where the body names a git add, stage or commit, and brings, one of the four as a git call,
+// where the body may run it (an unquoted end word and a substitution in the body) or the end word cannot be read (then the rest
+// is not parsed, and the list carries stopped). A here-string's word is input. A backtick outside quotes
 // separates commands in sh, so what a substitution runs is read as a command of its own. In PowerShell a here-string, from @' or @"
 // at the end of a line to the same quote and @ at the start of a line, is one word where it starts a word and nothing is joined to
 // its closer, and null elsewhere; unless a git call takes it, it hides what its text names, as a here-document does.
 const hides = (t) => /\bgit(\.exe)?\b[^\n]*\b(add|stage|commit)\b/i.test(t.replace(/[\\`^]\r?\n/g, ' '));
+// A merge, a cherry-pick, a rebase or an am as the subcommand of a git call, after git's own options and the values of those that take
+// one, so a word of a message is no call; used where a here-document's body may run a command or its end word cannot be read.
+const BROUGHT = /\bgit(?:\.exe)?["']?(?:\s+(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-(?![Cc]\s|-(?:git-dir|work-tree|namespace|config-env)\s)\S+)*\s+(merge|cherry-pick|rebase|am)(?![\w-])(?!\s+(?:--abort|--skip|--quit|--edit-todo|--show-current-patch|--help|-h)(?![\w-]))/i;
+// The operator and end word of a here-document: bare, quoted, after a backslash or after <<-, and ended by a space or an operator.
+const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))(?=[\s;&|()<>]|$)/;
 function commands(s, ps) {
   const out = [];
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = '';
   const end = () => {
-    if (inw && !skip) words.push({ w: cur, bad, sub, git: sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\b(add|stage|commit)\b/.test(cur) });
+    const git = sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\b(add|stage|commit)\b/.test(cur);
+    if (inw && !skip) words.push({ w: cur, bad, sub, git });
+    if (inw && skip && git) out.lost = out.hidden = true;
     // What a > sends to a file may be a patch or a ref a later call reads, so its command wrote; the null device holds nothing, and
     // after >& a descriptor number or - names a stream, not a file.
     if (inw && skip === '>' && !/^(\/dev\/null|\$null|nul)$/i.test(cur)) words.wrote = true;
     if (inw && skip === '>&' && !/^(\d+|-)$/.test(cur)) words.wrote = true;
+    if (inw && skip === '<' && sub) words.wrote = true;
     [skip, cur, inw, bad, sub] = [inw ? '' : skip, '', false, false, false];
   };
-  const cut = () => { end(); if (words.length) out.push(words); else if (words.wrote && out.findLast(Array.isArray)) out.findLast(Array.isArray).wrote = true; words = []; };
+  const cut = () => { end(); if (words.length) out.push(words); else if (words.wrote) { const prev = out.findLast(Array.isArray); if (prev) prev.wrote = true; else out.moved = true; } words = []; };
   for (let i = 0; i < s.length; i++) {
     const ch = s[i], nx = s[i + 1], here = ps && ch === '@' && /^(['"])[ \t]*\r?\n/.exec(s.slice(i + 1));
     if (here) {
@@ -59,8 +72,22 @@ function commands(s, ps) {
     } else if (ch === '#' && !inw) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (ch === '<' || ch === '>') {
       if (nx === '(') return null;
-      if (ch === '<' && nx === '<') { cut(); [out.lost, out.hidden] = [true, out.hidden || hides(s.slice(i))]; return out; }
       if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
+      if (ch === '<' && nx === '<') {
+        // A here-string's word is input, read as the target of a redirect.
+        if (!ps && s[i + 2] === '<') { end(); skip = '<'; i += 2; continue; }
+        const rest = s.slice(i), doc = ps ? null : HEREDOC.exec(rest), e = s.indexOf('\n', i);
+        const lines = doc && e >= 0 ? s.slice(e + 1).split('\n') : [], k = lines.findIndex((l) => (doc[1] ? l.replace(/^\t+/, '') : l).replace(/\r$/, '') === (doc[2] ?? doc[3] ?? doc[4]));
+        if (!doc || k < 0 || /\\\r?$/.test(s.slice(i, e))) { cut(); out.stopped = true; [out.lost, out.hidden, out.brings] = [true, out.hidden || hides(rest), out.brings ?? BROUGHT.exec(rest.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase()]; return out; }
+        // The body is left out of the text and the parse goes on after the end word; a body under an unquoted end word runs its substitutions.
+        const body = lines.slice(0, k).join('\n'), runs = doc[2] === undefined && doc[3] === undefined && !doc[0].includes('\\') && /\$\(|`/.test(body);
+        [out.lost, out.hidden] = [true, out.hidden || hides(body)];
+        if (runs) { words.wrote = true; out.brings ??= BROUGHT.exec(ran(body))?.[1].toLowerCase(); }
+        end();
+        s = s.slice(0, e + 1) + lines.slice(k + 1).join('\n');
+        i += doc[0].length - 1;
+        continue;
+      }
       end();
       let amp = false;
       while ('>&|'.includes(s[i + 1] ?? 'x')) amp = s[++i] === '&' || amp;
@@ -105,9 +132,21 @@ function switched([x, ...more]) {
 function scan(s, ps, st, top = false) {
   const list = commands(s, ps), dirs = [], { n, at } = top && list ? followed(s, ps, list) : { n: 0, at: new Map() };
   if (!list || list.lost) st.lost = true;
+  if (!list || list.stopped || list.hidden) st.pushes ||= /(?<![\w-])push(?![\w-])/i.test(s);
   if (!list || list.hidden) st.hidden = true;
+  if (n) st.pushes ||= list.slice(0, n).some((w) => Array.isArray(w) && w.some((x) => /\bpush\b/i.test(x.w)));
+  if (list?.moved) st.moved = true;
   for (const item of (list ?? []).slice(n)) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st, at);
+  // One of the four that a here-document may run, or that follows an end word the script cannot read, is a call it does not read, in a directory it does not know.
+  if (list?.brings) { st.far = true; st.calls.push({ sub: list.brings, dir: st.dir, args: [], moved: true, doc: true }); }
 }
+
+// The names a shell computes or will not assign, which read back another text than the one assigned: under sh those of bash and
+// of zsh, and in PowerShell its automatic variables, its constants and its typed preference variables.
+const OWN_SH = /^(BASH\w*|ZSH\w*|zsh_\w*|PWD|OLDPWD|_|RANDOM|SRANDOM|SECONDS|EPOCHSECONDS|EPOCHREALTIME|UID|EUID|GID|EGID|PPID|LINENO|GROUPS|DIRSTACK|SHELLOPTS|FUNCNAME|HISTCMD|OPTIND|PIPESTATUS|pipestatus|status|argv|ARGC|ERRNO|TTY|TTYIDLE|USERNAME|signals)$/;
+const OWN_PS = /^(ps\w*|is(windows|linux|macos|coreclr)|\w*preference|maximum\w*count|pwd|_|lastexitcode|matches|args|input|error|errorview|home|null|true|false|pid|host|shellid|executioncontext|enabledexperimentalfeatures|consolefilename|outputencoding|foreach|switch|this|stacktrace|myinvocation|nestedpromptlevel|event|eventargs|eventsubscriber|sender)$/i;
+// A common parameter of PowerShell that writes a variable it names, in full, by its alias or by a prefix that binds it, with or without a colon.
+const NAMED = /^-(?:[oewip]v|outv\w*|errorv\w*|warningv\w*|informationv\w*|p|pi\w*)(?::.*)?$/i;
 
 // The variables a command sets to a plain text before any other call, as { n, at }: n opening commands that only assign, which
 // change nothing a later call is read from, and at, the text of each name the rest of the command only reads. Under sh an
@@ -123,12 +162,11 @@ function followed(s, ps, list) {
   const set = (name, text) => { if (at.has(key(name))) twice.add(key(name)); at.set(key(name), text); };
   const one = ps ? /^\s*\$(\w+)[ \t]*=[ \t]*(?:'([^'\r\n]+)'|"([^"$`\r\n]+)")[ \t]*(?:;|\r?\n|$)/
     : /^\s*((?!GIT_|IFS=)[A-Za-z_]\w*)=(?:'([^'\r\n]+)'|"([^"$`\\\r\n]+)"|([^\s;&|()<>`$"'\\*?[\]{}~#!]+))[ \t]*(?:;|&&|\r?\n|$)/;
-  const own = ps ? /^(pwd|_|lastexitcode|matches|args|input|error|psitem|home|null|true|false|pid|pshome|host|shellid)$/i : /^(PWD|OLDPWD|_|RANDOM|SECONDS|UID|EUID|PPID|LINENO|BASHPID)$/;
   let n = 0;
   for (let m, rest = s; (m = one.exec(rest)); rest = rest.slice(m[0].length), n++) {
     const text = m.slice(2).find((x) => x !== undefined), words = list[n];
     if (!Array.isArray(words) || words.wrote || (!ps && !(words.length === 1 && !words[0].bad && !words[0].sub && words[0].w === `${m[1]}=${text}`))) break;
-    set(m[1], own.test(m[1]) || text.startsWith('~') || (!ps && /[\s*?[\]]/.test(text)) ? null : text);
+    set(m[1], (ps ? OWN_PS : OWN_SH).test(m[1]) || text.startsWith('~') || (!ps && /[\s*?[\]]/.test(text)) ? null : text);
   }
   // A name that starts another is dropped with it, since the words of a text lose where a quote ended: "$A"B reads as $AB.
   for (const a of [...at.keys()]) for (const b of [...at.keys()]) if (b.length > a.length && b.startsWith(a)) { at.delete(a); at.delete(b); }
@@ -154,6 +192,8 @@ const setOnly = (rest) => {
 };
 
 function analyze(typed, st, vars = new Map()) {
+  // Under sh an expansion in braces or brackets may assign a name it does not spell, as $[$x=1], ${a[$x=1]} and ${(P)x::=v} do; ${name} alone only reads.
+  if (st.sh && typed.some((x) => /\$[[{]/.test(x.w) && !/^\$\{\w+\}$/.test(x.w))) vars.clear();
   const words = Object.assign(typed.map((x) => { const m = x.bad && vars.size ? /^\$\{?(\w+)\}?$/.exec(x.w) : null, k = m && (st.sh ? m[1] : m[1].toLowerCase()); return m && vars.has(k) ? { ...x, w: vars.get(k), bad: false } : x; }), { wrote: typed.wrote });
   if (words.some((x) => x.git)) st.lost = st.hidden = true;
   if (words.some((x) => /\bGIT_(DIR|WORK_TREE|INDEX_FILE)\b/.test(x.w))) st.lost = true;
@@ -173,7 +213,7 @@ function analyze(typed, st, vars = new Map()) {
       else if (b === 'sudo' && /^-[ugUCDhprtT]$/.test(t)) i++;
     }
   }
-  if (i >= words.length) { if (words.wrote || words.some((x) => x.sub)) st.moved = true; return; }
+  if (i >= words.length) { st.pushes ||= words.some((x) => /\bpush\b/i.test(x.w)); if (words.wrote || words.some((x) => x.sub)) st.moved = true; return; }
   const b = base(words[i].w), rest = words.slice(i + 1);
   // What a merge, a cherry-pick, a rebase or an am brings is read before the command runs, so a call that runs before it in the
   // same command may change it. A change of directory, a git add, a git commit and a call that only reads change nothing that is
@@ -190,7 +230,9 @@ function analyze(typed, st, vars = new Map()) {
       if (rest[j].bad) st.lost = st.hidden = true; else { const keep = st.dir; st.dir = dir; scan(rest[j].w, false, st); st.dir = keep; still = true; }
     }
   } else if (CDS.has(b)) {
-    if (b.startsWith('pop') || rest.length !== 1 || rest[0].w.startsWith('-')) st.lost = st.far = true; else st.dir = at(st.dir, rest[0]);
+    // CDPATH sends a cd to a relative name that does not start with a dot to a folder of that name under another one.
+    const sent = st.cdpath && !/^(\.{0,2}[\\/]|\.{1,2}$|~|[A-Za-z]:[\\/])/.test(rest[0]?.w ?? '');
+    if (sent || b.startsWith('pop') || rest.length !== 1 || rest[0].w.startsWith('-')) st.lost = st.far = true; else st.dir = at(st.dir, rest[0]);
   } else if (b === 'git' || b === 'git.exe') {
     let j = 0;
     for (; j < rest.length && rest[j].w.startsWith('-'); j++) {
@@ -203,6 +245,7 @@ function analyze(typed, st, vars = new Map()) {
       else if (t === '-c' || t === '--namespace' || t === '--config-env') j++;
     }
     const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1), first = args[0]?.w;
+    st.pushes ||= sub === 'push' || words.some((x) => x.sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\bpush\b/i.test(x.w));
     if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) { st.calls.push({ sub, dir, args }); still = true; }
     // A call for help, and one that ends or steps over a merge under way, bring nothing in.
     else if (brings(sub) && first !== '--help' && first !== '-h' && !ends(first)) { st.calls.push({ sub, dir, args, moved: st.moved, head: st.head, fetched: st.fetched, sh: st.sh, msys: st.msys, home: st.home }); still = true; }
@@ -218,6 +261,11 @@ function analyze(typed, st, vars = new Map()) {
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
   // set changes the options of sh, and only the ones in setOnly leave the later call read; in PowerShell the word is a command that writes a variable.
   else still = plain && (READS.has(words[i].w.toLowerCase()) || (st.sh && words[i].w === 'set' && setOnly(rest)));
+  // A call that only reads or changes directory may still write a variable whose name no word spells: printf -v, and in PowerShell a common parameter that names one.
+  if (still && (st.sh ? b === 'printf' && (rest[0]?.bad || rest[0]?.w.startsWith('-v')) : (READS.has(b) || CDS.has(b)) && rest.some((x) => NAMED.test(x.w)))) vars.clear();
+  // A push is read from a git call; the word alone counts in any other program, which may be a script or an eval, in an assignment, in a
+  // substitution that names git, and, in scan(), in a text not parsed to its end, since each may push out of sight.
+  if (!/^git(\.exe)?$/.test(b) && !(SHELLS.has(b) && still) && !CDS.has(b)) st.pushes ||= words.some((x) => /\bpush\b/i.test(x.w));
   // A call that leaves no later one readable may also rewrite a followed variable, with no word that spells it.
   if (!still || !plain) { st.moved = true; vars.clear(); }
 }
@@ -424,7 +472,7 @@ function read(c, input, after = false) {
   const own = join(configOf(c, input), 'reimagine-primer'), command = input.tool_input?.command;
   if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/.test(command)) return null;
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;
-  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false, sh: !ps, moved: false, head: undefined, fetched: false };
+  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false, sh: !ps, moved: false, head: undefined, fetched: false, pushes: false, cdpath: /cdpath/i.test(command) || (!ps && !!c.env.CDPATH) };
   scan(command, ps, st, true);
   if (!st.calls.length && !st.hidden) return null;
   const path = places(c, own).map, map = (() => { try { return loadMap(path, c.home); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
@@ -453,6 +501,7 @@ export function staged(c, input) {
     const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => (x.head && remoteOf(c, repo, x.head.branch) !== remoteOf(c, repo) ? null : planOf(c, { ...x, dir }, repo.top))), whole = !st.lost && plans.length && plans.every(Boolean);
     // What an unread merge brings is not in the work tree, so no count of the files there stands in for it.
     const blind = calls.find((x, i) => brings(x.sub) && !plans[i]);
+    if (blind?.doc) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; a git ${blind.sub} that a here-document runs or hides is not read, so the call is denied; run it as a command of its own`)];
     if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own`)];
     const reason = whole ? verdict(c, repo, { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) }) : verdict(c, repo, null, plans.filter(Boolean));
     if (reason) return [deny(reason)];
@@ -471,7 +520,7 @@ export function committed(c, input) {
   for (const { repo } of found.repos) {
     if (seen.has(repo.top)) continue;
     seen.add(repo.top);
-    const pushes = /\bpush\b/.test(input.tool_input.command), ref = pushes ? upstream(c, repo).ref : undefined;
+    const pushes = found.st.pushes, ref = pushes ? upstream(c, repo).ref : undefined;
     const r = git(c, repo.top, ['-c', 'core.quotepath=off', '-c', 'log.showRoot=true', 'log', '--format=%x01%h%x02', '--diff-merges=first-parent', '--no-renames', '--diff-filter=A', '--name-only', '-z', '--max-count=100', 'HEAD', ...(pushes ? (ref ? ['--not', ref] : []) : ['--not', '--remotes'])]);
     if (r.status !== 0) continue;
     const adds = r.stdout.split('\x01').slice(1).map((p) => p.split('\x02')).map(([id, names = '']) => ({ id, paths: names.split('\0').map((x) => x.replace(/^\n+/, '')).filter(isAgent) }));

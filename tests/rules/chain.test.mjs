@@ -80,6 +80,25 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ["bash -c 'git commit -m x\\ngit push'", false, true],
     ["bash -c 'git -C C:\\new commit -m x && git push'", false, true],
     ["bash -c 'git -C C:\\repo commit -m x && git push'", false, true],
+    // A text a shell is given through an expansion, or in parentheses, is read by the command's words alone.
+    ["eval \"$(echo 'git commit -m x; git push')\"", false, true],
+    ["bash -c \"$(cat <<'EOF'\ngit commit -m x\ngit push\nEOF\n)\"", false, true],
+    ["x='git commit -m x; git push'; eval \"$x\"", false, true],
+    ["eval `echo 'git commit -m x; git push'`", false, true],
+    ["$SHELL -c 'git commit -m x; git push'", false, true],
+    ["bash<<<'git commit -m x; git push'", false, true],
+    ["ksh -c 'git commit -m x; git push'", false, true],
+    ["source <(echo 'git commit -m x; git push')", false, true],
+    [". <(echo 'git commit -m x; git push')", false, true],
+    ["$c = 'git commit -m x; git push'; iex $c", true, true],
+    ["Invoke-Expression ('git commit -m x; ' + 'git push')", true, true],
+    ["& ([scriptblock]::Create('git commit -m x; git push'))", true, true],
+    ['bash -c "cd $dir && git pull --ff-only && git push"', false, true],
+    ['bash -lc "git pull --ff-only && git push"', false, false],
+    ['pwsh -Command "git commit -m x; git push --dry-run"', true, false],
+    ["bash -c 'git commit -m x'; git log --grep push", false, false],
+    ['git add . && git commit -m "$m" && git log --grep push', false, false],
+    ["x=$(echo 'git push'); git commit -m x; echo \"$x\"", false, false],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });

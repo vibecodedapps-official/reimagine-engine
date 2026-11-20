@@ -12,8 +12,9 @@ const UPSTREAM = /^(?:--ff-only|--no-rebase|--prune|-p|-q|--quiet|-v|--verbose)$
 const VALUED = /^(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))$/;
 // An option with which a call makes no commit, and one with which a push sends nothing.
 const IDLE = /^(?:--abort|--quit|--dry-run|--edit-todo|--show-current-patch(?:=.*)?|--help|-h)$/, DRY = /^(?:--dry-run|--help|-h|-[A-Za-z]*n[A-Za-z]*)$/;
-// A program that runs the text it is given as a command.
-const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'eval', 'trap', 'pwsh', 'powershell', 'cmd', 'iex', 'invoke-expression'].flatMap((n) => [n, n + '.exe']));
+// A program that runs the text it is given as a command; a . does where it starts the command.
+const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'ksh', 'fish', '$shell', '${shell}', 'eval', 'source', 'trap', 'pwsh', 'powershell', 'cmd', 'iex', 'invoke-expression', '[scriptblock]::create'].flatMap((n) => [n, n + '.exe']));
+const shell = (x, k) => { const name = base(x.w.split(/[<>]/)[0]); return SHELLS.has(name) || (k === 0 && name === '.'); };
 // The operator and end word of a here-document: bare, quoted, after a backslash or after <<-.
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))/;
 // A function, a trap or a script block in a variable runs where it is called, so its calls run in an order the text does not show.
@@ -52,15 +53,19 @@ const pairs = (s) => { const at = new Map(), open = []; for (let i = 0; i < s.le
 // that holds them. ps reads the text as PowerShell does: a backtick escapes, and a here-string is one quoted text.
 function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
-  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false;
+  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false;
   const add = (t, q = false) => { cur ??= { w: '', q: false }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
   const end = () => { if (cur) words.push(cur); cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
-  // A command at the end of a pipe that names a shell runs the texts of the command before it.
-  const cut = (pipe = false) => {
+  // A command at the end of a pipe that names a shell runs the texts of the command before it. What it runs cannot be
+  // followed where it holds an expansion or is an expression in parentheses.
+  const cut = (pipe = false, paren = false) => {
     end();
-    if (words.some((x) => SHELLS.has(base(x.w)))) early.push(...[...held, ...texts].flatMap(both));
+    if (words.some(shell)) {
+      early.push(...[...held, ...texts].flatMap(both));
+      vague ||= paren || [...words.map((x) => x.w), ...held, ...texts].some((t) => t.includes('$'));
+    }
     if (words.length) held = pipe ? texts : [];
     parts.push(...early, flags(words));
     [words, texts, early] = [[], [], []];
@@ -127,20 +132,24 @@ function walk(s, ps, depth) {
       i += doc[0].length - 1;
     } else if (' \t\r'.includes(c)) { end(); plain += c; }
     // The & of a redirect such as 2>&1 ends no command.
-    else if (';&|\n()'.includes(c) && !(c === '&' && s[i - 1] === '>')) { plain += c; cut(c === '|' && n !== '|' && s[i - 1] !== '|'); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
+    else if (';&|\n()'.includes(c) && !(c === '&' && s[i - 1] === '>')) { plain += c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
     else add(c);
   }
   cut();
-  return lost ? null : [...parts, { fn: FUNCTION.test(plain) }];
+  return lost ? null : [...parts, { fn: FUNCTION.test(plain), sh: vague }];
 }
 
-// A text with a quote left open, and one nested deeper than a command is written, is read by its words alone, split at each
-// quote and at each character that ends a command. The last part says whether the text, outside its quotes, comments and
-// here-document bodies, defines what runs later; where the words alone are read, the whole text is that text.
-const read = (s, ps, depth = 0) => (depth > 16 ? null : walk(s, ps, depth)) ?? [...s.split(/[;&|\n()]+/).map((t) => flags(t.split(/[\s"'`]+/).filter(Boolean).map((w) => ({ w, q: false })), true)), { fn: FUNCTION.test(s) }];
+// A text read by its words alone, split at each quote and at each character that ends a command.
+const loose = (s) => s.split(/[;&|\n()]+/).map((t) => flags(t.split(/[\s"'`]+/).filter(Boolean).map((w) => ({ w, q: false })), true));
+// A text with a quote left open, and one nested deeper than a command is written, is read by its words alone. The last part
+// says whether the text, outside its quotes, comments and here-document bodies, defines what runs later, and whether a
+// command that names a shell runs what the walk cannot follow; where the words alone are read, the whole text is that text.
+const read = (s, ps, depth = 0) => (depth > 16 ? null : walk(s, ps, depth)) ?? [...loose(s), { fn: FUNCTION.test(s) }];
 
-// Whether a push follows a call that makes a commit in the command of a Bash call, or with ps of a PowerShell call.
+// Whether a push follows a call that makes a commit in the command of a Bash call, or with ps of a PowerShell call. A command
+// in which a shell runs what the walk cannot follow is read by its words alone as well.
 export function chained(command, ps) {
   const text = ps ? command.replace(/[\u2018-\u201b]/g, "'").replace(/[\u201c-\u201e]/g, '"') : command, parts = read(text, ps), any = parts.some((p) => p.fn);
-  return parts.some((p, i) => p.makes && parts.some((q, j) => q.pushes && (any || j > i)));
+  const follows = (list) => list.some((p, i) => p.makes && list.some((q, j) => q.pushes && (any || j > i)));
+  return follows(parts) || (parts.some((p) => p.sh) && follows(loose(text)));
 }

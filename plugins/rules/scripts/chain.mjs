@@ -55,10 +55,12 @@ function walk(s, ps, depth) {
   let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false;
   const add = (t, q = false) => { cur ??= { w: '', q: false }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
   const end = () => { if (cur) words.push(cur); cur = null; };
+  // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
+  const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
   // A command at the end of a pipe that names a shell runs the texts of the command before it.
   const cut = (pipe = false) => {
     end();
-    if (words.some((x) => SHELLS.has(base(x.w)))) early.push(...[...held, ...texts].flatMap((t) => read(t, ps, depth + 1)));
+    if (words.some((x) => SHELLS.has(base(x.w)))) early.push(...[...held, ...texts].flatMap(both));
     if (words.length) held = pipe ? texts : [];
     parts.push(...early, flags(words));
     [words, texts, early] = [[], [], []];
@@ -88,6 +90,13 @@ function walk(s, ps, depth) {
       add(s.slice(open + 1, Math.max(last, open + 1)), true);
       if (n === '"') subs(open + 1, last);
       i = last + 2;
+    } else if (!ps && c === '$' && n === "'") {
+      // An ANSI-C quoted text ends at the first ' no backslash escapes, and is read decoded.
+      let t = '', j = i + 2;
+      for (; j < s.length && s[j] !== "'"; j++) t += s[j] === '\\' ? ({ n: '\n', t: '\t', r: '\r' })[s[++j]] ?? s[j] ?? '' : s[j];
+      if (j >= s.length) return null;
+      add(t, true);
+      i = j;
     } else if (c === "'") {
       const j = s.indexOf("'", i + 1);
       if (j < 0) return null;

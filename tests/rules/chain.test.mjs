@@ -73,6 +73,13 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ['git commit -F - <<< "$msg"\ngit push', false, true],
     ['git push && git commit --allow-empty -m "start rework of parse()"', false, false],
     ["bash -c 'p() { git push; }; git commit -m x; p'", false, true],
+    ["git commit -m $'Fix\\n\\nIt\\'s done'; git push origin main # it's", false, true],
+    ["bash -c $'git commit -m x\\ngit push'", false, true],
+    ["git commit -m $'it\\'s'; git push --dry-run", false, false],
+    ["printf 'git commit -m x\\ngit push\\n' | sh", false, true],
+    ["bash -c 'git commit -m x\\ngit push'", false, true],
+    ["bash -c 'git -C C:\\new commit -m x && git push'", false, true],
+    ["bash -c 'git -C C:\\repo commit -m x && git push'", false, true],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });

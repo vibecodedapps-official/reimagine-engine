@@ -45,7 +45,8 @@
 // the string as the draft holds it, ordered by line, then kind, then place on the line. It exits 1 when any draft
 // leaks, else 0.
 //
-// A refusal prints one line "posts: <reason>" and exits 1, with nothing else printed.
+// A refusal prints one line "posts: <reason>", or for leak one for each draft it cannot read, in the order given, and
+// exits 1, with nothing else printed.
 import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -57,7 +58,13 @@ const ASSISTANT = ['Claude', 'Anthropic'];
 const NAME = /^\d{2}-[a-z0-9][a-z0-9-]*\.md$/;
 const HEADER_KEYS = ['kind', 'path', 'line', 'posted'];
 
-export class Refusal extends Error {}
+// Holds one line per reason.
+export class Refusal extends Error {
+  constructor(reasons) {
+    super([reasons].flat().join('\n'));
+    this.lines = [reasons].flat();
+  }
+}
 const refuse = (message) => { throw new Refusal(message); };
 
 const lf = (text) => text.replace(/\r\n?/g, '\n');
@@ -205,8 +212,20 @@ export function leak(wanted, drafts, read = (p) => readText(p, 'the draft')) {
       const edge = kind === 'assistant' ? 'A-Za-z' : 'A-Za-z0-9_';
       return { kind, re: new RegExp(`(?<![${edge}])(?:${longestFirst.map(escape).join('|')})(?![${edge}])`, 'gi') };
     });
-  return drafts.flatMap((draft) => {
-    const hits = lf(read(draft)).split('\n').flatMap((line, i) => patterns.flatMap(({ kind, re }) => (
+  // Every draft is read before any is searched, so one run names each that cannot be read.
+  const unread = [];
+  const texts = drafts.map((draft) => {
+    try {
+      return read(draft);
+    } catch (e) {
+      if (!(e instanceof Refusal)) throw e;
+      unread.push(...e.lines);
+      return '';
+    }
+  });
+  if (unread.length) throw new Refusal(unread);
+  return drafts.flatMap((draft, n) => {
+    const hits = lf(texts[n]).split('\n').flatMap((line, i) => patterns.flatMap(({ kind, re }) => (
       [...line.matchAll(re)].map((m) => ({ kind, text: `  ${kind} line ${i + 1}: ${m[0]}` }))
     )));
     if (!hits.length) return [`clean ${draft}`];
@@ -238,7 +257,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
     process.stdout.write(`${lines.join('\n')}\n`);
     process.exitCode = code;
   } catch (e) {
-    process.stdout.write(`posts: ${e instanceof Refusal ? e.message : `unexpected error: ${e?.message ?? e}`}\n`);
+    const reasons = e instanceof Refusal ? e.lines : [`unexpected error: ${e?.message ?? e}`];
+    process.stdout.write(reasons.map((reason) => `posts: ${reason}\n`).join(''));
     process.exitCode = 1;
   }
 }

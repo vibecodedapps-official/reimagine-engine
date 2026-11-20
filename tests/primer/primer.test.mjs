@@ -234,6 +234,17 @@ describe('session-start', () => {
     assert.equal(from('resume'), '');
   });
 
+  test('a data directory that is not an absolute path keeps no record, so a resumed session gets no string and nothing is written in the directory it ran in', () => {
+    const cfg = config(local(), { group: GROUP });
+    const dir = repo('relative', 'https://example.invalid/team/app.git'), file = join(cfg.store, 'groups', 'app.md'), written = join(base, 'relative-data');
+    const from = (source) => run(['session-start', 'all', 'relative-data'], { input: JSON.stringify({ cwd: dir, hook_event_name: 'SessionStart', source, session_id: 'session-one' }), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
+    const startup = from('startup'), resume = from('resume'), created = existsSync(written);
+    rmSync(written, { recursive: true, force: true });
+    assert.equal(startup, context(part('group', file, GROUP.trim(), '5ee2174e')));
+    assert.equal(resume, '');
+    assert.equal(created, false);
+  });
+
   test('in a session no one attends the layers load and no warning prints', () => {
     const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
     const r = start(cfg, repo('unattended', 'https://example.invalid/team/app.git'), { CLAUDE_CODE_SESSION_ATTENDED: '0' });

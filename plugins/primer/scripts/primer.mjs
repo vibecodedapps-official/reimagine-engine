@@ -282,10 +282,10 @@ function sessionStart(c, layer, input, data) {
     context = layer === 'all' ? joined(parts) : parts.find((x) => x.name === layer)?.text;
     // A resumed session still holds the string it was last given, so it gets one only where the string differs from that one: the
     // digest of each string given is kept under the data directory by session and layer, for 30 days after the session's last
-    // start, and a session with none kept gets the string. With no data directory, or an id that names no file, nothing is kept
+    // start, and a session with none kept gets the string. With no absolute data directory, or an id that names no file, nothing is kept
     // and a resumed session gets no string.
     const kept = data || c.env.CLAUDE_PLUGIN_DATA, id = typeof input.session_id === 'string' && /^[\w-]{1,80}$/.test(input.session_id) && input.session_id;
-    let mark = !sub && kept && id && context ? join(kept, 'given', `${id}.${layer}`) : null, digest = createHash('sha256').update(context ?? '').digest('hex'), same = mark && readText(mark) === digest;
+    let mark = !sub && kept && isAbsolute(kept) && id && context ? join(kept, 'given', `${id}.${layer}`) : null, digest = createHash('sha256').update(context ?? '').digest('hex'), same = mark && readText(mark) === digest;
     if (mark) try {
       mkdirSync(dirname(mark), { recursive: true });
       writeFileSync(mark, digest);

@@ -16,7 +16,11 @@ const IDLE = /^(?:--abort|--quit|--dry-run|--edit-todo|--show-current-patch(?:=.
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'ksh', 'fish', '$shell', '${shell}', 'eval', 'source', 'trap', 'pwsh', 'powershell', 'cmd', 'iex', 'invoke-expression', '[scriptblock]::create'].flatMap((n) => [n, n + '.exe']));
 const shell = (x, k) => { const name = base(x.w.split(/[<>]/)[0]); return SHELLS.has(name) || (k === 0 && name === '.'); };
 // The operator and end word of a here-document: bare, quoted, after a backslash or after <<-.
+// A redirect: the word it starts is no argument of a call.
+const REDIRECT = /^\d*[<>]/;
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))/;
+// Whether the << at place i stands inside (( )) or $[ ] that closes on the same line, where it shifts a number and opens no here-document.
+const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i), rest = /^[^\n]*/.exec(s.slice(i))[0]; return (line.lastIndexOf('((') > line.lastIndexOf('))') && rest.includes('))')) || (line.lastIndexOf('$[') > line.lastIndexOf(']') && rest.includes(']')); };
 // A function, a trap or a script block in a variable runs where it is called, so its calls run in an order the text does not show.
 const FUNCTION = /(?:^|[\s;&|({])(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){};&|=]+\s*\(\s*\)|trap\s)|=\s*\{/i;
 
@@ -28,9 +32,11 @@ const FUNCTION = /(?:^|[\s;&|({])(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){}
 function flags(words, loose = false) {
   const out = { makes: false, pushes: false };
   for (let i = 0; i < words.length; i++) {
-    if (!GIT.test(base(words[i].w))) continue;
+    // A word that holds a $ may expand to git: it counts where a commit-making subcommand or push follows its options.
+    const git = GIT.test(base(words[i].w));
+    if (!git && !words[i].w.includes('$')) continue;
     const bare = (w) => w.replace(/\}+$/, '');
-    if (loose) {
+    if (loose && git) {
       const rest = words.slice(i + 1).map((x) => bare(x.w.toLowerCase()));
       out.pushes ||= rest.includes('push');
       out.makes ||= rest.some((w) => MAKERS.has(w));
@@ -39,8 +45,10 @@ function flags(words, loose = false) {
     let j = i + 1;
     for (; j < words.length && words[j].w.startsWith('-'); j++) if (VALUED.test(words[j].w)) j++;
     const sub = bare(words[j]?.w.toLowerCase() ?? ''), args = words.slice(j + 1), opts = args.filter((x) => !x.q).map((x) => bare(x.w));
-    if (sub === 'push') out.pushes ||= !opts.some((o) => DRY.test(o));
-    else if (MAKERS.has(sub)) out.makes ||= !opts.some((o) => IDLE.test(o)) && !(sub === 'pull' && opts.includes('--ff-only') && args.every((x) => !x.q && UPSTREAM.test(bare(x.w))));
+    // A redirect and the file it names are no argument of the pull.
+    const named = args.filter((x, k) => !(!x.q && REDIRECT.test(x.w)) && !(k > 0 && !args[k - 1].q && /^\d*[<>]+&?$/.test(args[k - 1].w)));
+    if (sub === 'push') out.pushes ||= loose || !opts.some((o) => DRY.test(o));
+    else if (MAKERS.has(sub)) out.makes ||= loose || (!opts.some((o) => IDLE.test(o)) && !(sub === 'pull' && opts.includes('--ff-only') && named.every((x) => !x.q && UPSTREAM.test(bare(x.w)))));
   }
   return out;
 }
@@ -66,7 +74,7 @@ function walk(s, ps, depth) {
       early.push(...[...held, ...texts].flatMap(both));
       vague ||= paren || [...words.map((x) => x.w), ...held, ...texts].some((t) => t.includes('$'));
     }
-    if (words.length) held = pipe ? texts : [];
+    if (words.length) held = pipe ? [...held, ...texts] : [];
     parts.push(...early, flags(words));
     [words, texts, early] = [[], [], []];
   };
@@ -84,7 +92,7 @@ function walk(s, ps, depth) {
   // The substitutions in s from place a to place b, as a double-quoted text holds them.
   const subs = (a, b) => { for (let j = a; j < b; j++) { const k = ran(j); if (k >= 0) j = k; else if (s[j] === esc) j++; } };
   for (let i = 0; i < s.length; i++) {
-    const c = s[i], n = s[i + 1], close = ran(i), doc = !ps && c === '<' && n === '<' && s[i + 2] !== '<' && s[i - 1] !== '<' && HEREDOC.exec(s.slice(i, i + 200));
+    const c = s[i], n = s[i + 1], close = ran(i), doc = !ps && c === '<' && n === '<' && s[i + 2] !== '<' && s[i - 1] !== '<' && !shifts(s, i) && HEREDOC.exec(s.slice(i, i + 200));
     if (close >= 0) { add('$'); i = close; }
     else if (c === esc) {
       // A line continued with the escape character is one line.
@@ -130,7 +138,8 @@ function walk(s, ps, depth) {
         at = nl + 1;
       }
       i += doc[0].length - 1;
-    } else if (' \t\r'.includes(c)) { end(); plain += c; }
+    } else if (ps && (c === '{' || c === '}') && s[i - 1] !== '$') { end(); plain += c; } // In PowerShell a brace ends a word, that of ${name} aside.
+    else if (' \t\r'.includes(c)) { end(); plain += c; }
     // The & of a redirect such as 2>&1 ends no command.
     else if (';&|\n()'.includes(c) && !(c === '&' && s[i - 1] === '>')) { plain += c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
     else add(c);
@@ -149,7 +158,7 @@ const read = (s, ps, depth = 0) => (depth > 16 ? null : walk(s, ps, depth)) ?? [
 // Whether a push follows a call that makes a commit in the command of a Bash call, or with ps of a PowerShell call. A command
 // in which a shell runs what the walk cannot follow is read by its words alone as well.
 export function chained(command, ps) {
-  const text = ps ? command.replace(/[\u2018-\u201b]/g, "'").replace(/[\u201c-\u201e]/g, '"') : command, parts = read(text, ps), any = parts.some((p) => p.fn);
-  const follows = (list) => list.some((p, i) => p.makes && list.some((q, j) => q.pushes && (any || j > i)));
-  return follows(parts) || (parts.some((p) => p.sh) && follows(loose(text)));
+  const text = ps ? command.replace(/[\u2018-\u201b]/g, "'").replace(/[\u201c-\u201e]/g, '"') : command, parts = read(text, ps);
+  const follows = (list, any) => list.some((p, i) => p.makes && list.some((q, j) => q.pushes && (any || j > i)));
+  return follows(parts, parts.some((p) => p.fn)) || (parts.some((p) => p.sh) && follows(loose(text), true));
 }

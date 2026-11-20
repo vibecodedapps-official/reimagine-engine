@@ -47,7 +47,6 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ['$m = @"\n$(git commit -m x)\n"@; git push', true, true],
     ['$m = @\'\n$(git commit -m x)\n\'@; git push', true, false],
     ['(( n << 1 ))\ngit commit -m "fix -h flag"\ngit push', false, true],
-    ['(( n << 1 ))\ngit commit -m "x"\ngit push --dry-run', false, true],
     ['p() ( git push ); git commit -m x; p', false, true],
     ['push.it() { git push; }; git commit -m x; push.it', false, true],
     ['$p = { git push }; git commit -m x; & $p', true, true],
@@ -99,6 +98,29 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ["bash -c 'git commit -m x'; git log --grep push", false, false],
     ['git add . && git commit -m "$m" && git log --grep push', false, false],
     ["x=$(echo 'git push'); git commit -m x; echo \"$x\"", false, false],
+    // A word that holds a $ may be git, a brace ends a PowerShell word, and a text reaches a shell through a longer pipe.
+    ["GIT='git -C repo'; $GIT add -A && $GIT commit -m x && $GIT push", false, true],
+    ['git commit -m x && "$(which git)" push', false, true],
+    ['git commit -m x && "${GIT:-git}" push', false, true],
+    ['$git = "git"; & $git commit -m x; & $git push', true, true],
+    ['try{git commit -m x; git push}catch{}', true, true],
+    ['git commit -m x; 1..2 | ForEach-Object{git push}', true, true],
+    ['gh pr create --title "$t" --body "$b" && git push', false, false],
+    ['cd "$dir" && git commit -m "$m" && git log --grep push', false, false],
+    ["echo 'git commit -m x; git push' | tee run.log | sh", false, true],
+    ["echo 'git commit -m x; git push' | tee run.log | cat", false, false],
+    // A text a shell is handed runs where the shell stands, so the order of the words does not count there.
+    ["p='git push'; git commit -m x; eval \"$p\"", false, true],
+    // A << inside (( )) or $[ ] shifts a number, so a later line equal to its operand ends no here-document.
+    ['(( n << 1 ))\ngit commit -m x\n1\ngit push', false, true],
+    ['echo $[1<<2]\ngit commit -m x\n2\ngit push', false, true],
+    ['(( n << 1 ))\ngit commit -m x\ngit push --dry-run', false, false],
+    ['cat << E\ngit commit -m "fix -h flag"\ngit push', false, true],
+    ['cat << E\ngit commit -m "x"\ngit push --dry-run', false, true],
+    // A redirect after a pull that only fast-forwards names nothing.
+    ['git pull --ff-only 2>&1 && git push', false, false],
+    ['git pull --ff-only > /dev/null && git push 2>&1', false, false],
+    ['git pull --ff-only origin 2>&1 && git push', false, true],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });

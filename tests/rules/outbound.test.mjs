@@ -446,6 +446,26 @@ function gitCalls(w, command, cwd) {
   return readFileSync(trace, 'utf8').split('\n').filter((l) => l.includes('"event":"start"')).length;
 }
 
+test('R405: with check: diff, a push after a call that makes a commit in the same command is denied, and a push sent alone is read', () => {
+  const w = world();
+  const dir = repo(w);
+  const reason = 'rules: the push follows a call in the same command that makes a commit, which cannot be read before the command runs, so the push was not checked against ' + w.listFile + '; send the push as a command of its own';
+  w.list('zqxlisted', 'check: diff');
+  for (const command of ['git add -A && git commit -m "add notes" && git push origin main', 'git commit -m x; git push', 'git -C . commit -m x\ngit push', 'git -c user.name=x commit -m x && git push', 'git cherry-pick abc && git push', 'git am 0001.patch && git push',
+    'git merge topic && git push', 'git rebase main && git push', 'git revert HEAD && git push', 'git pull && git push']) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
+  assert.deepEqual(w.shell('git commit -m x; git push', 'PowerShell', dir), { decision: 'deny', reason });
+  // A push alone, a push before the commit, and a call that only holds the word are read as before.
+  for (const command of ['git push', 'git push && git commit -m x', 'git log --grep commit && git push', 'git merge-base main HEAD && git push', 'git stash && git push', 'git commit -m "push later"']) none(w.shell(command, 'Bash', dir));
+  // A commit that is there before the command is read first.
+  writeFileSync(join(dir, 'zqxlisted.txt'), 'x\n');
+  w.git(dir, 'add', 'zqxlisted.txt');
+  w.git(dir, 'commit', '-q', '-m', 'add a file');
+  denied(w.shell('git commit -m x && git push', 'Bash', dir), 'zqxlisted', 'the names of the files commit ', w);
+  // Without check: diff only the message is read, and the command holds it.
+  w.list('zqxlisted');
+  none(w.shell('git commit -m x && git push', 'Bash', dir));
+});
+
 test('R405: a push reads each folder with one git call, and a folder spelled two ways once', () => {
   const w = world();
   w.list('zqxlisted', 'check: diff');

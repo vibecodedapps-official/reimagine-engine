@@ -2,7 +2,7 @@
   "name": "reimagine-engine",
   "owner": { "name": "vibecodedapps.net" },
   "metadata": {
-    "version": "0.1.140",
+    "version": "0.1.141",
     "description": "A suite of Claude Code plugins: house rules, a ticket-to-pull-request loop, a read-only audit of finished pull requests, a review gate, instruction-file maintenance, auto mode trust for listed repositories, and a review of pull requests someone else wrote."
   },
   "plugins": [
@@ -46,7 +46,7 @@
       "name": "review",
       "source": "./plugins/review",
       "description": "Review a pull request someone else wrote and end in drafted comments for its author and a summary for the person who gates the merge, posted only on a later request, each post approved by name.",
-      "version": "0.1.4"
+      "version": "0.1.5"
     }
   ]
 }

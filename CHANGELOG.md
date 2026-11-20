@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## review 0.1.5 - 2026-11-20
+
+- The first reading saves the report its reading agent ends with. The step said to save the reply, which is a launch line where the host runs the call in the background.
+- `posts.mjs leak` names every draft it cannot read, one refusal line each, before it searches any. It stopped at the first, so each missing path cost a run of its own.
+
 ## loop 0.1.33 - 2026-11-20
 
 - An implementer or fix call has returned when its report arrives: `post-<n>` is written then, and the call's own completion notification, where it comes after the report, is a notification for a call that already returned, at which `duration_ms` is read and the checkout is compared. Where the host runs the call in the background it gives a launch line at once, its report later and its completion notification after that, and Step 4 named one moment: a run wrote `post-<n>` at the reports and compared the checkout at no completion notification, and another wrote none.

@@ -483,11 +483,11 @@ test('R405: the chained push is read from the calls of the command, with its com
     'sh -c \'git add -A && git commit -m x\' && git push', 'out="$(git commit -m x 2>&1)"; git push', 'cat > notes.md <<EOF\nit\'s a note\nEOF\ngit add -A && git commit -m x # don\'t forget\ngit push', 'git commit -m "$(cat <<\'EOF\'\nit doesn\'t break\nEOF\n)" && git push']) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
   for (const command of ['git commit -m x # don\'t\ngit push # it\'s', 'git `\ncommit -m x; git push', 'function p { git push }; git commit -m x; p', 'git commit -m @\'\nit doesn\'t break\n\'@; git push', '$o = git commit -m x 2>&1; git push']) assert.deepEqual(w.shell(command, 'PowerShell', dir), { decision: 'deny', reason }, command);
   // A text that names the calls and runs neither, a push that sends nothing and a pull that only fast-forwards chain nothing.
-  for (const command of ['echo "Run git commit first"; git push', 'git commit -m x; git log --grep push', 'git commit -m x && git push --dry-run', 'git commit -m x && git push -n', 'git pull --ff-only && git push', 'git pull --ff-only origin main && git push',
+  for (const command of ['echo "Run git commit first"; git push', 'git commit -m x; git log --grep push', 'git commit -m x && git push --dry-run', 'git commit -m x && git push -n', 'git pull --ff-only && git push',
     'node -e "console.log(\'git commit -m x; git push\')"', 'git commit -F - <<\'EOF\'\nsee the git push docs\nEOF', 'git commit -m "say \\"git push\\" later"']) none(w.shell(command, 'Bash', dir));
   none(w.shell('git commit -m @\'\ndon\'t git push yet\n\'@', 'PowerShell', dir));
-  // A pull from a URL can bring commits that no remote-tracking ref holds.
-  assert.deepEqual(w.shell('git pull --ff-only https://example.invalid/x.git main && git push', 'Bash', dir), { decision: 'deny', reason });
+  // A pull that names what it brings can bring commits that no remote-tracking ref holds.
+  for (const command of ['git pull --ff-only origin main && git push', 'git pull --ff-only https://example.invalid/x.git main && git push']) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
 });
 
 test('R405: a push reads each folder with one git call, and a folder spelled two ways once', () => {

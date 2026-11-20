@@ -27,6 +27,17 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ['git commit -m "say `"git push`" later"', true, false],
     ['powershell -Command "git commit -m x; git push"', true, true],
     ['Write-Output "git commit -m x; git push"', true, false],
+    ['$o=git commit -m x; git push', true, true],
+    ['$o =git commit -m x; git push', true, true],
+    ['git commit -m x; if ($?) {git push}', true, true],
+    ['git commit -m x; if ($?) {git push --dry-run}', true, false],
+    ['o=git commit -m x; git push', false, false],
+    ['(( n << 2 ))\ngit commit -m x\ngit push', false, true],
+    ['echo $[1<<2]\ngit commit -m x\ngit push', false, true],
+    ['echo $((1<<2)); git commit -m x; git push', false, true],
+    ['git pull --ff-only -q && git push', false, false],
+    ['git pull --ff-only origin pull/123/head && git push', false, true],
+    ['git pull --ff-only --rebase && git push', false, true],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });

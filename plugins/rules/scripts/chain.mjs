@@ -4,6 +4,10 @@
 
 const base = (w) => w.replace(/^.*[\\/]/, '').toLowerCase();
 const MAKERS = new Set(['commit', 'merge', 'cherry-pick', 'rebase', 'am', 'revert', 'pull']);
+// The word that starts a git call: in PowerShell it may be joined to the = of an assignment or to the { of a script block, whose } may be joined to a later word.
+const GIT = /^(?:(?:\$[\w:]+)?[-+]?=)?\{?git(?:\.exe)?$/;
+// The options with which a pull that only fast-forwards still takes the branch's upstream and makes no commit.
+const UPSTREAM = /^(?:--ff-only|--no-rebase|--prune|-p|-q|--quiet|-v|--verbose)$/;
 // git's own options that take the next word as their value.
 const VALUED = /^(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))$/;
 // An option with which a call makes no commit, and one with which a push sends nothing.
@@ -17,16 +21,17 @@ const FUNCTION = /(?:^|[\s;&|({])(?:function\s+[\w:-]+\s*[({]|[\w-]+\s*\(\s*\)\s
 
 // What the git calls among the words of one simple command do: makes, a commit that was not there before the command, and
 // pushes. The subcommand is read after git's own options; an option counts only where it is typed outside quotes. A pull that
-// only fast-forwards from a named remote brings commits a remote-tracking ref holds, which a push sent alone would not read either.
+// only fast-forwards and names nothing takes the branch's upstream, which a remote-tracking ref holds once it has run, so a
+// push sent alone would not read it either.
 function flags(words) {
   const out = { makes: false, pushes: false };
   for (let i = 0; i < words.length; i++) {
-    if (!/^git(?:\.exe)?$/.test(base(words[i].w))) continue;
+    if (!GIT.test(base(words[i].w))) continue;
     let j = i + 1;
     for (; j < words.length && words[j].w.startsWith('-'); j++) if (VALUED.test(words[j].w)) j++;
-    const sub = words[j]?.w.toLowerCase(), opts = words.slice(j + 1).filter((x) => !x.q).map((x) => x.w);
+    const bare = (w) => w.replace(/\}+$/, ''), sub = bare(words[j]?.w.toLowerCase() ?? ''), args = words.slice(j + 1), opts = args.filter((x) => !x.q).map((x) => bare(x.w));
     if (sub === 'push') out.pushes ||= !opts.some((o) => DRY.test(o));
-    else if (MAKERS.has(sub)) out.makes ||= !opts.some((o) => IDLE.test(o)) && !(sub === 'pull' && opts.includes('--ff-only') && !opts.some((o) => /:|^[./~]/.test(o)));
+    else if (MAKERS.has(sub)) out.makes ||= !opts.some((o) => IDLE.test(o)) && !(sub === 'pull' && opts.includes('--ff-only') && args.every((x) => !x.q && UPSTREAM.test(bare(x.w))));
   }
   return out;
 }
@@ -84,11 +89,13 @@ function walk(s, ps, depth) {
     } else if (c === '#' && !cur) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (doc) {
       // The body starts after this line, or after the body of a here-document opened earlier on it, and ends before the end
-      // line, or with the text; the read goes on after it once this line ends.
+      // line; the read goes on after it once this line ends.
       const word = doc[2] ?? doc[3] ?? doc[4], from = after >= 0 ? after : s.indexOf('\n', i) + 1;
       for (let at = from; from > 0; ) {
         const nl = s.indexOf('\n', at), line = s.slice(at, nl < 0 ? s.length : nl).replace(/\r$/, '');
-        if ((doc[1] ? line.replace(/^\t+/, '') : line) === word || nl < 0) { texts.push(s.slice(from, nl < 0 && line !== word ? s.length : Math.max(from, at - 1))); after = nl < 0 ? s.length : nl + 1; break; }
+        if ((doc[1] ? line.replace(/^\t+/, '') : line) === word) { texts.push(s.slice(from, Math.max(from, at - 1))); after = nl < 0 ? s.length : nl + 1; break; }
+        // With no end line the << may open no here-document, as the << of a shift does not.
+        if (nl < 0) return null;
         at = nl + 1;
       }
       i += doc[0].length - 1;

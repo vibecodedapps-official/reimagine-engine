@@ -135,8 +135,12 @@ function commits(text, ps) {
     for (; i < a.length; i++) {
       const b = base(a[i]);
       if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(a[i]) || KEYWORDS.has(b)) continue;
-      // In PowerShell a call may stand on the right of an assignment to a variable.
-      if (ps && /^\$[\w:]+$/.test(a[i]) && /^[-+]?=$/.test(a[i + 1] ?? '')) { i++; continue; }
+      // In PowerShell a call may stand on the right of an assignment to a variable, with spaces around the = or none.
+      const set = ps && /^\$[\w:]+(?:[-+]?=(.*))?$/.exec(a[i]);
+      if (set && (set[1] !== undefined || /^[-+]?=$/.test(a[i + 1] ?? ''))) {
+        if (set[1]) { a[i] = set[1]; i--; } else if (set[1] === undefined) i++;
+        continue;
+      }
       if (!WRAPS.has(b)) break;
       while (a[i + 1]?.startsWith('-')) {
         const t = a[++i];

@@ -210,8 +210,12 @@ function analyze(typed, st, vars = new Map()) {
     const tree = /^GIT_(?:WORK_TREE=(.*)|DIR=(.*))$/.exec(w);
     if (tree) dir = at(st.dir, { ...words[i], w: tree[1] ?? `${tree[2]}/..` });
     if (/^[A-Za-z_]\w*=/.test(w) || KEYWORDS.has(b)) continue;
-    // Through the PowerShell tool a call may stand on the right of an assignment to a variable.
-    if (!st.sh && /^\$[\w:]+$/.test(w) && /^[-+]?=$/.test(words[i + 1]?.w ?? '')) { i++; continue; }
+    // Through the PowerShell tool a call may stand on the right of an assignment to a variable, with spaces around the = or none.
+    const set = !st.sh && /^\$[\w:]+(?:[-+]?=(.*))?$/.exec(w);
+    if (set && (set[1] !== undefined || /^[-+]?=$/.test(words[i + 1]?.w ?? ''))) {
+      if (set[1]) { words[i] = { ...words[i], w: set[1], bad: set[1].includes('$') }; i--; } else if (set[1] === undefined) i++;
+      continue;
+    }
     if (!WRAPS.has(b)) break;
     while (words[i + 1]?.w.startsWith('-')) {
       const t = words[++i].w;

@@ -109,12 +109,13 @@ function git(dir, args, left = () => Infinity) {
 
 // The texts of the commits a push from dir could send: those HEAD or a local branch reaches, or a tag when the command
 // sends tags, and no remote-tracking ref holds. Refspecs are not read, so a branch the push leaves behind counts too.
-// With diff, their added lines; lost says the diff could not be read. One git call reads both, its output cut at a mark
+// With diff, their added lines and the names of the files they add, a rename's new name among them; lost says the diff could
+// not be read. One git call reads both, its output cut at a mark
 // made for the call, so no text of a commit can end a piece. A call with no time left throws Late.
 export function leaving(dir, command, diff, left) {
   const tags = new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command);
   const id = randomBytes(8).toString('hex');
-  const args = (patch) => ['log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
+  const args = (patch) => ['-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
     `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, 'HEAD', '--branches', ...(tags ? ['--tags'] : []), '--not', '--remotes'];
   let out, lost = false;
   try { out = git(dir, args(diff), left); } catch (e) {
@@ -123,7 +124,7 @@ export function leaving(dir, command, diff, left) {
     lost = true;
   }
   const texts = [], added = [];
-  let commit = '';
+  let commit = '', head = '';
   for (const piece of out.split(`\x1e${id}`).slice(1)) {
     if (piece[0] === 'm') {
       const i = piece.indexOf('\x1f');
@@ -132,12 +133,15 @@ export function leaving(dir, command, diff, left) {
       continue;
     }
     let hunk = false;
-    const lines = piece.split('\n').filter((l) => {
-      if (l.startsWith('diff --git ')) hunk = false;
+    const names = [], lines = piece.split('\n').filter((l) => {
+      if (l.startsWith('diff --git ')) [hunk, head] = [false, l.slice(11)];
       else if (l.startsWith('@@')) hunk = true;
+      // The header of a new file gives its name twice, each after a prefix; a rename gives the new name by itself.
+      else if (!hunk && /^(new file mode|rename to|copy to) /.test(l)) names.push(l.startsWith('new') ? head : l.slice(l.indexOf(' to ') + 4));
       else return hunk && l.startsWith('+');
       return false;
     });
+    if (names.length) added.push({ where: `the names of the files commit ${commit} adds`, text: names.join('\n') });
     if (lines.length) added.push({ where: `the added lines of commit ${commit}`, text: lines.map((l) => l.slice(1)).join('\n') });
   }
   return { texts: [...texts, ...added], lost };

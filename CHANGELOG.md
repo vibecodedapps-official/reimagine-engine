@@ -2,6 +2,17 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.40 - 2026-11-19
+
+- With `check: diff`, a push is read for the names of the files its commits add, the new name of a rename or a copy among them. The check read messages and added lines, so a commit that added a clean file whose name held a listed string passed a push, and so did an empty file and a rename, which add no line. An `allow:` phrase takes a name out as it does any text.
+
+## primer 0.1.26 - 2026-11-19
+
+- In a `local` repository the staging check follows a variable that the command sets to a plain text before any other call and later names alone, as in `R=/work/app; git -C "$R" merge feat` and, in PowerShell, `$r = 'C:\work\app'; git -C $r merge feat`. The PowerShell assignment counted as a call the check does not know, so the merge after it was denied as unread; in Bash the directory stayed unknown, so the call was read in every `local` repository of the map and a merge was denied where another one lacked the branch. A name the command sets twice or holds in any other word is not followed, nor is one the shell rewrites itself, such as `PWD` and `$_`, or will not assign, such as `$home`, nor any name after an `IFS` assignment, or a text that starts with `~`, which a shell does not expand in a value.
+- A merge, a cherry-pick, a rebase or an am is read after `cut`, `Get-Content` and `Select-Object`, and in Bash after a `set` whose options export nothing, as `set -euo pipefail` does. Each only reads or sets an option of the shell, and each left the call denied as unread.
+- After a shell call that may have committed, the hook reads the commits no remote holds and tells the session of an agent file one of them adds. The check before the call reads the work tree as it stands then, so a file the same call made and committed, as `node make-notes.js && git add -A && git commit -m x` does, went into the history with nothing said. The hook has a PostToolUse entry for this, which denies nothing; the README states the limit of the check before the call. Where the command names a push, the commits are read against the upstream's default branch, since a push has put them under a remote-tracking ref, and the notice says a remote may already hold them; where that branch is unknown, the newest hundred commits are read with no exclusion. The read needs Git 2.31 or later.
+- The `info/exclude` lines `/primer` offers come with an exception for each agent file git tracks. A content search honors those lines, so a tracked `AGENTS.md` or a tracked file under `.claude/` was passed over once they were in. A search started inside an agent folder still passes over its files, and the skill says so.
+
 ## rules 0.1.39 - 2026-11-19
 
 - The outbound check leaves the script that `node` runs and a path given to a git `-c` key out of its search, where they exist, and leaves a resolved path out wherever it stands outside a quoted string on the command's first line with no `$`, backtick or typographic quote before it. A run of a plugin's own script whose arguments held `git` with `commit`, `merge` or `tag` was read as a post and denied where the script's folder held a listed string, and so were git calls with a hooks path and a work tree under such a folder. A resolved path after a quoted argument was searched too. The words a command carries, a path inside a message and a path that names nothing are searched as before.

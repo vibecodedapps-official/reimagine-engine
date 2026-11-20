@@ -400,6 +400,43 @@ test('R405: check: diff reads the added lines of the commits about to leave, and
   none(w.shell('git push', 'Bash', dir));
 });
 
+test('R405: check: diff reads the names of the files the commits about to leave add, a new name of a rename among them', () => {
+  const w = world();
+  const dir = repo(w);
+  writeFileSync(join(dir, 'plain.md'), 'clean\n');
+  w.git(dir, 'add', 'plain.md');
+  w.git(dir, 'commit', '-q', '-m', 'add plain');
+  w.git(dir, 'push', '-q');
+  mkdirSync(join(dir, '.zqxlisted'));
+  writeFileSync(join(dir, '.zqxlisted', 'notes.md'), 'clean\n');
+  w.git(dir, 'add', '.zqxlisted/notes.md');
+  w.git(dir, 'commit', '-q', '-m', 'add notes');
+  w.list('zqxlisted');
+  none(w.shell('git push', 'Bash', dir));
+  w.list('zqxlisted', 'check: diff');
+  denied(w.shell('git push', 'Bash', dir), 'zqxlisted', 'the names of the files commit 8450afb adds', w);
+  w.list('zqxlisted', 'allow: .zqxlisted/notes.md', 'check: diff');
+  none(w.shell('git push', 'Bash', dir));
+  // A file with no line and a rename have no added line to read.
+  w.git(dir, 'push', '-q');
+  writeFileSync(join(dir, 'zqxlisted.txt'), '');
+  w.git(dir, 'add', 'zqxlisted.txt');
+  w.git(dir, 'commit', '-q', '-m', 'add empty');
+  w.list('zqxlisted', 'check: diff');
+  denied(w.shell('git push', 'Bash', dir), 'zqxlisted', 'the names of the files commit 356d582 adds', w);
+  w.git(dir, 'rm', '-q', 'zqxlisted.txt');
+  w.git(dir, 'commit', '-q', '-m', 'drop empty');
+  w.git(dir, 'push', '-q');
+  w.git(dir, 'mv', 'plain.md', 'zqxlisted.md');
+  w.git(dir, 'commit', '-q', '-m', 'move plain');
+  denied(w.shell('git push', 'Bash', dir), 'zqxlisted', 'the names of the files commit eb2f4e4 adds', w);
+  // A file that leaves, and the old name of a rename, are not read.
+  w.git(dir, 'push', '-q');
+  w.git(dir, 'mv', 'zqxlisted.md', 'plain.md');
+  w.git(dir, 'commit', '-q', '-m', 'move back');
+  none(w.shell('git push', 'Bash', dir));
+});
+
 // The git processes one run of the hook starts, counted from git's own event trace.
 function gitCalls(w, command, cwd) {
   const trace = join(w.root, 'trace.json');

@@ -83,7 +83,7 @@ const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'sh.exe', 'bash.exe']);
 const CDS = new Set(['cd', 'chdir', 'pushd', 'popd', 'set-location', 'sl', 'push-location', 'pop-location']);
 // The calls that change nothing a merge, a cherry-pick, a rebase or an am is read from: no ref, no index entry and no patch file.
 // A program counts by the word as typed, with no directory part.
-const READS = new Set(['echo', 'printf', 'pwd', 'true', 'ls', 'date', 'cat', 'head', 'tail', 'wc', 'grep', 'write-host', 'write-output', 'get-location']);
+const READS = new Set(['echo', 'printf', 'pwd', 'true', 'ls', 'date', 'cat', 'head', 'tail', 'wc', 'grep', 'cut', 'write-host', 'write-output', 'get-location', 'get-content', 'select-object']);
 const GIT_READS = new Set(['status', 'log', 'show', 'diff', 'rev-parse', 'rev-list', 'merge-base', 'describe', 'ls-files']);
 const LISTS = { branch: /^(--show-current|--list|-l|-a|--all|-r|--remotes|-v|-vv)$/, remote: /^-v$/ };
 const FETCH_OPTIONS = /^(--all|--prune|-p|-q|--quiet|-v|--verbose|--no-tags|--progress|--no-progress)$/;
@@ -102,14 +102,59 @@ function switched([x, ...more]) {
 // cd to a plain directory; sets lost for a change of directory or a word it cannot follow, and for a work tree or a git
 // directory named apart from the working directory, whose repository it still names. far says a directory is unknown, and
 // hidden that the text may run an add or a commit the script does not see.
-function scan(s, ps, st) {
-  const list = commands(s, ps), dirs = [];
+function scan(s, ps, st, top = false) {
+  const list = commands(s, ps), dirs = [], { n, at } = top && list ? followed(s, ps, list) : { n: 0, at: new Map() };
   if (!list || list.lost) st.lost = true;
   if (!list || list.hidden) st.hidden = true;
-  for (const item of list ?? []) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st);
+  for (const item of (list ?? []).slice(n)) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st, at);
 }
 
-function analyze(words, st) {
+// The variables a command sets to a plain text before any other call, as { n, at }: n opening commands that only assign, which
+// change nothing a later call is read from, and at, the text of each name the rest of the command only reads. Under sh an
+// assignment is NAME=text, one to a command and ended by ; or && or a line break; in PowerShell it is $name = 'text'.
+// A name is left out, and its word stays one the script cannot resolve, where the text holds an expansion, starts with ~, which a
+// shell does not expand in a value, or under sh holds a space or a pattern the shell would split or match; where the name is
+// assigned twice or starts the name of another; or where a later word holds it in any form but $name alone as an argument with no
+// assignment after it: in a longer word, as a command's first word, as the name a read, a loop or another assignment writes, or in
+// a text given to a shell. PowerShell names count in any letter case. A name the shell will not assign or computes itself, as PWD,
+// $_ and RANDOM, is not followed. An IFS assignment opens nothing, since it changes how a later unquoted word splits.
+function followed(s, ps, list) {
+  const at = new Map(), twice = new Set(), key = (name) => (ps ? name.toLowerCase() : name);
+  const set = (name, text) => { if (at.has(key(name))) twice.add(key(name)); at.set(key(name), text); };
+  const one = ps ? /^\s*\$(\w+)[ \t]*=[ \t]*(?:'([^'\r\n]+)'|"([^"$`\r\n]+)")[ \t]*(?:;|\r?\n|$)/
+    : /^\s*((?!GIT_|IFS=)[A-Za-z_]\w*)=(?:'([^'\r\n]+)'|"([^"$`\\\r\n]+)"|([^\s;&|()<>`$"'\\*?[\]{}~#!]+))[ \t]*(?:;|&&|\r?\n|$)/;
+  const own = ps ? /^(pwd|_|lastexitcode|matches|args|input|error|psitem|home|null|true|false|pid|pshome|host|shellid)$/i : /^(PWD|OLDPWD|_|RANDOM|SECONDS|UID|EUID|PPID|LINENO|BASHPID)$/;
+  let n = 0;
+  for (let m, rest = s; (m = one.exec(rest)); rest = rest.slice(m[0].length), n++) {
+    const text = m.slice(2).find((x) => x !== undefined), words = list[n];
+    if (!Array.isArray(words) || words.wrote || (!ps && !(words.length === 1 && !words[0].bad && !words[0].sub && words[0].w === `${m[1]}=${text}`))) break;
+    set(m[1], own.test(m[1]) || text.startsWith('~') || (!ps && /[\s*?[\]]/.test(text)) ? null : text);
+  }
+  // A name that starts another is dropped with it, since the words of a text lose where a quote ended: "$A"B reads as $AB.
+  for (const a of [...at.keys()]) for (const b of [...at.keys()]) if (b.length > a.length && b.startsWith(a)) { at.delete(a); at.delete(b); }
+  for (const name of at.keys()) {
+    const held = new RegExp(`(?<![A-Za-z0-9_])${name}(?![A-Za-z0-9_])`, ps ? 'i' : ''), use = new RegExp(`^\\$(?:${name}|\\{${name}\\})$`, ps ? 'i' : '');
+    const read = (words, j) => words[j].bad && !words[j].sub && use.test(words[j].w) && j > 0 && !/^[-+*/%?]*=/.test(words[j + 1]?.w ?? '');
+    if (list.lost || twice.has(name) || at.get(name) === null || list.slice(n).some((words) => Array.isArray(words) && words.some((x, j) => held.test(x.w) && !read(words, j)))) at.delete(name);
+  }
+  return { n, at };
+}
+
+// A set that exports nothing: -e, -u and -x, or -o with the name of one of them. Any other, such as -a, -o allexport or -k, exports the assignments that follow.
+const setOnly = (rest) => {
+  for (let j = 0; j < rest.length; j++) {
+    const { w, bad, sub } = rest[j];
+    if (bad || sub) return false;
+    if (/^[-+][eux]+$/.test(w)) continue;
+    const name = rest[j + 1];
+    if (!/^[-+][eux]*o$/.test(w) || !name || name.bad || name.sub || !/^(pipefail|errexit|nounset|xtrace)$/.test(name.w)) return false;
+    j++;
+  }
+  return true;
+};
+
+function analyze(typed, st, vars = new Map()) {
+  const words = Object.assign(typed.map((x) => { const m = x.bad && vars.size ? /^\$\{?(\w+)\}?$/.exec(x.w) : null, k = m && (st.sh ? m[1] : m[1].toLowerCase()); return m && vars.has(k) ? { ...x, w: vars.get(k), bad: false } : x; }), { wrote: typed.wrote });
   if (words.some((x) => x.git)) st.lost = st.hidden = true;
   if (words.some((x) => /\bGIT_(DIR|WORK_TREE|INDEX_FILE)\b/.test(x.w))) st.lost = true;
   const at = (dir, x) => { if (!x || x.bad) { st.lost = st.far = true; return dir; } return resolve(dir, tilde(st.msys ? x.w.replace(/^\/([A-Za-z])(?=\/|$)/, '$1:/') : x.w, st.home)); };
@@ -171,8 +216,10 @@ function analyze(words, st) {
   } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = st.hidden = true;
   // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
-  else still = plain && READS.has(words[i].w.toLowerCase());
-  if (!still || !plain) st.moved = true;
+  // set changes the options of sh, and only the ones in setOnly leave the later call read; in PowerShell the word is a command that writes a variable.
+  else still = plain && (READS.has(words[i].w.toLowerCase()) || (st.sh && words[i].w === 'set' && setOnly(rest)));
+  // A call that leaves no later one readable may also rewrite a followed variable, with no word that spells it.
+  if (!still || !plain) { st.moved = true; vars.clear(); }
 }
 
 // The commands that bring commits made elsewhere into the history, each with the options that take the next word as a value; any
@@ -341,6 +388,13 @@ function upstream(c, repo) {
   return git(c, repo.top, ['rev-parse', '-q', '--verify', `${ref}^{tree}`]).status === 0 ? { ref } : { why: `${ref} cannot be read` };
 }
 
+// The agent files among paths that the upstream's tree does not hold, and how a reason says so.
+function lacking(c, repo, agents) {
+  const tree = agents.length ? upstream(c, repo) : {};
+  const held = new Set(tree.ref ? git(c, repo.top, ['ls-tree', '-r', '-z', '--name-only', '--full-tree', tree.ref, '--', ...agents]).stdout.split('\0') : []);
+  return { missing: agents.filter((x) => !held.has(x)), lack: tree.ref ? `which ${tree.ref} does not hold` : `while the upstream's tree is unknown (${tree.why})` };
+}
+
 // The deny reason for a call in a local repository, or null when it adds no agent file the upstream lacks. Without a plan the call
 // counts as staging every file git does not ignore, and what each plan of parts holds, since a forced add stages a file git ignores.
 function verdict(c, repo, plan, parts = []) {
@@ -356,33 +410,43 @@ function verdict(c, repo, plan, parts = []) {
     const was = new Set(g.was.split(/\r?\n/).map((l) => l.trim()));
     return [...new Set(g.now.split(/\r?\n/).map((l) => l.trim()))].filter((l) => l && namesAgent(l) && !was.has(l)).map((l) => `the line ${l} in ${g.file}, which names an agent file`);
   }))];
-  const tree = agents.length ? upstream(c, repo) : {};
-  const held = new Set(tree.ref ? git(c, repo.top, ['ls-tree', '-r', '-z', '--name-only', '--full-tree', tree.ref, '--', ...agents]).stdout.split('\0') : []);
-  const missing = agents.filter((x) => !held.has(x));
+  const { missing, lack } = lacking(c, repo, agents);
   if (!missing.length && !lines.length) return null;
-  const items = [...(missing.length ? [`${missing.join(', ')}, ${tree.ref ? `which ${tree.ref} does not hold` : `while the upstream's tree is unknown (${tree.why})`}`] : []), ...lines];
+  const items = [...(missing.length ? [`${missing.join(', ')}, ${lack}`] : []), ...lines];
   return `primer: ${repo.top} has the local profile, which keeps agent files out of its history; ${plan ? ''
     : 'the command cannot be resolved, so it counts as staging every file git does not ignore; '}the call would add ${items.join('; ')}`;
 }
 
-export const deny = (reason) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } });
-export function staged(c, input) {
+// What both checks read of a hook's input: the calls of its command, the map, and each local repository a call runs in with the
+// directory it was named by. Null where the command holds no call the checks read or the map holds no local repository; the map
+// is null where it cannot be read.
+function read(c, input, after = false) {
   const own = join(configOf(c, input), 'reimagine-primer'), command = input.tool_input?.command;
-  if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/.test(command)) return [];
+  if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/.test(command)) return null;
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;
   const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false, sh: !ps, moved: false, head: undefined, fetched: false };
-  scan(command, ps, st);
-  if (!st.calls.length && !st.hidden) return [];
+  scan(command, ps, st, true);
+  if (!st.calls.length && !st.hidden) return null;
   const path = places(c, own).map, map = (() => { try { return loadMap(path, c.home); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
-  if (!map) return [deny(`primer: ${path} is not a primer map, so the staging check cannot tell which repositories have the local profile and denies every git add and git commit, and each git merge, cherry-pick, rebase and am that starts or continues one; restore the file from a copy or from the store's history, or correct it to the form primer map writes`)];
-  if (!map.repos.some((e) => e.profile === 'local')) return [];
+  if (!map) return { st, path, map, repos: [] };
+  if (!map.repos.some((e) => e.profile === 'local')) return null;
   if (st.hidden || st.calls.some((x) => !isDir(x.dir))) st.lost = st.far = true;
   const dirs = new Set(st.calls.length ? st.calls.map((x) => x.dir) : [cwd]);
+  // After a call the hook's directory may be the one the call's own cd left, so it is read as well.
+  if (after) dirs.add(cwd);
   // Where a directory is unknown the call may run in any local repository, so each one the map holds is checked too.
   if (st.far) for (const e of [{ path: cwd }, ...map.repos.filter((x) => x.profile === 'local')]) dirs.add(e.path);
-  for (const dir of dirs) {
-    const repo = isDir(dir) && repoOf(c, dir);
-    if (!repo || match(map, repo, c.platform)?.profile !== 'local') continue;
+  const repos = [...dirs].map((dir) => ({ dir, repo: isDir(dir) && repoOf(c, dir) })).filter((x) => x.repo && match(map, x.repo, c.platform)?.profile === 'local');
+  return { st, path, map, repos };
+}
+
+export const deny = (reason) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } });
+export function staged(c, input) {
+  const found = read(c, input);
+  if (!found) return [];
+  const { st, path, map, repos } = found;
+  if (!map) return [deny(`primer: ${path} is not a primer map, so the staging check cannot tell which repositories have the local profile and denies every git add and git commit, and each git merge, cherry-pick, rebase and am that starts or continues one; restore the file from a copy or from the store's history, or correct it to the form primer map writes`)];
+  for (const { dir, repo } of repos) {
     // The calls of one directory are checked by what they would add together when each one resolves: an add extends the index a
     // later commit takes, and a commit holds no more than the index and what it names.
     // After a switch to a branch whose remote is not the current branch's, the upstream read is the wrong remote's, so the call is unread.
@@ -394,6 +458,28 @@ export function staged(c, input) {
     if (reason) return [deny(reason)];
   }
   return [];
+}
+
+// After the call, what the check before it could not see: a file the call itself made and committed. In each local repository the
+// command commits in, the newest hundred commits that HEAD holds and no remote does are read for the agent files they add and the
+// upstream lacks, a merge against its first parent, and each is said to the session, since the commit is made. Where the command
+// pushes, the commit is under a remote-tracking ref by now, so the read is against the upstream's default branch alone, or, where
+// that is unknown, against nothing. A command that only stages is left to the commit that follows.
+export function committed(c, input) {
+  const found = read(c, input, true), seen = new Set(), said = [];
+  if (!found?.map || !(found.st.hidden || found.st.calls.some((x) => x.sub !== 'add'))) return [];
+  for (const { repo } of found.repos) {
+    if (seen.has(repo.top)) continue;
+    seen.add(repo.top);
+    const pushes = /\bpush\b/.test(input.tool_input.command), ref = pushes ? upstream(c, repo).ref : undefined;
+    const r = git(c, repo.top, ['-c', 'core.quotepath=off', '-c', 'log.showRoot=true', 'log', '--format=%x01%h%x02', '--diff-merges=first-parent', '--no-renames', '--diff-filter=A', '--name-only', '-z', '--max-count=100', 'HEAD', ...(pushes ? (ref ? ['--not', ref] : []) : ['--not', '--remotes'])]);
+    if (r.status !== 0) continue;
+    const adds = r.stdout.split('\x01').slice(1).map((p) => p.split('\x02')).map(([id, names = '']) => ({ id, paths: names.split('\0').map((x) => x.replace(/^\n+/, '')).filter(isAgent) }));
+    const { missing, lack } = lacking(c, repo, [...new Set(adds.flatMap((a) => a.paths))].sort());
+    const items = adds.map((a) => ({ id: a.id, paths: [...new Set(a.paths)].filter((x) => missing.includes(x)).sort() })).filter((a) => a.paths.length);
+    if (items.length) said.push(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; ${items.map((a) => `commit ${a.id} adds ${a.paths.map((x) => x.replace(/[\u0000-\u0008\u000a-\u001f\u007f]/g, '')).join(', ')}`).join('; ')}, ${lack}; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; ${pushes ? 'the command pushes, so a remote may already hold' : 'no remote holds'} ${items.length === 1 ? 'the commit' : 'these commits'}${pushes ? '' : ' yet'}`);
+  }
+  return said.length ? [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: said.join('\n') } })] : [];
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path. On an error of its own the script prints a

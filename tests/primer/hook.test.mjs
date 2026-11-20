@@ -846,7 +846,8 @@ describe('primer drift hook', () => {
       const unread = deny(lead(other) + unresolved + 'the call would add ' + both);
       for (const command of [`R=${at}; read R; git -C "$R" add -f CLAUDE.md`, `R=${at}; source ./env.sh; git -C "$R" add -f CLAUDE.md`, `R=${at}; for R in .; do :; done; git -C "$R" add -f CLAUDE.md`,
         `R=${at} & git -C "$R" add -f CLAUDE.md`, `R=${at} | git -C "$R" add -f CLAUDE.md`, 'R=`cat .target`; git -C "$R" add -f CLAUDE.md', `R=(${at}); git -C "$R" add -f CLAUDE.md`,
-        `A=${at}; AB=.; git -C "$A"B add -f CLAUDE.md`]) assert.equal(await check(command, other), unread, command);
+        `A=${at}; AB=.; git -C "$A"B add -f CLAUDE.md`,
+        `PWD=${at}; cd .; git -C "$PWD" add -f CLAUDE.md`, `R='~'; git -C "$R" add -f CLAUDE.md`]) assert.equal(await check(command, other), unread, command);
       for (const command of [`$r='${at}'; set r .; git -C $r add -f CLAUDE.md`, `$r='${at}'; . ./env.ps1; git -C $r add -f CLAUDE.md`]) assert.equal(await check(command, other, { tool: 'PowerShell' }), unread, command);
     });
     test('a merge is read after cut, set, Select-Object and Get-Content', async () => {
@@ -883,8 +884,33 @@ describe('primer drift hook', () => {
       // A command that only stages or only reads makes no commit, and outside a local repository nothing is read.
       for (const c of ['git add src/a.ts', 'git log --grep commit', 'npm test']) assert.equal(await after(c), '', c);
       assert.equal(await check(command, dir, { event: 'PostToolUse', env: { CLAUDE_CONFIG_DIR: join(base, 'no-such-config') } }), '');
+      // A remote-tracking ref other than the upstream's holds the commit, so only a command that pushes is read against the upstream alone.
+      await git(dir, 'update-ref', 'refs/remotes/origin/topic', 'HEAD');
+      assert.equal(await after(command), '');
+      const pushed = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds .claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; the command pushes, so a remote may already hold the commit` } }) + '\n';
+      assert.equal(await after(command + ' && git push'), pushed);
       await git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
       assert.equal(await after(command), '');
+    });
+    test('after a call, a merge is read against its first parent and the hook\'s directory is read after the call\'s own cd', async () => {
+      const notice = (dir, id, name) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds ${name}, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; no remote holds the commit yet` } }) + '\n';
+      const joined = await clone();
+      write(joined, '.mcp.json', '{}\n');
+      await git(joined, 'add', '-f', '.mcp.json');
+      await git(joined, 'commit', '-q', '-m', 'mcp');
+      const mcp = (await git(joined, 'rev-parse', '--short', 'HEAD')).trim();
+      await git(joined, 'checkout', '-q', '-b', 'side', 'origin/main');
+      write(joined, 'docs/side.md', '# Side\n');
+      await git(joined, 'add', 'docs/side.md');
+      await git(joined, 'commit', '-q', '-m', 'side');
+      await git(joined, 'checkout', '-q', 'main');
+      await git(joined, 'merge', '-q', '--no-ff', '-m', 'join', 'side');
+      assert.equal(await check('git merge side', joined, { event: 'PostToolUse' }), notice(joined, mcp, '.mcp.json'));
+      const dir = await clone();
+      await git(dir, 'add', '-f', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'hub');
+      const hub = (await git(dir, 'rev-parse', '--short', 'HEAD')).trim();
+      assert.equal(await check('cd .. && git commit -m x', dir, { event: 'PostToolUse' }), notice(dir, hub, 'CLAUDE.md'));
     });
     test('staging CLAUDE.md by name is denied', async () => {
       const dir = await clone();

@@ -223,6 +223,17 @@ describe('session-start', () => {
     assert.deepEqual(readdirSync(join(data, 'given')).sort(), ['session-four.all', 'session-one.all', 'session-two.all']);
   });
 
+  test('a resumed session gets no string where the record cannot be written, and a start that is no resume still gets it', () => {
+    const cfg = config(local(), { group: GROUP });
+    const dir = repo('unwritable', 'https://example.invalid/team/app.git'), data = join(base, 'data-unwritable'), file = join(cfg.store, 'groups', 'app.md');
+    mkdirSync(data);
+    writeFileSync(join(data, 'given'), 'x');
+    const from = (source) => run(['session-start', 'all', data], { input: JSON.stringify({ cwd: dir, hook_event_name: 'SessionStart', source, session_id: 'session-one' }), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
+    assert.equal(from('startup'), context(part('group', file, GROUP.trim(), '5ee2174e')));
+    assert.equal(from('resume'), '');
+    assert.equal(from('resume'), '');
+  });
+
   test('in a session no one attends the layers load and no warning prints', () => {
     const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
     const r = start(cfg, repo('unattended', 'https://example.invalid/team/app.git'), { CLAUDE_CODE_SESSION_ATTENDED: '0' });

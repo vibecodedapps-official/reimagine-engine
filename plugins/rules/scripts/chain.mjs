@@ -52,27 +52,32 @@ const pairs = (s) => { const at = new Map(), open = []; for (let i = 0; i < s.le
 // that holds them. ps reads the text as PowerShell does: a backtick escapes, and a here-string is one quoted text.
 function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
-  let words = [], texts = [], early = [], cur = null, shut = null, after = -1;
-  const add = (t, q = false) => { cur ??= { w: '', q: false }; cur.w += t; cur.q ||= q; if (q) texts.push(t); };
+  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false;
+  const add = (t, q = false) => { cur ??= { w: '', q: false }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
   const end = () => { if (cur) words.push(cur); cur = null; };
-  const cut = () => {
+  // A command at the end of a pipe that names a shell runs the texts of the command before it.
+  const cut = (pipe = false) => {
     end();
-    if (words.some((x) => SHELLS.has(base(x.w)))) early.push(...texts.flatMap((t) => read(t, ps, depth + 1)));
+    if (words.some((x) => SHELLS.has(base(x.w)))) early.push(...[...held, ...texts].flatMap((t) => read(t, ps, depth + 1)));
+    if (words.length) held = pipe ? texts : [];
     parts.push(...early, flags(words));
     [words, texts, early] = [[], [], []];
   };
-  // Where the substitution that opens at place i closes, its text read as commands; -1 where none opens or it does not close.
+  // Where the substitution that opens at place i closes, its text read as commands; -1 where none opens. A $( that does not
+  // close, and a text that cannot be followed, end the read of s, which is then given up.
   const ran = (i) => {
     const tick = !ps && s[i] === '`';
     if (!tick && !(s[i] === '$' && s[i + 1] === '(')) return -1;
     const j = tick ? s.indexOf('`', i + 1) : (shut ??= pairs(s)).get(i + 1) ?? -1;
-    if (j >= 0) early.push(...read(s.slice(i + (tick ? 1 : 2), j), ps, depth + 1));
-    return j;
+    if (j < 0) { lost ||= !tick; return tick ? -1 : s.length; }
+    const inner = depth > 16 ? null : walk(s.slice(i + (tick ? 1 : 2), j), ps, depth + 1);
+    if (inner) early.push(...inner); else lost = true;
+    return inner ? j : s.length;
   };
   // The substitutions in s from place a to place b, as a double-quoted text holds them.
   const subs = (a, b) => { for (let j = a; j < b; j++) { const k = ran(j); if (k >= 0) j = k; else if (s[j] === esc) j++; } };
   for (let i = 0; i < s.length; i++) {
-    const c = s[i], n = s[i + 1], close = ran(i), doc = !ps && c === '<' && n === '<' && s[i + 2] !== '<' && HEREDOC.exec(s.slice(i, i + 200));
+    const c = s[i], n = s[i + 1], close = ran(i), doc = !ps && c === '<' && n === '<' && s[i + 2] !== '<' && s[i - 1] !== '<' && HEREDOC.exec(s.slice(i, i + 200));
     if (close >= 0) { add('$'); i = close; }
     else if (c === esc) {
       // A line continued with the escape character is one line.
@@ -111,21 +116,22 @@ function walk(s, ps, depth) {
         at = nl + 1;
       }
       i += doc[0].length - 1;
-    } else if (' \t\r'.includes(c)) end();
+    } else if (' \t\r'.includes(c)) { end(); plain += c; }
     // The & of a redirect such as 2>&1 ends no command.
-    else if (';&|\n()'.includes(c) && !(c === '&' && s[i - 1] === '>')) { cut(); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
+    else if (';&|\n()'.includes(c) && !(c === '&' && s[i - 1] === '>')) { plain += c; cut(c === '|' && n !== '|' && s[i - 1] !== '|'); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
     else add(c);
   }
   cut();
-  return parts;
+  return lost ? null : [...parts, { fn: FUNCTION.test(plain) }];
 }
 
 // A text with a quote left open, and one nested deeper than a command is written, is read by its words alone, split at each
-// quote and at each character that ends a command.
-const read = (s, ps, depth = 0) => (depth > 16 ? null : walk(s, ps, depth)) ?? s.split(/[;&|\n()]+/).map((t) => flags(t.split(/[\s"'`]+/).filter(Boolean).map((w) => ({ w, q: false })), true));
+// quote and at each character that ends a command. The last part says whether the text, outside its quotes, comments and
+// here-document bodies, defines what runs later; where the words alone are read, the whole text is that text.
+const read = (s, ps, depth = 0) => (depth > 16 ? null : walk(s, ps, depth)) ?? [...s.split(/[;&|\n()]+/).map((t) => flags(t.split(/[\s"'`]+/).filter(Boolean).map((w) => ({ w, q: false })), true)), { fn: FUNCTION.test(s) }];
 
 // Whether a push follows a call that makes a commit in the command of a Bash call, or with ps of a PowerShell call.
 export function chained(command, ps) {
-  const text = ps ? command.replace(/[\u2018-\u201b]/g, "'").replace(/[\u201c-\u201e]/g, '"') : command, parts = read(text, ps), any = FUNCTION.test(text);
+  const text = ps ? command.replace(/[\u2018-\u201b]/g, "'").replace(/[\u201c-\u201e]/g, '"') : command, parts = read(text, ps), any = parts.some((p) => p.fn);
   return parts.some((p, i) => p.makes && parts.some((q, j) => q.pushes && (any || j > i)));
 }

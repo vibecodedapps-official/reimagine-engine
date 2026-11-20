@@ -62,6 +62,17 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ['(( n << 1 ))\ngit -C "my dir" commit -m x\ngit push', false, true],
     ['[string]$o=git commit -m x; git push', true, true],
     ['$o ??=git commit -m x; git push', true, true],
+    ["out=\"$(git commit -m 'wip (part 1' 2>&1)\"; git push", false, true],
+    ["out=\"$(echo ')'; git commit -m x)\"; git push", false, true],
+    ['cat <<EOF | bash\ngit commit -m x\ngit push\nEOF', false, true],
+    ["echo 'git commit -m x; git push' | sh", false, true],
+    ["'git commit -m x; git push' | iex", true, true],
+    ["echo 'git commit -m x; git push' | cat", false, false],
+    ["echo 'git commit -m x; git push' || sh", false, false],
+    ['git commit -F - <<< "$msg"\ngit push --dry-run', false, false],
+    ['git commit -F - <<< "$msg"\ngit push', false, true],
+    ['git push && git commit --allow-empty -m "start rework of parse()"', false, false],
+    ["bash -c 'p() { git push; }; git commit -m x; p'", false, true],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });

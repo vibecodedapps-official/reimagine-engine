@@ -285,10 +285,12 @@ function sessionStart(c, layer, input, data) {
     // start, and a session with none kept gets the string. With no data directory, or an id that names no file, nothing is kept
     // and a resumed session gets no string.
     const kept = data || c.env.CLAUDE_PLUGIN_DATA, id = typeof input.session_id === 'string' && /^[\w-]{1,80}$/.test(input.session_id) && input.session_id;
-    const mark = !sub && kept && id && context ? join(kept, 'given', `${id}.${layer}`) : null, digest = createHash('sha256').update(context ?? '').digest('hex'), same = mark && readText(mark) === digest;
+    let mark = !sub && kept && id && context ? join(kept, 'given', `${id}.${layer}`) : null, digest = createHash('sha256').update(context ?? '').digest('hex'), same = mark && readText(mark) === digest;
     if (mark) try {
       mkdirSync(dirname(mark), { recursive: true });
       writeFileSync(mark, digest);
+    } catch { mark = null; }
+    if (mark) try {
       for (const f of readdirSync(dirname(mark)).map((x) => join(dirname(mark), x))) if (Date.now() - (statSync(f, { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > 30 * 864e5) rmSync(f, { force: true });
     } catch {}
     if (input.source === 'resume' && (!mark || same)) context = undefined;

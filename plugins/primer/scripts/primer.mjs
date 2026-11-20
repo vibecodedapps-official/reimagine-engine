@@ -288,8 +288,8 @@ function sessionStart(c, layer, input, data) {
     const mark = !sub && kept && id && context ? join(kept, 'given', `${id}.${layer}`) : null, digest = createHash('sha256').update(context ?? '').digest('hex'), same = mark && readText(mark) === digest;
     if (mark) try {
       mkdirSync(dirname(mark), { recursive: true });
-      for (const f of readdirSync(dirname(mark)).map((x) => join(dirname(mark), x))) if (Date.now() - statSync(f).mtimeMs > 30 * 864e5) rmSync(f, { force: true });
       writeFileSync(mark, digest);
+      for (const f of readdirSync(dirname(mark)).map((x) => join(dirname(mark), x))) if (Date.now() - (statSync(f, { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > 30 * 864e5) rmSync(f, { force: true });
     } catch {}
     if (input.source === 'resume' && (!mark || same)) context = undefined;
     const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]

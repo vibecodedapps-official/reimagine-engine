@@ -121,6 +121,9 @@ function expand(s, out = []) {
 
 const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'do', 'while', 'until', '!', 'time', 'command', 'exec', 'nohup']);
 const WRAPS = new Set(['env', 'sudo', 'timeout', 'nice']);
+// A PowerShell assignment: a target of $name or $scope:name with optional [type] prefixes, then an operator, with a call after it that may follow in the same word.
+const ASSIGN = /^(?:\[[^\]]*\])*\$[\w:]+(?:((?:\?\?|[-+*/%])?=)(.*))?$/;
+const OPERATOR = /^(?:\?\?|[-+*/%])?=(.*)$/;
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'sh.exe', 'bash.exe']);
 
 // The directories a shell text runs git commit in, each once and as the text gives it, and whether it runs git add or git stage
@@ -135,10 +138,12 @@ function commits(text, ps) {
     for (; i < a.length; i++) {
       const b = base(a[i]);
       if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(a[i]) || KEYWORDS.has(b)) continue;
-      // In PowerShell a call may stand on the right of an assignment to a variable, with spaces around the = or none.
-      const set = ps && /^\$[\w:]+(?:[-+]?=(.*))?$/.exec(a[i]);
-      if (set && (set[1] !== undefined || /^[-+]?=$/.test(a[i + 1] ?? ''))) {
-        if (set[1]) { a[i] = set[1]; i--; } else if (set[1] === undefined) i++;
+      // In PowerShell a call may stand on the right of an assignment to a variable, with a type before the name and spaces around the operator or none.
+      const set = ps && ASSIGN.exec(a[i]), op = set && set[1] === undefined && OPERATOR.exec(a[i + 1] ?? '');
+      if (set && (set[1] !== undefined || op)) {
+        const j = op ? i + 1 : i, rest = op ? op[1] : set[2];
+        if (rest) a[j] = rest;
+        i = rest ? j - 1 : j;
         continue;
       }
       if (!WRAPS.has(b)) break;
@@ -148,8 +153,8 @@ function commits(text, ps) {
         else if (b === 'env' && t === '-C') dir = under(dir, a[++i]);
         else if (b === 'env' && t.startsWith('--chdir=')) dir = under(dir, t.slice(8));
         else if (b === 'sudo' && /^-[ugUCDhprtT]$/.test(t)) i++;
-        else if (b === 'timeout' && /^-[ks]$/.test(t)) i++;
-        else if (b === 'nice' && t === '-n') i++;
+        else if (b === 'timeout' && /^(?:-[ks]|--kill-after|--signal)$/.test(t)) i++;
+        else if (b === 'nice' && /^(?:-n|--adjustment)$/.test(t)) i++;
       }
       // timeout takes its duration before the command.
       if (b === 'timeout') i++;

@@ -154,6 +154,7 @@ const warn = (text) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'Pr
 
 const TEXT = ['commit', 'commit-tree', 'merge', 'tag'], FORGE = ['gh', 'az', 'glab'];
 // git push in one simple command, but not git stash push.
+const CONTINUED = /(?:[\\`]|\([ \t]*)\r?\n/g;
 const PUSH = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?![${EDGE}])[^|;&\n]*?\s(?<!stash\s+)push(?![${EDGE}])`, 'i');
 const firstText = (s) => TEXT.map((w) => [w, word(w).exec(s)?.index ?? Infinity]).reduce((a, b) => (b[1] < a[1] ? b : a), ['', Infinity])[0];
 // What makes a command a forge post, as the denial names it, or null. git and a subcommand count where one line holds
@@ -162,7 +163,7 @@ const firstText = (s) => TEXT.map((w) => [w, word(w).exec(s)?.index ?? Infinity]
 // command, since a variable or the input of xargs may hold either. The denial names the subcommand word that comes
 // first after git, else the first.
 function postWord(command, list) {
-  const lines = command.includes('$') || has(command, 'xargs') ? [command] : command.replace(/(?:[\\`]|\([ \t]*)\r?\n/g, ' ').split('\n');
+  const lines = command.includes('$') || has(command, 'xargs') ? [command] : command.replace(CONTINUED, ' ').split('\n');
   const sub = lines.map((l) => { const g = word('git').exec(l); return g && (firstText(l.slice(g.index + 3)) || firstText(l)); }).find(Boolean);
   if (sub) return `"git" and "${sub}"`;
   const forge = FORGE.find((w) => has(command, w));
@@ -208,7 +209,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     }
     return resolve(base, p);
   };
-  const why = postWord(command, list), posts = why !== null, pushes = PUSH.test(command);
+  const why = postWord(command, list), posts = why !== null, pushes = PUSH.test(command.replace(CONTINUED, ' '));
   const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
   // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape

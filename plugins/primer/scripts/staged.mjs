@@ -112,6 +112,9 @@ const base = (w) => w.replace(/^.*[\\/]/, '').toLowerCase();
 const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'do', 'while', 'until', '!', 'time', 'command', 'exec', 'nohup']);
 // The programs that run the command given after their own options, read through to that command.
 const WRAPS = new Set(['env', 'sudo', 'timeout', 'nice']);
+// A PowerShell assignment: a target of $name or $scope:name with optional [type] prefixes, then an operator, with a call after it that may follow in the same word.
+const ASSIGN = /^(?:\[[^\]]*\])*\$[\w:]+(?:((?:\?\?|[-+*/%])?=)(.*))?$/;
+const OPERATOR = /^(?:\?\?|[-+*/%])?=(.*)$/;
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'sh.exe', 'bash.exe']);
 const CDS = new Set(['cd', 'chdir', 'pushd', 'popd', 'set-location', 'sl', 'push-location', 'pop-location']);
 // The calls that change nothing a merge, a cherry-pick, a rebase or an am is read from: no ref, no index entry and no patch file.
@@ -210,10 +213,12 @@ function analyze(typed, st, vars = new Map()) {
     const tree = /^GIT_(?:WORK_TREE=(.*)|DIR=(.*))$/.exec(w);
     if (tree) dir = at(st.dir, { ...words[i], w: tree[1] ?? `${tree[2]}/..` });
     if (/^[A-Za-z_]\w*=/.test(w) || KEYWORDS.has(b)) continue;
-    // Through the PowerShell tool a call may stand on the right of an assignment to a variable, with spaces around the = or none.
-    const set = !st.sh && /^\$[\w:]+(?:[-+]?=(.*))?$/.exec(w);
-    if (set && (set[1] !== undefined || /^[-+]?=$/.test(words[i + 1]?.w ?? ''))) {
-      if (set[1]) { words[i] = { ...words[i], w: set[1], bad: set[1].includes('$') }; i--; } else if (set[1] === undefined) i++;
+    // Through the PowerShell tool a call may stand on the right of an assignment to a variable, with a type before the name and spaces around the operator or none.
+    const set = !st.sh && ASSIGN.exec(w), op = set && set[1] === undefined && OPERATOR.exec(words[i + 1]?.w ?? '');
+    if (set && (set[1] !== undefined || op)) {
+      const j = op ? i + 1 : i, rest = op ? op[1] : set[2];
+      if (rest) words[j] = { ...words[j], w: rest, bad: rest.includes('$') };
+      i = rest ? j - 1 : j;
       continue;
     }
     if (!WRAPS.has(b)) break;
@@ -223,8 +228,8 @@ function analyze(typed, st, vars = new Map()) {
       else if (b === 'env' && t === '-C') dir = at(dir, words[++i]);
       else if (b === 'env' && t.startsWith('--chdir=')) dir = at(dir, { ...words[i], w: t.slice(8) });
       else if (b === 'sudo' && /^-[ugUCDhprtT]$/.test(t)) i++;
-      else if (b === 'timeout' && /^-[ks]$/.test(t)) i++;
-      else if (b === 'nice' && t === '-n') i++;
+      else if (b === 'timeout' && /^(?:-[ks]|--kill-after|--signal)$/.test(t)) i++;
+      else if (b === 'nice' && /^(?:-n|--adjustment)$/.test(t)) i++;
     }
     // timeout takes its duration before the command.
     if (b === 'timeout') i++;

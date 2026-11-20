@@ -225,6 +225,8 @@ describe('primer drift hook', () => {
       'timeout 60 git commit -m x',
       'timeout -k 5 60 git commit -m x',
       'nice -n 5 git commit -m x',
+      'timeout --signal KILL 60 git commit -m x',
+      'nice --adjustment 5 git commit -m x',
     ];
     for (const command of wrapped) {
       test(`detects a commit: ${JSON.stringify(command)}`, async () => {
@@ -233,7 +235,7 @@ describe('primer drift hook', () => {
     }
 
     test('detects a commit on the right of a PowerShell assignment', async () => {
-      for (const command of ['$o = git commit -m x 2>&1', '$null = git commit -m x', '$o=git commit -m x']) assert.equal(await run(command, broken, { tool: 'PowerShell' }), deny(brokenFinding), command);
+      for (const command of ['$o = git commit -m x 2>&1', '$null = git commit -m x', '$o=git commit -m x', '$o =git commit -m x', '[string]$o = git commit -m x']) assert.equal(await run(command, broken, { tool: 'PowerShell' }), deny(brokenFinding), command);
     });
 
     test('detects a commit after env -C from a non-repository cwd', async () => {
@@ -1056,8 +1058,8 @@ describe('primer drift hook', () => {
     test('an add, a commit and a merge are read through timeout and nice, and on the right of a PowerShell assignment', async () => {
       const dir = await clone(), merged = await clone();
       const reason = deny(lead(dir) + 'the call would add ' + both);
-      for (const command of ['timeout 60 git add -A && timeout 60 git commit -m x', 'timeout -k 5 60 git add -A', 'timeout --foreground -s KILL 60 git add -A', 'nice git add -A && nice git commit -m x', 'nice -n 5 git add -A', 'nice -5 git add -A']) assert.equal(await check(command, dir), reason, command);
-      for (const command of ['$o = git add -A; $o = git commit -m x 2>&1', '$script:o = git add -A', '$o += git add -A', '$o=git add -A', '$o= git add -A']) assert.equal(await check(command, dir, { tool: 'PowerShell' }), reason, command);
+      for (const command of ['timeout 60 git add -A && timeout 60 git commit -m x', 'timeout -k 5 60 git add -A', 'timeout --foreground -s KILL 60 git add -A', 'nice git add -A && nice git commit -m x', 'nice -n 5 git add -A', 'nice -5 git add -A', 'timeout --signal KILL 60 git add -A', 'timeout --kill-after 5 60 git add -A', 'nice --adjustment 5 git add -A']) assert.equal(await check(command, dir), reason, command);
+      for (const command of ['$o = git add -A; $o = git commit -m x 2>&1', '$script:o = git add -A', '$o += git add -A', '$o=git add -A', '$o= git add -A', '$o =git add -A', '$o ??= git add -A', '[string]$o = git add -A', '[string]$o=git add -A']) assert.equal(await check(command, dir, { tool: 'PowerShell' }), reason, command);
       // A call that is no git call passes as before.
       for (const [command, tool] of [['timeout 60 npm test', 'Bash'], ['$o = Get-Date', 'PowerShell']]) assert.equal(await check(command + '; git add src/a.ts', dir, { tool }), '', command);
       await git(merged, 'checkout', '-q', '-b', 'feat');

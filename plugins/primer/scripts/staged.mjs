@@ -11,13 +11,16 @@ import { Refusal, blob, configOf, git, isDir, loadMap, match, places, readText, 
 const AGENT_NAMES = new Set(['claude.md', 'claude.local.md', 'agents.md', '.reimagine.json', '.mcp.json']);
 const AGENT_DIRS = new Set(['.claude', '.agents', '.reimagine']);
 
+// What a here-document's body runs: the text inside $( ) and inside backticks.
+const ran = (t) => { let out = '', d = 0, tick = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (c === '\\') i++; else if (!tick && c === '$' && t[i + 1] === '(') { d++; i++; out += ' '; } else if (d && c === '(') d++; else if (d && c === ')') d--; else if (!d && c === '`') { tick = !tick; out += ' '; } else if (d || tick) out += c; } return out; };
 // The simple commands of a shell text, each a list of words { w, bad, sub, git }, with ( and ) kept: bad marks an expansion the
 // script cannot resolve, a brace expansion among them, sub a command substitution inside a quoted word, git one that stages or
-// commits with git; a list carries wrote where the command sends its output to a file. Null for a quote
+// commits with git, also in a redirect target, which sets lost and hidden; a list carries wrote where the command sends its output
+// to a file, and moved where a redirect or a here-document with no command before it wrote or ran. Null for a quote
 // left open or a process substitution outside quotes. A here-document's body is left out and the text after its end line is read
 // on; the list carries lost, hidden where the body names a git add, stage or commit, and brings, one of the four as a git call,
 // where the body may run it (an unquoted end word and a substitution in the body) or the end word cannot be read (then the rest
-// is not parsed, as before). A here-string's word is input. A backtick outside quotes
+// is not parsed). A here-string's word is input. A backtick outside quotes
 // separates commands in sh, so what a substitution runs is read as a command of its own. In PowerShell a here-string, from @' or @"
 // at the end of a line to the same quote and @ at the start of a line, is one word where it starts a word and nothing is joined to
 // its closer, and null elsewhere; unless a git call takes it, it hides what its text names, as a here-document does.
@@ -31,7 +34,9 @@ function commands(s, ps) {
   const out = [];
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = '';
   const end = () => {
-    if (inw && !skip) words.push({ w: cur, bad, sub, git: sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\b(add|stage|commit)\b/.test(cur) });
+    const git = sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\b(add|stage|commit)\b/.test(cur);
+    if (inw && !skip) words.push({ w: cur, bad, sub, git });
+    if (inw && skip && git) out.lost = out.hidden = true;
     // What a > sends to a file may be a patch or a ref a later call reads, so its command wrote; the null device holds nothing, and
     // after >& a descriptor number or - names a stream, not a file.
     if (inw && skip === '>' && !/^(\/dev\/null|\$null|nul)$/i.test(cur)) words.wrote = true;
@@ -39,7 +44,7 @@ function commands(s, ps) {
     if (inw && skip === '<' && sub) words.wrote = true;
     [skip, cur, inw, bad, sub] = [inw ? '' : skip, '', false, false, false];
   };
-  const cut = () => { end(); if (words.length) out.push(words); else if (words.wrote && out.findLast(Array.isArray)) out.findLast(Array.isArray).wrote = true; words = []; };
+  const cut = () => { end(); if (words.length) out.push(words); else if (words.wrote) { const prev = out.findLast(Array.isArray); if (prev) prev.wrote = true; else out.moved = true; } words = []; };
   for (let i = 0; i < s.length; i++) {
     const ch = s[i], nx = s[i + 1], here = ps && ch === '@' && /^(['"])[ \t]*\r?\n/.exec(s.slice(i + 1));
     if (here) {
@@ -67,22 +72,22 @@ function commands(s, ps) {
     } else if (ch === '#' && !inw) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (ch === '<' || ch === '>') {
       if (nx === '(') return null;
+      if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
       if (ch === '<' && nx === '<') {
         // A here-string's word is input, read as the target of a redirect.
         if (!ps && s[i + 2] === '<') { end(); skip = '<'; i += 2; continue; }
         const rest = s.slice(i), doc = ps ? null : HEREDOC.exec(rest), e = s.indexOf('\n', i);
         const lines = doc && e >= 0 ? s.slice(e + 1).split('\n') : [], k = lines.findIndex((l) => (doc[1] ? l.replace(/^\t+/, '') : l).replace(/\r$/, '') === (doc[2] ?? doc[3] ?? doc[4]));
-        if (!doc || k < 0) { cut(); [out.lost, out.hidden, out.brings] = [true, out.hidden || hides(rest), out.brings ?? BROUGHT.exec(rest.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase()]; return out; }
+        if (!doc || k < 0 || /\\\r?$/.test(s.slice(i, e))) { cut(); [out.lost, out.hidden, out.brings] = [true, out.hidden || hides(rest), out.brings ?? BROUGHT.exec(rest.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase()]; return out; }
         // The body is left out of the text and the parse goes on after the end word; a body under an unquoted end word runs its substitutions.
         const body = lines.slice(0, k).join('\n'), runs = doc[2] === undefined && doc[3] === undefined && !doc[0].includes('\\') && /\$\(|`/.test(body);
         [out.lost, out.hidden] = [true, out.hidden || hides(body)];
-        if (runs) { words.wrote = true; out.brings ??= BROUGHT.exec(body.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase(); }
+        if (runs) { words.wrote = true; out.brings ??= BROUGHT.exec(ran(body))?.[1].toLowerCase(); }
         end();
         s = s.slice(0, e + 1) + lines.slice(k + 1).join('\n');
         i += doc[0].length - 1;
         continue;
       }
-      if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
       end();
       let amp = false;
       while ('>&|'.includes(s[i + 1] ?? 'x')) amp = s[++i] === '&' || amp;
@@ -130,6 +135,7 @@ function scan(s, ps, st, top = false) {
   if (!list || list.lost) st.pushes ||= /\bpush\b/i.test(s);
   if (!list || list.hidden) st.hidden = true;
   if (n) st.pushes ||= list.slice(0, n).some((w) => Array.isArray(w) && w.some((x) => /\bpush\b/i.test(x.w)));
+  if (list?.moved) st.moved = true;
   for (const item of (list ?? []).slice(n)) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st, at);
   // One of the four that a here-document may run, or that follows an end word the script cannot read, is a call it does not read, in a directory it does not know.
   if (list?.brings) { st.far = true; st.calls.push({ sub: list.brings, dir: st.dir, args: [], moved: true, doc: true }); }

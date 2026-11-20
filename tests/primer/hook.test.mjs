@@ -921,14 +921,16 @@ describe('primer drift hook', () => {
       for (const command of ['cat <<EOF\nbody\nEOF\ngit merge -q feat', 'cat <<EOF; git merge -q feat\nbody\nEOF', "cat <<-'EOF'\n\tbody\n\tEOF\ngit -C . rebase feat", 'cat <<EOF\nbody\nEOF\ncd . && git -c core.editor=true cherry-pick feat', "bash -c 'cat <<EOF\nbody\nEOF\ngit merge feat'", 'cat <<EOF\nx\nEOF\ngit -c user.name="A B" merge feat']) assert.equal(await check(command, dir), deny(lead(dir) + unresolved + one), command);
       assert.equal(await check('cat <<< x; git merge -q feat', dir), deny(lead(dir) + one));
       // A here-string's word and the body under a quoted end word are text, and a word of a later message is no call.
-      for (const command of ['cat <<EOF\nbody\nEOF\ngit merge -q notes', 'cat <<< x; git merge -q notes', "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF", "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF\necho done", 'cat <<EOF\nbody\nEOF\ngit merge-base main feat', "cat > a.md <<'A'\nx\nA\ncat > b.md <<'B'\nthen run git merge feat\nB", 'cat <<< "git merge feat"', "cat > notes.md <<'EOF'\nx\nEOF\ngit rebase --abort", 'cat <<EOF\nx\nEOF\ngit --no-pager log --grep merge', 'cat <<EOF\nx\nEOF\ngit commit --dry-run -m "notes\nrun git merge feat next"']) assert.equal(await check(command, dir), '', command);
+      for (const command of ['cat <<EOF\nbody\nEOF\ngit merge -q notes', 'cat <<< x; git merge -q notes', "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF", "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF\necho done", 'cat <<EOF\nbody\nEOF\ngit merge-base main feat', "cat > a.md <<'A'\nx\nA\ncat > b.md <<'B'\nthen run git merge feat\nB", 'cat <<< "git merge feat"', "cat > notes.md <<'EOF'\nx\nEOF\ngit rebase --abort", 'cat <<EOF\nx\nEOF\ngit --no-pager log --grep merge', 'cat <<EOF\nx\nEOF\ngit commit --dry-run -m "notes\nrun git merge feat next"', 'cat > notes.md <<EOF\nBuilt $(date)\nTo update, run git merge main\nEOF', 'git merge -q notes 0<<EOF\nx\nEOF']) assert.equal(await check(command, dir), '', command);
       assert.equal(await check('cat <<"EOF" | git am\nbody\nEOF', dir), unread('am'));
       assert.equal(await check("cat > notes.txt <<'EOF'\nx\nEOF\ngit merge notes", dir), unread('merge'));
       // A body that runs a command under an unquoted end word, and an end word the script cannot read, leave the call unread.
-      for (const command of ['cat > log.txt <<EOF\nmerged: $(git merge --no-edit feat)\nEOF', 'cat <<"E"OF\nbody\nEOF\ngit merge feat']) assert.equal(await check(command, dir), hidden('merge'), command);
+      for (const command of ['cat > log.txt <<EOF\nmerged: $(git merge --no-edit feat)\nEOF', 'cat <<"E"OF\nbody\nEOF\ngit merge feat', 'cat <<EOF \\\n&& git merge feat\nbody\nEOF']) assert.equal(await check(command, dir), hidden('merge'), command);
+      assert.equal(await check('<<EOF\n$(git branch -f feat notes)\nEOF\ngit merge feat', dir), unread('merge'));
       write(dir, 'CLAUDE.md', '# Mine\n');
       assert.equal(await check("cat > notes.txt <<'EOF'\nx\nEOF\ngit add src/a.ts && git commit -m \"merge the rest\"", dir), deny(lead(dir) + unresolved + one));
       assert.equal(await check('cat <<EOF\nx\nEOF\ngit commit -m "then git merge feat"', dir), deny(lead(dir) + unresolved + one));
+      assert.equal(await check('cat <<< "$(git add -A && git commit -m x)"', dir), deny(lead(dir) + unresolved + one));
     });
     test('once a command names CDPATH, a cd leaves the directory unknown', async () => {
       const n = ++seqs, folder = join(base, 'cdpath-' + n), target = join(folder, 'app'), outer = join(base, 'cdpath-outer-' + n);

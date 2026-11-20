@@ -109,20 +109,21 @@ function scan(s, ps, st, top = false) {
   for (const item of (list ?? []).slice(n)) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st, at);
 }
 
-// The variables a command sets to a plain text before any other call, as { n, at }: n commands that open the text and only
-// assign, NAME=text under sh, one to a command and ended by ; or && or a line break, and $name = 'text' in PowerShell, which change
-// nothing a later call is read from, and at, the text of
-// each name the rest of the command only reads. A name is left out, and a word that holds it stays one the script cannot
-// resolve, where the text holds an expansion, starts with ~, which a shell does not expand in a value, or under sh a space or a pattern the shell would split or match, where the name
-// is assigned twice, or starts the name of another, or where a later word holds it in any form but $name alone as an argument with no assignment after it:
-// in a longer word, as a command's first word, as the name a read, a loop or another assignment writes, or in a text given to
-// a shell. The names of PowerShell count in any letter case. A name the shell itself rewrites, as PWD and $_ are, is not followed.
+// The variables a command sets to a plain text before any other call, as { n, at }: n opening commands that only assign, which
+// change nothing a later call is read from, and at, the text of each name the rest of the command only reads. Under sh an
+// assignment is NAME=text, one to a command and ended by ; or && or a line break; in PowerShell it is $name = 'text'.
+// A name is left out, and its word stays one the script cannot resolve, where the text holds an expansion, starts with ~, which a
+// shell does not expand in a value, or under sh holds a space or a pattern the shell would split or match; where the name is
+// assigned twice or starts the name of another; or where a later word holds it in any form but $name alone as an argument with no
+// assignment after it: in a longer word, as a command's first word, as the name a read, a loop or another assignment writes, or in
+// a text given to a shell. PowerShell names count in any letter case. A name the shell will not assign or computes itself, as PWD,
+// $_ and RANDOM, is not followed. An IFS assignment opens nothing, since it changes how a later unquoted word splits.
 function followed(s, ps, list) {
   const at = new Map(), twice = new Set(), key = (name) => (ps ? name.toLowerCase() : name);
   const set = (name, text) => { if (at.has(key(name))) twice.add(key(name)); at.set(key(name), text); };
   const one = ps ? /^\s*\$(\w+)[ \t]*=[ \t]*(?:'([^'\r\n]+)'|"([^"$`\r\n]+)")[ \t]*(?:;|\r?\n|$)/
-    : /^\s*((?!GIT_)[A-Za-z_]\w*)=(?:'([^'\r\n]+)'|"([^"$`\\\r\n]+)"|([^\s;&|()<>`$"'\\*?[\]{}~#!]+))[ \t]*(?:;|&&|\r?\n|$)/;
-  const own = ps ? /^(pwd|_|lastexitcode|matches|args|input|error|psitem)$/i : /^(PWD|OLDPWD|_)$/;
+    : /^\s*((?!GIT_|IFS=)[A-Za-z_]\w*)=(?:'([^'\r\n]+)'|"([^"$`\\\r\n]+)"|([^\s;&|()<>`$"'\\*?[\]{}~#!]+))[ \t]*(?:;|&&|\r?\n|$)/;
+  const own = ps ? /^(pwd|_|lastexitcode|matches|args|input|error|psitem|home|null|true|false|pid|pshome|host|shellid)$/i : /^(PWD|OLDPWD|_|RANDOM|SECONDS|UID|EUID|PPID|LINENO|BASHPID)$/;
   let n = 0;
   for (let m, rest = s; (m = one.exec(rest)); rest = rest.slice(m[0].length), n++) {
     const text = m.slice(2).find((x) => x !== undefined), words = list[n];
@@ -446,24 +447,24 @@ export function staged(c, input) {
   return [];
 }
 
-// After the call, what the check before it could not see: a file the call itself made and committed. The newest hundred commits HEAD
-// holds and no remote does, or the upstream's default branch alone where the command pushes, a merge read against its first parent, are read for the agent files they add and the upstream lacks, in
-// each local repository the command commits in, and each is said to the session, since the commit is made. A command that only
-// stages is left to the commit that follows.
+// After the call, what the check before it could not see: a file the call itself made and committed. In each local repository the
+// command commits in, the newest hundred commits that HEAD holds and no remote does are read for the agent files they add and the
+// upstream lacks, a merge against its first parent, and each is said to the session, since the commit is made. Where the command
+// pushes, the commit is under a remote-tracking ref by now, so the read is against the upstream's default branch alone, or, where
+// that is unknown, against nothing. A command that only stages is left to the commit that follows.
 export function committed(c, input) {
   const found = read(c, input, true), seen = new Set(), said = [];
   if (!found?.map || !(found.st.hidden || found.st.calls.some((x) => x.sub !== 'add'))) return [];
   for (const { repo } of found.repos) {
     if (seen.has(repo.top)) continue;
     seen.add(repo.top);
-    // A command that pushes has put the commit under a remote-tracking ref by now, so it is read against the upstream's tree alone.
-    const ref = /\bpush\b/.test(input.tool_input.command) ? upstream(c, repo).ref : undefined;
-    const r = git(c, repo.top, ['-c', 'core.quotepath=off', 'log', '--format=%x01%h%x02', '--diff-merges=first-parent', '--no-renames', '--diff-filter=A', '--name-only', '-z', '--max-count=100', 'HEAD', '--not', ...(ref ? [ref] : ['--remotes'])]);
+    const pushes = /\bpush\b/.test(input.tool_input.command), ref = pushes ? upstream(c, repo).ref : undefined;
+    const r = git(c, repo.top, ['-c', 'core.quotepath=off', '-c', 'log.showRoot=true', 'log', '--format=%x01%h%x02', '--diff-merges=first-parent', '--no-renames', '--diff-filter=A', '--name-only', '-z', '--max-count=100', 'HEAD', ...(pushes ? (ref ? ['--not', ref] : []) : ['--not', '--remotes'])]);
     if (r.status !== 0) continue;
     const adds = r.stdout.split('\x01').slice(1).map((p) => p.split('\x02')).map(([id, names = '']) => ({ id, paths: names.split('\0').map((x) => x.replace(/^\n+/, '')).filter(isAgent) }));
     const { missing, lack } = lacking(c, repo, [...new Set(adds.flatMap((a) => a.paths))].sort());
     const items = adds.map((a) => ({ id: a.id, paths: [...new Set(a.paths)].filter((x) => missing.includes(x)).sort() })).filter((a) => a.paths.length);
-    if (items.length) said.push(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; ${items.map((a) => `commit ${a.id} adds ${a.paths.map((x) => x.replace(/[\u0000-\u0008\u000a-\u001f\u007f]/g, '')).join(', ')}`).join('; ')}, ${lack}; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; ${ref ? 'the command pushes, so a remote may already hold' : 'no remote holds'} ${items.length === 1 ? 'the commit' : 'these commits'}${ref ? '' : ' yet'}`);
+    if (items.length) said.push(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; ${items.map((a) => `commit ${a.id} adds ${a.paths.map((x) => x.replace(/[\u0000-\u0008\u000a-\u001f\u007f]/g, '')).join(', ')}`).join('; ')}, ${lack}; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; ${pushes ? 'the command pushes, so a remote may already hold' : 'no remote holds'} ${items.length === 1 ? 'the commit' : 'these commits'}${pushes ? '' : ' yet'}`);
   }
   return said.length ? [JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: said.join('\n') } })] : [];
 }

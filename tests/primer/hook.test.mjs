@@ -844,7 +844,7 @@ describe('primer drift hook', () => {
         `$r="${at}$x"; git -C $r merge notes`, `$r='${at}'; foreach ($r in '.') { }; git -C $r merge notes`]) assert.equal(await check(command, other, { tool: 'PowerShell' }), blind, command);
       // An add is not denied by an earlier call the check does not know, so these show that the name is not followed.
       const unread = deny(lead(other) + unresolved + 'the call would add ' + both);
-      for (const command of [`R=${at}; read R; git -C "$R" add -f CLAUDE.md`, `R=${at}; source ./env.sh; git -C "$R" add -f CLAUDE.md`, `R=${at}; for R in .; do :; done; git -C "$R" add -f CLAUDE.md`,
+      for (const command of [`R=${at}; read R; git -C "$R" add -f CLAUDE.md`, `IFS=:; R=${at}; git -C "$R" add -f CLAUDE.md`, `R=${at}; source ./env.sh; git -C "$R" add -f CLAUDE.md`, `R=${at}; for R in .; do :; done; git -C "$R" add -f CLAUDE.md`,
         `R=${at} & git -C "$R" add -f CLAUDE.md`, `R=${at} | git -C "$R" add -f CLAUDE.md`, 'R=`cat .target`; git -C "$R" add -f CLAUDE.md', `R=(${at}); git -C "$R" add -f CLAUDE.md`,
         `A=${at}; AB=.; git -C "$A"B add -f CLAUDE.md`,
         `PWD=${at}; cd .; git -C "$PWD" add -f CLAUDE.md`, `R='~'; git -C "$R" add -f CLAUDE.md`]) assert.equal(await check(command, other), unread, command);
@@ -911,6 +911,18 @@ describe('primer drift hook', () => {
       await git(dir, 'commit', '-q', '-m', 'hub');
       const hub = (await git(dir, 'rev-parse', '--short', 'HEAD')).trim();
       assert.equal(await check('cd .. && git commit -m x', dir, { event: 'PostToolUse' }), notice(dir, hub, 'CLAUDE.md'));
+    });
+    test('a push where the default-branch ref is unknown is read with no exclusion', async () => {
+      const dir = await clone();
+      await git(dir, 'add', '-f', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'hub');
+      const id = (await git(dir, 'rev-parse', '--short', 'HEAD')).trim(), first = (await git(dir, 'rev-parse', '--short', 'HEAD~1')).trim();
+      await git(dir, 'update-ref', 'refs/remotes/origin/topic', 'HEAD');
+      await git(dir, 'symbolic-ref', '-d', 'refs/remotes/origin/HEAD');
+      // With no tree to compare against, the commit that put AGENTS.md in the history is named too.
+      const said = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds CLAUDE.md; commit ${first} adds AGENTS.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read); the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; the command pushes, so a remote may already hold these commits` } }) + '\n';
+      assert.equal(await check('git commit -m x && git push', dir, { event: 'PostToolUse' }), said);
+      assert.equal(await check('git commit -m x', dir, { event: 'PostToolUse' }), '');
     });
     test('staging CLAUDE.md by name is denied', async () => {
       const dir = await clone();

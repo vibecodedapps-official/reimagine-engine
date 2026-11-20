@@ -120,6 +120,7 @@ function expand(s, out = []) {
 }
 
 const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'do', 'while', 'until', '!', 'time', 'command', 'exec', 'nohup']);
+const WRAPS = new Set(['env', 'sudo', 'timeout', 'nice']);
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'sh.exe', 'bash.exe']);
 
 // The directories a shell text runs git commit in, each once and as the text gives it, and whether it runs git add or git stage
@@ -134,14 +135,20 @@ function commits(text, ps) {
     for (; i < a.length; i++) {
       const b = base(a[i]);
       if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(a[i]) || KEYWORDS.has(b)) continue;
-      if (b !== 'env' && b !== 'sudo') break;
+      // In PowerShell a call may stand on the right of an assignment to a variable.
+      if (ps && /^\$[\w:]+$/.test(a[i]) && /^[-+]?=$/.test(a[i + 1] ?? '')) { i++; continue; }
+      if (!WRAPS.has(b)) break;
       while (a[i + 1]?.startsWith('-')) {
         const t = a[++i];
         if (b === 'env' && (t === '-u' || t === '-S')) i++;
         else if (b === 'env' && t === '-C') dir = under(dir, a[++i]);
         else if (b === 'env' && t.startsWith('--chdir=')) dir = under(dir, t.slice(8));
         else if (b === 'sudo' && /^-[ugUCDhprtT]$/.test(t)) i++;
+        else if (b === 'timeout' && /^-[ks]$/.test(t)) i++;
+        else if (b === 'nice' && t === '-n') i++;
       }
+      // timeout takes its duration before the command.
+      if (b === 'timeout') i++;
     }
     if (i >= a.length) return;
     const b = base(a[i]);

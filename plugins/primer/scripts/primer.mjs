@@ -279,8 +279,19 @@ function sessionStart(c, layer, input, data) {
   if (root) msgs.push(`primer: ${repo.root} is unmapped, under ${root} of the map's roots; run /primer to map it`);
   if (entry?.profile === 'local') {
     const parts = layersOf(p, entry).filter((x) => x.text);
-    // A resumed session still holds the string its start was given.
-    context = input.source === 'resume' ? undefined : layer === 'all' ? joined(parts) : parts.find((x) => x.name === layer)?.text;
+    context = layer === 'all' ? joined(parts) : parts.find((x) => x.name === layer)?.text;
+    // A resumed session still holds the string it was last given, so it gets one only where the string differs from that one: the
+    // digest of each string given is kept under the data directory by session and layer, for 30 days after the session's last
+    // start, and a session with none kept gets the string. With no data directory, or an id that names no file, nothing is kept
+    // and a resumed session gets no string.
+    const kept = data || c.env.CLAUDE_PLUGIN_DATA, id = typeof input.session_id === 'string' && /^[\w-]{1,80}$/.test(input.session_id) && input.session_id;
+    const mark = !sub && kept && id && context ? join(kept, 'given', `${id}.${layer}`) : null, digest = createHash('sha256').update(context ?? '').digest('hex'), same = mark && readText(mark) === digest;
+    if (mark) try {
+      mkdirSync(dirname(mark), { recursive: true });
+      for (const f of readdirSync(dirname(mark)).map((x) => join(dirname(mark), x))) if (Date.now() - statSync(f).mtimeMs > 30 * 864e5) rmSync(f, { force: true });
+      writeFileSync(mark, digest);
+    } catch {}
+    if (input.source === 'resume' && (!mark || same)) context = undefined;
     const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
       : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
     if (apart(c, p)) msgs.push(`primer: ${apart(c, p)}`);

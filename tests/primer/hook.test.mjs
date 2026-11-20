@@ -222,12 +222,19 @@ describe('primer drift hook', () => {
       'echo "$(git commit -m x)"',
       '/usr/bin/env git commit -m x',
       'git -C "$REPO" commit -m x',
+      'timeout 60 git commit -m x',
+      'timeout -k 5 60 git commit -m x',
+      'nice -n 5 git commit -m x',
     ];
     for (const command of wrapped) {
       test(`detects a commit: ${JSON.stringify(command)}`, async () => {
         assert.equal(await run(command, broken), deny(brokenFinding));
       });
     }
+
+    test('detects a commit on the right of a PowerShell assignment', async () => {
+      for (const command of ['$o = git commit -m x 2>&1', '$null = git commit -m x']) assert.equal(await run(command, broken, { tool: 'PowerShell' }), deny(brokenFinding), command);
+    });
 
     test('detects a commit after env -C from a non-repository cwd', async () => {
       assert.equal(await run('env -C broken git commit -m x', base), deny(brokenFinding));
@@ -1018,6 +1025,67 @@ describe('primer drift hook', () => {
       const said = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds CLAUDE.md; commit ${first} adds AGENTS.md, while the upstream's tree is unknown (refs/remotes/origin/HEAD cannot be read); the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; the command pushes, so a remote may already hold these commits` } }) + '\n';
       assert.equal(await check('git commit -m x && git push', dir, { event: 'PostToolUse' }), said);
       assert.equal(await check('git commit -m x', dir, { event: 'PostToolUse' }), '');
+    });
+    test('a shift inside $(( )) opens no here-document, and a followed name holds after a here-document that expands nothing', async () => {
+      const dir = await clone();
+      await git(dir, 'checkout', '-q', '-b', 'feat');
+      await git(dir, 'add', '-f', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'hub');
+      await git(dir, 'checkout', '-q', '-b', 'notes', 'main');
+      write(dir, 'docs/notes.md', '# Notes\n');
+      await git(dir, 'add', 'docs/notes.md');
+      await git(dir, 'commit', '-q', '-m', 'notes');
+      await git(dir, 'checkout', '-q', 'main');
+      rmSync(join(dir, '.claude'), { recursive: true, force: true });
+      const one = 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold';
+      const unread = deny(lead(dir) + 'what git merge would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own');
+      // The << of a shift is no here-document, so the command is read whole; a here-document on the same line still is one.
+      assert.equal(await check('echo $((1<<2)); git merge -q notes', dir), '');
+      assert.equal(await check('echo $((1<<2)); git merge -q feat', dir), deny(lead(dir) + one));
+      assert.equal(await check('echo $((1<<2)) <<EOF\nbody\nEOF\ngit merge -q feat', dir), deny(lead(dir) + unresolved + one));
+      // A merge that a substitution inside the arithmetic runs is still seen.
+      assert.equal(decided(await check('echo $(( $(git merge -q feat; echo 1) << 2 ))', dir)).permissionDecision, 'deny');
+      // A body with no expansion, or under a quoted end word, writes no variable, so the name is read as its text.
+      for (const command of ['B=notes; cat <<EOF\nsome text\nEOF\ngit merge -q "$B"', 'B=notes; cat <<\'EOF\'\ncost: $5 and $(date)\nEOF\ngit merge -q "$B"']) {
+        assert.equal(await check(command, dir), '', command);
+        assert.equal(await check(command.replace('B=notes', 'B=feat'), dir), deny(lead(dir) + unresolved + one), command);
+      }
+      // A body that expands under an unquoted end word can assign the name, so it is not followed.
+      for (const command of ['B=notes; cat <<EOF\n$((B=1))\nEOF\ngit merge -q "$B"', 'B=notes; cat <<EOF\n${B:=feat}\nEOF\ngit merge -q "$B"']) assert.equal(await check(command, dir), unread, command);
+    });
+    test('an add, a commit and a merge are read through timeout and nice, and on the right of a PowerShell assignment', async () => {
+      const dir = await clone(), merged = await clone();
+      const reason = deny(lead(dir) + 'the call would add ' + both);
+      for (const command of ['timeout 60 git add -A && timeout 60 git commit -m x', 'timeout -k 5 60 git add -A', 'timeout --foreground -s KILL 60 git add -A', 'nice git add -A && nice git commit -m x', 'nice -n 5 git add -A', 'nice -5 git add -A']) assert.equal(await check(command, dir), reason, command);
+      for (const command of ['$o = git add -A; $o = git commit -m x 2>&1', '$script:o = git add -A', '$o += git add -A']) assert.equal(await check(command, dir, { tool: 'PowerShell' }), reason, command);
+      // A call that is no git call passes as before.
+      for (const [command, tool] of [['timeout 60 npm test', 'Bash'], ['$o = Get-Date', 'PowerShell']]) assert.equal(await check(command + '; git add src/a.ts', dir, { tool }), '', command);
+      await git(merged, 'checkout', '-q', '-b', 'feat');
+      await git(merged, 'add', '-f', 'CLAUDE.md');
+      await git(merged, 'commit', '-q', '-m', 'hub');
+      await git(merged, 'checkout', '-q', 'main');
+      const brought = deny(lead(merged) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
+      assert.equal(await check('$null = git merge -q feat', merged, { tool: 'PowerShell' }), brought);
+      assert.equal(await check('timeout 60 git merge -q feat', merged), brought);
+      // After the call, the commit such a form made is said.
+      await git(dir, 'add', '-f', 'CLAUDE.md', '.claude/settings.local.json');
+      await git(dir, 'commit', '-q', '-m', 'x');
+      const id = (await git(dir, 'rev-parse', '--short', 'HEAD')).trim();
+      const said = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'primer: ' + slash(dir) + ' has the local profile, which keeps agent files out of its history; commit ' + id + ' adds .claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; no remote holds the commit yet' } }) + '\n';
+      assert.equal(await check('timeout 60 git commit -m x', dir, { event: 'PostToolUse' }), said);
+      assert.equal(await check('$o = git commit -m x 2>&1', dir, { event: 'PostToolUse', tool: 'PowerShell' }), said);
+    });
+    test('after a call, a push through an alias given with -c is read as a push', async () => {
+      const dir = await clone();
+      await git(dir, 'add', '-f', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'hub');
+      const id = (await git(dir, 'rev-parse', '--short', 'HEAD')).trim();
+      // The push put the commit under a remote-tracking ref other than the upstream's default branch.
+      await git(dir, 'update-ref', 'refs/remotes/origin/topic', 'HEAD');
+      const pushed = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'primer: ' + slash(dir) + ' has the local profile, which keeps agent files out of its history; commit ' + id + ' adds CLAUDE.md, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; the command pushes, so a remote may already hold the commit' } }) + '\n';
+      for (const command of ['git commit -m x && git -c alias.p=push p origin HEAD:topic', 'git commit -m x && git -c alias.p=\'push --force\' p origin HEAD:topic']) assert.equal(await check(command, dir, { event: 'PostToolUse' }), pushed, command);
+      // A -c value that sets no alias pushes nothing.
+      assert.equal(await check('git -c push.default=current commit -m x', dir, { event: 'PostToolUse' }), '');
     });
     test('staging CLAUDE.md by name is denied', async () => {
       const dir = await clone();

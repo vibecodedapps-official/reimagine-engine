@@ -220,6 +220,10 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     put(dir, 'plugins/rules/scripts/outbound.mjs', '// x\n'.repeat(300));
     bump(dir, 'rules');
   });
+  negative('R405: chain.mjs over the 300-line budget', (dir) => {
+    put(dir, 'plugins/rules/scripts/chain.mjs', '// x\n'.repeat(301));
+    bump(dir, 'rules');
+  }, 1, ['plugins/rules/scripts/chain.mjs: 301 lines, over the 300-line budget']);
 
   negative('R334: guard.mjs over the 700-line budget', (dir) => {
     put(dir, 'plugins/guard/scripts/guard.mjs', '// x\n'.repeat(701));

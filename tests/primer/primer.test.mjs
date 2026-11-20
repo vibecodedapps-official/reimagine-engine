@@ -3,7 +3,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -192,6 +192,35 @@ describe('session-start', () => {
     const groupAlone = run(['session-start', 'group', join(base, 'data')], { input: JSON.stringify({ cwd: dir, hook_event_name: 'SessionStart', source: 'resume' }), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
     assert.equal(groupAlone, context(null, `primer: the group layer is ${groupSize} characters as emitted, over the host's cap of 10000`));
     for (const source of ['startup', 'clear', 'compact', 'fork', undefined]) assert.equal(from(source), context(text, warning), String(source));
+  });
+
+  test('a resumed session gets the string again once it differs from the one the session was last given', () => {
+    const cfg = config(local(), { group: GROUP });
+    const dir = repo('resumed', 'https://example.invalid/team/app.git'), data = join(base, 'data-resumed'), file = join(cfg.store, 'groups', 'app.md');
+    const from = (source, id = 'session-one', event = 'SessionStart') => run(['session-start', 'all', data], { input: JSON.stringify({ cwd: dir, hook_event_name: event, source, session_id: id }), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
+    const first = context(part('group', file, GROUP.trim(), '5ee2174e'));
+    assert.equal(from('startup'), first);
+    assert.equal(from('resume'), '');
+    writeFileSync(file, 'The app group ships on Fridays.\n');
+    const second = context(part('group', file, 'The app group ships on Fridays.', '261cabc6'));
+    assert.equal(from('resume'), second);
+    assert.equal(from('resume'), '');
+    // After a clear the session holds none of it, so the string is given whether it changed or not.
+    assert.equal(from('clear'), second);
+    // A session with no record of a string, as one started before the record was kept, gets it once.
+    assert.equal(from('resume', 'session-two'), second);
+    assert.equal(from('resume', 'session-two'), '');
+    // An id that names no file keeps no record, and a subagent's start leaves the session's record as it is.
+    assert.equal(from('resume', '../session-three'), '');
+    writeFileSync(file, GROUP);
+    assert.equal(from(undefined, 'session-one', 'SubagentStart'), first.replace('"SessionStart"', '"SubagentStart"'));
+    assert.equal(from('resume'), first);
+    // A record is kept for 30 days after its session's last start.
+    const old = join(data, 'given', 'session-old.all');
+    writeFileSync(old, 'x');
+    utimesSync(old, new Date('2026-01-01T00:00:00Z'), new Date('2026-01-01T00:00:00Z'));
+    from('startup', 'session-four');
+    assert.deepEqual(readdirSync(join(data, 'given')).sort(), ['session-four.all', 'session-one.all', 'session-two.all']);
   });
 
   test('in a session no one attends the layers load and no warning prints', () => {

@@ -30,6 +30,8 @@ const hides = (t) => /\bgit(\.exe)?\b[^\n]*\b(add|stage|commit)\b/i.test(t.repla
 const BROUGHT = /\bgit(?:\.exe)?["']?(?:\s+(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-(?![Cc]\s|-(?:git-dir|work-tree|namespace|config-env)\s)\S+)*\s+(merge|cherry-pick|rebase|am)(?![\w-])(?!\s+(?:--abort|--skip|--quit|--edit-todo|--show-current-patch|--help|-h)(?![\w-]))/i;
 // The operator and end word of a here-document: bare, quoted, after a backslash or after <<-, and ended by a space or an operator.
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))(?=[\s;&|()<>]|$)/;
+// Whether the << at place i stands inside $(( )) or (( )) that closes on the same line, where it shifts a number and opens no here-document.
+const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i); return line.lastIndexOf('((') > line.lastIndexOf('))') && /^[^\n]*\)\)/.test(s.slice(i)); };
 function commands(s, ps) {
   const out = [];
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = '';
@@ -73,15 +75,17 @@ function commands(s, ps) {
     else if (ch === '<' || ch === '>') {
       if (nx === '(') return null;
       if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
-      if (ch === '<' && nx === '<') {
+      if (ch === '<' && nx === '<' && !shifts(s, i)) {
         // A here-string's word is input, read as the target of a redirect.
         if (!ps && s[i + 2] === '<') { end(); skip = '<'; i += 2; continue; }
         const rest = s.slice(i), doc = ps ? null : HEREDOC.exec(rest), e = s.indexOf('\n', i);
         const lines = doc && e >= 0 ? s.slice(e + 1).split('\n') : [], k = lines.findIndex((l) => (doc[1] ? l.replace(/^\t+/, '') : l).replace(/\r$/, '') === (doc[2] ?? doc[3] ?? doc[4]));
         if (!doc || k < 0 || /\\\r?$/.test(s.slice(i, e))) { cut(); out.stopped = true; [out.lost, out.hidden, out.brings] = [true, out.hidden || hides(rest), out.brings ?? BROUGHT.exec(rest.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase()]; return out; }
         // The body is left out of the text and the parse goes on after the end word; a body under an unquoted end word runs its substitutions.
-        const body = lines.slice(0, k).join('\n'), runs = doc[2] === undefined && doc[3] === undefined && !doc[0].includes('\\') && /\$\(|`/.test(body);
+        const body = lines.slice(0, k).join('\n'), open = doc[2] === undefined && doc[3] === undefined && !doc[0].includes('\\'), runs = open && /\$\(|`/.test(body);
         [out.lost, out.hidden] = [true, out.hidden || hides(body)];
+        // An expansion in such a body can assign a variable, as $((B=2)) and ${B:=x} do.
+        if (open && /[$`]/.test(body)) out.expands = true;
         if (runs) { words.wrote = true; out.brings ??= BROUGHT.exec(ran(body))?.[1].toLowerCase(); }
         end();
         s = s.slice(0, e + 1) + lines.slice(k + 1).join('\n');
@@ -106,6 +110,8 @@ function commands(s, ps) {
 
 const base = (w) => w.replace(/^.*[\\/]/, '').toLowerCase();
 const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'do', 'while', 'until', '!', 'time', 'command', 'exec', 'nohup']);
+// The programs that run the command given after their own options, read through to that command.
+const WRAPS = new Set(['env', 'sudo', 'timeout', 'nice']);
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'sh.exe', 'bash.exe']);
 const CDS = new Set(['cd', 'chdir', 'pushd', 'popd', 'set-location', 'sl', 'push-location', 'pop-location']);
 // The calls that change nothing a merge, a cherry-pick, a rebase or an am is read from: no ref, no index entry and no patch file.
@@ -173,7 +179,7 @@ function followed(s, ps, list) {
   for (const name of at.keys()) {
     const held = new RegExp(`(?<![A-Za-z0-9_])${name}(?![A-Za-z0-9_])`, ps ? 'i' : ''), use = new RegExp(`^\\$(?:${name}|\\{${name}\\})$`, ps ? 'i' : '');
     const read = (words, j) => words[j].bad && !words[j].sub && use.test(words[j].w) && j > 0 && !/^[-+*/%?]*=/.test(words[j + 1]?.w ?? '');
-    if (list.lost || twice.has(name) || at.get(name) === null || list.slice(n).some((words) => Array.isArray(words) && words.some((x, j) => held.test(x.w) && !read(words, j)))) at.delete(name);
+    if (list.hidden || list.stopped || list.expands || twice.has(name) || at.get(name) === null || list.slice(n).some((words) => Array.isArray(words) && words.some((x, j) => held.test(x.w) && !read(words, j)))) at.delete(name);
   }
   return { n, at };
 }
@@ -204,14 +210,20 @@ function analyze(typed, st, vars = new Map()) {
     const tree = /^GIT_(?:WORK_TREE=(.*)|DIR=(.*))$/.exec(w);
     if (tree) dir = at(st.dir, { ...words[i], w: tree[1] ?? `${tree[2]}/..` });
     if (/^[A-Za-z_]\w*=/.test(w) || KEYWORDS.has(b)) continue;
-    if (b !== 'env' && b !== 'sudo') break;
+    // Through the PowerShell tool a call may stand on the right of an assignment to a variable.
+    if (!st.sh && /^\$[\w:]+$/.test(w) && /^[-+]?=$/.test(words[i + 1]?.w ?? '')) { i++; continue; }
+    if (!WRAPS.has(b)) break;
     while (words[i + 1]?.w.startsWith('-')) {
       const t = words[++i].w;
       if (b === 'env' && (t === '-u' || t === '-S')) i++;
       else if (b === 'env' && t === '-C') dir = at(dir, words[++i]);
       else if (b === 'env' && t.startsWith('--chdir=')) dir = at(dir, { ...words[i], w: t.slice(8) });
       else if (b === 'sudo' && /^-[ugUCDhprtT]$/.test(t)) i++;
+      else if (b === 'timeout' && /^-[ks]$/.test(t)) i++;
+      else if (b === 'nice' && t === '-n') i++;
     }
+    // timeout takes its duration before the command.
+    if (b === 'timeout') i++;
   }
   if (i >= words.length) { st.pushes ||= words.some((x) => /\bpush\b/i.test(x.w)); if (words.wrote || words.some((x) => x.sub)) st.moved = true; return; }
   const b = base(words[i].w), rest = words.slice(i + 1);
@@ -242,7 +254,8 @@ function analyze(typed, st, vars = new Map()) {
         const v = t.includes('=') ? { ...rest[j], w: t.slice(t.indexOf('=') + 1) } : rest[++j];
         [st.lost, dir] = [true, at(dir, v && t.startsWith('--git-dir') ? { ...v, w: `${v.w}/..` } : v)];
       }
-      else if (t === '-c' || t === '--namespace' || t === '--config-env') j++;
+      // An alias given with -c may push under another name.
+      else if (t === '-c' || t === '--namespace' || t === '--config-env') { j++; st.pushes ||= t === '-c' && /^alias\.[^=]*=.*\bpush\b/i.test(rest[j]?.w ?? ''); }
     }
     const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1), first = args[0]?.w;
     st.pushes ||= sub === 'push' || words.some((x) => x.sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\bpush\b/i.test(x.w));

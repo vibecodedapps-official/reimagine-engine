@@ -968,7 +968,7 @@ describe('primer drift hook', () => {
       const id = (await git(dir, 'rev-parse', '--short', 'HEAD')).trim();
       const said = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds .claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; no remote holds the commit yet` } }) + '\n';
       // The word push in a message is no push; in a text the check does not parse it may be one.
-      for (const c of [command, 'git commit -m x', 'git commit -m "push later"', 'git --git-dir=.git commit -m "push later"', 'git merge notes', `git -C ${slash(dir)} commit -m x`]) assert.equal(await after(c), said, c);
+      for (const c of [command, 'git commit -m x', 'git commit -m "push later"', "git commit -F - <<'EOF'\nfix: push later\nEOF", 'git --git-dir=.git commit -m "push later"', 'git merge notes', `git -C ${slash(dir)} commit -m x`]) assert.equal(await after(c), said, c);
       // A command that only stages or only reads makes no commit, and outside a local repository nothing is read.
       for (const c of ['git add src/a.ts', 'git log --grep commit', 'npm test']) assert.equal(await after(c), '', c);
       assert.equal(await check(command, dir, { event: 'PostToolUse', env: { CLAUDE_CONFIG_DIR: join(base, 'no-such-config') } }), '');

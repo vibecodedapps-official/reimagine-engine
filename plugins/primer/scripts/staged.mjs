@@ -20,7 +20,7 @@ const ran = (t) => { let out = '', d = 0, tick = false; for (let i = 0; i < t.le
 // left open or a process substitution outside quotes. A here-document's body is left out and the text after its end line is read
 // on; the list carries lost, hidden where the body names a git add, stage or commit, and brings, one of the four as a git call,
 // where the body may run it (an unquoted end word and a substitution in the body) or the end word cannot be read (then the rest
-// is not parsed). A here-string's word is input. A backtick outside quotes
+// is not parsed, and the list carries stopped). A here-string's word is input. A backtick outside quotes
 // separates commands in sh, so what a substitution runs is read as a command of its own. In PowerShell a here-string, from @' or @"
 // at the end of a line to the same quote and @ at the start of a line, is one word where it starts a word and nothing is joined to
 // its closer, and null elsewhere; unless a git call takes it, it hides what its text names, as a here-document does.
@@ -78,7 +78,7 @@ function commands(s, ps) {
         if (!ps && s[i + 2] === '<') { end(); skip = '<'; i += 2; continue; }
         const rest = s.slice(i), doc = ps ? null : HEREDOC.exec(rest), e = s.indexOf('\n', i);
         const lines = doc && e >= 0 ? s.slice(e + 1).split('\n') : [], k = lines.findIndex((l) => (doc[1] ? l.replace(/^\t+/, '') : l).replace(/\r$/, '') === (doc[2] ?? doc[3] ?? doc[4]));
-        if (!doc || k < 0 || /\\\r?$/.test(s.slice(i, e))) { cut(); [out.lost, out.hidden, out.brings] = [true, out.hidden || hides(rest), out.brings ?? BROUGHT.exec(rest.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase()]; return out; }
+        if (!doc || k < 0 || /\\\r?$/.test(s.slice(i, e))) { cut(); out.stopped = true; [out.lost, out.hidden, out.brings] = [true, out.hidden || hides(rest), out.brings ?? BROUGHT.exec(rest.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase()]; return out; }
         // The body is left out of the text and the parse goes on after the end word; a body under an unquoted end word runs its substitutions.
         const body = lines.slice(0, k).join('\n'), runs = doc[2] === undefined && doc[3] === undefined && !doc[0].includes('\\') && /\$\(|`/.test(body);
         [out.lost, out.hidden] = [true, out.hidden || hides(body)];
@@ -132,7 +132,7 @@ function switched([x, ...more]) {
 function scan(s, ps, st, top = false) {
   const list = commands(s, ps), dirs = [], { n, at } = top && list ? followed(s, ps, list) : { n: 0, at: new Map() };
   if (!list || list.lost) st.lost = true;
-  if (!list || list.lost) st.pushes ||= /\bpush\b/i.test(s);
+  if (!list || list.stopped || list.hidden) st.pushes ||= /(?<![\w-])push(?![\w-])/i.test(s);
   if (!list || list.hidden) st.hidden = true;
   if (n) st.pushes ||= list.slice(0, n).some((w) => Array.isArray(w) && w.some((x) => /\bpush\b/i.test(x.w)));
   if (list?.moved) st.moved = true;

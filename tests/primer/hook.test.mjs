@@ -903,7 +903,7 @@ describe('primer drift hook', () => {
       for (const name of BASH_OWN) assert.equal(await check(name + '=' + at + '; git -C "$' + name + '" add -f CLAUDE.md', other), unread, name);
       for (const name of POWERSHELL_OWN) assert.equal(await check('$' + name + "='" + at + "'; git -C $" + name + ' add -f CLAUDE.md', other, { tool: 'PowerShell' }), unread, name);
     });
-    test('one of the four after a here-document or a here-string is denied as unread, and one its body, a message or a later body names is not a call', async () => {
+    test('the text after a here-document is read, and a call a here-document may run or hide is denied', async () => {
       const dir = await clone();
       await git(dir, 'checkout', '-q', '-b', 'feat');
       await git(dir, 'add', '-f', 'CLAUDE.md');
@@ -913,14 +913,22 @@ describe('primer drift hook', () => {
       await git(dir, 'add', 'docs/notes.md');
       await git(dir, 'commit', '-q', '-m', 'notes');
       await git(dir, 'checkout', '-q', 'main');
-      const blind = (sub) => deny(lead(dir) + 'a git ' + sub + ' in the text after a here-document or a here-string is not read, so the call is denied; run it as a command of its own');
-      for (const [command, sub] of [['cat <<EOF\nbody\nEOF\ngit merge -q feat', 'merge'], ['cat <<EOF\nbody\nEOF\ngit merge -q notes', 'merge'], ['cat <<< x; git merge -q feat', 'merge'], ['cat <<EOF; git merge -q feat\nbody\nEOF', 'merge'],
-        ["cat <<-'EOF'\n\tbody\n\tEOF\ngit -C . rebase feat", 'rebase'], ['cat <<"EOF" | git am\nbody\nEOF', 'am'], ['cat <<EOF\nbody\nEOF\ncd . && git -c core.editor=true cherry-pick feat', 'cherry-pick'], ["bash -c 'cat <<EOF\nbody\nEOF\ngit merge feat'", 'merge'], ['cat <<EOF\nx\nEOF\ngit -c user.name="A B" merge feat', 'merge']]) assert.equal(await check(command, dir), blind(sub), command);
-      // The body is text, and a word of a later message is no call.
-      for (const command of ["cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF", "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF\necho done", "cat <<EOF\nbody\nEOF\ngit merge-base main feat", "cat > a.md <<'A'\nx\nA\ncat > b.md <<'B'\nthen run git merge feat\nB", 'cat <<< "git merge feat"']) assert.equal(await check(command, dir), '', command);
+      rmSync(join(dir, '.claude'), { recursive: true, force: true });
+      const one = 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold';
+      const unread = (sub) => deny(lead(dir) + 'what git ' + sub + ' would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own');
+      const hidden = (sub) => deny(lead(dir) + 'a git ' + sub + ' that a here-document runs or hides is not read, so the call is denied; run it as a command of its own');
+      // The text after a here-document is read like any other, in its own directory.
+      for (const command of ['cat <<EOF\nbody\nEOF\ngit merge -q feat', 'cat <<EOF; git merge -q feat\nbody\nEOF', "cat <<-'EOF'\n\tbody\n\tEOF\ngit -C . rebase feat", 'cat <<EOF\nbody\nEOF\ncd . && git -c core.editor=true cherry-pick feat', "bash -c 'cat <<EOF\nbody\nEOF\ngit merge feat'", 'cat <<EOF\nx\nEOF\ngit -c user.name="A B" merge feat']) assert.equal(await check(command, dir), deny(lead(dir) + unresolved + one), command);
+      assert.equal(await check('cat <<< x; git merge -q feat', dir), deny(lead(dir) + one));
+      // A here-string's word and the body under a quoted end word are text, and a word of a later message is no call.
+      for (const command of ['cat <<EOF\nbody\nEOF\ngit merge -q notes', 'cat <<< x; git merge -q notes', "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF", "cat > notes.txt <<'EOF'\nthen run git merge feat\nEOF\necho done", 'cat <<EOF\nbody\nEOF\ngit merge-base main feat', "cat > a.md <<'A'\nx\nA\ncat > b.md <<'B'\nthen run git merge feat\nB", 'cat <<< "git merge feat"', "cat > notes.md <<'EOF'\nx\nEOF\ngit rebase --abort", 'cat <<EOF\nx\nEOF\ngit --no-pager log --grep merge', 'cat <<EOF\nx\nEOF\ngit commit --dry-run -m "notes\nrun git merge feat next"']) assert.equal(await check(command, dir), '', command);
+      assert.equal(await check('cat <<"EOF" | git am\nbody\nEOF', dir), unread('am'));
+      assert.equal(await check("cat > notes.txt <<'EOF'\nx\nEOF\ngit merge notes", dir), unread('merge'));
+      // A body that runs a command under an unquoted end word, and an end word the script cannot read, leave the call unread.
+      for (const command of ['cat > log.txt <<EOF\nmerged: $(git merge --no-edit feat)\nEOF', 'cat <<"E"OF\nbody\nEOF\ngit merge feat']) assert.equal(await check(command, dir), hidden('merge'), command);
       write(dir, 'CLAUDE.md', '# Mine\n');
-      assert.equal(await check("cat > notes.txt <<'EOF'\nx\nEOF\ngit add src/a.ts && git commit -m \"merge the rest\"", dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
-      assert.equal(await check('cat <<EOF\nx\nEOF\ngit commit -m "then git merge feat"', dir), deny(lead(dir) + unresolved + 'the call would add ' + both));
+      assert.equal(await check("cat > notes.txt <<'EOF'\nx\nEOF\ngit add src/a.ts && git commit -m \"merge the rest\"", dir), deny(lead(dir) + unresolved + one));
+      assert.equal(await check('cat <<EOF\nx\nEOF\ngit commit -m "then git merge feat"', dir), deny(lead(dir) + unresolved + one));
     });
     test('once a command names CDPATH, a cd leaves the directory unknown', async () => {
       const n = ++seqs, folder = join(base, 'cdpath-' + n), target = join(folder, 'app'), outer = join(base, 'cdpath-outer-' + n);
@@ -966,7 +974,7 @@ describe('primer drift hook', () => {
       await git(dir, 'update-ref', 'refs/remotes/origin/topic', 'HEAD');
       assert.equal(await after(command), '');
       const pushed = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: `primer: ${slash(dir)} has the local profile, which keeps agent files out of its history; commit ${id} adds .claude/settings.local.json, CLAUDE.md, which refs/remotes/origin/HEAD does not hold; the check before a call reads the work tree as it stands then, so it does not see a file the call itself makes; the command pushes, so a remote may already hold the commit` } }) + '\n';
-      for (const c of [command + ' && git push', `git -C ${slash(dir)} commit -m x; git -C ${slash(dir)} push origin HEAD`, "git commit -F - <<'EOF'\nx\nEOF\ngit push", 'git commit -m x && bash -c "git push"', 'git commit -m x && out="$(git push 2>&1)"', 'git commit -m x && ./push.sh']) assert.equal(await after(c), pushed, c);
+      for (const c of [command + ' && git push', `git -C ${slash(dir)} commit -m x; git -C ${slash(dir)} push origin HEAD`, "git commit -F - <<'EOF'\nx\nEOF\ngit push", 'git commit -m x && bash -c "git push"', 'git commit -m x && out="$(git push 2>&1)"', 'git commit -m x && ./push.sh', 'CMD=\'git push origin topic\'; git commit -m x && eval "$CMD"']) assert.equal(await after(c), pushed, c);
       assert.equal(await after('git commit -m "push later"'), '');
       await git(dir, 'update-ref', 'refs/remotes/origin/main', 'HEAD');
       assert.equal(await after(command), '');
@@ -1153,6 +1161,7 @@ describe('primer drift hook', () => {
       assert.equal(await check('cd "$APP" && git add CLAUDE.md', fixture, { env: { CLAUDE_CONFIG_DIR: far } }), reason);
       assert.equal(await check(`cd ${slash(join(base, 'no-such-directory'))} && git add src/a.ts`, fixture, { env: { CLAUDE_CONFIG_DIR: far } }), reason);
       assert.equal(await check('bash -c "cd $APP && git add -A"', fixture, { env: { CLAUDE_CONFIG_DIR: far } }), reason);
+      assert.equal(await check("cat > notes.md <<'EOF'\nx\nEOF\ngit rebase main", fixture, { env: { CLAUDE_CONFIG_DIR: far } }), '');
     });
     test('a command that stages and commits nothing passes, whatever in it cannot be resolved', async () => {
       const dir = await clone();

@@ -14,26 +14,19 @@ const AGENT_DIRS = new Set(['.claude', '.agents', '.reimagine']);
 // The simple commands of a shell text, each a list of words { w, bad, sub, git }, with ( and ) kept: bad marks an expansion the
 // script cannot resolve, a brace expansion among them, sub a command substitution inside a quoted word, git one that stages or
 // commits with git; a list carries wrote where the command sends its output to a file. Null for a quote
-// left open or a process substitution outside quotes. A here-document ends the list, which then carries lost, hidden when the
-// text from there on names a git add, stage or commit, and brings, one of the four that the text which runs after it names as a
-// git call, so the calls before it keep their directories. A backtick outside quotes
+// left open or a process substitution outside quotes. A here-document's body is left out and the text after its end line is read
+// on; the list carries lost, hidden where the body names a git add, stage or commit, and brings, one of the four as a git call,
+// where the body may run it (an unquoted end word and a substitution in the body) or the end word cannot be read (then the rest
+// is not parsed, as before). A here-string's word is input. A backtick outside quotes
 // separates commands in sh, so what a substitution runs is read as a command of its own. In PowerShell a here-string, from @' or @"
 // at the end of a line to the same quote and @ at the start of a line, is one word where it starts a word and nothing is joined to
 // its closer, and null elsewhere; unless a git call takes it, it hides what its text names, as a here-document does.
 const hides = (t) => /\bgit(\.exe)?\b[^\n]*\b(add|stage|commit)\b/i.test(t.replace(/[\\`^]\r?\n/g, ' '));
-// The text that runs after a here-document: the rest of its first line and what follows the line that ends it, or all of the
-// text for a here-string or where no such line is found; each later here-document is read the same way, and a quoted string on
-// one line is emptied, so the words of a body, of a message and of a here-string are no call.
-function past(t) {
-  const m = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))/.exec(t), lines = t.split('\n');
-  const k = m ? lines.findIndex((l, n) => n > 0 && (m[1] ? l.replace(/^\t+/, '') : l).replace(/\r$/, '') === (m[2] ?? m[3] ?? m[4])) : -1;
-  const tail = k < 0 ? t.replace(/^<<<?/, '') : `${lines[0].slice(m[0].length)}\n${lines.slice(k + 1).join('\n')}`;
-  const bare = tail.replace(/"[^"\n]*"|'[^'\n]*'/g, (q) => `""${' '.repeat(q.length - 2)}`), j = bare.indexOf('<<');
-  return j < 0 ? bare : bare.slice(0, j) + past(tail.slice(j));
-}
-// A merge, a cherry-pick, a rebase or an am as the subcommand of a git call, after git's own options and their values, so a
-// word of a message is no call.
-const BROUGHT = /\bgit(?:\.exe)?["']?(?:\s+-\S+(?:\s+(?:"[^"\n]*"|'[^'\n]*'|[^-\s]\S*))?)*\s+(merge|cherry-pick|rebase|am)(?![\w-])/i;
+// A merge, a cherry-pick, a rebase or an am as the subcommand of a git call, after git's own options and the values of those that take
+// one, so a word of a message is no call; used where a here-document's body may run a command or its end word cannot be read.
+const BROUGHT = /\bgit(?:\.exe)?["']?(?:\s+(?:-[Cc]|--git-dir|--work-tree|--namespace|--config-env)\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-\S+)*\s+(merge|cherry-pick|rebase|am)(?![\w-])(?!\s+(?:--abort|--skip|--quit|--edit-todo|--show-current-patch|--help|-h)(?![\w-]))/i;
+// The operator and end word of a here-document: bare, quoted, after a backslash or after <<-, and ended by a space or an operator.
+const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))(?=[\s;&|()<>]|$)/;
 function commands(s, ps) {
   const out = [];
   let words = [], cur = '', inw = false, bad = false, sub = false, skip = '';
@@ -43,6 +36,7 @@ function commands(s, ps) {
     // after >& a descriptor number or - names a stream, not a file.
     if (inw && skip === '>' && !/^(\/dev\/null|\$null|nul)$/i.test(cur)) words.wrote = true;
     if (inw && skip === '>&' && !/^(\d+|-)$/.test(cur)) words.wrote = true;
+    if (inw && skip === '<' && sub) words.wrote = true;
     [skip, cur, inw, bad, sub] = [inw ? '' : skip, '', false, false, false];
   };
   const cut = () => { end(); if (words.length) out.push(words); else if (words.wrote && out.findLast(Array.isArray)) out.findLast(Array.isArray).wrote = true; words = []; };
@@ -73,7 +67,21 @@ function commands(s, ps) {
     } else if (ch === '#' && !inw) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (ch === '<' || ch === '>') {
       if (nx === '(') return null;
-      if (ch === '<' && nx === '<') { cut(); [out.lost, out.hidden, out.brings] = [true, out.hidden || hides(s.slice(i)), BROUGHT.exec(past(s.slice(i)).replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase()]; return out; }
+      if (ch === '<' && nx === '<') {
+        // A here-string's word is input, read as the target of a redirect.
+        if (!ps && s[i + 2] === '<') { end(); skip = '<'; i += 2; continue; }
+        const rest = s.slice(i), doc = ps ? null : HEREDOC.exec(rest), e = s.indexOf('\n', i);
+        const lines = doc && e >= 0 ? s.slice(e + 1).split('\n') : [], k = lines.findIndex((l) => (doc[1] ? l.replace(/^\t+/, '') : l).replace(/\r$/, '') === (doc[2] ?? doc[3] ?? doc[4]));
+        if (!doc || k < 0) { cut(); [out.lost, out.hidden, out.brings] = [true, out.hidden || hides(rest), out.brings ?? BROUGHT.exec(rest.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase()]; return out; }
+        // The body is left out of the text and the parse goes on after the end word; a body under an unquoted end word runs its substitutions.
+        const body = lines.slice(0, k).join('\n'), runs = doc[2] === undefined && doc[3] === undefined && !doc[0].includes('\\') && /\$\(|`/.test(body);
+        [out.lost, out.hidden] = [true, out.hidden || hides(body)];
+        if (runs) { words.wrote = true; out.brings ??= BROUGHT.exec(body.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase(); }
+        end();
+        s = s.slice(0, e + 1) + lines.slice(k + 1).join('\n');
+        i += doc[0].length - 1;
+        continue;
+      }
       if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
       end();
       let amp = false;
@@ -121,9 +129,10 @@ function scan(s, ps, st, top = false) {
   if (!list || list.lost) st.lost = true;
   if (!list || list.lost) st.pushes ||= /\bpush\b/i.test(s);
   if (!list || list.hidden) st.hidden = true;
+  if (n) st.pushes ||= list.slice(0, n).some((w) => Array.isArray(w) && w.some((x) => /\bpush\b/i.test(x.w)));
   for (const item of (list ?? []).slice(n)) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st, at);
-  // One of the four in the text after a here-document is a call the script does not read, in a directory it does not know.
-  if (list?.brings) { st.far = true; st.calls.push({ sub: list.brings, dir: st.dir, args: [], moved: true, past: true }); }
+  // One of the four that a here-document may run, or that follows an end word the script cannot read, is a call it does not read, in a directory it does not know.
+  if (list?.brings) { st.far = true; st.calls.push({ sub: list.brings, dir: st.dir, args: [], moved: true, doc: true }); }
 }
 
 // The names a shell computes or will not assign, which read back another text than the one assigned: under sh those of bash and
@@ -486,7 +495,7 @@ export function staged(c, input) {
     const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => (x.head && remoteOf(c, repo, x.head.branch) !== remoteOf(c, repo) ? null : planOf(c, { ...x, dir }, repo.top))), whole = !st.lost && plans.length && plans.every(Boolean);
     // What an unread merge brings is not in the work tree, so no count of the files there stands in for it.
     const blind = calls.find((x, i) => brings(x.sub) && !plans[i]);
-    if (blind?.past) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; a git ${blind.sub} in the text after a here-document or a here-string is not read, so the call is denied; run it as a command of its own`)];
+    if (blind?.doc) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; a git ${blind.sub} that a here-document runs or hides is not read, so the call is denied; run it as a command of its own`)];
     if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own`)];
     const reason = whole ? verdict(c, repo, { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) }) : verdict(c, repo, null, plans.filter(Boolean));
     if (reason) return [deny(reason)];

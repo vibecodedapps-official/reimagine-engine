@@ -861,12 +861,14 @@ describe('primer drift hook', () => {
       await git(dir, 'commit', '-q', '-m', 'notes');
       await git(dir, 'checkout', '-q', 'main');
       const reason = deny(lead(dir) + 'the call would add CLAUDE.md, which refs/remotes/origin/HEAD does not hold');
-      for (const [command, tool] of [['git log --oneline | cut -c1-20; git merge notes', 'Bash'], ['set -e; git merge notes', 'Bash'], ['git log --oneline | Select-Object -First 3; git merge notes', 'PowerShell'], ['Get-Content README.md; git merge notes', 'PowerShell']]) {
+      for (const [command, tool] of [['git log --oneline | cut -c1-20; git merge notes', 'Bash'], ['set -e; git merge notes', 'Bash'], ['set -euo pipefail; git merge notes', 'Bash'], ['git log --oneline | Select-Object -First 3; git merge notes', 'PowerShell'], ['Get-Content README.md; git merge notes', 'PowerShell']]) {
         assert.equal(await check(command, dir, { tool }), '', command);
         assert.equal(await check(command.replace('notes', 'feat'), dir, { tool }), reason, command);
       }
       // In PowerShell set writes a variable.
       assert.equal(decided(await check('set r x; git merge notes', dir, { tool: 'PowerShell' })).permissionDecision, 'deny');
+      // In Bash set -a and set -o allexport export the assignments that follow.
+      for (const command of ['set -a; git merge notes', 'set -o allexport; git merge notes']) assert.equal(decided(await check(command, dir)).permissionDecision, 'deny', command);
     });
     test('after a call, an agent file its commit added is said, and one a remote holds is not', async () => {
       const dir = await clone(), after = (command) => check(command, dir, { event: 'PostToolUse' });

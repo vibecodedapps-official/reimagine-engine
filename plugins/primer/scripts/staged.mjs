@@ -140,6 +140,19 @@ function followed(s, ps, list) {
   return { n, at };
 }
 
+// A set that exports nothing: -e, -u and -x, or -o with the name of one of them. Any other, such as -a, -o allexport or -k, exports the assignments that follow.
+const setOnly = (rest) => {
+  for (let j = 0; j < rest.length; j++) {
+    const { w, bad, sub } = rest[j];
+    if (bad || sub) return false;
+    if (/^[-+][eux]+$/.test(w)) continue;
+    const name = rest[j + 1];
+    if (!/^[-+][eux]*o$/.test(w) || !name || name.bad || name.sub || !/^(pipefail|errexit|nounset|xtrace)$/.test(name.w)) return false;
+    j++;
+  }
+  return true;
+};
+
 function analyze(typed, st, vars = new Map()) {
   const words = Object.assign(typed.map((x) => { const m = x.bad && vars.size ? /^\$\{?(\w+)\}?$/.exec(x.w) : null, k = m && (st.sh ? m[1] : m[1].toLowerCase()); return m && vars.has(k) ? { ...x, w: vars.get(k), bad: false } : x; }), { wrote: typed.wrote });
   if (words.some((x) => x.git)) st.lost = st.hidden = true;
@@ -203,8 +216,8 @@ function analyze(typed, st, vars = new Map()) {
   } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = st.hidden = true;
   // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
-  // set changes the options of sh; in PowerShell the word is a command that writes a variable.
-  else still = plain && (READS.has(words[i].w.toLowerCase()) || (st.sh && words[i].w === 'set'));
+  // set changes the options of sh, and only the ones in setOnly leave the later call read; in PowerShell the word is a command that writes a variable.
+  else still = plain && (READS.has(words[i].w.toLowerCase()) || (st.sh && words[i].w === 'set' && setOnly(rest)));
   // A call that leaves no later one readable may also rewrite a followed variable, with no word that spells it.
   if (!still || !plain) { st.moved = true; vars.clear(); }
 }

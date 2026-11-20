@@ -45,4 +45,6 @@ A `local` run writes nothing in the repository's work tree, makes no commit or s
   .mcp.json
   ```
 
+  A content search honors these lines and passes over a file they match, though git tracks it. So for each agent file `git ls-files` lists, the offer holds an exception after the lines above: `!/<path>`. For a file under one of the three folders, write the folder's line as `**/<folder>/**`, which counts as that line, and before the file's exception add `!/<directory>/` for each directory between the folder and the file, since no exception is read under an excluded directory. Say with the offer that a search started inside such a folder still passes over its files, which are read by path.
+
 - The plan proposes the host's `attribution` setting with empty `commit` and `pr` values, by placement item 2, since a session attribution line in a commit message shows what the profile hides. Primer never writes it.

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Primer's drift hook, the PreToolUse hook for Bash and PowerShell calls. Usage: node drift.mjs, with the hook's input on stdin.
+// Primer's drift hook, the PreToolUse and PostToolUse hook for Bash and PowerShell calls. Usage: node drift.mjs, with the hook's
+// input on stdin. After a call it prints only what the staging check finds in the commits the call may have made.
 // It first runs the staging check of scripts/staged.mjs and prints its deny; an error of that check denies the call, as a script
 // of the plugin that cannot be loaded does, where primer's own directory exists, for a command whose text that check would look
 // at. Then it acts only when the command runs `git commit`: for each repository the command commits in whose hub opens with the
@@ -17,10 +18,10 @@ import { pathToFileURL } from 'node:url';
 
 // The plugin's scripts are loaded by a call and not by an import statement, and only for a command the checks may read: any
 // other shell call costs the start of Node and no more, and where a script cannot load the hook still runs and can deny.
-let git, hubOf, isDir, deny, staged;
+let git, hubOf, isDir, deny, staged, committed;
 async function load() {
   ({ git, hubOf, isDir } = await import('../scripts/primer.mjs'));
-  ({ deny, staged } = await import('../scripts/staged.mjs'));
+  ({ deny, staged, committed } = await import('../scripts/staged.mjs'));
 }
 const READS = /commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/;
 
@@ -266,7 +267,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
   if (typeof command === 'string' && READS.test(command)) {
     let failed = null;
     try { await load(); } catch (e) { failed = e ?? new Error('unknown'); }
-    if (!failed) {
+    // After the call the hook only says what staged.mjs finds in the commits made, and says nothing on an error.
+    if (input.hook_event_name === 'PostToolUse') {
+      try { lines = failed ? [] : committed(c, input); } catch { lines = []; }
+    } else if (!failed) {
       try { lines = drift(c, input); } catch { lines = []; }
     } else {
       // The staging check runs only where primer's own directory exists, so only there does a script that cannot load deny. The

@@ -25,6 +25,19 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/drift.mjs"],
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "startup",

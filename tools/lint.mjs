@@ -43,6 +43,7 @@ const AUDIT_MANIFEST = 'plugins/audit/.claude-plugin/plugin.json';
 const EXECUTABLES = [
   'plugins/rules/scripts/rules.mjs',
   'plugins/rules/scripts/outbound.mjs',
+  'plugins/rules/scripts/chain.mjs',
   ...['readonly', 'handoff', 'ledger', 'working-tree', 'revert-tests', 'live', 'memory', 'work-items', 'collisions', 'run-copies', 'report', 'registry']
     .map((n) => `plugins/audit/scripts/${n}.sh`),
   'plugins/primer/hooks/drift.mjs',
@@ -278,7 +279,7 @@ function importFailures(ctx) {
 
 function budgetFailures(ctx) {
   const out = [];
-  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/rules/scripts/outbound.mjs', 300], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/guard/scripts/ask.mjs', 520], ['plugins/primer/hooks/drift.mjs', 700], ['plugins/primer/hooks/notice.mjs', 700], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/staged.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/primer/scripts/park.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
+  for (const [script, cap] of [['plugins/rules/scripts/rules.mjs', 700], ['plugins/rules/scripts/outbound.mjs', 300], ['plugins/rules/scripts/chain.mjs', 300], ['plugins/guard/scripts/guard.mjs', 700], ['plugins/guard/scripts/ask.mjs', 520], ['plugins/primer/hooks/drift.mjs', 700], ['plugins/primer/hooks/notice.mjs', 700], ['plugins/primer/scripts/primer.mjs', 700], ['plugins/primer/scripts/ledger.mjs', 700], ['plugins/primer/scripts/staged.mjs', 700], ['plugins/primer/scripts/transcripts.mjs', 700], ['plugins/primer/scripts/park.mjs', 700], ['plugins/review/scripts/posts.mjs', 300]]) {
     const source = ctx.text(script);
     if (source === null) continue;
     const lines = source.split('\n').length - 1 + (source !== '' && !source.endsWith('\n') ? 1 : 0);

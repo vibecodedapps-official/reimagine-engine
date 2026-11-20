@@ -473,6 +473,23 @@ test('R405: with check: diff, a push after a call that makes a commit in the sam
   none(w.shell('git commit -m x && git push', 'Bash', dir));
 });
 
+test('R405: the chained push is read from the calls of the command, with its comments, quotes and continued lines read as the shell reads them', () => {
+  const w = world();
+  const dir = repo(w);
+  const reason = 'rules: the push follows a call in the same command that makes a commit, which cannot be read before the command runs, so the push was not checked against ' + w.listFile + '; send the push as a command of its own';
+  w.list('zqxlisted', 'check: diff');
+  // A comment ends at its line's end, a continued line is one line, a quoted text between the calls hides neither, and a function may push before the commit is typed.
+  for (const command of ['git commit -m x # don\'t\ngit push # it\'s', 'git \\\ncommit -m x && git push', 'git commit -m x; echo "use -m"; git push; echo "done"', 'p() { git push; }; git commit -m x; p', 'timeout 60 git commit -m x && git push',
+    'sh -c \'git add -A && git commit -m x\' && git push', 'out="$(git commit -m x 2>&1)"; git push', 'cat > notes.md <<EOF\nit\'s a note\nEOF\ngit add -A && git commit -m x # don\'t forget\ngit push', 'git commit -m "$(cat <<\'EOF\'\nit doesn\'t break\nEOF\n)" && git push', 'git commit -m x && git \\\n  push']) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
+  for (const command of ['git commit -m x # don\'t\ngit push # it\'s', 'git `\ncommit -m x; git push', 'function p { git push }; git commit -m x; p', 'git commit -m @\'\nit doesn\'t break\n\'@; git push', '$o = git commit -m x 2>&1; git push', 'git commit -m x && git `\n  push']) assert.deepEqual(w.shell(command, 'PowerShell', dir), { decision: 'deny', reason }, command);
+  // A text that names the calls and runs neither, a push that sends nothing and a pull that only fast-forwards chain nothing.
+  for (const command of ['echo "Run git commit first"; git push', 'git commit -m x; git log --grep push', 'git commit -m x && git push --dry-run', 'git commit -m x && git push -n', 'git pull --ff-only && git push',
+    'node -e "console.log(\'git commit -m x; git push\')"', 'git commit -F - <<\'EOF\'\nsee the git push docs\nEOF', 'git commit -m "say \\"git push\\" later"']) none(w.shell(command, 'Bash', dir));
+  none(w.shell('git commit -m @\'\ndon\'t git push yet\n\'@', 'PowerShell', dir));
+  // A pull that names what it brings can bring commits that no remote-tracking ref holds.
+  for (const command of ['git pull --ff-only origin main && git push', 'git pull --ff-only https://example.invalid/x.git main && git push']) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
+});
+
 test('R405: a push reads each folder with one git call, and a folder spelled two ways once', () => {
   const w = world();
   w.list('zqxlisted', 'check: diff');

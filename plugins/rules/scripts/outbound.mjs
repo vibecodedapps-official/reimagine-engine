@@ -8,6 +8,7 @@ import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { chained } from './chain.mjs';
 import { targets } from './rules.mjs';
 
 export const LIST_FILE = 'rules-outbound.txt';
@@ -153,11 +154,8 @@ const warn = (text) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'Pr
 
 const TEXT = ['commit', 'commit-tree', 'merge', 'tag'], FORGE = ['gh', 'az', 'glab'];
 // git push in one simple command, but not git stash push.
+const CONTINUED = /(?:[\\`]|\([ \t]*)\r?\n/g;
 const PUSH = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?![${EDGE}])[^|;&\n]*?\s(?<!stash\s+)push(?![${EDGE}])`, 'i');
-// A call that makes a commit and, after the end of its own simple command, a push: no check before the command can read that commit. A message's words are inside that command, so the quoted value of -m or --message is emptied first, and a call with --abort, --quit, --dry-run, --edit-todo, --show-current-patch or help makes no commit.
-const MAKES = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-(?![Cc]\s|-(?:git-dir|work-tree|namespace|config-env)\s)\S+)*\s+(?:commit|merge|cherry-pick|rebase|am|revert|pull)(?![${EDGE}])`, 'gi');
-// Where the simple command that holds place i ends: the first ; & | or line break outside a quoted string, read with the tool's escape character; with a quote left open, the place itself.
-const simpleEnd = (s, i, esc) => { let q = null, k = i; for (; k < s.length; k++) { const c = s[k]; if (c === esc && q !== "'") k++; else if (q ? c === q : c === '"' || c === "'") q = q ? null : c; else if (!q && ';&|\n'.includes(c)) break; } return q ? i : k; };
 const firstText = (s) => TEXT.map((w) => [w, word(w).exec(s)?.index ?? Infinity]).reduce((a, b) => (b[1] < a[1] ? b : a), ['', Infinity])[0];
 // What makes a command a forge post, as the denial names it, or null. git and a subcommand count where one line holds
 // both, a line continued with a backslash, a backtick or an open parenthesis at its end being one, so a text that
@@ -165,7 +163,7 @@ const firstText = (s) => TEXT.map((w) => [w, word(w).exec(s)?.index ?? Infinity]
 // command, since a variable or the input of xargs may hold either. The denial names the subcommand word that comes
 // first after git, else the first.
 function postWord(command, list) {
-  const lines = command.includes('$') || has(command, 'xargs') ? [command] : command.replace(/(?:[\\`]|\([ \t]*)\r?\n/g, ' ').split('\n');
+  const lines = command.includes('$') || has(command, 'xargs') ? [command] : command.replace(CONTINUED, ' ').split('\n');
   const sub = lines.map((l) => { const g = word('git').exec(l); return g && (firstText(l.slice(g.index + 3)) || firstText(l)); }).find(Boolean);
   if (sub) return `"git" and "${sub}"`;
   const forge = FORGE.find((w) => has(command, w));
@@ -211,7 +209,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     }
     return resolve(base, p);
   };
-  const why = postWord(command, list), posts = why !== null, pushes = PUSH.test(command);
+  const why = postWord(command, list), posts = why !== null, pushes = PUSH.test(command.replace(CONTINUED, ' '));
   const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
   // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape
@@ -277,7 +275,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
       if (found) return found;
       if (out.lost) notes.push(`the diff of the commits in ${dir}`);
     }
-    if (list.diff) { const text = command.replace(/(\s-\w*m\s*|\s--message[=\s]\s*)("[^"]*"|'[^']*')/g, '$1""'); if ([...text.matchAll(MAKES)].some((m) => { const k = simpleEnd(text, m.index + m[0].length, esc); return !/\s(?:--abort|--quit|--dry-run|--edit-todo|--show-current-patch|--help|-h)(?![\w-])/.test(text.slice(m.index, k).replace(/"[^"]*"|'[^']*'/g, '')) && PUSH.test(text.slice(k)); })) return [deny(`rules: the push follows a call in the same command that makes a commit, which cannot be read before the command runs, so the push was not checked against ${path}; send the push as a command of its own`)]; }
+    if (list.diff && chained(command, tool === 'PowerShell')) return [deny(`rules: the push follows a call in the same command that makes a commit, which cannot be read before the command runs, so the push was not checked against ${path}; send the push as a command of its own`)];
     if (missing.length) return [deny(`rules: the folder ${missing[0]}, which the command names, was not found, so a push from it was not checked against ${path}; name it by a path that exists when the command is typed`)];
   }
   return notes.length ? [warn(`rules: ${notes.join(', ')} could not be read, so ${notes.length === 1 ? 'its text was' : 'their texts were'} not checked against ${path}`)] : [];

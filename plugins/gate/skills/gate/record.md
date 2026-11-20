@@ -19,8 +19,6 @@ Pass numbers and the `pre-<k>` counter run across runs, so no run rewrites a fil
 
 ## passes.json
 
-`passes.json` is the only record of completion.
-
 ```json
 {
   "branch": "feat/68-4567-export",
@@ -60,6 +58,6 @@ Pass numbers and the `pre-<k>` counter run across runs, so no run rewrites a fil
 ## Write discipline
 
 - Only you write `passes.json` and `findings.json`, besides the script's own write of the ledger; an implementer never does.
-- Each write puts the whole file in `<record>/<name>.tmp` and moves it over the file with `mv <tmp> <file>`, both as absolute paths and with no flags, since a flag makes the host ask. Keep every entry you did not change.
+- Each write puts the whole file in `<record>/<name>.tmp` and moves it over the file with `mv <tmp> <file>`, both as absolute paths and with no flags. Keep every entry you did not change.
 
 Return to the step that sent you here.

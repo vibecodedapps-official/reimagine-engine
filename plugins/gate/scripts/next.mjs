@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 // Gate next: reads passes.json after a fix round and returns the next level or the stop, with the rule that produced it.
-// Usage: node next.mjs <passes.json> <max-passes> [<minutes left> <minutes a pass needs>]
+// Usage: node next.mjs <passes.json> <max-passes> [<minutes left> <minutes a pass needs> [<now>]]
 //   <passes.json>    the completion record; only its `passes` array is read, and nothing is written
 //   <max-passes>     a whole number of 1 or more
 //   <minutes left>, <minutes a pass needs>   both or neither; the run budget still unspent, any finite number, negative when the run is over
-//                    budget, and the time one more pass needs, a number above 0
+//                    budget, and the time one more pass needs by its budgets, a number above 0
+//   <now>            the time of the decision, as `date -u +%Y-%m-%dT%H:%M:%SZ` prints it. With it, a pass needs the time the longest
+//                    pass of the latest pass's run at the next level took, else its longest at a higher level; a pass runs from its
+//                    `started` to its `ended`, the latest pass to <now>. A pass whose times cannot be read, or that ends before it
+//                    starts, is no measure, and a run with none at the next level or above keeps <minutes a pass needs>
 // The latest pass is the last entry of `passes`. Its `changes` lists the kinds of its fix round: inside-diff, outside-diff,
 //   exported-signature and schema-or-migration (the last three are wide), and docs-only (every changed file is documentation;
 //   a record that lists it beside exported-signature or schema-or-migration is bad). The over-quarter kind of an older record
@@ -20,7 +24,7 @@
 //   otherwise          level `high`
 // A finding's file is the part of its id before the first `|`.
 // A level is marked "capped": "max-passes" when the run's passes number <max-passes> or more, else "capped": "budget" when <minutes left>
-// is less than <minutes a pass needs>; a stop never is.
+// is less than the time a pass needs; a stop never is.
 // On success prints one JSON line on stdout, {"stop":...,"rule":...} or {"level":...,"rule":...[,"capped":"max-passes"|"budget"]}, and exits 0.
 // On failure prints nothing on stdout: exit 1 for a bad record, exit 2 for usage or IO, one line on stderr.
 // Everything above main() is pure: it takes objects.
@@ -28,7 +32,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-left> <minutes-a-pass-needs>]';
+export const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-left> <minutes-a-pass-needs> [<now>]]';
 const LEVELS = ['medium', 'high', 'xhigh'];
 const STATUSES = ['running', 'complete', 'failed'];
 const BUCKETS = ['fix', 'defer', 'reject'];
@@ -96,7 +100,23 @@ function fixOfFix(latest, before) {
   return [...last.values()].every((result) => result === 'pass');
 }
 
-// The result for a validated record: { stop, rule } or { level, rule[, capped] }; `time` is { left, need } or null.
+// A time as `date -u +%Y-%m-%dT%H:%M:%SZ` prints it, in milliseconds; anything else is NaN.
+const TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+const at = (s) => (typeof s === 'string' && TIME.test(s) ? Date.parse(s) : NaN);
+
+// The minutes the longest pass of a run at `level` took, else its longest at a higher level, else null. The run's last
+// pass ends at `now`; a pass whose times cannot be read, or that ends before it starts, is left out.
+function took(inRun, level, now) {
+  const timed = inRun
+    .map((p, i) => ({ level: p.level, minutes: ((i === inRun.length - 1 ? now : at(p.ended)) - at(p.started)) / 60000 }))
+    .filter((p) => p.minutes >= 0);
+  const same = timed.filter((p) => p.level === level);
+  const pool = same.length ? same : timed.filter((p) => LEVELS.indexOf(p.level) > LEVELS.indexOf(level));
+  return pool.length ? Math.max(...pool.map((p) => p.minutes)) : null;
+}
+
+// The result for a validated record: { stop, rule } or { level, rule[, capped] }; `time` is { left, need[, now] } or null,
+// `now` in milliseconds.
 export function next(passes, max, time = null) {
   const latest = passes.at(-1);
   const inRun = passes.filter((p) => p.run === latest.run);
@@ -109,7 +129,9 @@ export function next(passes, max, time = null) {
   if (latest.changes.includes('docs-only')) result = { level: 'medium', rule: 'docs-only' };
   else if (latest.changes.some((k) => WIDE.includes(k)) && inRun.slice(1).every((p) => p.level !== 'xhigh')) result = { level: 'xhigh', rule: 'wide-fix' };
   if (inRun.length >= max) return { ...result, capped: 'max-passes' };
-  return time && time.left < time.need ? { ...result, capped: 'budget' } : result;
+  if (!time) return result;
+  const need = (time.now === undefined ? null : took(inRun, result.level, time.now)) ?? time.need;
+  return time.left < need ? { ...result, capped: 'budget' } : result;
 }
 
 // A finite number as Number reads it, but not an empty argument or a 0x, 0o or 0b literal; else null.
@@ -117,9 +139,9 @@ const minutes = (s) => (s.trim() !== '' && !/^0[xob]/i.test(s.trim()) && Number.
 
 function main(argv) {
   try {
-    if ((argv.length !== 2 && argv.length !== 4) || !/^[1-9][0-9]*$/.test(argv[1]) || !Number.isSafeInteger(Number(argv[1]))) throw new Fail(2, USAGE);
-    const time = argv.length === 4 ? { left: minutes(argv[2]), need: minutes(argv[3]) } : null;
-    if (time && (time.left === null || time.need === null || time.need <= 0)) throw new Fail(2, USAGE);
+    if (![2, 4, 5].includes(argv.length) || !/^[1-9][0-9]*$/.test(argv[1]) || !Number.isSafeInteger(Number(argv[1]))) throw new Fail(2, USAGE);
+    const time = argv.length === 2 ? null : { left: minutes(argv[2]), need: minutes(argv[3]), ...(argv.length === 5 ? { now: at(argv[4]) } : {}) };
+    if (time && (time.left === null || time.need === null || time.need <= 0 || Number.isNaN(time.now))) throw new Fail(2, USAGE);
     const file = basename(argv[0]);
     let text;
     try {

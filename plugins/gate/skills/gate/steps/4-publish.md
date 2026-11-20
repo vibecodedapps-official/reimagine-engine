@@ -18,7 +18,7 @@ The audit reads the verdict from a manifest. This run's value is:
 
 `passes` counts the passes of `passes.json` whose `run` is this run's number.
 
-- From a manifest: set the value in that file's top-level `gate` object, under the bundle's `repo` path as the manifest gives it, adding the object when it is absent. Read the file again just before the write, since an earlier bundle of the run wrote it, and keep every other key as read.
+- From a manifest: set the value in that file's top-level `gate` object, under the bundle's `repo` path as the manifest gives it, adding the object when it is absent. Read the file again just before the write, and keep every other key as read.
 - Without one: write a minimal manifest in the record, `audit-manifest.json`, or `audit-manifest-run<n>.json` from run 2 on:
 
   `{"bundles":[{"repo":"<absolute path>","pr":"github:<owner>/<repo>#<n>","tickets":[]}],"claims":[],"gate":{"<absolute path>": <value>}}`

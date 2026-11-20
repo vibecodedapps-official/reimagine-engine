@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const script = join(root, 'plugins', 'gate', 'scripts', 'next.mjs');
 const concurrency = Math.max(1, availableParallelism() - 1);
-const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-left> <minutes-a-pass-needs>]';
+const USAGE = 'usage: node next.mjs <passes.json> <max-passes> [<minutes-left> <minutes-a-pass-needs> [<now>]]';
 const KINDS = 'inside-diff, exported-signature, schema-or-migration, outside-diff or docs-only';
 
 let base;
@@ -213,12 +213,13 @@ describe('fix-of-fix', { concurrency }, () => {
     await ok([pass(1, 1, 'xhigh', { fix: ['src/a.mjs|x'], commit: 'c1', files: [] }), pass(2, 1, 'high', { fix: ['src/a.mjs|p'], ...checked })], HIGH);
   });
 
-  test('no check, a failed check or a denied check gives high, since nothing then covers the last fixes', async () => {
+  test('no check, a failed check, a denied check or one not run gives high, since nothing then covers the last fixes', async () => {
     const fix = ['src/a.mjs|p'];
     await ok([first, pass(2, 1, 'high', { fix, commit: 'c2' })], HIGH);
     await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [] })], HIGH);
     await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [{ command: 'npm test', result: 'fail' }] })], HIGH);
     await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [{ command: 'npm test', result: 'pass' }, { command: 'npm run lint', result: 'denied' }] })], HIGH);
+    await ok([first, pass(2, 1, 'high', { fix, commit: 'c2', checks: [{ command: 'npm test', result: 'pass' }, { command: 'npm run lint', result: 'not run', reason: 'Blocked: standalone sleep 30' }] })], HIGH);
   });
 
   test('a check that was run again after a check fix counts by its last result', async () => {
@@ -423,8 +424,76 @@ describe('the run budget', { concurrency }, () => {
   });
 });
 
+describe('the time a pass took', { concurrency }, () => {
+  const CAPPED = '{"level":"high","rule":"otherwise","capped":"budget"}';
+  // One run: an xhigh pass of 40 minutes, a high pass of 25.4, and a high pass that is 21.4 minutes old at NOW.
+  const NOW = '2026-10-25T10:27:28Z';
+  const three = [
+    pass(1, 1, 'xhigh', { fix: ['a|x'], started: '2026-10-25T09:00:40Z', ended: '2026-10-25T09:40:40Z' }),
+    pass(2, 1, 'high', { fix: ['a|y'], started: '2026-10-25T09:40:40Z', ended: '2026-10-25T10:06:04Z' }),
+    pass(3, 1, 'high', { fix: ['a|z'], status: 'running', started: '2026-10-25T10:06:04Z', ended: undefined }),
+  ];
+  // The first pass of a run, at xhigh, 47.2 minutes old at FIRST_NOW.
+  const FIRST_NOW = '2026-10-25T09:47:52Z';
+  const first = [pass(1, 1, 'xhigh', { fix: ['a|x'], status: 'running', started: '2026-10-25T09:00:40Z', ended: undefined })];
+  // A second run whose one pass, at high, is 38.1 minutes old at RESUMED_NOW and changed a file outside the diff; the
+  // xhigh pass of the first run took 73.7 minutes.
+  const RESUMED_NOW = '2026-10-25T09:38:46Z';
+  const resumed = [
+    pass(1, 1, 'xhigh', { fix: ['a|x'], started: '2026-10-25T07:00:00Z', ended: '2026-10-25T08:13:42Z' }),
+    pass(2, 2, 'high', { fix: ['a|y'], changes: ['outside-diff'], status: 'running', started: '2026-10-25T09:00:40Z', ended: undefined }),
+  ];
+
+  test('a pass its budgets would cap runs when the longest pass of the run at its level fits the time left', async () => {
+    await ok(three, HIGH, '4', ['32', '50', NOW]);
+    await ok(three, HIGH, '4', ['25.4', '50', NOW]);
+  });
+
+  test('the longest pass at the level counts, not the latest', async () => {
+    await ok(three, CAPPED, '4', ['22', '50', NOW]);
+  });
+
+  test('a pass that took longer than its budgets give caps where they would not', async () => {
+    await ok(three, CAPPED, '4', ['20', '10', NOW]);
+  });
+
+  test('with no pass at the next level, the longest at a higher level counts', async () => {
+    await ok(first, HIGH, '4', ['72', '80', FIRST_NOW]);
+    await ok(first, CAPPED, '4', ['47', '80', FIRST_NOW]);
+  });
+
+  test('with no pass of the run at the next level or above, the time the budgets give stays', async () => {
+    await ok(resumed, '{"level":"xhigh","rule":"wide-fix","capped":"budget"}', '4', ['75', '80', RESUMED_NOW]);
+    await ok(resumed, XHIGH, '4', ['80', '80', RESUMED_NOW]);
+  });
+
+  test('a pass whose times cannot be read is no measure', async () => {
+    await ok([three[0], { ...three[1], started: '...' }, three[2]], HIGH, '4', ['22', '50', NOW]);
+    await ok([three[0], { ...three[1], ended: '2026-10-25T09:00:00Z' }, three[2]], HIGH, '4', ['22', '50', NOW]);
+  });
+
+  test('a latest pass that started after <now> is no measure', async () => {
+    await ok(three, CAPPED, '4', ['25', '50', '2026-10-25T10:00:00Z']);
+    await ok(three, HIGH, '4', ['26', '50', '2026-10-25T10:00:00Z']);
+  });
+
+  test('with no time that can be read, the time the budgets give stays', async () => {
+    const unread = [{ ...first[0], started: '...' }];
+    await ok(unread, CAPPED, '4', ['47', '80', FIRST_NOW]);
+    await ok(unread, HIGH, '4', ['80', '80', FIRST_NOW]);
+  });
+
+  test('max-passes wins when both caps apply', async () => {
+    await ok(three, '{"level":"high","rule":"otherwise","capped":"max-passes"}', '3', ['22', '50', NOW]);
+  });
+
+  test('a stop with little time left is not capped', async () => {
+    await ok([pass(1, 1, 'xhigh', { changes: [], status: 'running', ended: undefined })], PASS, '4', ['1', '50', FIRST_NOW]);
+  });
+});
+
 describe('usage and read errors', { concurrency }, () => {
-  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra'], ['passes.json', '4', '7'], ['passes.json', '4', '7', '50', '1'], ['passes.json', '4', 'soon', '50'], ['passes.json', '4', '7', 'long'], ['passes.json', '4', '', '50'], ['passes.json', '4', '7', ''], ['passes.json', '4', 'Infinity', '50'], ['passes.json', '4', '7', '0'], ['passes.json', '4', '7', '-50'], ['passes.json', '4', '7', 'NaN'], ['passes.json', '4', '0x10', '50'], ['passes.json', '4', 'abc', '50'], ['passes.json', '4', '7', 'abc'], ['passes.json', '4', ' ', '50'], ['passes.json', '4', '7', ' ']]) {
+  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra'], ['passes.json', '4', '7'], ['passes.json', '4', '7', '50', '1'], ['passes.json', '4', 'soon', '50'], ['passes.json', '4', '7', 'long'], ['passes.json', '4', '', '50'], ['passes.json', '4', '7', ''], ['passes.json', '4', 'Infinity', '50'], ['passes.json', '4', '7', '0'], ['passes.json', '4', '7', '-50'], ['passes.json', '4', '7', 'NaN'], ['passes.json', '4', '0x10', '50'], ['passes.json', '4', 'abc', '50'], ['passes.json', '4', '7', 'abc'], ['passes.json', '4', ' ', '50'], ['passes.json', '4', '7', ' '], ['passes.json', '4', '7', '50', 'now'], ['passes.json', '4', '7', '50', ''], ['passes.json', '4', '7', '50', '2026-10-25 09:00:40'], ['passes.json', '4', '7', '50', '2026-10-25T09:00:40'], ['passes.json', '4', '7', '50', '2026-13-45T09:00:40Z'], ['passes.json', '4', '7', '50', '2026-10-25T09:00:40Z', 'x']]) {
     test(`usage for arguments [${args.join(' ')}]`, async () => {
       await bad(record([pass(1, 1, 'xhigh')]), 2, USAGE, args);
     });

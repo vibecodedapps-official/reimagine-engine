@@ -136,6 +136,7 @@ test('R318: every script command the skill shows runs, by the path of the Script
       '<max-passes>': '4',
       '<minutes left>': '90',
       '<minutes a pass needs>': '50',
+      '<now>': '2026-10-25T09:30:00Z',
       '<head>': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       '<tip>': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       '<remote head>': 'none',

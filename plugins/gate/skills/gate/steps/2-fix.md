@@ -8,7 +8,7 @@ Every `blocked` ending below records the pass `failed` with its `ended`, the `ch
 
 1. Sort the fix bucket into groups so that no file is in two groups: findings on one file share a group, and a finding whose failure scenario spans several files merges the groups it touches.
 2. Each group gets one implementer: an Agent at `models.implementer`, with `model` passed explicitly, never a fork. Groups whose files are independent run as parallel calls in one message. When one group's files import from another's, they run one at a time. An implementer runs no checks.
-3. A call that ends in a tool error, or returns past the subagent budget, is a failed call. Judge the time by the `duration_ms` of its completion notice, and by the `date` outputs only when the notice carries none. There is no fallback implementer.
+3. A call run in the background gives a launch line at once, which is not its return: it has returned when its report arrives. A call that ends in a tool error, or returns past the subagent budget, is a failed call. Judge the time by the `duration_ms` of its completion notice, and by the `date` outputs only when the notice carries none. There is no fallback implementer.
 
 ## The brief
 
@@ -29,13 +29,13 @@ When a call returns, write `post-<k>.status`, the same status output, and `post-
 
 After a failed call, compare the tree with the snapshot, for a batch once every call has returned. Restore every path that was clean before the call and is now new or changed, the group's own files included: a tracked file with `git checkout -- <path>`, an untracked non-ignored file by deleting it. Never touch an ignored path or anything under `.reimagine/`. A path that was already dirty and now differs, or an untracked file whose hash changed, is left as it is and named in the report. Then end the run `blocked`, naming the call and, when it ran past it, the subagent budget. A failed call is never retried or swapped.
 
-A notice for an implementer call that already returned is not a new call. Log it, then compare the checkout with that call's `post-<k>` files, hashing as they were hashed. A path that differs, and that no later call, check fix or commit of the run changed, ends the run `blocked`, naming the path, with the tree left as it is. Any other late notice, or one for an agent this run did not launch, is logged and changes nothing.
+A notice for an implementer call that already returned, its own completion notice included, is not a new call. Log it, then compare the checkout with that call's `post-<k>` files, hashing as they were hashed. A path that differs, and that no later call, check fix or commit of the run changed, ends the run `blocked`, naming the path, with the tree left as it is. Any other late notice, or one for an agent this run did not launch, is logged and changes nothing.
 
 ## Reading the fix
 
 After every call has returned, list the changed paths with `git status --porcelain --untracked-files=all` and read them: `git diff -- <paths>` for tracked files, the file itself for a new one, then `git ls-files --eol -- <paths>`. A new file with the wrong line ending goes back to its implementer once, after a snapshot. A changed file outside every group's files is restored as Snapshots restores a path, and named in the report.
 
-Then work out the round's `files`, the changed paths, repository-relative with forward slashes, which `next.mjs` reads to tell a correction to this round from a new defect, and its `changes`, every kind that applies, in these words only. Both are written with the commit. The diff the pass reviewed is the files of `git diff --name-only <merge-base>...HEAD`, read before the commit. A round that changed nothing has `[]` for both.
+Then work out the round's `files`, the changed paths, repository-relative with forward slashes, and its `changes`, every kind that applies, in these words only. The diff the pass reviewed is the files of `git diff --name-only <merge-base>...HEAD`, read before the commit. A round that changed nothing has `[]` for both.
 
 - `inside-diff`: every changed file is in that diff.
 - `outside-diff`: at least one changed file is not.
@@ -45,10 +45,10 @@ Then work out the round's `files`, the changed paths, repository-relative with f
 
 ## Checks
 
-Run the run's checks one command at a time, in order, and record each as `{"command": "<command>", "result": "pass"|"fail"|"denied"}`. With no checks, nothing runs and `checks` stays empty.
+Run the run's checks one command at a time, in order, and record each as `{"command": "<command>", "result": "pass"|"fail"|"denied"|"not run"}`. With no checks, nothing runs and `checks` stays empty.
 
 - Each check has the check budget as the Bash call's timeout, since the default is 2 minutes. A budget over 10 minutes, the shell's foreground limit, runs with `run_in_background` beside a background `sleep` of the budget in seconds; whichever ends first, the other is stopped with TaskStop. A check past its budget ends the run `blocked`, naming the check and the budget.
-- A check the permission mode refuses is `denied`: it is never retried and never run another way, and the next one runs.
+- A check the permission mode refuses is `denied`; one that cannot start for another cause, such as a tool error, is `not run`, with the error's first line as its `reason`. Neither is retried or run another way, and the next one runs. When the run has checks and none ran in the round, commit nothing and end the run `blocked`, naming each check.
 - A failing check is fixed in the same round by the implementer that owns the failing code. Take a snapshot, send that implementer the failure output (SendMessage, else a fresh implementer with the failure and its group's current diff), read the fix as above, and run the whole list again, recording each result; a check's last result is the one that counts. There are at most three check fixes in all; a check still failing after the third ends the run `blocked`, naming the check.
 
 ## The commit
@@ -59,7 +59,7 @@ A round that changed nothing commits nothing: go to the last section.
 2. An ask-first rule recorded at preflight still prompts before the commit.
 3. Run `git status --porcelain --untracked-files=all` again. A path outside every group's files, such as a file a check regenerated, is restored and named in the report. Stage each path the round changed by name, `git add -- <path>`, one call per path, and confirm that `git diff --cached --name-only` lists exactly those paths.
 4. Make one commit for the pass, `git commit -m <subject>`, with a second `-m <body>` when the convention has a body. A commit that is denied or fails ends the run `blocked`, with the tree left as it is.
-5. Read the sha with `git rev-parse HEAD` and, before anything else, write the pass's `changes`, `files`, `checks` and `commit` in one write, the pass still `running`: a run that stops before the push then leaves a record that names the commit. Then set each fix-bucket entry of the pass to `fixed` in `findings.json`.
+5. Read the sha with `git rev-parse HEAD` and, before anything else, write the pass's `changes`, `files`, `checks` and `commit` in one write, the pass still `running`. Then set each fix-bucket entry of the pass to `fixed` in `findings.json`.
 
 ## The push
 

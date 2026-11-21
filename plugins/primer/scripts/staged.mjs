@@ -30,11 +30,10 @@ const hides = (t) => /\bgit(\.exe)?\b[^\n]*\b(add|stage|commit)\b/i.test(t.repla
 const BROUGHT = /\bgit(?:\.exe)?["']?(?:\s+(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))\s+(?:"[^"\n]*"|'[^'\n]*'|[^\s"'])+|\s+-(?![Cc]\s|-(?:git-dir|work-tree|namespace|config-env)\s)\S+)*\s+(merge|cherry-pick|rebase|am)(?![\w-])(?!\s+(?:--abort|--skip|--quit|--edit-todo|--show-current-patch|--help|-h)(?![\w-]))/i;
 // The operator and end word of a here-document: bare, quoted, after a backslash or after <<-, and ended by a space or an operator.
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))(?=[\s;&|()<>]|$)/;
-// Whether the << at place i stands inside $(( )) or (( )) that closes on the same line, where it shifts a number and opens no here-document.
-const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i); return line.lastIndexOf('((') > line.lastIndexOf('))') && /^[^\n]*\)\)/.test(s.slice(i)); };
 function commands(s, ps) {
   const out = [];
-  let words = [], cur = '', inw = false, bad = false, sub = false, skip = '';
+  // arith: a (( outside quotes and comments is open on this line, where a << before its )) shifts a number and opens no here-document.
+  let words = [], cur = '', inw = false, bad = false, sub = false, skip = '', arith = false;
   const end = () => {
     const git = sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\b(add|stage|commit)\b/.test(cur);
     if (inw && !skip) words.push({ w: cur, bad, sub, git });
@@ -75,7 +74,7 @@ function commands(s, ps) {
     else if (ch === '<' || ch === '>') {
       if (nx === '(') return null;
       if (/^\d+$/.test(cur)) [cur, inw] = ['', false];
-      if (ch === '<' && nx === '<' && !shifts(s, i)) {
+      if (ch === '<' && nx === '<' && !(arith && /^[^\n]*\)\)/.test(s.slice(i)))) {
         // A here-string's word is input, read as the target of a redirect.
         if (!ps && s[i + 2] === '<') { end(); skip = '<'; i += 2; continue; }
         const rest = s.slice(i), doc = ps ? null : HEREDOC.exec(rest), e = s.indexOf('\n', i);
@@ -98,6 +97,7 @@ function commands(s, ps) {
       skip = ch === '>' && amp ? '>&' : ch;
     } else if (' \t\r\n;&|()'.includes(ch) || (!ps && ch === '`') || ('{}'.includes(ch) && (ps || (!inw && (ch === '}' || nx === undefined || ' \t\r\n'.includes(nx)))))) {
       end();
+      if (ch === '(' && nx === '(') arith = true; else if (ch === '\n' || (ch === ')' && nx === ')')) arith = false;
       if (!' \t\r'.includes(ch)) { cut(); if (ch === '(' || ch === ')') out.push(ch); }
     } else {
       if (ch === '$' || (!ps && ch === '{')) bad = true;

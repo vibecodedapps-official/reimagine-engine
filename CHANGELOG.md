@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.29 - 2026-11-21
+
+- A start where no layer loads says so in the session's context, in one line that gives the reason, at a subagent's start and in a session no one attends as well. A `map.json` or a `config.json` that could not be read, a store that `config.json` names and that is missing, a directory in the place of a layer's file and a `git` that gave no answer in time each left a session with no layer and no word of it, and a session told nothing takes the context it holds for whole. `status` marks a named store that is missing.
+- Where `git` gives no answer within 5 seconds, the loader reads the start as the repository git gave at the directory's last start, loads its layers and says so. One start in a hundred on a loaded machine passed the limit and got no layer.
+- The two start entries have a `timeout` of 60 where they had 10. One start in two hundred took 17.8 s, past the limit at which the host stops the entry.
+- A context string over the host's cap opens with a line that names the file each layer is whole in. The host gives a session a preview of such a string, and the warning that says so reached the user alone.
+- The staging check reads `((` outside quoted strings and comments alone. `echo "((" && cat <<EOF # ))` was read as a shift, so the command got no parse and a `git merge` after the here-document that brings an agent file passed.
+
 ## rules 0.1.43 - 2026-11-21
 
 - A check passes only when it could fail, ran as its own command and its exit code was read. Checks that could not fail were read as passes: a result file an earlier run had left, a search whose word stood in every case, and a regression test that also passed on the code before the fix.

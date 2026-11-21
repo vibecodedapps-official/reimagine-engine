@@ -19,8 +19,6 @@ Pass numbers and the `pre-<k>` counter run across runs, so no run rewrites a fil
 
 ## passes.json
 
-`passes.json` is the only record of completion.
-
 ```json
 {
   "branch": "feat/68-4567-export",
@@ -40,9 +38,10 @@ Pass numbers and the `pre-<k>` counter run across runs, so no run rewrites a fil
 }
 ```
 
-- Step 0 writes the top level and the run entry. Step 1 appends the pass entry, with the head it reviews as `reviewed`, and fills `reviews` and `findings`. Step 2 writes `changes`, `files`, `checks` and `commit` as soon as the commit exists, and `head` after the push. Step 3 writes `next`, `ended` and `status`. Step 4 closes the run entry.
+- Step 0 writes the top level and the run entry. Step 1 appends the pass entry, with the head it reviews as `reviewed`, and fills `reviews` and `findings`. Step 2 writes `changes`, `files`, `checks` and `commit` as soon as the commit exists, and `head` after the push. Step 3 writes `next`, `ended` and `status`, and Resume `"repeated": true` on a pass it repeats. Step 4 closes the run entry.
 - A run's `state` is `running`, then the terminal state, or `interrupted` when a later preflight finds it still `running`. A run entry may hold `kept`, the sha of a commit an earlier run made and that run pushed.
 - A pass's `status` is `running`, `complete` or `failed`. It is `complete` only once Step 3 has decided, and `failed` when a failed review or a `blocked` ending of its fix round ended the run; a failed pass has `ended` and a `next` of `null`.
+- A `checks[]` entry holds `command` and `result`, and a `not run` one its `reason`.
 - A `reviews[]` entry holds what `findings.mjs` printed for that output. `models` is `null` for a child session result that names none, and the one model called for a stand-in. A review that stopped on a usage limit holds `"failure": "usage limit"`.
 
 ## The ledger
@@ -60,6 +59,6 @@ Pass numbers and the `pre-<k>` counter run across runs, so no run rewrites a fil
 ## Write discipline
 
 - Only you write `passes.json` and `findings.json`, besides the script's own write of the ledger; an implementer never does.
-- Each write puts the whole file in `<record>/<name>.tmp` and moves it over the file with `mv <tmp> <file>`, both as absolute paths and with no flags, since a flag makes the host ask. Keep every entry you did not change.
+- Each write puts the whole file in `<record>/<name>.tmp` and moves it over the file with `mv <tmp> <file>`, both as absolute paths and with no flags. Keep every entry you did not change.
 
 Return to the step that sent you here.

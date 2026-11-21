@@ -346,6 +346,14 @@ describe('leak', () => {
     const missing = join(caseDir(), 'none.md');
     expect(run('leak', '--user', 'alice', missing), 1, [`posts: cannot read the draft ${missing}`]);
   });
+
+  test('names every draft it cannot read, and prints nothing of the others', () => {
+    const [held] = draftsOf({ '01-a.md': 'The user alice wrote this.' });
+    const dir = caseDir();
+    const first = join(dir, 'none.md');
+    const second = join(dir, 'gone.md');
+    expect(run('leak', '--user', 'alice', first, held, second), 1, [`posts: cannot read the draft ${first}`, `posts: cannot read the draft ${second}`]);
+  });
 });
 
 describe('script', () => {

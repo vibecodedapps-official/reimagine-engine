@@ -30,7 +30,7 @@ allowed-tools:
 
 # gate
 
-You orchestrate one run over one pull request, several, or a loop manifest. A pass is one `code-review` of the whole change from the merge-base, a triage of what it found, a fix round by implementers and a decision on what comes next. Four scripts decide what must be exact: `split.mjs` the reviews of a pass, `findings.mjs` the identity of a finding across passes, `next.mjs` the next level or the stop, `resume.mjs` where a run on a record that holds passes starts. The allowed-tools list pre-approves only date, sleep and read-only git and gh in their plain forms; every write, push, script and child session stays under the session's permission mode. In a command the skill shows, a placeholder for a path, such as `<root>` or `<record>`, stands for the absolute path in double quotes, since a folder name may hold a space.
+You orchestrate one run over one pull request, several, or a loop manifest. A pass is one `code-review` of the whole change from the merge-base, a triage of what it found, a fix round by implementers and a decision on what comes next. Four scripts decide what must be exact: `split.mjs` the reviews of a pass, `findings.mjs` the identity of a finding across passes, `next.mjs` the next level or the stop, `resume.mjs` where a run on a record that holds passes starts. The allowed-tools list pre-approves only date, sleep and read-only git and gh in their plain forms; every write, push, script and child session stays under the session's permission mode. In a command the skill shows, a placeholder for a path, such as `<root>` or `<record>`, stands for the absolute path in double quotes.
 
 ## The request
 
@@ -45,11 +45,11 @@ The request is the words that came with the invocation: "reimagine gate PR 73", 
 - "base <branch>": the base of a branch target.
 - "checks <command>[; <command>]": the checks of the fix round. The phrase runs to the next comma that another phrase of this list follows, else to the end of the request, since a command may hold a comma; split it at `;`.
 
-Targets. A pull request must be open, in the session's repository and not from a fork; several run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or a file of its shape, and runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order. The path of "repo <path>" must be a git toplevel or a linked worktree: `git -C <path> rev-parse --is-inside-work-tree --show-prefix` prints `true` and then an empty line. Compare no path strings, and write a leading `~` as `$HOME`, since git does not expand a quoted `~`. A target that cannot be resolved, such as a pull request from a fork, a pull request number on a host other than GitHub, or "repo <path>" beside a pull request or a manifest, gets one line in the reading block and the run goes on with the others; with none left it ends `stopped`.
+Targets. A pull request must be open, in the session's repository and not from a fork; several run one after another in the order given, each with its own record. A manifest is the loop's `audit-manifest.json` or a file of its shape, and runs one record per `bundles[]` entry that has a `pr` or a `branch`, in bundle order. The path of "repo <path>" must be a git toplevel or a linked worktree: `git -C <path> rev-parse --is-inside-work-tree --show-prefix` prints `true` and then an empty line. Compare no path strings, and write a leading `~` as `$HOME`. A target that cannot be resolved, such as a pull request from a fork, a pull request number on a host other than GitHub, or "repo <path>" beside a pull request or a manifest, gets one line in the reading block and the run goes on with the others; with none left it ends `stopped`.
 
 Roots. Every target has a root, the toplevel of its repository: a bundle's `repo`, the toplevel of "repo <path>", and otherwise the output of `git rev-parse --show-toplevel` in the session's folder. A target runs in place when the session's folder is its root, and from outside otherwise: a bundle, "repo <path>", and any target of a session started in a subfolder, where `git rev-parse --show-prefix` prints a path. From outside, every git command runs as `git -C "<root>" <command>` and every other command as `cd "<root>" && <command>` in one Bash call, since git prints the paths of a status from the root and reads the paths of `git add` and `git checkout` from the current folder. Those forms are not pre-approved. The record, `.reimagine.json`, the instruction files and the exclude file are always those of the root.
 
-Base. A pull request's base is its `baseRefName`, and "base <branch>" naming another ends `blocked`, since the gate never retargets a pull request. A branch target's base is "base <branch>" in the request, else the bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch. A bundle `base` whose first segment names a remote of that repository is read without it, since the loop writes `<remote>/<branch>`.
+Base. A pull request's base is its `baseRefName`, and "base <branch>" naming another ends `blocked`. A branch target's base is "base <branch>" in the request, else the bundle's `base`, else `.reimagine.json` `base`, else the remote's default branch. A bundle `base` whose first segment names a remote of that repository is read without it.
 
 Checks. The run's checks come from the first source that gives any: the request, else the bundle's `checks` array, else `.reimagine.json` `checks`. The one list feeds the fix round, the child session's allowed tools, the permission statement and the report, which names the source. With no source no check runs, and the report says so.
 
@@ -77,7 +77,7 @@ Invoking this skill by name approves, for this run only, fix commits on each tar
 
 1. Instruction files win. Before changing anything, read the user's instruction files, the repository's, those of each folder above its root, and `.reimagine.json`. Record every ask-first rule, and prompt for any approved action a rule covers. Every brief the run sends, a reader's, an implementer's or the stand-in's request, names by path each of these files and each file a context loader names as its source that bears on its question, and quotes a convention the session holds from no file, such as a table the user gave in the request, since an agent knows only its brief and what the host loads for it. A child session that reviews is started with the review command alone and loads the instruction files itself, so such a convention is applied to its findings at triage.
 2. Always ask before a force push, `--no-verify`, a merge, rebase, amend or reset, anything that deploys, a push that triggers a deploy, a target's first push to a host not known to be GitHub unless `ask-push` is `false`, a change to repository settings and a new issue.
-3. A denial is final. What the user or the permission mode denies is never retried and never done another way. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A denied check is recorded as denied, and the next one runs.
+3. A denial is final. What the user or the permission mode denies is never retried and never done another way. A denied commit or push ends the run `blocked`, with the pass recorded `failed` and the tree left as it is. A denied check is recorded as denied, and the next one runs; a round with checks, each ended `denied` or `not run`, commits nothing.
 4. The gate never stashes, resets, cleans or forces, and never stages anything under `.reimagine/`.
 
 ## What leaves the run
@@ -104,7 +104,7 @@ The first pass of a sequence runs at `xhigh`. After each pass you do not choose 
 - The run budget is "budget <n> minutes" in the request, else `gate.budget`, else a session instruction, else the default. Waits for an answer are outside it.
 - A cap on passes, the run budget or a review past its budget ends the run `unconverged` with every open finding listed. An implementer call or a check past its budget is a failed call and ends it `blocked`. What the pass saved is kept, and a pushed commit stays.
 
-With "no fixes" the run makes pass 1 only: the review and the triage run, nothing is edited, committed or pushed, and the report names what a fix run would do.
+With "no fixes" the run makes pass 1 only: the review and the triage run, nothing is edited, committed or pushed.
 
 ## Configuration
 
@@ -125,7 +125,7 @@ With "no fixes" the run makes pass 1 only: the review and the triage run, nothin
 ```
 
 - `split`: the changed lines above which a pass has one review per group of paths.
-- `parallel`: the reviews of one pass that run at once. Each is a model session of its own, so a machine short of memory lowers it.
+- `parallel`: the reviews of one pass that run at once.
 - `max-passes`: the passes one run may make.
 - `budget`: the run budget in minutes.
 - `ask-push`: on a host that is not known to be GitHub, where no file shows a deploy, the run asks before each target's first push. Only `false` drops the question.
@@ -141,7 +141,7 @@ Every run ends in exactly one state, and then reads `steps/4-publish.md`.
 - `pass`: a stop of `next.mjs`, or a "no fixes" run with an empty fix bucket, with nothing deferred in any pass of the run.
 - `pass-with-deferred`: the same stop, with deferred findings in the report.
 - `unconverged`: a cap was reached, a review failed, or a "no fixes" run has something to fix. Every open finding is listed.
-- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a failed push, a "no fixes" run that meets an unpushed commit of an earlier run, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay and are named.
+- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a failed push, a "no fixes" run that meets an unpushed commit of an earlier run, a round that changed a file, with checks each ended `denied` or `not run`, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay and are named.
 - `stopped`: no target resolved, or a question the run cannot decide, before any commit.
 
 ## Record

@@ -22,8 +22,8 @@ const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))
 // Whether the << at place i stands inside (( )) or $[ ] that closes on the same line, where it shifts a number and opens no here-document.
 const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i), rest = /^[^\n]*/.exec(s.slice(i))[0]; return (line.lastIndexOf('((') > line.lastIndexOf('))') && rest.includes('))')) || (line.lastIndexOf('$[') > line.lastIndexOf(']') && rest.includes(']')); };
 // A function, a trap or a script block in a variable runs where it is called, so its calls run in an order the text does not show.
-// A definition counts where a command starts, and name() is one for the Bash tool alone, since PowerShell calls a method that way.
-const START = String.raw`(?:^|[;&|(){}\n]|(?:^|\s)(?:then|do|else|elif|if|while|until|!)\s)\s*`;
+// A definition counts where a command starts, after any keyword or builtin that leaves it one, and name() is one for the Bash tool alone, since PowerShell calls a method that way.
+const START = String.raw`(?:^|[;&|(){}\n])\s*(?:(?:then|do|else|elif|if|while|until|!|builtin|command)\s+)*`;
 const DEFINES = [String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){};&|=]+\s*\(\s*\)|trap\s)`, String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|trap[\s{])`].map((d) => new RegExp(START + d + String.raw`|=\s*\{`, 'i'));
 const defines = (text, ps) => DEFINES[ps ? 1 : 0].test(text);
 
@@ -65,7 +65,7 @@ const DOCS = new RegExp('(?<!<)' + HEREDOC.source.slice(1), 'g');
 const pairs = (s, ps) => {
   const at = new Map(), outer = [], ends = [], esc = ps ? '`' : '\\';
   // q is the quote or the block comment left open, across lines, and a " on the stack a double-quoted string left open.
-  let inner = null, here = '', q = '';
+  let inner = null, here = '', q = '', subst = -1;
   const body = (a, b) => { for (let i = a; i < b; i++) { if (s[i] === '(') inner.push(i); else if (s[i] === ')' && inner.length) at.set(inner.pop(), i); } };
   for (let a = 0; a <= s.length; ) {
     const nl = s.indexOf('\n', a), b = nl < 0 ? s.length : nl, line = s.slice(a, b).replace(/\r$/, '');
@@ -83,9 +83,9 @@ const pairs = (s, ps) => {
         else if (c === "'") q = !ps && s[i - 1] === '$' ? '$' : "'";
         else if (c === '"') outer.push('"');
         else if (ps && c === '<' && n === '#') q = '#';
-        else if (c === '#' && (i === a || /[\s;&|()]/.test(s[i - 1]) || (ps && s[i - 1] === '{'))) break;
+        else if (c === '#' && (i === a || /[\s;&|(]/.test(s[i - 1]) || (s[i - 1] === ')' && subst !== i - 1) || (ps && /[{}]/.test(s[i - 1])))) break;
         else if (c === '(') outer.push(i);
-        else if (c === ')' && typeof outer.at(-1) === 'number') at.set(outer.pop(), i);
+        else if (c === ')' && typeof outer.at(-1) === 'number') { const o = outer.pop(); at.set(o, i); if (s[o - 1] === '$') subst = i; }
       }
       if (!ps) { for (const m of line.matchAll(DOCS)) if (!shifts(s, a + m.index)) ends.push(m); if (ends.length) inner = []; }
     }
@@ -114,7 +114,7 @@ function walk(s, ps, depth) {
       vague ||= paren || [...words.map((x) => x.w), ...held, ...texts].some((t) => t.includes('$'));
     }
     if (words.length) held = pipe ? [...held, ...texts] : [];
-    parts.push(...early, flags(words, false, depth ? null : skip));
+    parts.push(...early, flags(words, false, depth || words.some(shell) ? null : skip));
     [words, texts, early] = [[], [], []];
   };
   // Where the substitution that opens at place i closes, its text read as commands; -1 where none opens. A $( that does not

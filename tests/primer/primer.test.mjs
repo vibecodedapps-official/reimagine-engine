@@ -366,6 +366,39 @@ describe('the git limit', () => {
     const other = repo('slow-other', 'https://example.invalid/team/app.git');
     assert.equal(JSON.parse(main(['session-start', 'all', data], { env: { ...slow, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: other }), limit: 1000 })[0]).systemMessage, `primer: the context of ${slash(other)} is unknown, since git gave no answer within 1 s`);
   });
+
+  test('a kept answer holds no credential of a remote URL, and the layers still load from it', () => {
+    const dir = repo('slow-secret', 'https://x-access-token:s3cr3t-token@example.invalid/team/app.git'), data = join(base, 'data-secret');
+    const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
+    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    assert.equal(JSON.parse(from(env)[0]).hookSpecificOutput.additionalContext, layers);
+    const kept = readdirSync(join(data, 'repo'));
+    assert.equal(kept.length, 1);
+    assert.ok(!readFileSync(join(data, 'repo', kept[0]), 'utf8').includes('s3cr3t-token'));
+    assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, layers);
+  });
+
+  test('a kept answer of a directory started within 30 days is not removed by another directory\'s write', () => {
+    const dir = repo('slow-old', 'https://example.invalid/team/app.git'), other = repo('slow-old-other', 'https://example.invalid/team/other.git'), data = join(base, 'data-old');
+    const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
+    const from = (extra, cwd) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd }), limit: 1000 });
+    from(env, dir);
+    const [file] = readdirSync(join(data, 'repo')), old = new Date(Date.now() - 31 * 864e5);
+    utimesSync(join(data, 'repo', file), old, old);
+    from(env, dir);
+    from(env, other);
+    assert.ok(existsSync(join(data, 'repo', file)));
+    assert.equal(JSON.parse(from(slowGit(), dir)[0]).hookSpecificOutput.additionalContext, layers);
+  });
+
+  test('a directory in no git work tree is read as outside one where git gives no answer, and the message says git gave that answer', () => {
+    const dir = join(base, 'slow-plain'), data = join(base, 'data-plain');
+    mkdirSync(dir);
+    const cfg = config(local({ roots: [slash(base)] }), { group: GROUP });
+    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    assert.deepEqual(from(env), []);
+    assert.deepEqual(from(slowGit()), [JSON.stringify({ systemMessage: `primer: git gave no answer within 1 s, so ${slash(dir)} is read as outside a git work tree, as git gave at an earlier start there` })]);
+  });
 });
 
 describe('status', () => {

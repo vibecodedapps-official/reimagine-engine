@@ -264,15 +264,15 @@ export function notice(c, input, data, repo) {
 // Removes the files of a directory last written more than 30 days before.
 const prune = (dir) => { for (const f of readdirSync(dir).map((x) => join(dir, x))) if (Date.now() - (statSync(f, { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > 30 * 864e5) rmSync(f, { force: true }); };
 // The repository git gave at a directory's last start, kept under the data directory by the directory's path and read where git
-// gives no answer in time; undefined where none is kept. A kept answer is written only where it changed, and one written more
-// than 30 days before is removed at the next write.
+// gives no answer in time; undefined where none is kept. A kept answer is written at every start git answers, with each remote
+// URL's userinfo removed, and one written more than 30 days before is removed at the next write.
 function keptRepo(c, data, cwd, repo) {
   const file = data && isAbsolute(data) ? join(data, 'repo', createHash('sha256').update(keyOf(cwd, c.platform)).digest('hex').slice(0, 16)) : null, text = file ? readText(file) : '';
   if (repo === undefined) { try { const v = JSON.parse(text); return v === null || (typeof v.root === 'string' && typeof v.top === 'string' && [v.remotes, v.names, v.urls].every(Array.isArray)) ? v : undefined; } catch { return undefined; } }
-  if (file && text !== JSON.stringify(repo)) try {
+  if (file) try {
     mkdirSync(dirname(file), { recursive: true });
     prune(dirname(file));
-    writeFileSync(file, JSON.stringify(repo));
+    writeFileSync(file, JSON.stringify(repo && { ...repo, urls: repo.urls.map((u) => u.replace(/^([A-Za-z][\w+.-]*:\/\/)[^/]*@/, '$1')) }));
   } catch {}
   return repo;
 }
@@ -308,7 +308,7 @@ function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) 
     // Where git gives no answer in time, the start is read as the repository git gave at the directory's last start.
     repo = keptRepo(c, data, cwd);
     msgs.push(repo === undefined ? `primer: the context of ${slash(cwd)} is unknown, since git gave no answer within ${c.limit / 1000} s`
-      : `primer: git gave no answer within ${c.limit / 1000} s, so ${slash(cwd)} is read as the repository git gave at an earlier start there`);
+      : `primer: git gave no answer within ${c.limit / 1000} s, so ${slash(cwd)} is read as ${repo ? 'the repository git gave' : 'outside a git work tree, as git gave'} at an earlier start there`);
     if (repo === undefined) return none(`git gave no answer within ${c.limit / 1000} s, so whether ${slash(cwd)} has layers is unknown`);
   }
   const entry = repo && match(map, repo, c.platform), root = repo && !entry && under(map, repo.root, c.platform);

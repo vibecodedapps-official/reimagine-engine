@@ -148,6 +148,18 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ['git push; git checkout main; git pull; [IO.Path]::GetTempPath()', true, false],
     ['git push && git checkout main && git pull && echo trap set', false, false],
     ['if true; then p() { git push; }; fi; git commit -m x; p', false, true],
+    // A command that names a shell joins its words, so a commit's message there is read as the command it runs.
+    ['eval git commit -m "x; git push" "$y"', false, true],
+    ['pwsh -Command git commit -m "x; git push" $y', true, true],
+    // A definition counts after a keyword, `builtin` or `command` with or without a space before it, and after no other word.
+    ["if true;then trap 'git push' EXIT;fi; git commit -m x", false, true],
+    ["builtin trap 'git push' EXIT; git commit -m x", false, true],
+    ["command trap 'git push' EXIT; git commit -m x", false, true],
+    ['for i in 1;do p() { git push; };done; git commit -m x; p', false, true],
+    ["echo then trap 'git push' EXIT; git commit -m x", false, false],
+    // A # starts a comment at the start of a word: not right after the ) of a $( ), but right after a } in PowerShell.
+    ['git commit -m x; echo $(date)#tag "$(git push --dry-run)"', false, false],
+    ['git commit -m x; if ($?) {echo hi}# it\'s (\necho "$(git push --dry-run)"', true, false],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });

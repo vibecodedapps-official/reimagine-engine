@@ -10,8 +10,8 @@ const GIT = /^(?:(?:\[[^\]]*\])*(?:\$[\w:]+)?(?:\?\?|[-+*/%])?=)?\{?git(?:\.exe)
 const UPSTREAM = /^(?:--ff-only|--no-rebase|--prune|-p|-q|--quiet|-v|--verbose)$/;
 // git's own options that take the next word as their value.
 const VALUED = /^(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))$/;
-// An option with which a call makes no commit, and one with which a push sends nothing.
-const IDLE = /^(?:--abort|--quit|--dry-run|--edit-todo|--show-current-patch(?:=.*)?|--help|-h)$/, DRY = /^(?:--dry-run|--help|-h|-[A-Za-z]*n[A-Za-z]*)$/;
+// An option with which a call makes no commit, and one with which a push sends nothing: -n alone or among push's own one-letter flags.
+const IDLE = /^(?:--abort|--quit|--dry-run|--edit-todo|--show-current-patch(?:=.*)?|--help|-h)$/, DRY = /^(?:--dry-run|--help|-h|-[46dfnquv]*n[46dfnquv]*)$/;
 // A program that runs the text it is given as a command; a . does where it starts the command.
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'ksh', 'fish', '$shell', '${shell}', 'eval', 'source', 'trap', 'pwsh', 'powershell', 'cmd', 'iex', 'invoke-expression', '[scriptblock]::create'].flatMap((n) => [n, n + '.exe']));
 const shell = (x, k) => { const name = base(x.w.split(/[<>]/)[0]); return SHELLS.has(name) || (k === 0 && name === '.'); };
@@ -22,15 +22,19 @@ const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))
 // Whether the << at place i stands inside (( )) or $[ ] that closes on the same line, where it shifts a number and opens no here-document.
 const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i), rest = /^[^\n]*/.exec(s.slice(i))[0]; return (line.lastIndexOf('((') > line.lastIndexOf('))') && rest.includes('))')) || (line.lastIndexOf('$[') > line.lastIndexOf(']') && rest.includes(']')); };
 // A function, a trap or a script block in a variable runs where it is called, so its calls run in an order the text does not show.
-const FUNCTION = /(?:^|[\s;&|({])(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){};&|=]+\s*\(\s*\)|trap\s)|=\s*\{/i;
+// A definition counts where a command starts, and name() is one for the Bash tool alone, since PowerShell calls a method that way.
+const START = String.raw`(?:^|[;&|(){}\n]|(?:^|\s)(?:then|do|else|elif|if|while|until|!)\s)\s*`;
+const DEFINES = [String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){};&|=]+\s*\(\s*\)|trap\s)`, String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|trap[\s{])`].map((d) => new RegExp(START + d + String.raw`|=\s*\{`, 'i'));
+const defines = (text, ps) => DEFINES[ps ? 1 : 0].test(text);
 
 // What the git calls among the words of one simple command do: makes, a commit that was not there before the command, and
 // pushes. The subcommand is read after git's own options; an option counts only where it is typed outside quotes. Where the quotes were
 // not read (loose), the call counts for any word after git that names a subcommand. A pull that only fast-forwards and names
 // nothing takes the branch's upstream, which a remote-tracking ref holds once it has run, so a push sent alone would not read it
-// either.
-function flags(words, loose = false) {
-  const out = { makes: false, pushes: false };
+// either. chains says a push comes after a commit-making call among the same words, as where a PowerShell block ends no command.
+// The value of a commit's own -m or --message is a message and no call: where it holds no expansion, its place goes to skip.
+function flags(words, loose = false, skip = null) {
+  const out = { makes: false, pushes: false, chains: false };
   for (let i = 0; i < words.length; i++) {
     // A word that holds a $ may expand to git: it counts where a commit-making subcommand or push follows its options.
     const git = GIT.test(base(words[i].w));
@@ -47,25 +51,43 @@ function flags(words, loose = false) {
     const sub = bare(words[j]?.w.toLowerCase() ?? ''), args = words.slice(j + 1), opts = args.filter((x) => !x.q).map((x) => bare(x.w));
     // A redirect and the file it names are no argument of the pull.
     const named = args.filter((x, k) => !(!x.q && REDIRECT.test(x.w)) && !(k > 0 && !args[k - 1].q && /^\d*[<>]+&?$/.test(args[k - 1].w)));
-    if (sub === 'push') out.pushes ||= loose || !opts.some((o) => DRY.test(o));
+    if (sub === 'push') { const sends = loose || !opts.some((o) => DRY.test(o)); out.chains ||= sends && !loose && out.makes; out.pushes ||= sends; }
     else if (MAKERS.has(sub)) out.makes ||= loose || (!opts.some((o) => IDLE.test(o)) && !(sub === 'pull' && opts.includes('--ff-only') && named.every((x) => !x.q && UPSTREAM.test(bare(x.w)))));
+    if (sub === 'commit' && skip) args.forEach((x, k) => { const v = !x.q && /^(?:-[A-Za-z]*m|--message)$/.test(x.w) ? args[k + 1] : null; if (v && !/[$`]/.test(v.w)) skip.push([v.a, v.b]); });
   }
   return out;
 }
 
-// The place of the ) that closes each ( of a text, quotes not read. The parentheses in the body of a here-document pair among
-// themselves, since the shell reads none of them as its own.
+// The place of the ) that closes each ( of a text, as the shell pairs them: a quoted string holds none, a double-quoted one aside
+// from those of a $( ) in it, and a comment none. The parentheses in the body of a here-document, and of a PowerShell here-string,
+// pair among themselves, since the shell reads none of them as its own.
 const DOCS = new RegExp('(?<!<)' + HEREDOC.source.slice(1), 'g');
 const pairs = (s, ps) => {
-  const at = new Map(), outer = [], ends = [];
-  let inner = null;
+  const at = new Map(), outer = [], ends = [], esc = ps ? '`' : '\\';
+  // q is the quote or the block comment left open, across lines, and a " on the stack a double-quoted string left open.
+  let inner = null, here = '', q = '';
+  const body = (a, b) => { for (let i = a; i < b; i++) { if (s[i] === '(') inner.push(i); else if (s[i] === ')' && inner.length) at.set(inner.pop(), i); } };
   for (let a = 0; a <= s.length; ) {
     const nl = s.indexOf('\n', a), b = nl < 0 ? s.length : nl, line = s.slice(a, b).replace(/\r$/, '');
-    if (inner && (ends[0][1] ? line.replace(/^\t+/, '') : line) === (ends[0][2] ?? ends[0][3] ?? ends[0][4])) { ends.shift(); inner = ends.length ? [] : null; }
+    if (here ? !line.startsWith(here) : inner && (ends[0][1] ? line.replace(/^\t+/, '') : line) !== (ends[0][2] ?? ends[0][3] ?? ends[0][4])) body(a, b);
+    else if (!here && inner) { ends.shift(); inner = ends.length ? [] : null; }
     else {
-      const open = inner ?? outer;
-      for (let i = a; i < b; i++) { if (s[i] === '(') open.push(i); else if (s[i] === ')' && open.length) at.set(open.pop(), i); }
-      if (!inner && !ps) { for (const m of line.matchAll(DOCS)) if (!shifts(s, a + m.index)) ends.push(m); if (ends.length) inner = []; }
+      const from = here ? a + 2 : a;
+      if (here) [here, inner] = ['', null];
+      for (let i = from; i < b; i++) {
+        const c = s[i], n = s[i + 1], dq = outer.at(-1) === '"';
+        if (q) { if (q === '$' && c === '\\') i++; else if (q === '#' ? c === '#' && n === '>' : c === "'") q = ''; }
+        else if (c === esc && (ps || !dq || '"\\$`'.includes(n ?? 'x'))) i++;
+        else if (dq) { if (c === '"') outer.pop(); else if (c === '$' && n === '(') outer.push(++i); }
+        else if (ps && c === '@' && (n === "'" || n === '"') && /^[ \t]*\r?$/.test(s.slice(i + 2, b))) { [here, inner] = [n + '@', []]; break; }
+        else if (c === "'") q = !ps && s[i - 1] === '$' ? '$' : "'";
+        else if (c === '"') outer.push('"');
+        else if (ps && c === '<' && n === '#') q = '#';
+        else if (c === '#' && (i === a || /[\s;&|()]/.test(s[i - 1]) || (ps && s[i - 1] === '{'))) break;
+        else if (c === '(') outer.push(i);
+        else if (c === ')' && typeof outer.at(-1) === 'number') at.set(outer.pop(), i);
+      }
+      if (!ps) { for (const m of line.matchAll(DOCS)) if (!shifts(s, a + m.index)) ends.push(m); if (ends.length) inner = []; }
     }
     a = b + 1;
   }
@@ -77,9 +99,10 @@ const pairs = (s, ps) => {
 // that holds them. ps reads the text as PowerShell does: a backtick escapes, and a here-string is one quoted text.
 function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
-  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false;
-  const add = (t, q = false) => { cur ??= { w: '', q: false }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
-  const end = () => { if (cur) words.push(cur); cur = null; };
+  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, pos = 0;
+  // Each word keeps the place it starts and ends at in s; skip holds the places of the commit messages of s itself.
+  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
+  const end = () => { if (cur) words.push({ ...cur, b: pos }); cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
   // A command at the end of a pipe that names a shell runs the texts of the command before it. What it runs cannot be
@@ -91,7 +114,7 @@ function walk(s, ps, depth) {
       vague ||= paren || [...words.map((x) => x.w), ...held, ...texts].some((t) => t.includes('$'));
     }
     if (words.length) held = pipe ? [...held, ...texts] : [];
-    parts.push(...early, flags(words));
+    parts.push(...early, flags(words, false, depth ? null : skip));
     [words, texts, early] = [[], [], []];
   };
   // Where the substitution that opens at place i closes, its text read as commands; -1 where none opens. A $( that does not
@@ -108,6 +131,7 @@ function walk(s, ps, depth) {
   // The substitutions in s from place a to place b, as a double-quoted text holds them.
   const subs = (a, b) => { for (let j = a; j < b; j++) { const k = ran(j); if (k >= 0) j = k; else if (s[j] === esc) j++; } };
   for (let i = 0; i < s.length; i++) {
+    pos = i;
     const c = s[i], n = s[i + 1], close = ran(i), doc = !ps && c === '<' && n === '<' && s[i + 2] !== '<' && s[i - 1] !== '<' && !shifts(s, i) && HEREDOC.exec(s.slice(i, i + 200));
     if (close >= 0) { add('$'); i = close; }
     else if (c === esc) {
@@ -160,8 +184,9 @@ function walk(s, ps, depth) {
     else if (';&|\n()'.includes(c) && !(c === '&' && s[i - 1] === '>')) { plain += c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
     else add(c);
   }
+  pos = s.length;
   cut();
-  return lost ? null : [...parts, { fn: FUNCTION.test(plain), sh: vague }];
+  return lost ? null : [...parts, { fn: defines(plain, ps), sh: vague, skip }];
 }
 
 // A text read by its words alone, split at each quote and at each character that ends a command.
@@ -169,12 +194,14 @@ const loose = (s) => s.split(/[;&|\n()]+/).map((t) => flags(t.split(/[\s"'`]+/).
 // A text with a quote left open, and one nested deeper than a command is written, is read by its words alone. The last part
 // says whether the text, outside its quotes, comments and here-document bodies, defines what runs later, and whether a
 // command that names a shell runs what the walk cannot follow; where the words alone are read, the whole text is that text.
-const read = (s, ps, depth = 0) => (depth > 16 ? null : walk(s, ps, depth)) ?? [...loose(s), { fn: FUNCTION.test(s) }];
+const read = (s, ps, depth = 0) => (depth > 16 ? null : walk(s, ps, depth)) ?? [...loose(s), { fn: defines(s, ps) }];
 
 // Whether a push follows a call that makes a commit in the command of a Bash call, or with ps of a PowerShell call. A command
 // in which a shell runs what the walk cannot follow is read by its words alone as well.
 export function chained(command, ps) {
   const text = ps ? command.replace(/[\u2018-\u201b]/g, "'").replace(/[\u201c-\u201e]/g, '"') : command, parts = read(text, ps);
-  const follows = (list, any) => list.some((p, i) => p.makes && list.some((q, j) => q.pushes && (any || j > i)));
-  return follows(parts, parts.some((p) => p.fn)) || (parts.some((p) => p.sh) && follows(loose(text), true));
+  const follows = (list, any) => list.some((p, i) => p.chains || (p.makes && list.some((q, j) => q.pushes && (any || j > i))));
+  // The words-alone read leaves out the message of each commit the walk read, which no shell runs.
+  const bare = (parts.at(-1).skip ?? []).reduce((t, [a, b]) => t.slice(0, a) + ' '.repeat(b - a) + t.slice(b), text);
+  return follows(parts, parts.some((p) => p.fn)) || (parts.some((p) => p.sh) && follows(loose(bare), true));
 }

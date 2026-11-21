@@ -453,8 +453,28 @@ describe('the time a pass took', { concurrency }, () => {
     await ok(three, CAPPED, '4', ['22', '50', NOW]);
   });
 
-  test('a pass that took longer than its budgets give caps where they would not', async () => {
-    await ok(three, CAPPED, '4', ['20', '10', NOW]);
+  test('a pass that took longer than its budgets give leaves their figure in force', async () => {
+    await ok(three, HIGH, '4', ['20', '10', NOW]);
+    await ok(three, CAPPED, '4', ['9', '10', NOW]);
+  });
+
+  test('a pass measured across two runs leaves the figure of the budgets in force', async () => {
+    const decided = [
+      pass(1, 1, 'xhigh', { fix: ['a|x'], started: '2026-10-25T09:00:40Z', ended: '2026-10-25T09:40:40Z' }),
+      pass(2, 1, 'high', { fix: ['a|y'], status: 'running', started: '2026-10-25T09:40:40Z', ended: undefined }),
+    ];
+    await ok(decided, HIGH, '4', ['120', '50', '2026-10-26T09:00:40Z']);
+    await ok(decided, CAPPED, '4', ['49', '50', '2026-10-26T09:00:40Z']);
+  });
+
+  test('a pass that Resume repeated is no measure', async () => {
+    const again = [
+      pass(1, 1, 'xhigh', { fix: ['a|x'], started: '2026-10-25T07:00:00Z', ended: '2026-10-25T07:40:00Z' }),
+      { ...pass(2, 2, 'high', { fix: ['a|y'], status: 'running', started: '2026-10-25T09:00:40Z', ended: undefined }), repeated: true },
+    ];
+    await ok(again, CAPPED, '4', ['12', '50', '2026-10-25T09:08:40Z']);
+    await ok(again, HIGH, '4', ['50', '50', '2026-10-25T09:08:40Z']);
+    await ok([three[0], { ...three[1], repeated: true }, three[2]], HIGH, '4', ['22', '50', NOW]);
   });
 
   test('with no pass at the next level, the longest at a higher level counts', async () => {

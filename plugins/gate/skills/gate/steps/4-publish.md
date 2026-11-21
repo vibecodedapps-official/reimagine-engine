@@ -23,7 +23,7 @@ The audit reads the verdict from a manifest. This run's value is:
 
   `{"bundles":[{"repo":"<absolute path>","pr":"github:<owner>/<repo>#<n>","tickets":[]}],"claims":[],"gate":{"<absolute path>": <value>}}`
 
-  `repo` is the target's root. A branch target has `"branch":"<name>","base":"<base>"` in place of `"pr"`. `tickets` is empty, since the gate knows none.
+  `repo` is the target's root. A branch target has `"branch":"<name>","base":"<base>"` in place of `"pr"`. `tickets` is empty.
 
 Either file is written whole to a temporary file beside it and moved over with `mv <tmp> <file>`, no flags. The report's Audit line names the manifest the run came from, else the one written here.
 

@@ -5,10 +5,11 @@
 //   <max-passes>     a whole number of 1 or more
 //   <minutes left>, <minutes a pass needs>   both or neither; the run budget still unspent, any finite number, negative when the run is over
 //                    budget, and the time one more pass needs by its budgets, a number above 0
-//   <now>            the time of the decision, as `date -u +%Y-%m-%dT%H:%M:%SZ` prints it. With it, a pass needs the time the longest
-//                    pass of the latest pass's run at the next level took, else its longest at a higher level; a pass runs from its
-//                    `started` to its `ended`, the latest pass to <now>. A pass whose times cannot be read, or that ends before it
-//                    starts, is no measure, and a run with none at the next level or above keeps <minutes a pass needs>
+//   <now>            the time of the decision, as `date -u +%Y-%m-%dT%H:%M:%SZ` prints it. With it, a pass needs the lesser of <minutes a pass
+//                    needs> and the time the longest pass of the latest pass's run at the next level took, else its longest at a higher
+//                    level; a pass runs from its `started` to its `ended`, the latest pass to <now>. A pass whose times cannot be
+//                    read, that ends before it starts, or that holds "repeated": true is no measure, and a run with none at the next
+//                    level or above keeps <minutes a pass needs>
 // The latest pass is the last entry of `passes`. Its `changes` lists the kinds of its fix round: inside-diff, outside-diff,
 //   exported-signature and schema-or-migration (the last three are wide), and docs-only (every changed file is documentation;
 //   a record that lists it beside exported-signature or schema-or-migration is bad). The over-quarter kind of an older record
@@ -105,11 +106,12 @@ const TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const at = (s) => (typeof s === 'string' && TIME.test(s) ? Date.parse(s) : NaN);
 
 // The minutes the longest pass of a run at `level` took, else its longest at a higher level, else null. The run's last
-// pass ends at `now`; a pass whose times cannot be read, or that ends before it starts, is left out.
+// pass ends at `now`; a pass whose times cannot be read, that ends before it starts, or that holds "repeated": true (it
+// skipped its saved reviews, so it ran short) is left out.
 function took(inRun, level, now) {
   const timed = inRun
-    .map((p, i) => ({ level: p.level, minutes: ((i === inRun.length - 1 ? now : at(p.ended)) - at(p.started)) / 60000 }))
-    .filter((p) => p.minutes >= 0);
+    .map((p, i) => ({ level: p.level, repeated: p.repeated === true, minutes: ((i === inRun.length - 1 ? now : at(p.ended)) - at(p.started)) / 60000 }))
+    .filter((p) => !p.repeated && p.minutes >= 0);
   const same = timed.filter((p) => p.level === level);
   const pool = same.length ? same : timed.filter((p) => LEVELS.indexOf(p.level) > LEVELS.indexOf(level));
   return pool.length ? Math.max(...pool.map((p) => p.minutes)) : null;
@@ -130,7 +132,8 @@ export function next(passes, max, time = null) {
   else if (latest.changes.some((k) => WIDE.includes(k)) && inRun.slice(1).every((p) => p.level !== 'xhigh')) result = { level: 'xhigh', rule: 'wide-fix' };
   if (inRun.length >= max) return { ...result, capped: 'max-passes' };
   if (!time) return result;
-  const need = (time.now === undefined ? null : took(inRun, result.level, time.now)) ?? time.need;
+  const measured = time.now === undefined ? null : took(inRun, result.level, time.now);
+  const need = measured === null ? time.need : Math.min(time.need, measured);
   return time.left < need ? { ...result, capped: 'budget' } : result;
 }
 

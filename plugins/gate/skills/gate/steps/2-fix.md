@@ -8,7 +8,7 @@ Every `blocked` ending below records the pass `failed` with its `ended`, the `ch
 
 1. Sort the fix bucket into groups so that no file is in two groups: findings on one file share a group, and a finding whose failure scenario spans several files merges the groups it touches.
 2. Each group gets one implementer: an Agent at `models.implementer`, with `model` passed explicitly, never a fork. Groups whose files are independent run as parallel calls in one message. When one group's files import from another's, they run one at a time. An implementer runs no checks.
-3. A call run in the background gives a launch line at once, which is not its return: it has returned when its report arrives. A call that ends in a tool error, or returns past the subagent budget, is a failed call. Judge the time by the `duration_ms` of its completion notice, and by the `date` outputs when the notice carries none or, awaited after a background call's report, has not come within the subagent budget. There is no fallback implementer.
+3. A call run in the background gives a launch line at once, which is not its return: it has returned when its report arrives. A call that ends in a tool error, or returns past the subagent budget, is a failed call. Judge the time by the `duration_ms` of its completion notice, and by the `date` outputs, the later taken at the return, when the notice carries none or has not come by then. There is no fallback implementer.
 
 ## The brief
 
@@ -29,7 +29,7 @@ When a call returns, write `post-<k>.status`, the same status output, and `post-
 
 After a failed call, compare the tree with the snapshot, for a batch once every call has returned. Restore every path that was clean before the call and is now new or changed, the group's own files included: a tracked file with `git checkout -- <path>`, an untracked non-ignored file by deleting it. Never touch an ignored path or anything under `.reimagine/`. A path that was already dirty and now differs, or an untracked file whose hash changed, is left as it is and named in the report. Then end the run `blocked`, naming the call and, when it ran past it, the subagent budget. A failed call is never retried or swapped.
 
-A notice for an implementer call that already returned, its own completion notice included, is not a new call. Log it. Where that call's `post-<k>` files exist, compare the checkout with them, hashing as they were hashed. A path that differs, and that no later call, check fix or commit of the run changed, ends the run `blocked`, naming the path, with the tree left as it is. Any other late notice, or one for an agent this run did not launch, is logged and changes nothing.
+A notice for an implementer call that already returned, its own completion notice included, is not a new call. Log it. Where that call's `post-<k>` files exist, compare the checkout with them, hashing as they were hashed. A path that differs, and that no later call, check fix, restore or commit of the run changed, ends the run `blocked`, naming the path, with the tree left as it is. Any other late notice, or one for an agent this run did not launch, is logged and changes nothing.
 
 ## Reading the fix
 
@@ -45,7 +45,7 @@ Then work out the round's `files`, the changed paths, repository-relative with f
 
 ## Checks
 
-Run the run's checks one command at a time, in order, and record each as `{"command": "<command>", "result": "pass"|"fail"|"denied"|"not run"}`. With no checks, nothing runs and `checks` stays empty.
+Run the run's checks one command at a time, in order, and record each as `{"command": "<command>", "result": "pass"|"fail"|"denied"|"not run"[, "reason": "<line>"]}`. With no checks, nothing runs and `checks` stays empty.
 
 - Each check has the check budget as the Bash call's timeout. A budget over 10 minutes, the shell's foreground limit, runs with `run_in_background` beside a background `sleep` of the budget in seconds; whichever ends first, the other is stopped with TaskStop. A check past its budget ends the run `blocked`, naming the check and the budget.
 - A check the permission mode refuses is `denied`; one that cannot start for another cause, such as a tool error, is `not run`, with the error's first line as its `reason`. Neither is retried or run another way, and the next one runs.

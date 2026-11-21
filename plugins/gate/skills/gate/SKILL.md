@@ -141,7 +141,7 @@ Every run ends in exactly one state, and then reads `steps/4-publish.md`.
 - `pass`: a stop of `next.mjs`, or a "no fixes" run with an empty fix bucket, with nothing deferred in any pass of the run.
 - `pass-with-deferred`: the same stop, with deferred findings in the report.
 - `unconverged`: a cap was reached, a review failed, or a "no fixes" run has something to fix. Every open finding is listed.
-- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a failed push, a "no fixes" run that meets an unpushed commit of an earlier run, a round with fixes and with checks, each ended `denied` or `not run`, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay and are named.
+- `blocked`: a preflight failure, a denied permission, a remote head that is neither preflight's nor the run's own, a failed implementer call, a failed push, a "no fixes" run that meets an unpushed commit of an earlier run, a round that changed a file, with checks each ended `denied` or `not run`, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay and are named.
 - `stopped`: no target resolved, or a question the run cannot decide, before any commit.
 
 ## Record

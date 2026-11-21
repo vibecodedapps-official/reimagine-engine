@@ -499,6 +499,12 @@ describe('the time a pass took', { concurrency }, () => {
     await ok(back, HIGH, '4', ['40', '50', '2026-10-25T10:00:00Z']);
   });
 
+  test('a pass of no length is no measure', async () => {
+    const still = [three[0], { ...three[2], n: 2 }];
+    await ok(still, CAPPED, '4', ['5', '50', '2026-10-25T10:06:04Z']);
+    await ok(still, HIGH, '4', ['40', '50', '2026-10-25T10:06:04Z']);
+  });
+
   test('a latest pass that started after <now> is no measure', async () => {
     await ok(three, CAPPED, '4', ['25', '50', '2026-10-25T10:00:00Z']);
     await ok(three, HIGH, '4', ['26', '50', '2026-10-25T10:00:00Z']);

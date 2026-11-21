@@ -78,7 +78,7 @@ An untracked `.reimagine.json` is added to `.git/info/exclude`, so it does not m
 - `pass`: a pass found nothing left to fix, or only a few corrections to the last fixes, which were made and passed the checks; nothing was deferred.
 - `pass-with-deferred`: the same, with deferred findings listed in the report.
 - `unconverged`: the pass cap or the budget was reached, a review failed, or a `no fixes` run found something to fix. Every open finding is listed.
-- `blocked`: a failed preflight, a denied permission, a remote branch that moved, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, a check past its budget, a fix round, in a run with checks, whose every check was refused or could not start when last run, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay.
+- `blocked`: a failed preflight, a denied permission, a remote branch that moved, a failed implementer call, a push that failed, a "no fixes" run that meets a kept commit, a check past its budget, a fix round that changed a file, in a run with checks, whose every check was refused or could not start when last run, or a check still failing after three fixes. Nothing more is pushed; pushed commits stay.
 - `stopped`: no target resolved, or a question the run could not settle, before any commit.
 
 ## The record

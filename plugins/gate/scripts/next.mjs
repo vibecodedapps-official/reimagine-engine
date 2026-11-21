@@ -8,7 +8,7 @@
 //   <now>            the time of the decision, as `date -u +%Y-%m-%dT%H:%M:%SZ` prints it. With it, a pass needs the lesser of <minutes a pass
 //                    needs> and the time the longest pass of the latest pass's run at the next level took, else its longest at a higher
 //                    level; a pass runs from its `started` to its `ended`, the latest pass to <now>. A pass whose times cannot be
-//                    read, that ends before it starts, or that holds "repeated": true is no measure, and a run with none at the next
+//                    read, that does not end after it starts, or that holds "repeated": true is no measure, and a run with none at the next
 //                    level or above keeps <minutes a pass needs>
 // The latest pass is the last entry of `passes`. Its `changes` lists the kinds of its fix round: inside-diff, outside-diff,
 //   exported-signature and schema-or-migration (the last three are wide), and docs-only (every changed file is documentation;
@@ -110,12 +110,12 @@ const at = (s) => {
 };
 
 // The minutes the longest pass of a run at `level` took, else its longest at a higher level, else null. The run's last
-// pass ends at `now`; a pass whose times cannot be read, that ends before it starts, or that holds "repeated": true (it
+// pass ends at `now`; a pass whose times cannot be read, that does not end after it starts, or that holds "repeated": true (it
 // skipped its saved reviews, so it ran short) is left out.
 function took(inRun, level, now) {
   const timed = inRun
     .map((p, i) => ({ level: p.level, repeated: p.repeated === true, minutes: ((i === inRun.length - 1 ? now : at(p.ended)) - at(p.started)) / 60000 }))
-    .filter((p) => !p.repeated && p.minutes >= 0);
+    .filter((p) => !p.repeated && p.minutes > 0);
   const same = timed.filter((p) => p.level === level);
   const pool = same.length ? same : timed.filter((p) => LEVELS.indexOf(p.level) > LEVELS.indexOf(level));
   return pool.length ? Math.max(...pool.map((p) => p.minutes)) : null;

@@ -8,7 +8,7 @@ Every `blocked` ending below records the pass `failed` with its `ended`, the `ch
 
 1. Sort the fix bucket into groups so that no file is in two groups: findings on one file share a group, and a finding whose failure scenario spans several files merges the groups it touches.
 2. Each group gets one implementer: an Agent at `models.implementer`, with `model` passed explicitly, never a fork. Groups whose files are independent run as parallel calls in one message. When one group's files import from another's, they run one at a time. An implementer runs no checks.
-3. A call run in the background gives a launch line at once, which is not its return: it has returned when its report arrives. A call that ends in a tool error, or returns past the subagent budget, is a failed call. Judge the time by the `duration_ms` of its completion notice, waited for where the report comes first, and by the `date` outputs only when the notice carries none. There is no fallback implementer.
+3. A call run in the background gives a launch line at once, which is not its return: it has returned when its report arrives. A call that ends in a tool error, or returns past the subagent budget, is a failed call. Judge the time by the `duration_ms` of its completion notice, and by the `date` outputs when the notice carries none or, awaited after a background call's report, has not come within the subagent budget. There is no fallback implementer.
 
 ## The brief
 

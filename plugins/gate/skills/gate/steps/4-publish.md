@@ -4,7 +4,7 @@ After `blocked` nothing more is pushed.
 
 ## The run entry
 
-A run that ended before preflight made the record takes no `date` and writes nothing: no run entry, no manifest and no report file. It goes to The report. Its report is printed only, in one message with the reading block above it, since a block printed before a tool call may not have reached the caller.
+A run that ended before preflight made the record takes no `date` and writes nothing: no run entry, no manifest and no report file. It goes to The report. Its report is printed only, in one message with the reading block above it.
 
 Otherwise take `date -u +%Y-%m-%dT%H:%M:%SZ`. Write this run's entry in `runs` with that time as `ended` and the terminal state as `state`, keeping every other key of the entry, `kept` among them.
 

@@ -12,7 +12,7 @@
    - `wide-fix`: the fix round changed an exported signature, a schema or migration, or a file outside the diff, and no pass of the run after its first ran at `xhigh`. The level is `xhigh`.
    - `otherwise`: the level is `high`.
 
-   A level is `capped` by `max-passes` when the run has made that many passes, else by `budget` when the minutes left are fewer than a pass takes: the minutes a pass needs, or the fewer that this run's longest pass at the next level took, else its longest at a higher level, the pass just made ending at `<now>`. A stop is never capped. A non-zero exit ends the run `blocked` with the script's stderr line, the pass left `running`.
+   A level is `capped` by `max-passes` when the run has made that many passes, else by `budget` when the minutes left are fewer than a pass takes: the minutes a pass needs, or the fewer that the longest pass of the latest pass's run at the next level took, else its longest at a higher level, the pass just made ending at `<now>`. A stop is never capped. A non-zero exit ends the run `blocked` with the script's stderr line, the pass left `running`.
 5. Write the pass's `next`, its `ended` and `"status": "complete"` in one write, with the output of `git rev-parse HEAD` as its `head` when Step 2 did not run.
 6. A stop ends the run with its verdict. A capped level ends it `unconverged`, naming the cap. Every `unconverged` ending lists the open findings by file and summary: the fix bucket of the latest pass, which no later pass verified, and every entry whose state is `regressed`.
 7. Any other level is the next pass: read `steps/1-pass.md`.

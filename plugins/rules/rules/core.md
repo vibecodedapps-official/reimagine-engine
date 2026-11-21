@@ -55,9 +55,10 @@ pass on an approval the user gave and gives none of its own.
 ## Code
 
 - Make the simplest change that is correct and stays correct as the code grows: in the
-  code's own patterns and helpers, at every place the behavior lives, with nothing built
-  for a need only imagined. Where a project's instruction file and its code disagree,
-  follow the code and say where they differ. Say why for any extra.
+  code's own patterns and helpers, at every place the behavior lives, found by what it
+  does, not by one spelling, with nothing built for a need only imagined. Where a
+  project's instruction file and its code disagree, follow the code and say where they
+  differ. Say why for any extra.
 - A code comment only where the code itself is unclear, and brief. Ticket numbers and
   change history go in the commit message, not the code.
 - Commits follow the repository's convention, else `type(scope): subject`, lowercase. The
@@ -84,8 +85,8 @@ pass on an approval the user gave and gives none of its own.
 - Run the checks your change can break, once, before you report done: those that read
   what you touched, directly or through what uses it. Leave the rest to CI that runs on
   the change, and where none does run the repo's checks once. A check passes only when
-  it ran as its own command and you read its exit code. Rerun a fix's behavioral check
-  when the code under it changes, merges included.
+  it could fail, ran as its own command, and you read its exit code. Rerun a fix's
+  behavioral check when the code under it changes, merges included.
 - A behavior change gets a test if the repo has a suite, else one check that fails if
   the logic breaks.
 - A check that failed before you started is not yours to fix. Say so, with the run that
@@ -114,6 +115,7 @@ pass on an approval the user gave and gives none of its own.
   one ready. An approved plan that lists them covers each listed one; a PR or marking
   one ready still needs its own ask.
 - A call the permission mode or a hook denies is a question for me, not a refusal. Never
-  route around it with another command, a script, or a subagent. Report it in full and
-  wait: the exact call, what it is for, and any later call the task needs that is likely
-  to be denied too. A denial from me is final.
+  route around it with another command, a script, or a subagent; the same call sent
+  alone, where the denying hook's reason names that form, is not a route around it.
+  Report it in full and wait: the exact call, what it is for, and any later call the
+  task needs that is likely to be denied too. A denial from me is final.

@@ -83,6 +83,6 @@ With more than 30 findings to sort, readers do the reading: read-only Agents at 
 - a recorded decision or rule the finding conflicts with, or an instruction file it rests on that the brief does not name, or `none`;
 - one line of evidence with its file and line.
 
-A reader never returns a bucket; you sort from the replies, each the reader's report and not its launch line. Take a `same as` as given when its candidate is rejected, carried or deferred, and check it against the code when the candidate is fixed or regressed, since that match puts the finding in `fix`. Read the cited code yourself for every finding you put in `fix` and for every `unsure`. A failed reader call is retried once; then you read that batch.
+A reader never returns a bucket; you sort from the replies, each the reader's report and not its launch line. Take a `same as` as given when its candidate is rejected, carried or deferred, and check it against the code when the candidate is fixed or regressed. Read the cited code yourself for every finding you put in `fix` and for every `unsure`. A failed reader call is retried once; then you read that batch.
 
 In "no fixes" mode, or with an empty `fix` bucket, the run goes to `steps/3-next.md`. Otherwise it goes to `steps/2-fix.md`.

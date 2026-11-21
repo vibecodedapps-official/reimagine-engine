@@ -10,6 +10,11 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 - A context string over the host's cap opens with a line that names the file each layer is whole in. The host gives a session a preview of such a string, and the warning that says so reached the user alone.
 - The staging check reads `((` outside quoted strings and comments alone. `echo "((" && cat <<EOF # ))` was read as a shift, so the command got no parse and a `git merge` after the here-document that brings an agent file passed.
 
+## rules 0.1.44 - 2026-11-21
+
+- With `check: diff`, a push after a commit is denied in four forms that passed: after a substitution that holds a quoted parenthesis, where the commit's message holds a `)`; `git push -onotify`; `Start-Process git -ArgumentList push -Wait -NoNewWindow`; and `try { git commit -m x } finally { git push }`. The parentheses of a command were paired with quotes not read, any one-dash word that held an `n` counted as `-n`, and a PowerShell brace ends no command, so the push sat among the words of the commit's own.
+- Four commands that chain nothing are no longer denied: a commit whose message holds the word `push`, beside `source "$VENV/bin/activate"` or `bash ./scripts/test.sh "$1"`; and a `git push` before a `git pull` in a command that holds `echo trap set` or `[IO.Path]::GetTempPath()`. The words-alone read took a message's words for calls, and the pattern for a definition matched in the middle of a command.
+
 ## rules 0.1.43 - 2026-11-21
 
 - A check passes only when it could fail, ran as its own command and its exit code was read. Checks that could not fail were read as passes: a result file an earlier run had left, a search whose word stood in every case, and a regression test that also passed on the code before the fix.

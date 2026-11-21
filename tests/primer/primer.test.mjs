@@ -177,7 +177,9 @@ describe('session-start', () => {
     const text = `${part('shared', join(cfg.store, 'shared.md'), SHARED.trim(), 'c09a8e67')}\n\n${part('group', file, 'a'.repeat(9990), 'fb0545d8')}`;
     const r = start(cfg, repo('over', 'https://example.invalid/team/app.git'));
     const sharedSize = join(cfg.store, 'shared.md').length + 98, groupSize = file.length + 10044;
-    assert.equal(r.stdout, context(text, `primer: the context string is ${sharedSize + 2 + groupSize} characters as emitted, over the host's cap of 10000 (shared ${sharedSize}, group ${groupSize})`));
+    // The string opens with a line that says where each layer is whole, since a session holds only a preview of it.
+    const lead = `primer: the text below is ${sharedSize + 2 + groupSize} characters, over the host's cap of 10000, so a session holds a preview of it; each layer is whole in its file: ${join(cfg.store, 'shared.md')}, ${file}\n\n`;
+    assert.equal(r.stdout, context(lead + text, `primer: the context string is ${sharedSize + 2 + groupSize} characters as emitted, over the host's cap of 10000 (shared ${sharedSize}, group ${groupSize})`));
   });
 
   test('a resumed session gets no string and still gets the warning; every other source gets the string', () => {
@@ -191,7 +193,8 @@ describe('session-start', () => {
     assert.equal(from('resume'), context(null, warning));
     const groupAlone = run(['session-start', 'group', join(base, 'data')], { input: JSON.stringify({ cwd: dir, hook_event_name: 'SessionStart', source: 'resume' }), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
     assert.equal(groupAlone, context(null, `primer: the group layer is ${groupSize} characters as emitted, over the host's cap of 10000`));
-    for (const source of ['startup', 'clear', 'compact', 'fork', undefined]) assert.equal(from(source), context(text, warning), String(source));
+    const lead = `primer: the text below is ${sharedSize + 2 + groupSize} characters, over the host's cap of 10000, so a session holds a preview of it; each layer is whole in its file: ${join(cfg.store, 'shared.md')}, ${file}\n\n`;
+    for (const source of ['startup', 'clear', 'compact', 'fork', undefined]) assert.equal(from(source), context(lead + text, warning), String(source));
   });
 
   test('a resumed session gets the string again once it differs from the one the session was last given', () => {
@@ -248,14 +251,18 @@ describe('session-start', () => {
   test('in a session no one attends the layers load and no warning prints', () => {
     const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
     const r = start(cfg, repo('unattended', 'https://example.invalid/team/app.git'), { CLAUDE_CODE_SESSION_ATTENDED: '0' });
-    assert.equal(r.stdout, context(part('group', join(cfg.store, 'groups', 'app.md'), 'a'.repeat(9990), 'fb0545d8')));
+    const file = join(cfg.store, 'groups', 'app.md');
+    const lead = `primer: the text below is ${file.length + 10044} characters, over the host's cap of 10000, so a session holds a preview of it; each layer is whole in its file: ${file}\n\n`;
+    assert.equal(r.stdout, context(lead + part('group', file, 'a'.repeat(9990), 'fb0545d8')));
   });
 
   test('a subagent gets the string under its own event with no warning, and the Explore and Plan agents get nothing', () => {
     const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
     const dir = repo('subagent', 'https://example.invalid/team/app.git');
     const as = (agent_type) => run(['session-start', 'all', join(base, 'data')], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', 'key', 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_id: 'a1', agent_type }) }).stdout;
-    const want = `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: part('group', join(cfg.store, 'groups', 'app.md'), 'a'.repeat(9990), 'fb0545d8') } })}\n`;
+    const file = join(cfg.store, 'groups', 'app.md');
+    const lead = `primer: the text below is ${file.length + 10044} characters, over the host's cap of 10000, so a session holds a preview of it; each layer is whole in its file: ${file}\n\n`;
+    const want = `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: lead + part('group', file, 'a'.repeat(9990), 'fb0545d8') } })}\n`;
     for (const type of ['general-purpose', 'audit:auditor', undefined]) assert.equal(as(type), want, String(type));
     for (const type of ['Explore', 'Plan']) assert.equal(as(type), '', type);
   });
@@ -268,15 +275,44 @@ describe('session-start', () => {
     assert.equal(start(cfg, repo('elsewhere', 'https://example.invalid/team/other.git')).stdout, '');
   });
 
-  test('a repository mapped shared, a directory outside git and a map that is not a primer map print nothing', () => {
+  test('a repository mapped shared and a directory outside git print nothing', () => {
     const cfg = config({ version: 1, repos: [{ remotes: ['example.invalid/team/app'], path: 'unused', group: 'app', profile: 'shared', own: true }], roots: [] }, { group: GROUP });
     assert.equal(start(cfg, repo('shared', 'https://example.invalid/team/app.git')).stdout, '');
     const plain = join(base, 'plain');
     mkdirSync(plain);
     assert.equal(start(config(local({ roots: [slash(base)] }), { group: GROUP }), plain).stdout, '');
+  });
+
+  test('a load that stops after primer\'s own directory is found gives its reason as one line of context', () => {
+    const dir = repo('stopped', 'https://example.invalid/team/app.git'), none = 'primer: no context layer is loaded at this start: ';
     const bad = config({ version: 3, repos: [], roots: [] });
-    const r = start(bad, repo('bad-map', 'https://example.invalid/team/app.git'));
-    assert.deepEqual([r.status, r.stdout], [0, '']);
+    const noMap = `${none}${join(bad.store, 'map.json')} is not a primer map`;
+    assert.deepEqual([start(bad, dir).status, start(bad, dir).stdout], [0, context(noMap, noMap)]);
+    // A session no one attends and a subagent get the line with no message, and the Explore and Plan agents nothing.
+    assert.equal(start(bad, dir, { CLAUDE_CODE_SESSION_ATTENDED: '0' }).stdout, context(noMap));
+    const as = (agent_type) => run(['session-start', 'all', join(base, 'data')], { input: JSON.stringify({ cwd: dir, hook_event_name: 'SubagentStart', agent_type }), extraEnv: { CLAUDE_CONFIG_DIR: bad.dir } }).stdout;
+    assert.equal(as('general-purpose'), `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: noMap } })}\n`);
+    assert.equal(as('Explore'), '');
+    // An entry that emits one layer other than the group's leaves the line to the entry that does.
+    assert.equal(start(bad, dir, {}, 'shared').stdout, '');
+    const noConfig = config(local(), { group: GROUP });
+    write(noConfig.own, 'config.json', '{');
+    const said = `${none}${join(noConfig.own, 'config.json')} is not a primer configuration`;
+    assert.equal(start(noConfig, dir).stdout, context(said, said));
+    // A store that config.json names and that is missing is a load that stopped; with no store named and none there, nothing is mapped.
+    const noStore = config(local(), { group: GROUP }), gone = join(base, 'store-gone');
+    write(noStore.own, 'config.json', JSON.stringify({ store: gone }));
+    const missing = `${none}${join(noStore.own, 'config.json')} names the store ${gone}, which is missing`;
+    assert.equal(start(noStore, dir).stdout, context(missing, missing));
+    assert.equal(main(['status'], { env: { ...env, CLAUDE_CONFIG_DIR: noStore.dir }, home: join(base, 'home'), cwd: dir })[1], `store: ${gone} (missing)`);
+    const bare = join(base, 'config-bare');
+    mkdirSync(join(bare, 'reimagine-primer'), { recursive: true });
+    assert.equal(start({ dir: bare }, dir).stdout, '');
+    // A directory in the place of a layer's file.
+    const folder = config(local(), { shared: SHARED });
+    mkdirSync(join(folder.store, 'groups', 'app.md'), { recursive: true });
+    const notFile = `${none}${join(folder.store, 'groups', 'app.md')} is not a file`;
+    assert.equal(start(folder, dir).stdout, context(notFile, notFile));
   });
 
   test('the configuration directory comes from the transcript path before the variable', () => {
@@ -304,17 +340,31 @@ function slowGit() {
 }
 
 describe('the git limit', () => {
-  test('when git does not answer within the limit no layer is emitted and the message says unknown', () => {
+  test('when git does not answer within the limit and no earlier start is kept, the context says so and the message says unknown', () => {
     const dir = repo('slow', 'https://example.invalid/team/app.git');
     const cfg = config(local(), { group: GROUP });
     const slow = { ...slowGit(), CLAUDE_CONFIG_DIR: cfg.dir };
     const t0 = Date.now();
     const out = main(['session-start', 'all', join(base, 'data')], { env: slow, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
     const took = Date.now() - t0;
-    assert.deepEqual(out, [JSON.stringify({ systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
+    const line = `primer: no context layer is loaded at this start: git gave no answer within 1 s, so whether ${slash(dir)} has layers is unknown`;
+    assert.deepEqual(out, [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line }, systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
     assert.ok(took < 6000, `took ${took} ms`);
     const shown = main(['status'], { env: slow, home: join(base, 'home'), cwd: dir, limit: 1000 });
     assert.equal(shown.at(-1), 'check git: unknown, no answer within 1 s');
+  });
+
+  test('when git does not answer within the limit the layers load from the repository git gave at the directory\'s last start', () => {
+    const dir = repo('slow-kept', 'https://example.invalid/team/app.git'), data = join(base, 'data-kept');
+    const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
+    const from = (extra, input) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir, ...input }), limit: 1000 });
+    assert.deepEqual(from(env), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: layers } })]);
+    const slow = slowGit();
+    assert.deepEqual(from(slow), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: layers }, systemMessage: `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there` })]);
+    assert.deepEqual(from(slow, { hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: layers } })]);
+    // A kept answer is read for its own directory alone.
+    const other = repo('slow-other', 'https://example.invalid/team/app.git');
+    assert.equal(JSON.parse(main(['session-start', 'all', data], { env: { ...slow, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: other }), limit: 1000 })[0]).systemMessage, `primer: the context of ${slash(other)} is unknown, since git gave no answer within 1 s`);
   });
 });
 

@@ -55,7 +55,7 @@
             "type": "command",
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs", "session-start", "all", "${CLAUDE_PLUGIN_DATA}"],
-            "timeout": 10
+            "timeout": 60
           }
         ]
       }
@@ -67,7 +67,7 @@
             "type": "command",
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs", "session-start", "all", "${CLAUDE_PLUGIN_DATA}"],
-            "timeout": 10
+            "timeout": 60
           }
         ]
       }

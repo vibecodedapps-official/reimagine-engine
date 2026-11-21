@@ -3,7 +3,7 @@
 // is staged.mjs, which imports what it shares from here.
 // Usage: node primer.mjs <verb> [args]
 //   session-start <layer> <data dir>  the SessionStart hook: a local repository's layers as context, the delivery warnings, the notice;
-//            on SubagentStart, the layers alone
+//            on SubagentStart, the layers alone; a load that stops gives its reason as one line of context
 //   reach <data dir>  the PreToolUse hook on file edits: another repository's instructions, on the session's first edit there
 //   status   the working directory's entry, profile, layers and delivery checks, and each declared copy; writes nothing
 //   measure  every mapped repository's context string as emitted; --with <file> <layer> measures a proposed layer; writes nothing
@@ -157,7 +157,7 @@ function apart(c, p) {
 function layersOf(p, entry, swap) {
   const files = Object.fromEntries(LAYERS.map((name) => [name, fileOf(p, name, entry.group)]));
   return LAYERS.map((name) => {
-    const raw = swap?.file === files[name] ? swap.buf : existsSync(files[name]) ? readFileSync(files[name]) : null;
+    const raw = swap?.file === files[name] ? swap.buf : !existsSync(files[name]) ? null : isFile(files[name]) ? readFileSync(files[name]) : refuse(`${files[name]} is not a file`);
     const buf = raw && Buffer.from(raw.toString('utf8').replace(/\r\n/g, '\n')), body = buf ? buf.toString('utf8').replace(/\s+$/, '') : '';
     if (!body) return { name, file: files[name] };
     const canary = createHash('sha256').update(buf).digest('hex').slice(0, 8);
@@ -261,50 +261,83 @@ export function notice(c, input, data, repo) {
   return n || m ? `primer: ${what} since the last review; run /primer` : null;
 }
 
+// Removes the files of a directory last written more than 30 days before.
+const prune = (dir) => { for (const f of readdirSync(dir).map((x) => join(dir, x))) if (Date.now() - (statSync(f, { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > 30 * 864e5) rmSync(f, { force: true }); };
+// The repository git gave at a directory's last start, kept under the data directory by the directory's path and read where git
+// gives no answer in time; undefined where none is kept. A kept answer is written only where it changed, and one written more
+// than 30 days before is removed at the next write.
+function keptRepo(c, data, cwd, repo) {
+  const file = data && isAbsolute(data) ? join(data, 'repo', createHash('sha256').update(keyOf(cwd, c.platform)).digest('hex').slice(0, 16)) : null, text = file ? readText(file) : '';
+  if (repo === undefined) { try { const v = JSON.parse(text); return v === null || (typeof v.root === 'string' && typeof v.top === 'string' && [v.remotes, v.names, v.urls].every(Array.isArray)) ? v : undefined; } catch { return undefined; } }
+  if (file && text !== JSON.stringify(repo)) try {
+    mkdirSync(dirname(file), { recursive: true });
+    prune(dirname(file));
+    writeFileSync(file, JSON.stringify(repo));
+  } catch {}
+  return repo;
+}
+
 function sessionStart(c, layer, input, data) {
   // At a subagent's start no check or notice runs, and the agent types that start without instruction files get no layer either.
-  const sub = input.hook_event_name === 'SubagentStart', quiet = sub || c.env.CLAUDE_CODE_SESSION_ATTENDED === '0';
+  const sub = input.hook_event_name === 'SubagentStart', quiet = sub || c.env.CLAUDE_CODE_SESSION_ATTENDED === '0', lead = layer === 'all' || layer === 'group';
   if (![...LAYERS, 'all'].includes(layer) || (sub && ['Explore', 'Plan'].includes(input.agent_type))) return [];
-  const own = join(configOf(c, input), 'reimagine-primer');
+  const own = join(configOf(c, input), 'reimagine-primer'), msgs = [], none = (why) => (lead ? `primer: no context layer is loaded at this start: ${why}` : undefined);
   if (!existsSync(own)) return [];
-  const p = places(c, own), map = loadMap(p.map, c.home);
-  if (!map.roots.length && !map.repos.some((e) => e.profile === 'local')) return [];
-  const cwd = isDir(input.cwd) ? input.cwd : c.cwd, msgs = [];
+  // Once primer's own directory is found, a load that stops gives its reason as one line of context, to a subagent and to a session
+  // no one attends too: a session told nothing takes the context it holds for whole.
+  let context;
+  try { context = layersAt(c, layer, input, data || c.env.CLAUDE_PLUGIN_DATA, own, { sub, quiet, lead, none }, msgs); } catch (e) {
+    context = none(e instanceof Refusal ? e.message : `the loader stopped on an error of its own, ${e?.message ?? e}`);
+    msgs.splice(0, msgs.length, context);
+  }
+  const warn = msgs.length && !quiet && lead;
+  const out = { ...(context ? { hookSpecificOutput: { hookEventName: sub ? 'SubagentStart' : 'SessionStart', additionalContext: context } } : {}), ...(warn ? { systemMessage: msgs.join('; ') } : {}) };
+  return Object.keys(out).length ? [JSON.stringify(out)] : [];
+}
+
+// The context string of a start, with the warnings and the notice pushed to msgs; undefined where the start gets none.
+function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) {
+  const p = places(c, own);
+  if (p.cfg.store && !isDir(p.store)) refuse(`${p.cfgPath} names the store ${p.store}, which is missing`);
+  const map = loadMap(p.map, c.home);
+  if (!map.roots.length && !map.repos.some((e) => e.profile === 'local')) return undefined;
+  const cwd = isDir(input.cwd) ? input.cwd : c.cwd;
   let repo, context;
-  try { repo = repoOf(c, cwd, Date.now() + c.limit); } catch (e) {
+  try { repo = keptRepo(c, data, cwd, repoOf(c, cwd, Date.now() + c.limit)); } catch (e) {
     if (!(e instanceof Unknown)) throw e;
-    msgs.push(`primer: the context of ${slash(cwd)} is unknown, since git gave no answer within ${c.limit / 1000} s`);
+    // Where git gives no answer in time, the start is read as the repository git gave at the directory's last start.
+    repo = keptRepo(c, data, cwd);
+    msgs.push(repo === undefined ? `primer: the context of ${slash(cwd)} is unknown, since git gave no answer within ${c.limit / 1000} s`
+      : `primer: git gave no answer within ${c.limit / 1000} s, so ${slash(cwd)} is read as the repository git gave at an earlier start there`);
+    if (repo === undefined) return none(`git gave no answer within ${c.limit / 1000} s, so whether ${slash(cwd)} has layers is unknown`);
   }
   const entry = repo && match(map, repo, c.platform), root = repo && !entry && under(map, repo.root, c.platform);
   if (root) msgs.push(`primer: ${repo.root} is unmapped, under ${root} of the map's roots; run /primer to map it`);
-  if (entry?.profile === 'local') {
-    const parts = layersOf(p, entry).filter((x) => x.text);
-    context = layer === 'all' ? joined(parts) : parts.find((x) => x.name === layer)?.text;
-    // A resumed session still holds the string it was last given, so it gets one only where the string differs from that one: the
-    // digest of each string given is kept under the data directory by session and layer, for 30 days after the session's last
-    // start, and a session with none kept gets the string. With no absolute data directory, or an id that names no file, nothing is kept
-    // and a resumed session gets no string.
-    const kept = data || c.env.CLAUDE_PLUGIN_DATA, id = typeof input.session_id === 'string' && /^[\w-]{1,80}$/.test(input.session_id) && input.session_id;
-    let mark = !sub && kept && isAbsolute(kept) && id && context ? join(kept, 'given', `${id}.${layer}`) : null, digest = createHash('sha256').update(context ?? '').digest('hex'), same = mark && readText(mark) === digest;
-    if (mark) try {
-      mkdirSync(dirname(mark), { recursive: true });
-      writeFileSync(mark, digest);
-    } catch { mark = null; }
-    if (mark) try {
-      for (const f of readdirSync(dirname(mark)).map((x) => join(dirname(mark), x))) if (Date.now() - (statSync(f, { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > 30 * 864e5) rmSync(f, { force: true });
-    } catch {}
-    if (input.source === 'resume' && (!mark || same)) context = undefined;
-    const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
-      : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
-    if (apart(c, p)) msgs.push(`primer: ${apart(c, p)}`);
-    for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
-    // The notice hook runs at startup alone, and so does this.
-    const told = (input.source ?? 'startup') === 'startup' && !quiet && (layer === 'all' || layer === 'group') && notice(c, input, data || c.env.CLAUDE_PLUGIN_DATA, repo);
-    if (told) msgs.push(told);
-  }
-  const warn = msgs.length && !quiet && (layer === 'all' || layer === 'group');
-  const out = { ...(context ? { hookSpecificOutput: { hookEventName: sub ? 'SubagentStart' : 'SessionStart', additionalContext: context } } : {}), ...(warn ? { systemMessage: msgs.join('; ') } : {}) };
-  return Object.keys(out).length ? [JSON.stringify(out)] : [];
+  if (entry?.profile !== 'local') return undefined;
+  const parts = layersOf(p, entry).filter((x) => x.text), whole = layer === 'all' ? parts : parts.filter((x) => x.name === layer);
+  context = joined(whole) || undefined;
+  // The host gives a session a preview of a string over its cap, which keeps the string's start: the first line there says where each layer is whole.
+  if (context?.length > CAP) context = `primer: the text below is ${context.length} characters, over the host's cap of ${CAP}, so a session holds a preview of it; each layer is whole in its file: ${whole.map((x) => x.file).join(', ')}\n\n${context}`;
+  // A resumed session still holds the string it was last given, so it gets one only where the string differs from that one: the
+  // digest of each string given is kept under the data directory by session and layer, for 30 days after the session's last
+  // start, and a session with none kept gets the string. With no absolute data directory, or an id that names no file, nothing is kept
+  // and a resumed session gets no string.
+  const id = typeof input.session_id === 'string' && /^[\w-]{1,80}$/.test(input.session_id) && input.session_id;
+  let mark = !sub && data && isAbsolute(data) && id && context ? join(data, 'given', `${id}.${layer}`) : null, digest = createHash('sha256').update(context ?? '').digest('hex'), same = mark && readText(mark) === digest;
+  if (mark) try {
+    mkdirSync(dirname(mark), { recursive: true });
+    writeFileSync(mark, digest);
+  } catch { mark = null; }
+  if (mark) try { prune(dirname(mark)); } catch {}
+  if (input.source === 'resume' && (!mark || same)) context = undefined;
+  const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
+    : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
+  if (apart(c, p)) msgs.push(`primer: ${apart(c, p)}`);
+  for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
+  // The notice hook runs at startup alone, and so does this.
+  const told = (input.source ?? 'startup') === 'startup' && !quiet && lead && notice(c, input, data, repo);
+  if (told) msgs.push(told);
+  return context;
 }
 
 // The .md files of a directory, and every file under one, each sorted.
@@ -347,7 +380,7 @@ function status(c) {
 
 function delivery(c, p) {
   const map = loadMap(p.map, c.home);
-  const lines = [`primer: ${p.own}${existsSync(p.own) ? '' : ' (missing)'}`, `store: ${p.store}`, `map: ${p.map} (${map.repos.length} repositories, ${map.roots.length} roots)`];
+  const lines = [`primer: ${p.own}${existsSync(p.own) ? '' : ' (missing)'}`, `store: ${p.store}${p.cfg.store && !isDir(p.store) ? ' (missing)' : ''}`, `map: ${p.map} (${map.repos.length} repositories, ${map.roots.length} roots)`];
   let repo;
   try { repo = repoOf(c, c.cwd, Date.now() + c.limit); } catch (e) {
     if (!(e instanceof Unknown)) throw e;

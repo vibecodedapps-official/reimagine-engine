@@ -177,10 +177,10 @@ describe('primer drift hook', () => {
           PostToolUse: [{ matcher: 'Bash|PowerShell', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/hooks/drift.mjs'], onFailure: 'continue' }] }],
           SessionStart: [
             { matcher: 'startup', hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/hooks/notice.mjs'] }] },
-            { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
+            { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 60 }] },
           ],
           SubagentStart: [
-            { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 10 }] },
+            { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs', 'session-start', 'all', '${CLAUDE_PLUGIN_DATA}'], timeout: 60 }] },
           ],
         },
       });
@@ -1045,6 +1045,8 @@ describe('primer drift hook', () => {
       assert.equal(await check('echo $((1<<2)); git merge -q notes', dir), '');
       assert.equal(await check('echo $((1<<2)); git merge -q feat', dir), deny(lead(dir) + one));
       assert.equal(await check('echo $((1<<2)) <<EOF\nbody\nEOF\ngit merge -q feat', dir), deny(lead(dir) + unresolved + one));
+      // A (( in a quoted string and a )) in a comment make no shift, so the here-document and the merge after it are read.
+      assert.equal(await check('echo "((" && cat <<EOF # ))\nit\'s\nEOF\ngit merge -q feat', dir), deny(lead(dir) + unresolved + one));
       // A merge that a substitution inside the arithmetic runs is still seen.
       assert.equal(decided(await check('echo $(( $(git merge -q feat; echo 1) << 2 ))', dir)).permissionDecision, 'deny');
       // A body with no expansion, or under a quoted end word, writes no variable, so the name is read as its text.

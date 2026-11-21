@@ -2,7 +2,7 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
-## rules 0.1.43 - 2026-11-20
+## rules 0.1.43 - 2026-11-21
 
 - A check passes only when it could fail, ran as its own command and its exit code was read. Checks that could not fail were read as passes: a result file an earlier run had left, a search whose word stood in every case, and a regression test that also passed on the code before the fix.
 - The places a behavior lives are found by what it does, not by one spelling. A change made where one spelling was found left a record, a description and a summary line naming what was gone.

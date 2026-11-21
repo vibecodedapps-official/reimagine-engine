@@ -22,8 +22,8 @@ const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))
 // Whether the << at place i stands inside (( )) or $[ ] that closes on the same line, where it shifts a number and opens no here-document.
 const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i), rest = /^[^\n]*/.exec(s.slice(i))[0]; return (line.lastIndexOf('((') > line.lastIndexOf('))') && rest.includes('))')) || (line.lastIndexOf('$[') > line.lastIndexOf(']') && rest.includes(']')); };
 // A function, a trap or a script block in a variable runs where it is called, so its calls run in an order the text does not show.
-// A definition counts where a command starts, after any keyword or builtin that leaves it one, and name() is one for the Bash tool alone, since PowerShell calls a method that way.
-const START = String.raw`(?:^|[;&|(){}\n])\s*(?:(?:then|do|else|elif|if|while|until|!|builtin|command)\s+)*`;
+// A definition counts where a command starts, after any keyword or builtin that leaves it one, and after an assignment or a redirect, and name() is one for the Bash tool alone, since PowerShell calls a method that way.
+const START = String.raw`(?:^|[;&|(){}\n])\s*(?:(?:then|do|else|elif|if|while|until|!|builtin|command|eval|time|[A-Za-z_]\w*=\S*|\d*[<>]+&?\s*\S+)\s+)*`;
 const DEFINES = [String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){};&|=]+\s*\(\s*\)|trap\s)`, String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|trap[\s{])`].map((d) => new RegExp(START + d + String.raw`|=\s*\{`, 'i'));
 const defines = (text, ps) => DEFINES[ps ? 1 : 0].test(text);
 
@@ -31,10 +31,11 @@ const defines = (text, ps) => DEFINES[ps ? 1 : 0].test(text);
 // pushes. The subcommand is read after git's own options; an option counts only where it is typed outside quotes. Where the quotes were
 // not read (loose), the call counts for any word after git that names a subcommand. A pull that only fast-forwards and names
 // nothing takes the branch's upstream, which a remote-tracking ref holds once it has run, so a push sent alone would not read it
-// either. chains says a push comes after a commit-making call among the same words, as where a PowerShell block ends no command.
+// either. chains says a push comes after a commit-making call among the same words with a PowerShell } closed between them, since a block ends no command.
 // The value of a commit's own -m or --message is a message and no call: where it holds no expansion, its place goes to skip.
 function flags(words, loose = false, skip = null) {
   const out = { makes: false, pushes: false, chains: false };
+  let made;
   for (let i = 0; i < words.length; i++) {
     // A word that holds a $ may expand to git: it counts where a commit-making subcommand or push follows its options.
     const git = GIT.test(base(words[i].w));
@@ -51,8 +52,9 @@ function flags(words, loose = false, skip = null) {
     const sub = bare(words[j]?.w.toLowerCase() ?? ''), args = words.slice(j + 1), opts = args.filter((x) => !x.q).map((x) => bare(x.w));
     // A redirect and the file it names are no argument of the pull.
     const named = args.filter((x, k) => !(!x.q && REDIRECT.test(x.w)) && !(k > 0 && !args[k - 1].q && /^\d*[<>]+&?$/.test(args[k - 1].w)));
-    if (sub === 'push') { const sends = loose || !opts.some((o) => DRY.test(o)); out.chains ||= sends && !loose && out.makes; out.pushes ||= sends; }
+    if (sub === 'push') { const sends = loose || !opts.some((o) => DRY.test(o)); out.chains ||= sends && !loose && out.makes && words[i].n > made; out.pushes ||= sends; }
     else if (MAKERS.has(sub)) out.makes ||= loose || (!opts.some((o) => IDLE.test(o)) && !(sub === 'pull' && opts.includes('--ff-only') && named.every((x) => !x.q && UPSTREAM.test(bare(x.w)))));
+    if (out.makes) made ??= words[i].n;
     if (sub === 'commit' && skip) args.forEach((x, k) => { const v = !x.q && /^(?:-[A-Za-z]*m|--message)$/.test(x.w) ? args[k + 1] : null; if (v && !/[$`]/.test(v.w)) skip.push([v.a, v.b]); });
   }
   return out;
@@ -99,9 +101,9 @@ const pairs = (s, ps) => {
 // that holds them. ps reads the text as PowerShell does: a backtick escapes, and a here-string is one quoted text.
 function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
-  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, pos = 0;
-  // Each word keeps the place it starts and ends at in s; skip holds the places of the commit messages of s itself.
-  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
+  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, pos = 0, braces = 0;
+  // Each word keeps the place it starts and ends at in s, and the count of PowerShell } read before it; skip holds the places of the commit messages of s itself.
+  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
   const end = () => { if (cur) words.push({ ...cur, b: pos }); cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
@@ -178,7 +180,7 @@ function walk(s, ps, depth) {
         at = nl + 1;
       }
       i += doc[0].length - 1;
-    } else if (ps && (c === '{' || c === '}') && s[i - 1] !== '$') { end(); plain += c; } // In PowerShell a brace ends a word, that of ${name} aside.
+    } else if (ps && (c === '{' || c === '}') && s[i - 1] !== '$') { end(); plain += c; if (c === '}') braces++; } // In PowerShell a brace ends a word, that of ${name} aside.
     else if (' \t\r'.includes(c)) { end(); plain += c; }
     // The & of a redirect such as 2>&1 ends no command.
     else if (';&|\n()'.includes(c) && !(c === '&' && s[i - 1] === '>')) { plain += c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }

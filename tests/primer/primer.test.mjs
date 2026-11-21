@@ -391,6 +391,17 @@ describe('the git limit', () => {
     assert.equal(JSON.parse(from(slowGit(), dir)[0]).hookSpecificOutput.additionalContext, layers);
   });
 
+  test('a kept answer last written more than 30 days before is not read where git gives no answer', () => {
+    const dir = repo('slow-stale', 'https://example.invalid/team/app.git'), data = join(base, 'data-stale');
+    const cfg = config(local(), { group: GROUP });
+    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    from(env);
+    const [file] = readdirSync(join(data, 'repo')), old = new Date(Date.now() - 31 * 864e5);
+    utimesSync(join(data, 'repo', file), old, old);
+    const line = `primer: no context layer is loaded at this start: git gave no answer within 1 s, so whether ${slash(dir)} has layers is unknown`;
+    assert.deepEqual(from(slowGit()), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line }, systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
+  });
+
   test('a directory in no git work tree is read as outside one where git gives no answer, and the message says git gave that answer', () => {
     const dir = join(base, 'slow-plain'), data = join(base, 'data-plain');
     mkdirSync(dir);

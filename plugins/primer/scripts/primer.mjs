@@ -265,10 +265,10 @@ export function notice(c, input, data, repo) {
 const prune = (dir) => { for (const f of readdirSync(dir).map((x) => join(dir, x))) if (Date.now() - (statSync(f, { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > 30 * 864e5) rmSync(f, { force: true }); };
 // The repository git gave at a directory's last start, kept under the data directory by the directory's path and read where git
 // gives no answer in time; undefined where none is kept. A kept answer is written at every start git answers, with each remote
-// URL's userinfo removed, and one written more than 30 days before is removed at the next write.
+// URL's userinfo removed; one written more than 30 days before is removed at the next read or write, so it is not read.
 function keptRepo(c, data, cwd, repo) {
-  const file = data && isAbsolute(data) ? join(data, 'repo', createHash('sha256').update(keyOf(cwd, c.platform)).digest('hex').slice(0, 16)) : null, text = file ? readText(file) : '';
-  if (repo === undefined) { try { const v = JSON.parse(text); return v === null || (typeof v.root === 'string' && typeof v.top === 'string' && [v.remotes, v.names, v.urls].every(Array.isArray)) ? v : undefined; } catch { return undefined; } }
+  const file = data && isAbsolute(data) ? join(data, 'repo', createHash('sha256').update(keyOf(cwd, c.platform)).digest('hex').slice(0, 16)) : null;
+  if (repo === undefined) { try { prune(dirname(file)); const v = JSON.parse(readText(file)); return v === null || (typeof v.root === 'string' && typeof v.top === 'string' && [v.remotes, v.names, v.urls].every(Array.isArray)) ? v : undefined; } catch { return undefined; } }
   if (file) try {
     mkdirSync(dirname(file), { recursive: true });
     prune(dirname(file));

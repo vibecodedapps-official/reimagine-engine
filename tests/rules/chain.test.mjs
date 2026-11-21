@@ -140,6 +140,9 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ['git commit -m x && git push -fn origin main', false, false],
     // A PowerShell block ends no command, so a push in a later block of the same statement follows the commit.
     ['try { git add -A; git commit -m x } finally { git push }', true, true],
+    ['if ($a) { git commit -m x } else { git push }', true, true],
+    ['echo Next: git commit -m x then git push', false, false],
+    ['echo Next: git commit -m x then git push', true, false],
     // The words-alone read leaves out a commit's own message, where the message holds no expansion.
     ['source "$VENV/bin/activate" && git commit -m "Retry push on timeout"', false, false],
     ['git commit -m "Fix push retry" && bash ./scripts/test.sh "$1"', false, false],
@@ -157,6 +160,10 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ["command trap 'git push' EXIT; git commit -m x", false, true],
     ['for i in 1;do p() { git push; };done; git commit -m x; p', false, true],
     ["echo then trap 'git push' EXIT; git commit -m x", false, false],
+    ["eval trap 'git push' EXIT; git commit -m x", false, true],
+    ["time trap 'git push' EXIT; git commit -m x", false, true],
+    ["2>/dev/null trap 'git push' EXIT; git commit -m x", false, true],
+    ["X=1 trap 'git push' EXIT; git commit -m x", false, true],
     // A # starts a comment at the start of a word: not right after the ) of a $( ), but right after a } in PowerShell.
     ['git commit -m x; echo $(date)#tag "$(git push --dry-run)"', false, false],
     ['git commit -m x; if ($?) {echo hi}# it\'s (\necho "$(git push --dry-run)"', true, false],

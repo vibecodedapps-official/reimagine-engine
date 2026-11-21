@@ -101,9 +101,13 @@ function fixOfFix(latest, before) {
   return [...last.values()].every((result) => result === 'pass');
 }
 
-// A time as `date -u +%Y-%m-%dT%H:%M:%SZ` prints it, in milliseconds; anything else is NaN.
+// A time as `date -u +%Y-%m-%dT%H:%M:%SZ` prints it, in milliseconds; anything else is NaN, and so is a time that
+// names no real moment, such as the 30th of February.
 const TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
-const at = (s) => (typeof s === 'string' && TIME.test(s) ? Date.parse(s) : NaN);
+const at = (s) => {
+  const ms = typeof s === 'string' && TIME.test(s) ? Date.parse(s) : NaN;
+  return Number.isNaN(ms) || new Date(ms).toISOString().slice(0, 19) + 'Z' !== s ? NaN : ms;
+};
 
 // The minutes the longest pass of a run at `level` took, else its longest at a higher level, else null. The run's last
 // pass ends at `now`; a pass whose times cannot be read, that ends before it starts, or that holds "repeated": true (it

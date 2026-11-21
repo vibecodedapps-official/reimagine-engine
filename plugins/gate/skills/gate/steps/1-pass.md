@@ -66,7 +66,7 @@ Before any fix, sort every finding of the pass into one bucket with a one-line r
 
 - `fix`: a correctness finding inside the change, or a regression.
 - `defer`: reuse, simplification, efficiency, or an issue the change did not introduce.
-- `reject`: a false positive, or a finding that rests on an instruction file outside the root that preflight did not read, which the reason names.
+- `reject`: a false positive, or a finding that rests on an instruction file the host does not load for the session, which the reason names.
 
 1. A finding the script printed with a bucket keeps it and its reason: a regression arrives as `fix`, a carried rejection as `reject`, a returning deferral as `defer`. Sort the rest.
 2. A finding the script marked `new` may be a defect an earlier review worded differently. The summary prints its `candidates`: earlier entries of the same file that no review of this pass reported, nearest line first, then entries of other files that share an identifier with it. When the finding is the same defect as a candidate, it takes what the script gives a returning entry of the candidate's state: `fix` and `regressed` for a fixed one, `reject` and `carried` for a rejected or carried one, `defer` and `deferred` for a deferred one. A match to a regressed entry gives no bucket: sort it with the rest, its state staying `regressed`.

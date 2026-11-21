@@ -490,6 +490,13 @@ describe('the time a pass took', { concurrency }, () => {
   test('a pass whose times cannot be read is no measure', async () => {
     await ok([three[0], { ...three[1], started: '...' }, three[2]], HIGH, '4', ['22', '50', NOW]);
     await ok([three[0], { ...three[1], ended: '2026-10-25T09:00:00Z' }, three[2]], HIGH, '4', ['22', '50', NOW]);
+    await ok([three[0], { ...three[1], started: '2026-09-31T09:40:40Z' }, three[2]], HIGH, '4', ['22', '50', NOW]);
+  });
+
+  test('a pass that ends before it starts is no measure where it is the only one at its level', async () => {
+    const back = [three[0], { ...three[2], n: 2 }];
+    await ok(back, CAPPED, '4', ['39', '50', '2026-10-25T10:00:00Z']);
+    await ok(back, HIGH, '4', ['40', '50', '2026-10-25T10:00:00Z']);
   });
 
   test('a latest pass that started after <now> is no measure', async () => {
@@ -513,7 +520,7 @@ describe('the time a pass took', { concurrency }, () => {
 });
 
 describe('usage and read errors', { concurrency }, () => {
-  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra'], ['passes.json', '4', '7'], ['passes.json', '4', '7', '50', '1'], ['passes.json', '4', 'soon', '50'], ['passes.json', '4', '7', 'long'], ['passes.json', '4', '', '50'], ['passes.json', '4', '7', ''], ['passes.json', '4', 'Infinity', '50'], ['passes.json', '4', '7', '0'], ['passes.json', '4', '7', '-50'], ['passes.json', '4', '7', 'NaN'], ['passes.json', '4', '0x10', '50'], ['passes.json', '4', 'abc', '50'], ['passes.json', '4', '7', 'abc'], ['passes.json', '4', ' ', '50'], ['passes.json', '4', '7', ' '], ['passes.json', '4', '7', '50', 'now'], ['passes.json', '4', '7', '50', ''], ['passes.json', '4', '7', '50', '2026-10-25 09:00:40'], ['passes.json', '4', '7', '50', '2026-10-25T09:00:40'], ['passes.json', '4', '7', '50', '2026-13-45T09:00:40Z'], ['passes.json', '4', '7', '50', '2026-10-25T09:00:40Z', 'x']]) {
+  for (const args of [[], ['passes.json'], ['passes.json', '0'], ['passes.json', 'two'], ['passes.json', '1.5'], ['passes.json', '-1'], ['passes.json', ''], ['passes.json', '4', 'extra'], ['passes.json', '4', '7'], ['passes.json', '4', '7', '50', '1'], ['passes.json', '4', 'soon', '50'], ['passes.json', '4', '7', 'long'], ['passes.json', '4', '', '50'], ['passes.json', '4', '7', ''], ['passes.json', '4', 'Infinity', '50'], ['passes.json', '4', '7', '0'], ['passes.json', '4', '7', '-50'], ['passes.json', '4', '7', 'NaN'], ['passes.json', '4', '0x10', '50'], ['passes.json', '4', 'abc', '50'], ['passes.json', '4', '7', 'abc'], ['passes.json', '4', ' ', '50'], ['passes.json', '4', '7', ' '], ['passes.json', '4', '7', '50', 'now'], ['passes.json', '4', '7', '50', ''], ['passes.json', '4', '7', '50', '2026-10-25 09:00:40'], ['passes.json', '4', '7', '50', '2026-10-25T09:00:40'], ['passes.json', '4', '7', '50', '2026-13-45T09:00:40Z'], ['passes.json', '4', '7', '50', '2026-10-25T09:00:40Z', 'x'], ['passes.json', '4', '7', '50', '2026-02-30T09:00:40Z']]) {
     test(`usage for arguments [${args.join(' ')}]`, async () => {
       await bad(record([pass(1, 1, 'xhigh')]), 2, USAGE, args);
     });

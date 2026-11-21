@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.43 - 2026-11-21
+
+- A check passes only when it could fail, ran as its own command and its exit code was read. Checks that could not fail were read as passes: a result file an earlier run had left, a search whose word stood in every case, and a regression test that also passed on the code before the fix.
+- The places a behavior lives are found by what it does, not by one spelling. A change made where one spelling was found left a record, a description and a summary line naming what was gone.
+- The same call sent alone, where the denying hook's reason names that form, is not a route around a denial. A denied call sent again in the plain form its denial named, and reported, still counted as a route around the denial by the item's words. A form the reason does not name still stops.
+- Another paid run after one ends is named beside money among what is asked for. Twice a second paid review run was started with no ask after the first had ended.
+- A claim about state rests on the thing itself, not an earlier read of it. Twice such a claim rested on an earlier check of the thing, made before it changed. An installed block reads `stale` once; run `/rules` to take the new text.
+
 ## review 0.1.5 - 2026-11-20
 
 - The first reading saves the report its reading agent ends with. The step said to save the reply, which is a launch line where the host runs the call in the background.

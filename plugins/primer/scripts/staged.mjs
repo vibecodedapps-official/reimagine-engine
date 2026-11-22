@@ -146,8 +146,10 @@ function scan(s, ps, st, top = false) {
   if (n) st.pushes ||= list.slice(0, n).some((w) => Array.isArray(w) && w.some((x) => /\bpush\b/i.test(x.w)));
   if (list?.moved) st.moved = true;
   for (const item of (list ?? []).slice(n)) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st, at);
-  // One of the four that a here-document may run, or that follows an end word the script cannot read, is a call it does not read, in a directory it does not know.
-  if (list?.brings) { st.far = true; st.calls.push({ sub: list.brings, dir: st.dir, args: [], moved: true, doc: true }); }
+  // One of the four that a here-document may run, that follows an end word the script cannot read, or that a text not read to its end
+  // names as a git call, is a call it does not read, in a directory it does not know.
+  const unread = list ? list.brings : BROUGHT.exec(s.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase();
+  if (unread) { st.far = true; st.calls.push({ sub: unread, dir: st.dir, args: [], moved: true, doc: list ? 'that a here-document runs or hides' : 'in a command that cannot be read to its end' }); }
 }
 
 // The names a shell computes or will not assign, which read back another text than the one assigned: under sh those of bash and
@@ -523,7 +525,7 @@ export function staged(c, input) {
     const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => (x.head && remoteOf(c, repo, x.head.branch) !== remoteOf(c, repo) ? null : planOf(c, { ...x, dir }, repo.top))), whole = !st.lost && plans.length && plans.every(Boolean);
     // What an unread merge brings is not in the work tree, so no count of the files there stands in for it.
     const blind = calls.find((x, i) => brings(x.sub) && !plans[i]);
-    if (blind?.doc) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; a git ${blind.sub} that a here-document runs or hides is not read, so the call is denied; run it as a command of its own`)];
+    if (blind?.doc) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; a git ${blind.sub} ${blind.doc} is not read, so the call is denied; run it as a command of its own`)];
     if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own`)];
     const reason = whole ? verdict(c, repo, { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) }) : verdict(c, repo, null, plans.filter(Boolean));
     if (reason) return [deny(reason)];

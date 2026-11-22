@@ -178,7 +178,7 @@ describe('session-start', () => {
     const r = start(cfg, repo('over', 'https://example.invalid/team/app.git'));
     const sharedSize = join(cfg.store, 'shared.md').length + 98, groupSize = file.length + 10044;
     // The string opens with a line that says where each layer is whole, since a session holds only a preview of it.
-    const lead = `primer: the text below is ${sharedSize + 2 + groupSize} characters, over the host's cap of 10000, so a session holds a preview of it; each layer is whole in its file: ${join(cfg.store, 'shared.md')}, ${file}\n\n`;
+    const lead = `primer: the text below is ${sharedSize + 2 + groupSize} characters, over the host's cap of 10000, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${join(cfg.store, 'shared.md')}, ${file}\n\n`;
     assert.equal(r.stdout, context(lead + text, `primer: the context string is ${sharedSize + 2 + groupSize} characters as emitted, over the host's cap of 10000 (shared ${sharedSize}, group ${groupSize})`));
   });
 
@@ -193,7 +193,7 @@ describe('session-start', () => {
     assert.equal(from('resume'), context(null, warning));
     const groupAlone = run(['session-start', 'group', join(base, 'data')], { input: JSON.stringify({ cwd: dir, hook_event_name: 'SessionStart', source: 'resume' }), extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout;
     assert.equal(groupAlone, context(null, `primer: the group layer is ${groupSize} characters as emitted, over the host's cap of 10000`));
-    const lead = `primer: the text below is ${sharedSize + 2 + groupSize} characters, over the host's cap of 10000, so a session holds a preview of it; each layer is whole in its file: ${join(cfg.store, 'shared.md')}, ${file}\n\n`;
+    const lead = `primer: the text below is ${sharedSize + 2 + groupSize} characters, over the host's cap of 10000, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${join(cfg.store, 'shared.md')}, ${file}\n\n`;
     for (const source of ['startup', 'clear', 'compact', 'fork', undefined]) assert.equal(from(source), context(lead + text, warning), String(source));
   });
 
@@ -252,7 +252,7 @@ describe('session-start', () => {
     const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
     const r = start(cfg, repo('unattended', 'https://example.invalid/team/app.git'), { CLAUDE_CODE_SESSION_ATTENDED: '0' });
     const file = join(cfg.store, 'groups', 'app.md');
-    const lead = `primer: the text below is ${file.length + 10044} characters, over the host's cap of 10000, so a session holds a preview of it; each layer is whole in its file: ${file}\n\n`;
+    const lead = `primer: the text below is ${file.length + 10044} characters, over the host's cap of 10000, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${file}\n\n`;
     assert.equal(r.stdout, context(lead + part('group', file, 'a'.repeat(9990), 'fb0545d8')));
   });
 
@@ -261,7 +261,7 @@ describe('session-start', () => {
     const dir = repo('subagent', 'https://example.invalid/team/app.git');
     const as = (agent_type) => run(['session-start', 'all', join(base, 'data')], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', 'key', 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_id: 'a1', agent_type }) }).stdout;
     const file = join(cfg.store, 'groups', 'app.md');
-    const lead = `primer: the text below is ${file.length + 10044} characters, over the host's cap of 10000, so a session holds a preview of it; each layer is whole in its file: ${file}\n\n`;
+    const lead = `primer: the text below is ${file.length + 10044} characters, over the host's cap of 10000, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${file}\n\n`;
     const want = `${JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: lead + part('group', file, 'a'.repeat(9990), 'fb0545d8') } })}\n`;
     for (const type of ['general-purpose', 'audit:auditor', undefined]) assert.equal(as(type), want, String(type));
     for (const type of ['Explore', 'Plan']) assert.equal(as(type), '', type);
@@ -308,11 +308,39 @@ describe('session-start', () => {
     const bare = join(base, 'config-bare');
     mkdirSync(join(bare, 'reimagine-primer'), { recursive: true });
     assert.equal(start({ dir: bare }, dir).stdout, '');
-    // A directory in the place of a layer's file.
+    // A directory in the place of a layer's file costs that layer alone: the others load under a line that names it.
     const folder = config(local(), { shared: SHARED });
     mkdirSync(join(folder.store, 'groups', 'app.md'), { recursive: true });
-    const notFile = `${none}${join(folder.store, 'groups', 'app.md')} is not a file`;
-    assert.equal(start(folder, dir).stdout, context(notFile, notFile));
+    const notFile = `primer: the group layer is not loaded: ${join(folder.store, 'groups', 'app.md')} is not a file`;
+    assert.equal(start(folder, dir).stdout, context(`${notFile}\n\n${part('shared', join(folder.store, 'shared.md'), SHARED.trim(), 'c09a8e67')}`, notFile));
+    assert.equal(main(['status'], { env: { ...env, CLAUDE_CONFIG_DIR: folder.dir }, home: join(base, 'home'), cwd: dir })[7], `layer group: ${join(folder.store, 'groups', 'app.md')}, not a file`);
+  });
+
+  test('a start that ends with nothing to load, in a place the map or the configuration names, says so in one line of context', () => {
+    const none = 'primer: no context layer is loaded at this start: ';
+    // A mapped local repository whose layer files are all missing or empty.
+    const dir = repo('nothing', 'https://example.invalid/team/app.git'), empty = config(local(), { group: '\n' });
+    const blank = `${none}each layer file of group app is missing or empty`;
+    assert.equal(start(empty, dir).stdout, context(blank, blank));
+    assert.equal(start(empty, dir, { CLAUDE_CODE_SESSION_ATTENDED: '0' }).stdout, context(blank));
+    assert.equal(start(empty, dir, {}, 'shared').stdout, '');
+    // A store that config.json names and that holds no map.json.
+    const noMap = config(local(), { group: GROUP }), store = join(base, 'store-no-map');
+    mkdirSync(store);
+    write(noMap.own, 'config.json', JSON.stringify({ store }));
+    const unmapped = `${none}${join(noMap.own, 'config.json')} names the store ${store}, which holds no map.json`;
+    assert.equal(start(noMap, dir).stdout, context(unmapped, unmapped));
+    assert.equal(main(['status'], { env: { ...env, CLAUDE_CONFIG_DIR: noMap.dir }, home: join(base, 'home'), cwd: dir })[2], `map: ${join(store, 'map.json')} (missing)`);
+    // A clone at the path of a local entry that has none of the entry's remotes.
+    const moved = repo('nothing-moved', 'https://example.invalid/team/elsewhere.git');
+    const at = config({ version: 1, repos: [{ remotes: ['example.invalid/team/app'], path: slash(moved), group: 'app', profile: 'local' }], roots: [] }, { group: GROUP });
+    const other = `${none}${slash(moved)} is the path of the map's entry of group app and has none of its remotes`;
+    assert.equal(start(at, moved).stdout, context(other, other));
+    // A clone git cannot read, as with a damaged HEAD file, which git answers as no repository.
+    const cfg = config(local(), { group: GROUP }), hurt = repo('nothing-hurt', 'https://example.invalid/team/app.git');
+    writeFileSync(join(hurt, '.git', 'HEAD'), 'not a ref\n');
+    const unread = `${none}git read no repository at ${slash(hurt)}, though ${slash(hurt)} holds .git`;
+    assert.equal(start(cfg, hurt).stdout, context(unread, unread));
   });
 
   test('the configuration directory comes from the transcript path before the variable', () => {
@@ -359,9 +387,10 @@ describe('the git limit', () => {
     const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
     const from = (extra, input) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir, ...input }), limit: 1000 });
     assert.deepEqual(from(env), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: layers } })]);
-    const slow = slowGit();
-    assert.deepEqual(from(slow), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: layers }, systemMessage: `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there` })]);
-    assert.deepEqual(from(slow, { hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: layers } })]);
+    // The context opens with the line that says which repository the layers are read for, at a subagent's start too.
+    const slow = slowGit(), note = `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there`;
+    assert.deepEqual(from(slow), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: `${note}\n\n${layers}` }, systemMessage: note })]);
+    assert.deepEqual(from(slow, { hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: `${note}\n\n${layers}` } })]);
     // A kept answer is read for its own directory alone.
     const other = repo('slow-other', 'https://example.invalid/team/app.git');
     assert.equal(JSON.parse(main(['session-start', 'all', data], { env: { ...slow, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: other }), limit: 1000 })[0]).systemMessage, `primer: the context of ${slash(other)} is unknown, since git gave no answer within 1 s`);
@@ -375,7 +404,33 @@ describe('the git limit', () => {
     const kept = readdirSync(join(data, 'repo'));
     assert.equal(kept.length, 1);
     assert.ok(!readFileSync(join(data, 'repo', kept[0]), 'utf8').includes('s3cr3t-token'));
-    assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, layers);
+    assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
+  });
+
+  test('a kept answer holds the repository of a local entry alone, with no user, query or fragment of a remote URL', () => {
+    const data = join(base, 'data-bare'), cfg = config(local(), { group: GROUP });
+    const from = (cwd) => main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd }), limit: 1000 });
+    const kept = () => readdirSync(join(data, 'repo')).map((f) => readFileSync(join(data, 'repo', f), 'utf8'));
+    // A clone that no local entry holds keeps no root and no URL.
+    from(repo('kept-unmapped', 'https://example.invalid/team/unmapped.git'));
+    assert.deepEqual(kept(), ['null']);
+    const dir = repo('kept-urls', 'https://example.invalid/team/app.git');
+    git(dir, 'remote', 'add', 'query', 'https://example.invalid/team/x.git?token=q-s3cr3t#f-s3cr3t');
+    git(dir, 'remote', 'add', 'user', 'https://x-token@u-s3cr3t@example.invalid/team/y.git');
+    from(dir);
+    const { remotes, urls } = JSON.parse(kept().find((t) => t !== 'null'));
+    assert.deepEqual(remotes, ['example.invalid/team/app', 'example.invalid/team/x.git', 'example.invalid/team/y']);
+    assert.deepEqual(urls, ['https://example.invalid/team/app.git', 'https://example.invalid/team/x.git', 'https://example.invalid/team/y.git']);
+  });
+
+  test('a start that git answers as no repository, in a clone it cannot read, leaves the kept answer in place', () => {
+    const dir = repo('slow-hurt', 'https://example.invalid/team/app.git'), data = join(base, 'data-hurt');
+    const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
+    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    from(env);
+    writeFileSync(join(dir, '.git', 'HEAD'), 'not a ref\n');
+    from(env);
+    assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
   });
 
   test('a kept answer of a directory started within 30 days is not removed by another directory\'s write', () => {
@@ -388,7 +443,7 @@ describe('the git limit', () => {
     from(env, dir);
     from(env, other);
     assert.ok(existsSync(join(data, 'repo', file)));
-    assert.equal(JSON.parse(from(slowGit(), dir)[0]).hookSpecificOutput.additionalContext, layers);
+    assert.equal(JSON.parse(from(slowGit(), dir)[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
   });
 
   test('a kept answer last written more than 30 days before is not read where git gives no answer', () => {
@@ -1046,7 +1101,7 @@ describe('the notice', () => {
     dir = repo('notice-both', 'https://example.invalid/team/app.git');
     git(dir, 'remote', 'add', 'upstream', 'git@other.invalid:fork/kit.git');
     write(dir, 'CLAUDE.md', '<!-- primer -->\n# demo\n');
-    cfg = config(local());
+    cfg = config(local(), { group: GROUP });
     key = dir.replace(/[^A-Za-z0-9]/g, '-');
     cpSync(join(memory, 'memory'), join(cfg.dir, 'projects', key, 'memory'), { recursive: true });
   });
@@ -1059,7 +1114,9 @@ describe('the notice', () => {
     const input = JSON.stringify({ session_id: 'test', transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SessionStart', source: 'startup', ...extra });
     const hook = spawnSync(process.execPath, ['plugins/primer/hooks/notice.mjs'], { cwd: ROOT, env: { ...env, CLAUDE_PLUGIN_DATA: data }, input, encoding: 'utf8' });
     assert.equal(hook.status, 0, hook.stderr);
-    return [hook.stdout, run(['session-start', 'all', data], { input }).stdout];
+    // The loader gives the layers too, so its side is its message alone.
+    const out = run(['session-start', 'all', data], { input }).stdout, said = out && JSON.parse(out).systemMessage;
+    return [hook.stdout, said ? message(said.replaceAll('\\', '\\\\')) : ''];
   };
   const message = (text) => `{"systemMessage":"${text}"}\n`;
 
@@ -1084,7 +1141,7 @@ describe('the notice', () => {
   });
 
   test('the stamp holds how far one repository read each log, and a single entry after a review makes no notice', () => {
-    const data = join(base, `notice-data-${++seq}`), a = config(local()), b = config(local()), c = config(local());
+    const data = join(base, `notice-data-${++seq}`), a = config(local(), { group: GROUP }), b = config(local(), { group: GROUP }), c = config(local(), { group: GROUP });
     const from = (x) => both(data, { transcript_path: join(x.dir, 'projects', key, 'test.jsonl') });
     const said = (n) => message(`primer: ${n} feedback entries since the last review; run /primer`);
     stamps(data, {});
@@ -1109,7 +1166,7 @@ describe('the notice', () => {
   });
 
   test('review.json in the machine\'s directory leaves a note out of the count and names more log directories, for both hooks', () => {
-    const data = join(base, `notice-data-${++seq}`), a = config(local()), more = join(base, `more-logs-${seq}`), file = join(a.own, 'review.json');
+    const data = join(base, `notice-data-${++seq}`), a = config(local(), { group: GROUP }), more = join(base, `more-logs-${seq}`), file = join(a.own, 'review.json');
     const from = () => both(data, { transcript_path: join(a.dir, 'projects', key, 'test.jsonl') });
     const notes = (n) => message(`primer: auto memory has ${n} notes since the last review; run /primer`);
     cpSync(join(memory, 'memory'), join(a.dir, 'projects', key, 'memory'), { recursive: true });
@@ -1144,11 +1201,11 @@ describe('the notice', () => {
   test('the loader gives no notice on a later source or in a session no one attends', () => {
     const data = join(base, `notice-data-${++seq}`);
     stamps(data, {});
-    const input = (source) => JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, source });
-    assert.equal(run(['session-start', 'all', data], { input: input('resume') }).stdout, '');
-    assert.equal(run(['session-start', 'all', data], { input: input('startup'), extraEnv: { CLAUDE_CODE_SESSION_ATTENDED: '0' } }).stdout, '');
-    assert.notEqual(run(['session-start', 'all', data], { input: input('startup') }).stdout, '');
-    assert.equal(run(['session-start', 'all', data], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }) }).stdout, '');
+    const said = (more, extraEnv) => JSON.parse(run(['session-start', 'all', data], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, ...more }), extraEnv }).stdout).systemMessage;
+    assert.equal(said({ source: 'resume', session_id: 'later' }), undefined);
+    assert.equal(said({ source: 'startup' }, { CLAUDE_CODE_SESSION_ATTENDED: '0' }), undefined);
+    assert.notEqual(said({ source: 'startup' }), undefined);
+    assert.equal(said({ hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }), undefined);
   });
 });
 

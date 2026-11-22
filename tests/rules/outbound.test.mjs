@@ -351,6 +351,30 @@ test('R405: a commit only a tag reaches is read when the push sends tags', () =>
   denied(w.shell('git push --follow-tags', 'Bash', dir), 'zqxlisted', 'commit ', w);
 });
 
+test('R405: a push is read for the name of the branch its folder is on and for its own words', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  none(w.shell('git push origin main', 'Bash', dir));
+  denied(w.shell('git push origin main:zqxlisted', 'Bash', dir), 'zqxlisted', 'the words of the push', w);
+  denied(w.shell('git push origin main:zqxlisted', 'PowerShell', dir), 'zqxlisted', 'the words of the push', w);
+  w.git(dir, 'switch', '-q', '-c', 'zqxlisted-notes');
+  denied(w.shell('git push -u origin HEAD', 'Bash', dir), 'zqxlisted', `the name of the branch ${dir} is on`, w);
+  // An allow line takes the name out, as it does any text.
+  w.list('zqxlisted', 'allow: zqxlisted-notes');
+  none(w.shell('git push -u origin HEAD', 'Bash', dir));
+});
+
+test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'zqxlisted');
+  for (const command of ['git -c user.name="A&B" push -q', "git -c credential.helper='!f() { :; }; f' push -q", 'g=git; $g push -q', '$DOCKER push image:tag']) denied(w.shell(command, 'Bash', dir), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git -c user.name="A&B" push -q', 'PowerShell', dir), 'zqxlisted', 'commit ', w);
+  none(w.shell('docker push image:tag', 'Bash', dir));
+});
+
 test('R405: a command that names git and push but sends no commit is not read as a push', () => {
   const w = world();
   w.list('zqxlisted');
@@ -490,18 +514,18 @@ test('R405: the chained push is read from the calls of the command, with its com
   for (const command of ['git pull --ff-only origin main && git push', 'git pull --ff-only https://example.invalid/x.git main && git push']) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
 });
 
-test('R405: a push reads each folder with one git call, and a folder spelled two ways once', () => {
+test('R405: a push reads each folder with two git calls, one for its commits and one for its branch, and a folder spelled two ways once', () => {
   const w = world();
   w.list('zqxlisted', 'check: diff');
   const dir = repo(w), other = repo(w, 'other');
   writeFileSync(join(dir, 'a.txt'), 'clean\n');
   w.git(dir, 'add', 'a.txt');
   w.git(dir, 'commit', '-q', '-m', 'add a');
-  assert.equal(gitCalls(w, 'git push', dir), 1);
-  assert.equal(gitCalls(w, `git -C "${dir}" push`, other), 2);
-  assert.equal(gitCalls(w, `git -C "${dir}" push`, `${dir}${sep}.`), 1);
+  assert.equal(gitCalls(w, 'git push', dir), 2);
+  assert.equal(gitCalls(w, `git -C "${dir}" push`, other), 4);
+  assert.equal(gitCalls(w, `git -C "${dir}" push`, `${dir}${sep}.`), 2);
   // cd - names no folder.
-  assert.equal(gitCalls(w, `cd "${dir}" && cd - && git push`, other), 2);
+  assert.equal(gitCalls(w, `cd "${dir}" && cd - && git push`, other), 4);
 });
 
 test('R405: a push whose read runs past the hook\'s own limit is denied, with the folder and the limit named', () => {

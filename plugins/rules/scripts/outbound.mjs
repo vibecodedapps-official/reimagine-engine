@@ -8,7 +8,7 @@ import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chained } from './chain.mjs';
+import { chained, pushed } from './chain.mjs';
 import { targets } from './rules.mjs';
 
 export const LIST_FILE = 'rules-outbound.txt';
@@ -145,7 +145,7 @@ export function leaving(dir, command, diff, left) {
     if (names.length) added.push({ where: `the names of the files commit ${commit} adds`, text: names.join('\n') });
     if (lines.length) added.push({ where: `the added lines of commit ${commit}`, text: lines.map((l) => l.slice(1)).join('\n') });
   }
-  return { texts: [...texts, ...added], lost };
+  return { texts: [{ where: `the name of the branch ${dir} is on`, text: git(dir, ['rev-parse', '--abbrev-ref', 'HEAD'], left) }, ...texts, ...added], lost };
 }
 
 const strings = (v) => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []);
@@ -209,7 +209,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     }
     return resolve(base, p);
   };
-  const why = postWord(command, list), posts = why !== null, pushes = PUSH.test(command.replace(CONTINUED, ' '));
+  const why = postWord(command, list), posts = why !== null, sent = pushed(command, tool === 'PowerShell'), pushes = sent !== null || PUSH.test(command.replace(CONTINUED, ' '));
   const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
   // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape
@@ -268,7 +268,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
       if (read.has(real(dir))) continue;
       read.add(real(dir));
       let out, found;
-      try { out = leaving(dir, command, list.diff, left); found = hit(out.texts, left); } catch (e) {
+      try { out = leaving(dir, command, list.diff, left); found = hit([{ where: 'the words of the push', text: sent ?? '' }, ...out.texts], left); } catch (e) {
         if (e instanceof Late) return [deny(`rules: the commits a push from ${dir} would send could not be read in ${limit / 1000} seconds, so the push was not checked against ${path}; run it again`)];
         continue;
       }

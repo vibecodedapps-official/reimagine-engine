@@ -338,9 +338,17 @@ describe('session-start', () => {
     assert.equal(start(at, moved).stdout, context(other, other));
     // A clone git cannot read, as with a damaged HEAD file, which git answers as no repository.
     const cfg = config(local(), { group: GROUP }), hurt = repo('nothing-hurt', 'https://example.invalid/team/app.git');
+    start(cfg, hurt);
     writeFileSync(join(hurt, '.git', 'HEAD'), 'not a ref\n');
     const unread = `${none}git read no repository at ${slash(hurt)}, though ${slash(hurt)} holds .git`;
     assert.equal(start(cfg, hurt).stdout, context(unread, unread));
+    // The same clone with no entry of the map at its path costs no session a line.
+    const stray = repo('nothing-stray', 'https://example.invalid/team/stray.git');
+    writeFileSync(join(stray, '.git', 'HEAD'), 'not a ref\n');
+    assert.equal(start(cfg, stray).stdout, '');
+    // Status gives the cause of each of these two states.
+    assert.equal(run(['status'], { cwd: hurt, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n').at(-2), `repository: none, git read none at ${slash(hurt)}, though ${slash(hurt)} holds .git`);
+    assert.equal(run(['status'], { cwd: moved, extraEnv: { CLAUDE_CONFIG_DIR: at.dir } }).stdout.split('\n').at(-3), 'check map: unmapped, at the path of the entry of group app, with none of its remotes');
   });
 
   test('the configuration directory comes from the transcript path before the variable', () => {
@@ -407,7 +415,7 @@ describe('the git limit', () => {
     assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
   });
 
-  test('a kept answer holds the repository of a local entry alone, with no user, query or fragment of a remote URL', () => {
+  test('a kept answer holds the repository of a local entry alone, each URL with no user, query or fragment', () => {
     const data = join(base, 'data-bare'), cfg = config(local(), { group: GROUP });
     const from = (cwd) => main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd }), limit: 1000 });
     const kept = () => readdirSync(join(data, 'repo')).map((f) => readFileSync(join(data, 'repo', f), 'utf8'));
@@ -419,8 +427,27 @@ describe('the git limit', () => {
     git(dir, 'remote', 'add', 'user', 'https://x-token@u-s3cr3t@example.invalid/team/y.git');
     from(dir);
     const { remotes, urls } = JSON.parse(kept().find((t) => t !== 'null'));
-    assert.deepEqual(remotes, ['example.invalid/team/app', 'example.invalid/team/x.git', 'example.invalid/team/y']);
+    assert.deepEqual(remotes, ['example.invalid/team/app']);
     assert.deepEqual(urls, ['https://example.invalid/team/app.git', 'https://example.invalid/team/x.git', 'https://example.invalid/team/y.git']);
+    for (const secret of ['q-s3cr3t', 'f-s3cr3t', 'u-s3cr3t']) assert.ok(!kept().join('').includes(secret), secret);
+  });
+
+  test('a local entry whose remote holds a query loads its layers at a slow start after a start git answered', () => {
+    const dir = repo('slow-query', 'https://example.invalid/team/q.git?x=1'), data = join(base, 'data-query');
+    const cfg = config(local({ repos: [{ remotes: ['example.invalid/team/q.git?x=1'], path: 'unused', group: 'app', profile: 'local' }] }), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
+    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    assert.equal(JSON.parse(from(env)[0]).hookSpecificOutput.additionalContext, layers);
+    assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
+  });
+
+  test('a slow start whose layers are over the cap opens with the note of the kept answer, then the line about the cap', () => {
+    const dir = repo('slow-over', 'https://example.invalid/team/app.git'), data = join(base, 'data-over');
+    const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
+    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    from(env);
+    const text = JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext;
+    assert.ok(text.startsWith(`primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\nprimer: the text below is `), text.slice(0, 400));
+    assert.ok(text.includes(`characters, over the host's cap of 10000, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${join(cfg.store, 'groups', 'app.md')}\n\nprimer layer group from `));
   });
 
   test('a start that git answers as no repository, in a clone it cannot read, leaves the kept answer in place', () => {
@@ -463,7 +490,7 @@ describe('the git limit', () => {
     const cfg = config(local({ roots: [slash(base)] }), { group: GROUP });
     const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
     assert.deepEqual(from(env), []);
-    assert.deepEqual(from(slowGit()), [JSON.stringify({ systemMessage: `primer: git gave no answer within 1 s, so ${slash(dir)} is read as outside a git work tree, as git gave at an earlier start there` })]);
+    assert.deepEqual(from(slowGit()), [JSON.stringify({ systemMessage: `primer: git gave no answer within 1 s, so ${slash(dir)} is read as a directory with no layers, as it was at an earlier start there` })]);
   });
 });
 

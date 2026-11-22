@@ -145,7 +145,7 @@ export function leaving(dir, command, diff, left) {
     if (names.length) added.push({ where: `the names of the files commit ${commit} adds`, text: names.join('\n') });
     if (lines.length) added.push({ where: `the added lines of commit ${commit}`, text: lines.map((l) => l.slice(1)).join('\n') });
   }
-  return { texts: [{ where: `the name of the branch ${dir} is on`, text: git(dir, ['rev-parse', '--abbrev-ref', 'HEAD'], left) }, ...texts, ...added], lost };
+  return { texts: [...texts, ...added], lost };
 }
 
 const strings = (v) => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []);
@@ -262,13 +262,14 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   const first = hit(texts);
   if (first) return first;
   if (pushes) {
+    if (sent !== null) { const mine = hit([{ where: 'the words of the push', text: sent }]); if (mine) return mine; }
     // A folder spelled two ways is read once.
     const real = (p) => { try { return realpathSync.native(p); } catch { return p; } }, read = new Set();
     for (const dir of [cwd, ...dirs.map((d) => d.dir)]) {
       if (read.has(real(dir))) continue;
       read.add(real(dir));
       let out, found;
-      try { out = leaving(dir, command, list.diff, left); found = hit([{ where: 'the words of the push', text: sent ?? '' }, ...out.texts], left); } catch (e) {
+      try { out = leaving(dir, command, list.diff, left); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: git(dir, ['rev-parse', '--abbrev-ref', 'HEAD'], left) }]), ...out.texts], left); } catch (e) {
         if (e instanceof Late) return [deny(`rules: the commits a push from ${dir} would send could not be read in ${limit / 1000} seconds, so the push was not checked against ${path}; run it again`)];
         continue;
       }

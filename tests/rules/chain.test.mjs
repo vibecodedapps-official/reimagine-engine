@@ -169,6 +169,11 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ['git commit -m x; if ($?) {echo hi}# it\'s (\necho "$(git push --dry-run)"', true, false],
     // A shell that runs what a substitution prints may run a commit's message read back, so the message is read as words.
     ['git add -A && git commit -qm "git push -q"; eval "$(git log -1 --format=%s)"', false, true],
+    ['git add -A && git commit -qm "git push -q"; bash -c \'eval "$(git log -1 --format=%s)"\'', false, true],
+    ['git commit -qm "git push -q"; echo "$(eval "$(git log -1 --format=%s)")"', false, true],
+    // A message can only be read back by a shell that runs after the commit.
+    ['eval "$(ssh-agent -s)" && git commit -m "Fix push retry"', false, false],
+    ['source "$(poetry env info --path)/bin/activate" && git commit -m "Fix push retry"', false, false],
     // A quoted value that holds the subcommand with more words, as -ArgumentList takes, names the call.
     ["git commit -m x; Start-Process git -ArgumentList 'push','-q' -Wait -NoNewWindow", true, true],
     ["git commit -m x; Start-Process git -ArgumentList 'push -q' -Wait -NoNewWindow", true, true],
@@ -185,7 +190,12 @@ test('R405: a push is found among the calls of a command, with the words it is g
     ['git -c user.name="A&B" push -q origin main', false, '-q origin main'],
     ["git -c credential.helper='!f() { :; }; f' push origin HEAD:topic", false, 'origin HEAD:topic'],
     ['g=git; $g push -u origin HEAD', false, '-u origin HEAD'],
+    ['g=git; $g push origin main', false, 'origin main'],
+    ['X=1 $g push origin main', false, 'origin main'],
     ['$DOCKER push image:tag', false, 'image:tag'],
+    ['make -C $DIR push', false, null],
+    ['cp "$f" push', false, null],
+    ['echo $USER "push the button"', false, null],
     ['git push origin main; git push origin v1', false, 'origin main origin v1'],
     ["Start-Process git -ArgumentList 'push','origin','topic' -Wait", true, 'origin topic -Wait'],
     ['git stash push -m wip', false, null],

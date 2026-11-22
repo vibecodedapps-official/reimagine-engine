@@ -28,7 +28,7 @@ const DEFINES = [String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){};&|=]
 const defines = (text, ps) => DEFINES[ps ? 1 : 0].test(text);
 
 // What the git calls among the words of one simple command do: makes, a commit that was not there before the command, and
-// pushes, with sent, the words each push is given. The subcommand is read after git's own options; an option counts only where it is typed outside quotes. Where the quotes were
+// pushes, with sent, the words each push is given where the word is git itself or the command's program, after any assignments. The subcommand is read after git's own options; an option counts only where it is typed outside quotes. Where the quotes were
 // not read (loose), the call counts for any word after git that names a subcommand. A pull that only fast-forwards and names
 // nothing takes the branch's upstream, which a remote-tracking ref holds once it has run, so a push sent alone would not read it
 // either. chains says a push comes after a commit-making call among the same words with a PowerShell } closed between them, since a block ends no command.
@@ -54,7 +54,7 @@ function flags(words, loose = false, skip = null) {
     const head = bare(words[j]?.w ?? '').split(/[\s,]+/), sub = head[0].toLowerCase(), args = words.slice(j + 1), opts = args.filter((x) => !x.q).map((x) => bare(x.w));
     // A redirect and the file it names are no argument of the pull.
     const named = args.filter((x, k) => !(!x.q && REDIRECT.test(x.w)) && !(k > 0 && !args[k - 1].q && /^\d*[<>]+&?$/.test(args[k - 1].w)));
-    if (sub === 'push') { const sends = loose || !opts.some((o) => DRY.test(o)); out.chains ||= sends && !loose && out.makes && words[i].n > made; out.pushes ||= sends; (out.sent ??= []).push(...head.slice(1), ...args.map((x) => x.w)); }
+    if (sub === 'push') { const sends = loose || !opts.some((o) => DRY.test(o)); out.chains ||= sends && !loose && out.makes && words[i].n > made; out.pushes ||= sends; if (git || words.slice(0, i).every((x) => /^[A-Za-z_]\w*=/.test(x.w))) (out.sent ??= []).push(...head.slice(1), ...args.map((x) => x.w)); }
     else if (MAKERS.has(sub)) out.makes ||= loose || (!opts.some((o) => IDLE.test(o)) && !(sub === 'pull' && opts.includes('--ff-only') && named.every((x) => !x.q && UPSTREAM.test(bare(x.w)))));
     if (out.makes) made ??= words[i].n;
     if (sub === 'commit' && skip) args.forEach((x, k) => { const v = !x.q && /^(?:-[A-Za-z]*m|--message)$/.test(x.w) ? args[k + 1] : null; if (v && !/[$`]/.test(v.w)) skip.push([v.a, v.b]); });
@@ -103,7 +103,7 @@ const pairs = (s, ps) => {
 // that holds them. ps reads the text as PowerShell does: a backtick escapes, and a here-string is one quoted text.
 function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
-  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, prints = false, pos = 0, braces = 0;
+  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0;
   // Each word keeps the place it starts and ends at in s, and the count of PowerShell } read before it; skip holds the places of the commit messages of s itself.
   const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
   const end = () => { if (cur) words.push({ ...cur, b: pos }); cur = null; };
@@ -113,12 +113,13 @@ function walk(s, ps, depth) {
   // followed where it holds an expansion or is an expression in parentheses.
   const cut = (pipe = false, paren = false) => {
     end();
+    const given = early.length > 0;
     if (words.some(shell)) {
-      // A shell given what a substitution prints may run a commit's message read back, as eval "$(git log -1 --format=%s)" does.
-      prints ||= early.length > 0;
       early.push(...[...held, ...texts].flatMap(both));
       vague ||= paren || [...words.map((x) => x.w), ...held, ...texts].some((t) => t.includes('$'));
     }
+    // A shell given what a substitution prints, in this command or in a text or a substitution it holds, may run the message of a commit made before it, read back, as eval "$(git log -1 --format=%s)" does.
+    if ((given && words.some(shell)) || early.some((p) => p.prints)) shown = pos;
     if (words.length) held = pipe ? [...held, ...texts] : [];
     parts.push(...early, flags(words, false, depth || words.some(shell) ? null : skip));
     [words, texts, early] = [[], [], []];
@@ -192,7 +193,7 @@ function walk(s, ps, depth) {
   }
   pos = s.length;
   cut();
-  return lost ? null : [...parts, { fn: defines(plain, ps), sh: vague, skip: prints ? [] : skip }];
+  return lost ? null : [...parts, { fn: defines(plain, ps), sh: vague, skip: skip.filter(([a]) => a > shown), prints: shown >= 0 }];
 }
 
 // A text read by its words alone, split at each quote and at each character that ends a command.
@@ -209,7 +210,7 @@ const straight = (command, ps) => (ps ? command.replace(/[\u2018-\u201b]/g, "'")
 export function chained(command, ps) {
   const text = straight(command, ps), parts = read(text, ps);
   const follows = (list, any) => list.some((p, i) => p.chains || (p.makes && list.some((q, j) => q.pushes && (any || j > i))));
-  // The words-alone read leaves out the message of each commit the walk read, which no shell runs.
+  // The words-alone read leaves out the message of each commit the walk read, which no shell runs unless a later one prints it back.
   const bare = (parts.at(-1).skip ?? []).reduce((t, [a, b]) => t.slice(0, a) + ' '.repeat(b - a) + t.slice(b), text);
   return follows(parts, parts.some((p) => p.fn)) || (parts.some((p) => p.sh) && follows(loose(bare), true));
 }

@@ -365,6 +365,17 @@ test('R405: a push is read for the name of the branch its folder is on and for i
   none(w.shell('git push -u origin HEAD', 'Bash', dir));
 });
 
+test('R405: the name of the branch is read only where a push is found, and a push\'s own words where no commit can be read', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  w.git(dir, 'switch', '-q', '-c', 'zqxlisted-fix');
+  none(w.shell('git config push.autoSetupRemote true', 'Bash', dir));
+  none(w.shell('git commit --allow-empty -m "push later"', 'Bash', dir));
+  w.git(dir, 'checkout', '-q', '--orphan', 'docs');
+  denied(w.shell('git push origin main:zqxlisted', 'Bash', dir), 'zqxlisted', 'the words of the push', w);
+});
+
 test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {
   const w = world();
   w.list('zqxlisted');

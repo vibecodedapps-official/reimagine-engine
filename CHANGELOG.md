@@ -2,7 +2,7 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
-## primer 0.1.30 - 2026-11-21
+## primer 0.1.30 - 2026-11-22
 
 - A start that ends with nothing to load, in a place the map or the configuration names, says so in the session's context, as a load that stops does: a `local` repository whose layer files are each missing or empty, a store that `config.json` names with no `map.json` in it, a clone of a `local` entry that git cannot read, as with a damaged `HEAD` file, and a clone at the path of a `local` entry that has none of the entry's remotes. Each gave a session no layer and no word of it. `status` marks the missing `map.json` and gives the cause for the two clones.
 - A directory in the place of one layer's file costs that layer alone: the string opens with a line that names it, and the other layers load. It stopped the whole load, so one bad file cost a session every layer. `status` shows the layer as `not a file`.
@@ -11,7 +11,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 - The line at the start of a string over the host's cap says a session holds each layer whole only once it has read the layer's file. It named the files and said nothing of reading them.
 - The staging check denies a `git merge`, `cherry-pick`, `rebase` or `am` in a command it cannot read to its end, with a reason that says to run it as a command of its own. Such a command was counted by the files in the work tree, which hold nothing of what a merge brings, so `((true) ); echo "))"; cat <<EOF # ))`, a body with an apostrophe, its end line and a `git merge` of a branch that adds an agent file passed, and so did the merge after `for ((i=0; i<(n-1); i++)); do :; done`.
 
-## rules 0.1.45 - 2026-11-21
+## rules 0.1.45 - 2026-11-22
 
 - A push is found behind a quoted `&`, `;` or `|` and after a variable that holds `git` and starts the command. `git -c user.name="A&B" push`, `git -c credential.helper='!f() { :; }; f' push` and `g=git; $g push` were not read as a push, so no commit, added line or file name was checked against the list.
 - A push found that way is read for its own words, a redirect aside, and for the name of the branch its folder is on. `git push origin main:<name>` and a push from a branch named for a listed string put the name on a remote unread.

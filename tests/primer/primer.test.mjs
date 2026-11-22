@@ -342,6 +342,12 @@ describe('session-start', () => {
     writeFileSync(join(hurt, '.git', 'HEAD'), 'not a ref\n');
     const unread = `${none}git read no repository at ${slash(hurt)}, though ${slash(hurt)} holds .git`;
     assert.equal(start(cfg, hurt).stdout, context(unread, unread));
+    // A clone at the path of a local entry gets the line at its first start there, with no answer kept.
+    const fresh = repo('nothing-fresh', 'https://example.invalid/team/fresh.git');
+    const byPath = config({ version: 1, repos: [{ remotes: ['example.invalid/team/fresh'], path: slash(fresh), group: 'app', profile: 'local' }], roots: [] }, { group: GROUP });
+    writeFileSync(join(fresh, '.git', 'HEAD'), 'not a ref\n');
+    const unseen = `${none}git read no repository at ${slash(fresh)}, though ${slash(fresh)} holds .git`;
+    assert.equal(start(byPath, fresh).stdout, context(unseen, unseen));
     // The same clone with no entry of the map at its path costs no session a line.
     const stray = repo('nothing-stray', 'https://example.invalid/team/stray.git');
     writeFileSync(join(stray, '.git', 'HEAD'), 'not a ref\n');
@@ -489,7 +495,7 @@ describe('the git limit', () => {
     assert.deepEqual(from(slowGit()), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line }, systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
   });
 
-  test('a directory in no git work tree is read as outside one where git gives no answer, and the message says git gave that answer', () => {
+  test('a directory with no local entry is read as one with no layers where git gives no answer, and the message says so', () => {
     const dir = join(base, 'slow-plain'), data = join(base, 'data-plain');
     mkdirSync(dir);
     const cfg = config(local({ roots: [slash(base)] }), { group: GROUP });

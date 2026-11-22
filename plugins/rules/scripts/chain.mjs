@@ -216,9 +216,9 @@ export function chained(command, ps) {
   return follows(parts, parts.some((p) => p.fn)) || (parts.some((p) => p.sh) && follows(loose(bare), true));
 }
 
-// The words each push among the calls of a command is given, joined by spaces, those of a dry run among them; null where the
+// The words each push among the calls of a command is given, joined by spaces, one push to a line, those of a dry run among them; null where the
 // command holds no push. The outbound check finds a push by this read as well as by its own pattern, which stops at a quoted & or ;.
 export function pushed(command, ps) {
   const parts = read(straight(command, ps), ps).filter((p) => p.sent);
-  return parts.length ? parts.flatMap((p) => p.sent).join(' ') : null;
+  return parts.length ? parts.map((p) => p.sent.join(' ')).join('\n') : null;
 }

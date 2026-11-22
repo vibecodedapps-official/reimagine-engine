@@ -359,11 +359,18 @@ test('R405: a commit only a tag reaches is read when the push names the tag', ()
   w.git(dir, 'tag', 'v1');
   w.git(dir, 'tag', 'rel/1.0');
   w.git(dir, 'tag', 'v1!');
+  w.git(dir, 'tag', 'v1.0.0+build.5');
   w.git(dir, 'tag', 'release-\u{1F680}');
   w.git(dir, 'reset', '-q', '--hard', 'HEAD~1');
   none(w.shell('git push origin main v10', 'Bash', dir));
-  for (const command of ['git push -q origin v1', 'git push origin tag v1', "git push origin 'refs/tags/v1'", 'git push origin +v1:refs/tags/v2', 'git push origin rel/1.0', "git push origin 'refs/tags/*'", 'git push origin tags/v1', "git push origin 'v1!'", 'git push origin release-\u{1F680}', 'git push origin v1 \u0000']) denied(w.shell(command, 'Bash', dir), 'zqxlisted', 'commit ', w);
+  // The words of a commit's message are no tags, however many.
+  none(w.shell('git commit -m "fix the push button v1"', 'Bash', dir));
+  none(w.shell(`git commit -m "push ${Array.from({ length: 70 }, (_, i) => `w${i}`).join(' ')}"`, 'Bash', dir));
+  for (const command of ['git push -q origin v1', 'git push origin v1.0.0+build.5', 'git push origin +v1.0.0+build.5', 'git push origin tag v1', "git push origin 'refs/tags/v1'", 'git push origin +v1:refs/tags/v2', 'git push origin rel/1.0', "git push origin 'refs/tags/*'", 'git push origin tags/v1', "git push origin 'v1!'", 'git push origin release-\u{1F680}', 'git push origin v1 \u0000']) denied(w.shell(command, 'Bash', dir), 'zqxlisted', 'commit ', w);
   denied(w.shell('git push origin v1', 'PowerShell', dir), 'zqxlisted', 'commit ', w);
+  // A push that deletes stops the read of no other push in the command.
+  denied(w.shell('git push origin --delete v1 && git push origin v1', 'Bash', dir), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git push --dry-run -d origin x; git push origin v1', 'Bash', dir), 'zqxlisted', 'commit ', w);
   // A push that deletes a tag, or has a refspec with no source, sends no commit.
   for (const command of ['git push origin --delete v1', 'git push origin -d v1', 'git push origin :v1', 'git push origin :refs/tags/v1']) none(w.shell(command, 'Bash', dir));
   // A word that names no tag adds nothing and stops no read.
@@ -434,10 +441,12 @@ test('R405: a commit followed by a git call with many quoted -c values is answer
   assert.ok(Date.now() - started < 5000);
   assert.deepEqual(namedDirs('git -c "user.name=A B" -c \'a=b\' -c c=d --no-pager -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
   assert.deepEqual(namedDirs('git -c "user.email"=x -c user.name="A B" -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
+  assert.deepEqual(namedDirs('git -c user.name=O\\\'Brien -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
   // A -C that is git's own names a folder, so one not found is denied.
   const { decision, reason } = w.shell('cp -r ../repo ../copy && git -c "user.email"=bot@x -C ../copy push');
   assert.equal(decision, 'deny');
   assert.ok(reason.startsWith('rules: the folder ../copy, which the command names, was not found'), reason);
+  assert.equal(w.shell("cp -r ../repo ../copy && git -c user.name=O\\'Brien -C ../copy push").decision, 'deny');
   assert.deepEqual(namedDirs('grep -C 3 x').map((d) => [d.dir, d.loose]), [['3', true]]);
 });
 

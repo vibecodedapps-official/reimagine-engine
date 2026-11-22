@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { check, parseList } from '../../plugins/rules/scripts/outbound.mjs';
+import { check, main, namedDirs, parseList } from '../../plugins/rules/scripts/outbound.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../plugins/rules/scripts/outbound.mjs', import.meta.url));
 const dirs = [];
@@ -351,6 +351,31 @@ test('R405: a commit only a tag reaches is read when the push sends tags', () =>
   denied(w.shell('git push --follow-tags', 'Bash', dir), 'zqxlisted', 'commit ', w);
 });
 
+test('R405: a commit only a tag reaches is read when the push names the tag', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'tagged: zqxlisted');
+  w.git(dir, 'tag', 'v1');
+  w.git(dir, 'tag', 'rel/1.0');
+  w.git(dir, 'reset', '-q', '--hard', 'HEAD~1');
+  none(w.shell('git push origin main v10', 'Bash', dir));
+  for (const command of ['git push -q origin v1', 'git push origin tag v1', "git push origin 'refs/tags/v1'", 'git push origin +v1:refs/tags/v2', 'git push origin rel/1.0', "git push origin 'refs/tags/*'"]) denied(w.shell(command, 'Bash', dir), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git push origin v1', 'PowerShell', dir), 'zqxlisted', 'commit ', w);
+  // A word that names no tag adds nothing and stops no read.
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'on main: zqxlisted');
+  denied(w.shell('git push origin main v10 a[b', 'Bash', dir), 'zqxlisted', 'commit ', w);
+});
+
+test('R405: a commit a replace ref hides is read as the push sends it', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'hidden: zqxlisted');
+  w.git(dir, 'replace', 'HEAD', 'HEAD~1');
+  denied(w.shell('git push', 'Bash', dir), 'zqxlisted', 'commit ', w);
+});
+
 test('R405: a push is read for the name of the branch its folder is on and for its own words', () => {
   const w = world();
   w.list('zqxlisted');
@@ -395,6 +420,33 @@ test('R405: a commit followed by words made of redirect brackets is answered wit
   const started = Date.now();
   denied(w.shell('git commit -qm "note zqxlisted"; ' + '>>>>>>>> '.repeat(10) + ':'), 'zqxlisted', 'the command', w);
   assert.ok(Date.now() - started < 5000);
+});
+
+test('R405: a commit followed by a git call with many quoted -c values is answered within the hook\'s limit', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const started = Date.now();
+  denied(w.shell('git commit -qm "note zqxlisted"; git' + ' -c ""'.repeat(28) + ' x -C .; git push -q'), 'zqxlisted', 'the command', w);
+  assert.ok(Date.now() - started < 5000);
+  assert.deepEqual(namedDirs('git -c "user.name=A B" -c \'a=b\' -c c=d --no-pager -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
+  assert.deepEqual(namedDirs('grep -C 3 x').map((d) => [d.dir, d.loose]), [['3', true]]);
+});
+
+test('R405: a command the read does not get through is denied where it holds git, push or a forge program, and else goes ahead', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const reason = (late) => `rules: the command could not be read${late}, so it was not checked against ${w.listFile}; send its git and forge calls as shorter commands of their own`;
+  // The read of 50,000 blank lines takes seconds, and is stopped at the limit given.
+  const stopped = (command) => main({ env: w.env, home: w.home, stdin: () => JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd: w.work }), limit: 250 }).map((l) => JSON.parse(l).hookSpecificOutput);
+  const started = Date.now();
+  assert.deepEqual(stopped('git push -q' + '\n'.repeat(50000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
+  assert.deepEqual(stopped('gh pr list' + '\n'.repeat(50000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
+  assert.deepEqual(stopped('echo done' + '\n'.repeat(50000)), []);
+  assert.ok(Date.now() - started < 30000);
+  // The read of 300,000 words ends in an error of the script.
+  assert.deepEqual(w.shell('git push -q; bash' + " ''".repeat(300000)), { decision: 'deny', reason: reason('') });
+  assert.deepEqual(w.shell('g"it" pu\\sh -q; bash' + " ''".repeat(300000)), { decision: 'deny', reason: reason('') });
+  none(w.shell('echo done; bash' + " ''".repeat(300000)));
 });
 
 test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {

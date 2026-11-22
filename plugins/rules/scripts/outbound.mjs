@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// The outbound check, a PreToolUse hook: denies a commit, a push or a forge post whose text holds a string listed in
-// rules-outbound.txt in $CLAUDE_CONFIG_DIR, else ~/.claude. Usage: node outbound.mjs, with the hook's input on stdin.
-// With no list file it does nothing; on any error but a push it could not read in time it lets the call go ahead.
+// The outbound check, a PreToolUse hook: denies a commit, a push or a forge post whose text holds a string listed in rules-outbound.txt in $CLAUDE_CONFIG_DIR, else ~/.claude. Usage: node
+// outbound.mjs, with the hook's input on stdin. With no list file it does nothing; a command it cannot read to its end is denied where it may push or post.
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { runInNewContext } from 'node:vm';
 import { chained, pushed } from './chain.mjs';
 import { targets } from './rules.mjs';
 
@@ -80,8 +80,8 @@ export function namedFiles(command, own = false) {
 }
 
 // The directories a command names after cd, pushd, Set-Location, Push-Location or -C. A -C is loose unless it is an
-// option of git itself, since grep -C 3 and make -C build name no folder to push from.
-const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?:"[^"]*"|'[^']*'|\S+)|-[^\sC]\S*))*\s+$`, 'i');
+// option of git itself, since grep -C 3 and make -C build name no folder to push from. A -c value is matched whole in a lookahead, quoted parts and bare characters while they pair and then the rest of the word, so it is never tried another way.
+const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?=(?<v>(?:"[^"]*"|'[^']*'|[^\s"'])*\S*))\k<v>|-[^\sC]\S*))*\s+$`, 'i');
 export function namedDirs(command) {
   const dir = (m) => ({ dir: unquote(m[1]), span: m.indices[1] });
   return [...all(command, String.raw`(?<![${EDGE}])(?:cd|pushd|Set-Location|Push-Location)\s+(?:-(?:Literal)?Path\s+)?${VALUE}`, 'dgi').map(dir),
@@ -109,16 +109,16 @@ function git(dir, args, left = () => Infinity) {
 }
 const or = (call, other) => { try { return call(); } catch (e) { if (e instanceof Late) throw e; return other(); } }; // other's answer where the call fails with time left
 
-// The texts of the commits a push from dir could send: those HEAD or a local branch reaches, or a tag when the command
-// sends tags, and no remote-tracking ref holds. Refspecs are not read, so a branch the push leaves behind counts too.
-// With diff, their added lines and the names of the files they add, a rename's new name among them; lost says the diff could
-// not be read. One git call reads both, its output cut at a mark
-// made for the call, so no text of a commit can end a piece. A call with no time left throws Late.
-export function leaving(dir, command, diff, left) {
-  const tags = new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command);
+// The texts of the commits a push from dir could send: those HEAD, a local branch or a tag the push names reaches and no remote-tracking ref holds; with diff, their added lines and file names too, lost where the diff could not be read.
+// sent holds the words of each push, one push to a line, and gives the tag patterns, none where only the hook's pattern found the push; past 64 words, or 4,000 characters of them, every tag is read. One git call; a call with no time left throws Late.
+export function leaving(dir, command, diff, left, sent = null) {
+  const del = (t) => t === '--delete' || /^-[46fquv]*d[46fquv]*$/.test(t);
+  const given = (sent ?? '').split('\n').flatMap((line) => { const words = line.split(/[\s"'`,]+/); return words.some(del) ? [] : words.filter((t) => !/^\+?:/.test(t)).flatMap((t) => t.replace(/^\+/, '').split(':')); });
+  const names = [...new Set(given)].filter((t) => t && t.length < 256 && !t.startsWith('-') && !/[\0-\x1f\x7f]/.test(t));
+  const tags = names.length > 64 || names.join('').length > 4000 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : [...new Set(names.flatMap((t) => [t, t.replace(/^(?:refs\/)?tags\//, '')]))].filter(Boolean).map((t) => `--tags=${/[*?[]/.test(t) ? t : t.at(-1) > '\x7f' ? `${t}*` : `${t.slice(0, -1)}[\\${t.at(-1)}]`}`);
   const id = randomBytes(8).toString('hex');
-  const args = (patch, tip = ['HEAD']) => ['-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
-    `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, ...tip, '--branches', ...(tags ? ['--tags'] : []), '--not', '--remotes'];
+  const args = (patch, tip = ['HEAD']) => ['--no-replace-objects', '-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
+    `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, ...tip, '--branches', ...tags, '--not', '--remotes'];
   // On a branch with no commit yet HEAD names none, and only there the other branches are read without it.
   const log = (patch) => or(() => git(dir, args(patch), left), () => { git(dir, ['symbolic-ref', '-q', 'HEAD'], left); if (or(() => git(dir, ['rev-parse', '-q', '--verify', 'HEAD'], left), () => '')) throw new Error('git log failed'); return git(dir, args(patch, []), left); });
   let out, lost = false;
@@ -156,11 +156,9 @@ const TEXT = ['commit', 'commit-tree', 'merge', 'tag'], FORGE = ['gh', 'az', 'gl
 const CONTINUED = /(?:[\\`]|\([ \t]*)\r?\n/g;
 const PUSH = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?![${EDGE}])[^|;&\n]*?\s(?<!stash\s+)push(?![${EDGE}])`, 'i');
 const firstText = (s) => TEXT.map((w) => [w, word(w).exec(s)?.index ?? Infinity]).reduce((a, b) => (b[1] < a[1] ? b : a), ['', Infinity])[0];
-// What makes a command a forge post, as the denial names it, or null. git and a subcommand count where one line holds
-// both, a line continued with a backslash, a backtick or an open parenthesis at its end being one, so a text that
-// names git and holds the word on another line is no post; beside a $ or the word xargs they count anywhere in the
-// command, since a variable or the input of xargs may hold either. The denial names the subcommand word that comes
-// first after git, else the first.
+// What makes a command a forge post, as the denial names it, or null. git and a subcommand count where one line holds both, a line continued with a backslash, a backtick or an open parenthesis at its end being one,
+// so a text that names git and holds the word on another line is no post; beside a $ or the word xargs they count anywhere in the command, since a variable or the input of xargs may hold either. The denial names
+// the subcommand word that comes first after git, else the first.
 function postWord(command, list) {
   const lines = command.includes('$') || has(command, 'xargs') ? [command] : command.replace(CONTINUED, ' ').split('\n');
   const sub = lines.map((l) => { const g = word('git').exec(l); return g && (firstText(l.slice(g.index + 3)) || firstText(l)); }).find(Boolean);
@@ -171,10 +169,9 @@ function postWord(command, list) {
   return phrase === undefined ? null : `the post: phrase "${phrase}"`;
 }
 
-// The output lines for one hook input: a deny on the first hit, else one warning that names what could not be read.
-// The git calls of one input and the search of what they return share limit milliseconds, kept under the timeout of
-// the hook's entry, since a hook the host stops lets the call go ahead: a push whose commits were not read in that
-// time, or from a folder not found, is denied.
+// The output lines for one hook input: a deny on the first hit, else one warning that names what could not be read. The git calls of one input and the search of what they return share limit
+// milliseconds, kept under the timeout of the hook's entry, since a hook the host stops lets the call go ahead: a push whose commits were not read in that time, or from a folder not found,
+// is denied.
 export function check(input, list, path, { home, platform, tmp = tmpdir(), env = process.env, limit = 45000, now = Date.now }) {
   const until = now() + limit, left = () => until - now();
   const find = finder(list), tool = String(input?.tool_name ?? ''), ti = input?.tool_input ?? {};
@@ -189,9 +186,8 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   if (tool.startsWith('mcp__')) return hit([{ where: 'the tool input', text: strings(ti).join('\n') }]) ?? [];
   if ((tool !== 'Bash' && tool !== 'PowerShell') || typeof ti.command !== 'string') return [];
   const command = ti.command, cwd = resolve(typeof input.cwd === 'string' && isDir(input.cwd) ? input.cwd : process.cwd());
-  // A variable in a path is read from the hook's environment, $NAME and ${NAME} for Bash, $env:NAME and ${env:NAME}
-  // for PowerShell, with the shell's own HOME the home folder, for Bash the HOME of the environment when set, and its
-  // own PWD the folder the path is looked for in; one that is not set stays as written.
+  // A variable in a path is read from the hook's environment, $NAME and ${NAME} for Bash, $env:NAME and ${env:NAME} for PowerShell, with the shell's own HOME the home folder, for Bash the
+  // HOME of the environment when set, and its own PWD the folder the path is looked for in; one that is not set stays as written.
   const vars = tool === 'Bash' ? /\$(?:\{\w+\}|\w+)/g : /\$(?:\{env:\w+\}|env:\w+|\{(?:HOME|PWD)\}|(?:HOME|PWD)(?!\w))/gi;
   const value = (name) => { const key = tool === 'PowerShell' ? name.toUpperCase() : name; return key === 'HOME' ? (tool === 'Bash' ? env.HOME ?? home : home) : key === 'PWD' ? '.' : env[name]; };
   // The Bash tool on Windows names paths in the MSYS form: /c/... for a drive and /tmp for the temp folder.
@@ -225,9 +221,8 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     }
     return quote === null;
   };
-  // A path the hook resolved stays on the machine, so it is left out of the search where it stands outside a string
-  // and on the first line, with no dollar sign, backtick or typographic quote before it, which bare() does not read: a
-  // scratch folder may hold a listed name.
+  // A path the hook resolved stays on the machine, so it is left out of the search where it stands outside a string and on the first line, with no dollar sign, backtick or typographic quote
+  // before it, which bare() does not read: a scratch folder may hold a listed name.
   const typed = ([i]) => bare(i) && !/[$`\u2018\u2019\u201C\u201D]/.test(command.slice(0, i));
   // A folder is looked for in the call's folder and in each folder named before it, as cd a && cd b names a/b. One
   // not found is named as typed, unless it is a loose -C or starts with -, an option or cd -, not a folder.
@@ -270,7 +265,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
       if (read.has(real(dir))) continue;
       read.add(real(dir));
       let out, found;
-      try { out = leaving(dir, command, list.diff, left); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: or(() => git(dir, ['symbolic-ref', '-q', '--short', 'HEAD'], left), () => '') }]), ...out.texts], left); } catch (e) {
+      try { out = leaving(dir, command, list.diff, left, sent); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: or(() => git(dir, ['symbolic-ref', '-q', '--short', 'HEAD'], left), () => '') }]), ...out.texts], left); } catch (e) {
         if (e instanceof Late) return [deny(`rules: the commits a push from ${dir} would send could not be read in ${limit / 1000} seconds, so the push was not checked against ${path}; run it again`)];
         continue;
       }
@@ -283,11 +278,16 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   return notes.length ? [warn(`rules: ${notes.join(', ')} could not be read, so ${notes.length === 1 ? 'its text was' : 'their texts were'} not checked against ${path}`)] : [];
 }
 
-export function main({ env = process.env, home = homedir(), platform = process.platform, stdin = () => readFileSync(0, 'utf8') } = {}) {
+// The read of one input runs under a limit of its own, so the host is answered while it still waits. A command the read did not get through is denied
+// where it holds git, push, a forge program or a post: phrase, found with its line continuations, quotes, backticks and, for git and push, slashes aside.
+export function main({ env = process.env, home = homedir(), platform = process.platform, stdin = () => readFileSync(0, 'utf8'), limit = 50000 } = {}) {
   const path = listPath(env, home);
-  let text;
-  try { text = decode(readFileSync(path)); } catch { return []; }
-  try { return check(JSON.parse(stdin()), parseList(text), path, { home, platform, env }); } catch { return []; }
+  let list, input;
+  try { list = parseList(decode(readFileSync(path))); input = JSON.parse(stdin()); } catch { return []; }
+  try { return runInNewContext('run()', { run: () => check(input, list, path, { home, platform, env }) }, { timeout: limit }); } catch (e) {
+    const command = input?.tool_input?.command, text = typeof command === 'string' ? flat(command) : '', plain = text.replace(/[/`]\r?\n/g, '').replace(/["'`]/g, ''), bare = plain.replaceAll('/', ''), late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '';
+    return ['git', 'push'].some((w) => bare.includes(w)) || FORGE.some((w) => has(plain, w)) || list.post.some((p) => text.includes(flat(p))) ? [deny(`rules: the command could not be read${late}, so it was not checked against ${path}; send its git and forge calls as shorter commands of their own`)] : [];
+  }
 }
 
 // Node resolves the entry point through symlinks, so compare with the resolved path.

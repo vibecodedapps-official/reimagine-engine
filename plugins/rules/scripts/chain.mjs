@@ -105,7 +105,8 @@ function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
   let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0;
   // Each word keeps the place it starts and ends at in s, and the count of PowerShell } read before it; skip holds the places of the commit messages of s itself.
-  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; if (q) texts.push(t); else plain += t; };
+  // A quoted text of letters alone, an empty one too, stands as it is in plain, so tr''ap reads as trap; any other leaves one ", so a word that is all quoted is still a word there, as the target of a redirect is.
+  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; if (q) texts.push(t); plain += q && !/^[A-Za-z]*$/.test(t) ? '"' : t; };
   const end = () => { if (cur) words.push({ ...cur, b: pos }); cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
@@ -215,9 +216,9 @@ export function chained(command, ps) {
   return follows(parts, parts.some((p) => p.fn)) || (parts.some((p) => p.sh) && follows(loose(bare), true));
 }
 
-// The words each push among the calls of a command is given, joined by spaces, those of a dry run among them; null where the
+// The words each push among the calls of a command is given, joined by spaces, one push to a line, those of a dry run among them; null where the
 // command holds no push. The outbound check finds a push by this read as well as by its own pattern, which stops at a quoted & or ;.
 export function pushed(command, ps) {
   const parts = read(straight(command, ps), ps).filter((p) => p.sent);
-  return parts.length ? parts.flatMap((p) => p.sent).join(' ') : null;
+  return parts.length ? parts.map((p) => p.sent.join(' ')).join('\n') : null;
 }

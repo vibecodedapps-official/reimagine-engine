@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.47 - 2026-11-22
+
+- A command the hook cannot read to its end is denied where it holds `git`, `push`, a forge program or a `post:` phrase, and goes ahead otherwise. The read now runs under a limit of 50 seconds of the hook's own, which stops a pattern match too. A read that ran past the entry's 60 seconds, or ended in an error of the hook, let the call go ahead: `git commit -m "<listed word>"; git -c "" -c "" ... x -C .; git push` with 28 such values held the hook for 35 seconds and with a few more past its limit, and `git push -q; bash` followed by 150,000 `''` words ended the read in an error, so the push went ahead unread.
+- A git call with many quoted `-c` values is read in milliseconds. The pattern that tells whether a `-C` is git's own matched a quoted value in two ways, and every two further values doubled the time: 28 took 35 seconds and 30 took 69.
+- A push after a commit is denied where a trap, a function or a filter is defined after a redirect with a quoted target. `>>"o.txt" trap "git push -q" EXIT; git commit -qm x` passed since 0.1.46, and the same with one `>` always had: the quoted target was left out of the text read for a definition, so the word after it was taken for the target.
+- A push that names a tag reads the commits only that tag reaches. `git push origin v1` sent them unread, since tags were read only with `--tags`, `--follow-tags` or `--mirror`.
+- A push is read with no replace ref followed. After `git replace` named a commit the remote holds in place of an unpushed one, the read saw the stand-in and the push sent the real commit unread.
+
 ## rules 0.1.46 - 2026-11-22
 
 - A command of many words made of redirect brackets is read in milliseconds. The pattern for where a definition may stand matched a word such as `>>>>>>>>` in seven ways, and each further such word took about seven times longer: ten held the hook for about half a minute and a few more past its 60 seconds, after which the host runs the call, so `git commit -m "<listed word>"; ` followed by such words went ahead unread. The brackets of a redirect are now matched whole.

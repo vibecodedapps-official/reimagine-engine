@@ -186,6 +186,28 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });
 
+test('R405: a word that is all quoted keeps its place where a definition is looked for', () => {
+  // Each case is a command, whether PowerShell reads it, and whether the push is chained.
+  const cases = [
+    ['>>"o.txt" trap "git push -q" EXIT; git commit -qm x', false, true],
+    [">>'o.txt' trap \"git push -q\" EXIT; git commit -qm x", false, true],
+    ['2>>"e.txt" trap "git push -q" EXIT; git commit -qm x', false, true],
+    ['>"o.txt" trap "git push -q" EXIT; git commit -qm x', false, true],
+    ['<<<"x" trap "git push -q" EXIT; git commit -qm x', false, true],
+    ['>>"o.txt" trap { git push -q }; git commit -qm x', true, true],
+    ['function "deploy" { git push -q }; git commit -qm x; deploy', true, true],
+    // A quoted text of letters alone, the empty one too, leaves the word whole, as the shell joins it.
+    ["tr''ap \"git push -q\" EXIT; git commit -qm x", false, true],
+    ['"trap" "git push -q" EXIT; git commit -qm x', false, true],
+    ["tr'a'p \"git push -q\" EXIT; git commit -qm x", false, true],
+    // A quoted word after a program's name is an argument, and the word after it defines nothing.
+    ['cat <<<"x" trap "git push -q" EXIT; git commit -qm x', false, false],
+    ['echo "set" trap; git push -q; git commit -qm x', false, false],
+    ['git push -q; echo "a" "b" (); git commit -qm x', false, false],
+  ];
+  for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
+});
+
 test('R405: a push is found among the calls of a command, with the words it is given', () => {
   // Each case is a command, whether PowerShell reads it, and the words of its pushes, null where it holds no push.
   const cases = [
@@ -199,7 +221,8 @@ test('R405: a push is found among the calls of a command, with the words it is g
     ['make -C $DIR push', false, null],
     ['cp "$f" push', false, null],
     ['echo $USER "push the button"', false, null],
-    ['git push origin main; git push origin v1', false, 'origin main origin v1'],
+    ['git push origin main; git push origin v1', false, 'origin main\norigin v1'],
+    ['git push origin --delete v1 && git push origin v1', false, 'origin --delete v1\norigin v1'],
     // A redirect and the file it names stay on the machine.
     ['git push origin main 2>/tmp/zq/push.log', false, 'origin main'],
     ['git push origin main > out.log 2>&1', false, 'origin main'],

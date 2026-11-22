@@ -373,6 +373,10 @@ test('R405: a commit only a tag reaches is read when the push names the tag', ()
   denied(w.shell('git push --dry-run -d origin x; git push origin v1', 'Bash', dir), 'zqxlisted', 'commit ', w);
   // A push that deletes a tag, or has a refspec with no source, sends no commit.
   for (const command of ['git push origin --delete v1', 'git push origin -d v1', 'git push origin :v1', 'git push origin :refs/tags/v1']) none(w.shell(command, 'Bash', dir));
+  // Where the words of the pushes hold more than 4,000 characters, every tag is read, as past 64 words.
+  const long = (n, size) => Array.from({ length: n }, (_, i) => String(i).padStart(3, '0') + 'x'.repeat(size - 3)).join(' ');
+  none(w.shell(`git push origin ${long(20, 150)}`, 'Bash', dir));
+  denied(w.shell(`git push origin ${long(20, 250)}`, 'Bash', dir), 'zqxlisted', 'commit ', w);
   // A word that names no tag adds nothing and stops no read.
   w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'on main: zqxlisted');
   denied(w.shell('git push origin main v10 a[b', 'Bash', dir), 'zqxlisted', 'commit ', w);
@@ -442,6 +446,8 @@ test('R405: a commit followed by a git call with many quoted -c values is answer
   assert.deepEqual(namedDirs('git -c "user.name=A B" -c \'a=b\' -c c=d --no-pager -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
   assert.deepEqual(namedDirs('git -c "user.email"=x -c user.name="A B" -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
   assert.deepEqual(namedDirs('git -c user.name=O\\\'Brien -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
+  assert.deepEqual(namedDirs('git -c safe.directory=C:\\repo\\ -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
+  assert.deepEqual(namedDirs("git -c user.name=O`'Brien -C repo push").map((d) => [d.dir, d.loose]), [['repo', false]]);
   // A -C that is git's own names a folder, so one not found is denied.
   const { decision, reason } = w.shell('cp -r ../repo ../copy && git -c "user.email"=bot@x -C ../copy push');
   assert.equal(decision, 'deny');

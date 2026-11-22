@@ -80,8 +80,8 @@ export function namedFiles(command, own = false) {
 }
 
 // The directories a command names after cd, pushd, Set-Location, Push-Location or -C. A -C is loose unless it is an
-// option of git itself, since grep -C 3 and make -C build name no folder to push from. A -c value is quoted parts and bare characters, each matched one way, so a text that fails is not tried in every combination.
-const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?:"[^"]*"|'[^']*'|\\.|[^\s"'\\])+|-[^\sC]\S*))*\s+$`, 'i');
+// option of git itself, since grep -C 3 and make -C build name no folder to push from. A -c value is matched whole in a lookahead, quoted parts and bare characters while they pair and then the rest of the word, so it is never tried another way.
+const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?=(?<v>(?:"[^"]*"|'[^']*'|[^\s"'])*\S*))\k<v>|-[^\sC]\S*))*\s+$`, 'i');
 export function namedDirs(command) {
   const dir = (m) => ({ dir: unquote(m[1]), span: m.indices[1] });
   return [...all(command, String.raw`(?<![${EDGE}])(?:cd|pushd|Set-Location|Push-Location)\s+(?:-(?:Literal)?Path\s+)?${VALUE}`, 'dgi').map(dir),
@@ -110,12 +110,12 @@ function git(dir, args, left = () => Infinity) {
 const or = (call, other) => { try { return call(); } catch (e) { if (e instanceof Late) throw e; return other(); } }; // other's answer where the call fails with time left
 
 // The texts of the commits a push from dir could send: those HEAD, a local branch or a tag the push names reaches and no remote-tracking ref holds; with diff, their added lines and file names too, lost where the diff could not be read.
-// sent holds the words of each push, one push to a line, and gives the tag patterns, none where only the hook's pattern found the push. One git call; a call with no time left throws Late.
+// sent holds the words of each push, one push to a line, and gives the tag patterns, none where only the hook's pattern found the push; past 64 words, or 4,000 characters of them, every tag is read. One git call; a call with no time left throws Late.
 export function leaving(dir, command, diff, left, sent = null) {
   const del = (t) => t === '--delete' || /^-[46fquv]*d[46fquv]*$/.test(t);
   const given = (sent ?? '').split('\n').flatMap((line) => { const words = line.split(/[\s"'`,]+/); return words.some(del) ? [] : words.filter((t) => !/^\+?:/.test(t)).flatMap((t) => t.replace(/^\+/, '').split(':')); });
   const names = [...new Set(given)].filter((t) => t && t.length < 256 && !t.startsWith('-') && !/[\0-\x1f\x7f]/.test(t));
-  const tags = names.length > 64 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : [...new Set(names.flatMap((t) => [t, t.replace(/^(?:refs\/)?tags\//, '')]))].filter(Boolean).map((t) => `--tags=${/[*?[]/.test(t) ? t : t.at(-1) > '\x7f' ? `${t}*` : `${t.slice(0, -1)}[\\${t.at(-1)}]`}`);
+  const tags = names.length > 64 || names.join('').length > 4000 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : [...new Set(names.flatMap((t) => [t, t.replace(/^(?:refs\/)?tags\//, '')]))].filter(Boolean).map((t) => `--tags=${/[*?[]/.test(t) ? t : t.at(-1) > '\x7f' ? `${t}*` : `${t.slice(0, -1)}[\\${t.at(-1)}]`}`);
   const id = randomBytes(8).toString('hex');
   const args = (patch, tip = ['HEAD']) => ['--no-replace-objects', '-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
     `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, ...tip, '--branches', ...tags, '--not', '--remotes'];

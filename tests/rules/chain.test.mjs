@@ -196,6 +196,10 @@ test('R405: a word that is all quoted keeps its place where a definition is look
     ['<<<"x" trap "git push -q" EXIT; git commit -qm x', false, true],
     ['>>"o.txt" trap { git push -q }; git commit -qm x', true, true],
     ['function "deploy" { git push -q }; git commit -qm x; deploy', true, true],
+    // A quoted text of letters alone, the empty one too, leaves the word whole, as the shell joins it.
+    ["tr''ap \"git push -q\" EXIT; git commit -qm x", false, true],
+    ['"trap" "git push -q" EXIT; git commit -qm x', false, true],
+    ["tr'a'p \"git push -q\" EXIT; git commit -qm x", false, true],
     // A quoted word after a program's name is an argument, and the word after it defines nothing.
     ['cat <<<"x" trap "git push -q" EXIT; git commit -qm x', false, false],
     ['echo "set" trap; git push -q; git commit -qm x', false, false],

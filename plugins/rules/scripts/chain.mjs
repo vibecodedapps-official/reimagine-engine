@@ -105,8 +105,8 @@ function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
   let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0;
   // Each word keeps the place it starts and ends at in s, and the count of PowerShell } read before it; skip holds the places of the commit messages of s itself.
-  // A quoted text leaves one " in plain, so a word that is all quoted is still a word there, as the target of a redirect is.
-  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; if (q) texts.push(t); plain += q ? '"' : t; };
+  // A quoted text of letters alone, an empty one too, stands as it is in plain, so tr''ap reads as trap; any other leaves one ", so a word that is all quoted is still a word there, as the target of a redirect is.
+  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; if (q) texts.push(t); plain += q && !/^[A-Za-z]*$/.test(t) ? '"' : t; };
   const end = () => { if (cur) words.push({ ...cur, b: pos }); cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));

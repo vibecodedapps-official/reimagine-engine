@@ -358,10 +358,14 @@ test('R405: a commit only a tag reaches is read when the push names the tag', ()
   w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'tagged: zqxlisted');
   w.git(dir, 'tag', 'v1');
   w.git(dir, 'tag', 'rel/1.0');
+  w.git(dir, 'tag', 'v1!');
+  w.git(dir, 'tag', 'release-\u{1F680}');
   w.git(dir, 'reset', '-q', '--hard', 'HEAD~1');
   none(w.shell('git push origin main v10', 'Bash', dir));
-  for (const command of ['git push -q origin v1', 'git push origin tag v1', "git push origin 'refs/tags/v1'", 'git push origin +v1:refs/tags/v2', 'git push origin rel/1.0', "git push origin 'refs/tags/*'"]) denied(w.shell(command, 'Bash', dir), 'zqxlisted', 'commit ', w);
+  for (const command of ['git push -q origin v1', 'git push origin tag v1', "git push origin 'refs/tags/v1'", 'git push origin +v1:refs/tags/v2', 'git push origin rel/1.0', "git push origin 'refs/tags/*'", 'git push origin tags/v1', "git push origin 'v1!'", 'git push origin release-\u{1F680}', 'git push origin v1 \u0000']) denied(w.shell(command, 'Bash', dir), 'zqxlisted', 'commit ', w);
   denied(w.shell('git push origin v1', 'PowerShell', dir), 'zqxlisted', 'commit ', w);
+  // A push that deletes a tag, or has a refspec with no source, sends no commit.
+  for (const command of ['git push origin --delete v1', 'git push origin -d v1', 'git push origin :v1', 'git push origin :refs/tags/v1']) none(w.shell(command, 'Bash', dir));
   // A word that names no tag adds nothing and stops no read.
   w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'on main: zqxlisted');
   denied(w.shell('git push origin main v10 a[b', 'Bash', dir), 'zqxlisted', 'commit ', w);
@@ -429,6 +433,11 @@ test('R405: a commit followed by a git call with many quoted -c values is answer
   denied(w.shell('git commit -qm "note zqxlisted"; git' + ' -c ""'.repeat(28) + ' x -C .; git push -q'), 'zqxlisted', 'the command', w);
   assert.ok(Date.now() - started < 5000);
   assert.deepEqual(namedDirs('git -c "user.name=A B" -c \'a=b\' -c c=d --no-pager -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
+  assert.deepEqual(namedDirs('git -c "user.email"=x -c user.name="A B" -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
+  // A -C that is git's own names a folder, so one not found is denied.
+  const { decision, reason } = w.shell('cp -r ../repo ../copy && git -c "user.email"=bot@x -C ../copy push');
+  assert.equal(decision, 'deny');
+  assert.ok(reason.startsWith('rules: the folder ../copy, which the command names, was not found'), reason);
   assert.deepEqual(namedDirs('grep -C 3 x').map((d) => [d.dir, d.loose]), [['3', true]]);
 });
 
@@ -436,17 +445,21 @@ test('R405: a command the read does not get through is denied where it holds git
   const w = world();
   w.list('zqxlisted');
   const reason = (late) => `rules: the command could not be read${late}, so it was not checked against ${w.listFile}; send its git and forge calls as shorter commands of their own`;
-  // The read of 50,000 blank lines takes seconds, and is stopped at the limit given.
-  const stopped = (command) => main({ env: w.env, home: w.home, stdin: () => JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd: w.work }), limit: 250 }).map((l) => JSON.parse(l).hookSpecificOutput);
+  // The read of 100,000 blank lines takes seconds, and is stopped at the limit given.
+  const stopped = (command) => inWorld(w, () => main({ env: w.env, home: w.home, stdin: () => JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd: w.work }), limit: 250 })).map((l) => JSON.parse(l).hookSpecificOutput);
   const started = Date.now();
-  assert.deepEqual(stopped('git push -q' + '\n'.repeat(50000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
-  assert.deepEqual(stopped('gh pr list' + '\n'.repeat(50000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
-  assert.deepEqual(stopped('echo done' + '\n'.repeat(50000)), []);
+  assert.deepEqual(stopped('git push -q' + '\n'.repeat(100000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
+  assert.deepEqual(stopped('gh pr list' + '\n'.repeat(100000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
+  assert.deepEqual(stopped('echo done' + '\n'.repeat(100000)), []);
   assert.ok(Date.now() - started < 30000);
   // The read of 300,000 words ends in an error of the script.
   assert.deepEqual(w.shell('git push -q; bash' + " ''".repeat(300000)), { decision: 'deny', reason: reason('') });
   assert.deepEqual(w.shell('g"it" pu\\sh -q; bash' + " ''".repeat(300000)), { decision: 'deny', reason: reason('') });
-  none(w.shell('echo done; bash' + " ''".repeat(300000)));
+  // A forge program run by its path, and a git call continued over lines, are found in the text that is left.
+  const many = " ''".repeat(300000), denial = { decision: 'deny', reason: reason('') };
+  for (const command of ['/usr/local/bin/gh pr list; bash' + many, '~/bin/glab mr list; bash' + many, 'C:\\tools\\az.cmd repos pr list; bash' + many, 'gi\\\nt pu\\\nsh -q; bash' + many, 'gi\\\r\nt pu\\\r\nsh -q; bash' + many]) assert.deepEqual(w.shell(command), denial);
+  assert.deepEqual(w.shell('gi`\nt pu`\nsh -q; bash' + many, 'PowerShell'), denial);
+  none(w.shell('echo done; bash' + many));
 });
 
 test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {

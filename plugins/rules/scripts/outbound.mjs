@@ -80,8 +80,8 @@ export function namedFiles(command, own = false) {
 }
 
 // The directories a command names after cd, pushd, Set-Location, Push-Location or -C. A -C is loose unless it is an
-// option of git itself, since grep -C 3 and make -C build name no folder to push from. A bare -c value starts with no quote, so a quoted one is matched one way.
-const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?:"[^"]*"|'[^']*'|[^\s"']\S*)|-[^\sC]\S*))*\s+$`, 'i');
+// option of git itself, since grep -C 3 and make -C build name no folder to push from. A -c value is quoted parts and bare characters, each matched one way, so a text that fails is not tried in every combination.
+const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?:"[^"]*"|'[^']*'|[^\s"'])+|-[^\sC]\S*))*\s+$`, 'i');
 export function namedDirs(command) {
   const dir = (m) => ({ dir: unquote(m[1]), span: m.indices[1] });
   return [...all(command, String.raw`(?<![${EDGE}])(?:cd|pushd|Set-Location|Push-Location)\s+(?:-(?:Literal)?Path\s+)?${VALUE}`, 'dgi').map(dir),
@@ -112,10 +112,11 @@ const or = (call, other) => { try { return call(); } catch (e) { if (e instanceo
 // The texts of the commits a push from dir could send: those HEAD or a local branch reaches, or a tag the command sends, and no remote-tracking ref holds, read as git stores them, with no replace ref followed.
 // Refspecs are not read, so a branch the push leaves behind counts too. With diff, their added lines and the names of the files they add, a rename's new name among them; lost says the diff could not be read. One
 // git call reads both, its output cut at a mark made for the call, so no text of a commit can end a piece. A call with no time left throws Late. Each of the words a push is given, sent, is a pattern for the tags to
-// read, which adds none where it names none: its last character goes in brackets, since git reads a pattern with no wildcard as a folder of tags.
+// read, which adds none where it names none, as typed and without a leading refs/tags/ or tags/, and none for a push that deletes or a refspec with no source: its last character goes in brackets after a backslash, or a star follows a word that ends past ASCII, which a bracket cannot hold, since git reads a pattern with no wildcard as a folder of tags.
 export function leaving(dir, command, diff, left, sent = command) {
-  const names = [...new Set(sent.split(/[\s"'`:+,;|&()]+/).map((t) => t.replace(/^refs\/tags\//, '')))].filter((t) => t && t.length < 256 && !t.startsWith('-'));
-  const tags = names.length > 64 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : names.map((t) => `--tags=${/[*?[]/.test(t) ? t : `${t.slice(0, -1)}[${t.slice(-1)}]`}`);
+  const words = sent.split(/[\s"'`,;|&()]+/), given = words.some((t) => t === '--delete' || /^-[46fquv]*d[46fquv]*$/.test(t)) ? [] : words.filter((t) => !/^\+?:/.test(t)).flatMap((t) => t.split(/[:+]+/));
+  const names = [...new Set(given)].filter((t) => t && t.length < 256 && !t.startsWith('-') && !/[\0-\x1f\x7f]/.test(t));
+  const tags = names.length > 64 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : [...new Set(names.flatMap((t) => [t, t.replace(/^(?:refs\/)?tags\//, '')]))].filter(Boolean).map((t) => `--tags=${/[*?[]/.test(t) ? t : t.at(-1) > '\x7f' ? `${t}*` : `${t.slice(0, -1)}[\\${t.at(-1)}]`}`);
   const id = randomBytes(8).toString('hex');
   const args = (patch, tip = ['HEAD']) => ['--no-replace-objects', '-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
     `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, ...tip, '--branches', ...tags, '--not', '--remotes'];
@@ -279,14 +280,14 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
 }
 
 // The read of one input runs under a limit of the script's own, which stops a pattern match as well, so the host is answered while it still waits. A command the read did not get through, stopped at the limit or by
-// an error of the script, is denied where it holds git, push or a forge program, its quotes, backticks and slashes aside, or a post: phrase, found by searches that take time in line with its length.
+// an error of the script, is denied where it holds git, push or a forge program, its line continuations, quotes, backticks and, for git and push, slashes aside, or a post: phrase, found by searches that take time in line with its length.
 export function main({ env = process.env, home = homedir(), platform = process.platform, stdin = () => readFileSync(0, 'utf8'), limit = 50000 } = {}) {
   const path = listPath(env, home);
   let list, input;
   try { list = parseList(decode(readFileSync(path))); input = JSON.parse(stdin()); } catch { return []; }
   try { return runInNewContext('run()', { run: () => check(input, list, path, { home, platform, env }) }, { timeout: limit }); } catch (e) {
-    const command = input?.tool_input?.command, text = typeof command === 'string' ? flat(command) : '', bare = text.replace(/["'`/]/g, ''), late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '';
-    return ['git', 'push'].some((w) => bare.includes(w)) || FORGE.some((w) => has(bare, w)) || list.post.some((p) => text.includes(flat(p))) ? [deny(`rules: the command could not be read${late}, so it was not checked against ${path}; send its git and forge calls as shorter commands of their own`)] : [];
+    const command = input?.tool_input?.command, text = typeof command === 'string' ? flat(command) : '', plain = text.replace(/[/`]\r?\n/g, '').replace(/["'`]/g, ''), bare = plain.replaceAll('/', ''), late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '';
+    return ['git', 'push'].some((w) => bare.includes(w)) || FORGE.some((w) => has(plain, w)) || list.post.some((p) => text.includes(flat(p))) ? [deny(`rules: the command could not be read${late}, so it was not checked against ${path}; send its git and forge calls as shorter commands of their own`)] : [];
   }
 }
 

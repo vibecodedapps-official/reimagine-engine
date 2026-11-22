@@ -107,6 +107,7 @@ function git(dir, args, left = () => Infinity) {
   if (r.error || r.status !== 0) throw new Error(`git ${args[0]} exited ${r.status}`);
   return r.stdout;
 }
+const or = (call, other) => { try { return call(); } catch (e) { if (e instanceof Late) throw e; return other(); } }; // other's answer where the call fails with time left
 
 // The texts of the commits a push from dir could send: those HEAD or a local branch reaches, or a tag when the command
 // sends tags, and no remote-tracking ref holds. Refspecs are not read, so a branch the push leaves behind counts too.
@@ -116,14 +117,12 @@ function git(dir, args, left = () => Infinity) {
 export function leaving(dir, command, diff, left) {
   const tags = new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command);
   const id = randomBytes(8).toString('hex');
-  const args = (patch) => ['-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
-    `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, 'HEAD', '--branches', ...(tags ? ['--tags'] : []), '--not', '--remotes'];
+  const args = (patch, tip = ['HEAD']) => ['-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
+    `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, ...tip, '--branches', ...(tags ? ['--tags'] : []), '--not', '--remotes'];
+  // On a branch with no commit yet HEAD names none, and only there the other branches are read without it.
+  const log = (patch) => or(() => git(dir, args(patch), left), () => { git(dir, ['symbolic-ref', '-q', 'HEAD'], left); if (or(() => git(dir, ['rev-parse', '-q', '--verify', 'HEAD'], left), () => '')) throw new Error('git log failed'); return git(dir, args(patch, []), left); });
   let out, lost = false;
-  try { out = git(dir, args(diff), left); } catch (e) {
-    if (!diff || e instanceof Late) throw e;
-    out = git(dir, args(false), left);
-    lost = true;
-  }
+  try { out = log(diff); } catch (e) { if (!diff || e instanceof Late) throw e; out = log(false); lost = true; }
   const texts = [], added = [];
   let commit = '', head = '';
   for (const piece of out.split(`\x1e${id}`).slice(1)) {
@@ -209,7 +208,8 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     }
     return resolve(base, p);
   };
-  const why = postWord(command, list), posts = why !== null, sent = pushed(command, tool === 'PowerShell'), pushes = sent !== null || PUSH.test(command.replace(CONTINUED, ' '));
+  const why = postWord(command, list), posts = why !== null, sends = () => pushed(command, tool === 'PowerShell');
+  let sent = posts ? null : sends(), pushes = sent !== null || PUSH.test(command.replace(CONTINUED, ' '));
   const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
   // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape
@@ -261,6 +261,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   }
   const first = hit(texts);
   if (first) return first;
+  if (posts) { sent = sends(); pushes ||= sent !== null; } // The chain read comes after the post is answered, so a slow one holds no denial of a post back.
   if (pushes) {
     if (sent !== null) { const mine = hit([{ where: 'the words of the push', text: sent }]); if (mine) return mine; }
     // A folder spelled two ways is read once.
@@ -269,7 +270,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
       if (read.has(real(dir))) continue;
       read.add(real(dir));
       let out, found;
-      try { out = leaving(dir, command, list.diff, left); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: git(dir, ['rev-parse', '--abbrev-ref', 'HEAD'], left) }]), ...out.texts], left); } catch (e) {
+      try { out = leaving(dir, command, list.diff, left); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: or(() => git(dir, ['symbolic-ref', '-q', '--short', 'HEAD'], left), () => '') }]), ...out.texts], left); } catch (e) {
         if (e instanceof Late) return [deny(`rules: the commits a push from ${dir} would send could not be read in ${limit / 1000} seconds, so the push was not checked against ${path}; run it again`)];
         continue;
       }

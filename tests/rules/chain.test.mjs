@@ -218,3 +218,10 @@ test('R405: a long run of substitutions is read in linear time', () => {
   assert.equal(chained('echo ' + '"$(echo '.repeat(2000) + 'x' + ')"'.repeat(2000) + ' && git push', false), false);
   assert.ok(Date.now() - started < 5000);
 });
+
+test('R405: a run of words made of redirect brackets is read in linear time', () => {
+  const started = Date.now();
+  assert.equal(pushed('git commit -qm note; ' + '>>>>>>>> '.repeat(10) + ':', false), null);
+  assert.equal(chained('git commit -qm note; ' + '2>>&1 '.repeat(10) + ': && git push', false), true);
+  assert.ok(Date.now() - started < 5000);
+});

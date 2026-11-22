@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.46 - 2026-11-22
+
+- A command of many words made of redirect brackets is read in milliseconds. The pattern for where a definition may stand matched a word such as `>>>>>>>>` in seven ways, and each further such word took about seven times longer: ten held the hook for about half a minute and a few more past its 60 seconds, after which the host runs the call, so `git commit -m "<listed word>"; ` followed by such words went ahead unread. The brackets of a redirect are now matched whole.
+- A commit or a forge post is answered before the command is read for a push, so a slow push read holds no denial of a post back.
+- A push from a folder on a branch with no commit yet reads the commits of the other local branches and the branch's name. After `git checkout --orphan` both `git` reads failed and the folder was passed over, so `git push origin main` sent commits no check had read. The name read failing no longer skips the commits.
+
 ## primer 0.1.30 - 2026-11-22
 
 - A start that ends with nothing to load, in a place the map or the configuration names, says so in the session's context, as a load that stops does: a `local` repository whose layer files are each missing or empty, a store that `config.json` names with no `map.json` in it, a clone of a `local` entry that git cannot read, as with a damaged `HEAD` file, and a clone at the path of a `local` entry that has none of the entry's remotes. Each gave a session no layer and no word of it. `status` marks the missing `map.json` and gives the cause for the two clones.

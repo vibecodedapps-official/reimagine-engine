@@ -286,7 +286,7 @@ export function main({ env = process.env, home = homedir(), platform = process.p
   try { list = parseList(decode(readFileSync(path))); input = JSON.parse(stdin()); } catch { return []; }
   try { return runInNewContext('run()', { run: () => check(input, list, path, { home, platform, env }) }, { timeout: limit }); } catch (e) {
     const late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '';
-    return typeof input?.tool_input?.command === 'string' ? [deny(`rules: the command could not be read${late}, so it was not checked against ${path}; send it as shorter commands`)] : [];
+    return ['Bash', 'PowerShell'].includes(input?.tool_name) && typeof input.tool_input?.command === 'string' ? [deny(`rules: the command could not be read${late}, so it was not checked against ${path}; send it as shorter commands`)] : [];
   }
 }
 

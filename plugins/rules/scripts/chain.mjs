@@ -103,12 +103,12 @@ const pairs = (s, ps) => {
 // that holds them. ps reads the text as PowerShell does: a backtick escapes, and a here-string is one quoted text.
 function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
-  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0;
+  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0, bare = -2, last = ' ';
   // Each word keeps the place it starts and ends at in s, and the count of PowerShell } read before it; skip holds the places of the commit messages of s itself.
   // A quoted text of letters alone, an empty one too, stands as it is in plain, so tr''ap reads as trap; any other leaves one ", so a word that is all quoted is still a word there, as the target of a redirect is.
-  // An empty one leaves a " too where it is the whole word or ends a word that is a redirect's sign up to it, so the next word is no target.
-  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces, p: plain.length }; cur.w += t; cur.q ||= q; cur.e = q && t === ''; if (q) texts.push(t); plain += q && !/^[A-Za-z]*$/.test(t) ? '"' : t; };
-  const end = () => { if (cur) { if (cur.e && (plain.length === cur.p || /[<>&|]$/.test(plain))) plain += '"'; words.push({ ...cur, b: pos }); } cur = null; };
+  // An empty one leaves a " too only where last, the character of plain before it that is no space, is one of < > & |, so the next word is no target.
+  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; cur.e = q && t === ''; if (q) texts.push(t); const p = q && !/^[A-Za-z]*$/.test(t) ? '"' : t; plain += p; if (p) last = p.at(-1); };
+  const end = () => { if (cur) { if (cur.e && '<>&|'.includes(last)) plain += last = '"'; words.push({ ...cur, b: pos }); } cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
   // A command at the end of a pipe that names a shell runs the texts of the command before it. What it runs cannot be
@@ -187,11 +187,11 @@ function walk(s, ps, depth) {
         at = nl + 1;
       }
       i += doc[0].length - 1;
-    } else if (ps && (c === '{' || c === '}') && s[i - 1] !== '$') { end(); plain += c; if (c === '}') braces++; } // In PowerShell a brace ends a word, that of ${name} aside.
+    } else if (ps && (c === '{' || c === '}') && s[i - 1] !== '$') { end(); plain += last = c; if (c === '}') braces++; } // In PowerShell a brace ends a word, that of ${name} aside.
     else if (' \t\r'.includes(c)) { end(); plain += c; }
     // The & of a redirect such as 2>&1 and the | of >| end no command.
-    else if (';&|\n()'.includes(c) && !('&|'.includes(c) && s[i - 1] === '>')) { end(); plain += c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
-    else add(c);
+    else if (';&|\n()'.includes(c) && !('&|'.includes(c) && s[i - 1] === '>' && bare === i - 1)) { end(); plain += last = c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
+    else { add(c); bare = i; }
   }
   pos = s.length;
   cut();

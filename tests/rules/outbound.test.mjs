@@ -488,8 +488,8 @@ test('R405: a command the read does not get through is denied, whatever it holds
   assert.deepEqual(w.shell('"$E"gh pr create --title x; bash' + many), denial);
   assert.deepEqual(w.shell('gi\u2018\u2019t pu\u2018\u2019sh -q; bash' + many, 'PowerShell'), denial);
   assert.deepEqual(w.shell('echo done; bash' + many), denial);
-  // An MCP input and an input with no command are no command to deny.
-  none(w.run({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: {}, cwd: w.work }));
+  // An MCP input that holds a command field and is stopped at the limit goes ahead.
+  assert.deepEqual(inWorld(w, () => main({ env: w.env, home: w.home, stdin: () => JSON.stringify({ tool_name: 'mcp__shell__run', tool_input: { command: 'git push -q', text: 'a '.repeat(10000000) } }), limit: 1 })), []);
 });
 
 test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {

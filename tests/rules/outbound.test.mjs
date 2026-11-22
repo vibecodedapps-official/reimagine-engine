@@ -376,6 +376,27 @@ test('R405: the name of the branch is read only where a push is found, and a pus
   denied(w.shell('git push origin main:zqxlisted', 'Bash', dir), 'zqxlisted', 'the words of the push', w);
 });
 
+test('R405: a push from a branch with no commit, or from no branch, reads the commits of the other branches and the name', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'zqxlisted');
+  w.git(dir, 'checkout', '-q', '--orphan', 'docs');
+  denied(w.shell('git push -q origin main', 'Bash', dir), 'zqxlisted', 'commit ', w);
+  w.git(dir, 'checkout', '-q', '--orphan', 'zqxlisted-docs');
+  denied(w.shell('git push -q origin main', 'Bash', dir), 'zqxlisted', `the name of the branch ${dir} is on`, w);
+  w.git(dir, 'checkout', '-q', '--detach', 'main');
+  denied(w.shell('git push -q origin HEAD:main', 'Bash', dir), 'zqxlisted', 'commit ', w);
+});
+
+test('R405: a commit followed by words made of redirect brackets is answered within the hook\'s limit', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const started = Date.now();
+  denied(w.shell('git commit -qm "note zqxlisted"; ' + '>>>>>>>> '.repeat(10) + ':'), 'zqxlisted', 'the command', w);
+  assert.ok(Date.now() - started < 20000);
+});
+
 test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {
   const w = world();
   w.list('zqxlisted');

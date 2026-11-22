@@ -488,8 +488,10 @@ test('R405: a command the read does not get through is denied, whatever it holds
   assert.deepEqual(w.shell('"$E"gh pr create --title x; bash' + many), denial);
   assert.deepEqual(w.shell('gi\u2018\u2019t pu\u2018\u2019sh -q; bash' + many, 'PowerShell'), denial);
   assert.deepEqual(w.shell('echo done; bash' + many), denial);
-  // An MCP input that holds a command field and is stopped at the limit goes ahead.
-  assert.deepEqual(inWorld(w, () => main({ env: w.env, home: w.home, stdin: () => JSON.stringify({ tool_name: 'mcp__shell__run', tool_input: { command: 'git push -q', text: 'a '.repeat(10000000) } }), limit: 1 })), []);
+  // An MCP input the read is stopped on is denied too, and one that is read holds no listed string.
+  const mcp = (limit) => inWorld(w, () => main({ env: w.env, home: w.home, stdin: () => JSON.stringify({ tool_name: 'mcp__shell__run', tool_input: { text: 'a '.repeat(10000000) } }), ...(limit && { limit }) }));
+  assert.deepEqual(mcp(1).map((l) => JSON.parse(l).hookSpecificOutput), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: `rules: the tool input could not be read in 0.001 seconds, so it was not checked against ${w.listFile}; send it in smaller calls` }]);
+  assert.deepEqual(mcp(), []);
 });
 
 test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {

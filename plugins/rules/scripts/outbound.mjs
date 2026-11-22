@@ -278,15 +278,15 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   return notes.length ? [warn(`rules: ${notes.join(', ')} could not be read, so ${notes.length === 1 ? 'its text was' : 'their texts were'} not checked against ${path}`)] : [];
 }
 
-// The read of one input runs under a limit of its own, so the host is answered while it still waits. A command the read did not get through, stopped at the limit or by an error of the script, is denied:
+// The read of one input runs under a limit of its own, so the host is answered while it still waits. A command or an MCP input the read did not get through, stopped at the limit or by an error of the script, is denied:
 // no search of its text tells whether it pushes or posts, since a quote the shell reads and an expansion that gives nothing can stand inside a program's name.
 export function main({ env = process.env, home = homedir(), platform = process.platform, stdin = () => readFileSync(0, 'utf8'), limit = 50000 } = {}) {
   const path = listPath(env, home);
   let list, input;
   try { list = parseList(decode(readFileSync(path))); input = JSON.parse(stdin()); } catch { return []; }
   try { return runInNewContext('run()', { run: () => check(input, list, path, { home, platform, env }) }, { timeout: limit }); } catch (e) {
-    const late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '';
-    return ['Bash', 'PowerShell'].includes(input?.tool_name) && typeof input.tool_input?.command === 'string' ? [deny(`rules: the command could not be read${late}, so it was not checked against ${path}; send it as shorter commands`)] : [];
+    const late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '', shell = typeof input?.tool_input?.command === 'string';
+    return [deny(`rules: the ${shell ? 'command' : 'tool input'} could not be read${late}, so it was not checked against ${path}; send it ${shell ? 'as shorter commands' : 'in smaller calls'}`)];
   }
 }
 

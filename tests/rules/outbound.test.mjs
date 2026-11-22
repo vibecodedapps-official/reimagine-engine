@@ -394,7 +394,7 @@ test('R405: a commit followed by words made of redirect brackets is answered wit
   w.list('zqxlisted');
   const started = Date.now();
   denied(w.shell('git commit -qm "note zqxlisted"; ' + '>>>>>>>> '.repeat(10) + ':'), 'zqxlisted', 'the command', w);
-  assert.ok(Date.now() - started < 20000);
+  assert.ok(Date.now() - started < 5000);
 });
 
 test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {

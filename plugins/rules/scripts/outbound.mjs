@@ -119,8 +119,8 @@ export function leaving(dir, command, diff, left) {
   const id = randomBytes(8).toString('hex');
   const args = (patch, tip = ['HEAD']) => ['-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
     `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, ...tip, '--branches', ...(tags ? ['--tags'] : []), '--not', '--remotes'];
-  // On a branch with no commit yet HEAD names none, and the other branches are read without it.
-  const log = (patch) => or(() => git(dir, args(patch), left), () => git(dir, args(patch, []), left));
+  // On a branch with no commit yet HEAD names none, and only there the other branches are read without it.
+  const log = (patch) => or(() => git(dir, args(patch), left), () => { git(dir, ['symbolic-ref', '-q', 'HEAD'], left); if (or(() => git(dir, ['rev-parse', '-q', '--verify', 'HEAD'], left), () => '')) throw new Error('git log failed'); return git(dir, args(patch, []), left); });
   let out, lost = false;
   try { out = log(diff); } catch (e) { if (!diff || e instanceof Late) throw e; out = log(false); lost = true; }
   const texts = [], added = [];

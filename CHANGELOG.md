@@ -2,6 +2,21 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.30 - 2026-11-22
+
+- A start that ends with nothing to load, in a place the map or the configuration names, says so in the session's context, as a load that stops does: a `local` repository whose layer files are each missing or empty, a store that `config.json` names with no `map.json` in it, a clone of a `local` entry that git cannot read, as with a damaged `HEAD` file, and a clone at the path of a `local` entry that has none of the entry's remotes. Each gave a session no layer and no word of it. `status` marks the missing `map.json` and gives the cause for the two clones.
+- A directory in the place of one layer's file costs that layer alone: the string opens with a line that names it, and the other layers load. It stopped the whole load, so one bad file cost a session every layer. `status` shows the layer as `not a file`.
+- A start read from the repository kept at an earlier start says so in the first line of its context. The note went to the user alone, so where the directory's remote had changed since, a session got another repository's layers with no word of it.
+- The kept file holds a repository only where a `local` entry matches it, with the entry's remotes and no user, query or fragment of a remote URL, and `null` for any other directory. It was written with the path and the remote URLs of every directory a session started in, mapped or not, and kept the query and the fragment of a URL. A start that git answers as no repository, in a directory that holds `.git`, leaves the kept answer as it was; it replaced the answer with `null`, so a later start where git gave no answer in time loaded nothing.
+- The line at the start of a string over the host's cap says a session holds each layer whole only once it has read the layer's file. It named the files and said nothing of reading them.
+- The staging check denies a `git merge`, `cherry-pick`, `rebase` or `am` in a command it cannot read to its end, with a reason that says to run it as a command of its own. Such a command was counted by the files in the work tree, which hold nothing of what a merge brings, so `((true) ); echo "))"; cat <<EOF # ))`, a body with an apostrophe, its end line and a `git merge` of a branch that adds an agent file passed, and so did the merge after `for ((i=0; i<(n-1); i++)); do :; done`.
+
+## rules 0.1.45 - 2026-11-22
+
+- A push is found behind a quoted `&`, `;` or `|` and after a variable that holds `git` and starts the command. `git -c user.name="A&B" push`, `git -c credential.helper='!f() { :; }; f' push` and `g=git; $g push` were not read as a push, so no commit, added line or file name was checked against the list.
+- A push found that way is read for its own words, a redirect aside, and for the name of the branch its folder is on. `git push origin main:<name>` and a push from a branch named for a listed string put the name on a remote unread.
+- With `check: diff`, a push after a commit is denied where `Start-Process git -ArgumentList` takes quoted values, `'push','-q'`, `'push -q'` or `"push -q"`, and in `git commit -qm "git push -q"; eval "$(git log -1 --format=%s)"`. The quoted value was read as one word that names no subcommand, and the commit's message was left out of the words-alone read though the shell ran it read back.
+
 ## primer 0.1.29 - 2026-11-21
 
 - A start where no layer loads says so in the session's context, in one line that gives the reason, at a subagent's start and in a session no one attends as well. A `map.json` or a `config.json` that could not be read, a store that `config.json` names and that is missing, a directory in the place of a layer's file and a `git` that gave no answer in time each left a session with no layer and no word of it, and a session told nothing takes the context it holds for whole. `status` marks a named store that is missing.

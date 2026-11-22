@@ -136,12 +136,13 @@ export const match = (map, repo, platform) => {
     || ((!repo.remotes.length || !e.remotes.length) && keyOf(e.path, platform) === keyOf(repo.root, platform)))
     ?? map.repos.find((e) => e.remotes.some((r) => forms.includes(formOf(r))));
 };
+const entryAt = (map, path, platform) => map.repos.find((e) => e.profile === 'local' && keyOf(e.path, platform) === keyOf(path, platform));
 const under = (map, root, platform) => map.roots.find((d) => `${keyOf(root, platform)}/`.startsWith(`${keyOf(d, platform)}/`));
 const shown = (e) => `group ${e.group}, profile ${e.profile}, ${e.remotes.length ? `remotes ${e.remotes.join(', ')}` : `path ${e.path}`}`;
 
 // Each layer of an entry as it is emitted: a line naming the layer and its file, the text, and a canary line holding the first
 // eight hex characters of the SHA-256 of the file's bytes, a CRLF line end read as LF so that a store git checks out either way
-// gives one string. An empty or missing layer has no text. swap gives one file other bytes.
+// gives one string. An empty or missing layer has no text, and one whose file is no file has bad, the reason. swap gives one file other bytes.
 const fileOf = (p, name, group) => (name === 'machine' ? join(p.local, 'machine.md') : name === 'machine-group' ? join(p.local, 'machine', `${group}.md`)
   : name === 'shared' ? join(p.store, 'shared.md') : join(p.store, 'groups', `${group}.md`));
 // A machine layer left in primer's own directory after config.json named another for the machine.
@@ -157,9 +158,9 @@ function apart(c, p) {
 function layersOf(p, entry, swap) {
   const files = Object.fromEntries(LAYERS.map((name) => [name, fileOf(p, name, entry.group)]));
   return LAYERS.map((name) => {
-    const raw = swap?.file === files[name] ? swap.buf : !existsSync(files[name]) ? null : isFile(files[name]) ? readFileSync(files[name]) : refuse(`${files[name]} is not a file`);
+    const bad = swap?.file !== files[name] && existsSync(files[name]) && !isFile(files[name]), raw = bad ? null : swap?.file === files[name] ? swap.buf : existsSync(files[name]) ? readFileSync(files[name]) : null;
     const buf = raw && Buffer.from(raw.toString('utf8').replace(/\r\n/g, '\n')), body = buf ? buf.toString('utf8').replace(/\s+$/, '') : '';
-    if (!body) return { name, file: files[name] };
+    if (!body) return { name, file: files[name], ...(bad && { bad: `${files[name]} is not a file` }) };
     const canary = createHash('sha256').update(buf).digest('hex').slice(0, 8);
     return { name, file: files[name], canary, text: `primer layer ${name} from ${files[name]}\n${body}\nprimer canary ${name} ${canary}` };
   });
@@ -264,15 +265,15 @@ export function notice(c, input, data, repo) {
 // Removes the files of a directory last written more than 30 days before.
 const prune = (dir) => { for (const f of readdirSync(dir).map((x) => join(dir, x))) if (Date.now() - (statSync(f, { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > 30 * 864e5) rmSync(f, { force: true }); };
 // The repository git gave at a directory's last start, kept under the data directory by the directory's path and read where git
-// gives no answer in time; undefined where none is kept. A kept answer is written at every start git answers, with each remote
-// URL's userinfo removed; one written more than 30 days before is removed at the next read or write, so it is not read.
+// gives no answer in time; undefined where none is kept. Every start git answers writes one: a local entry's repository, with the entry's remotes as the map holds them and each URL with no user, query
+// or fragment, and null for any other directory, whose path and URL are not kept; one written more than 30 days before is removed at the next read or write.
 function keptRepo(c, data, cwd, repo) {
-  const file = data && isAbsolute(data) ? join(data, 'repo', createHash('sha256').update(keyOf(cwd, c.platform)).digest('hex').slice(0, 16)) : null;
+  const file = data && isAbsolute(data) ? join(data, 'repo', createHash('sha256').update(keyOf(cwd, c.platform)).digest('hex').slice(0, 16)) : null, bare = (u) => u.replace(/^([A-Za-z][\w+.-]*:\/\/)?[^/]*@/, '$1').replace(/[?#].*$/, '');
   if (repo === undefined) { try { prune(dirname(file)); const v = JSON.parse(readText(file)); return v === null || (typeof v.root === 'string' && typeof v.top === 'string' && [v.remotes, v.names, v.urls].every(Array.isArray)) ? v : undefined; } catch { return undefined; } }
   if (file) try {
     mkdirSync(dirname(file), { recursive: true });
     prune(dirname(file));
-    writeFileSync(file, JSON.stringify(repo && { ...repo, urls: repo.urls.map((u) => u.replace(/^([A-Za-z][\w+.-]*:\/\/)[^/]*@/, '$1')) }));
+    writeFileSync(file, JSON.stringify(repo && { ...repo, urls: repo.urls.map(bare) }));
   } catch {}
   return repo;
 }
@@ -298,26 +299,30 @@ function sessionStart(c, layer, input, data) {
 // The context string of a start, with the warnings and the notice pushed to msgs; undefined where the start gets none.
 function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) {
   const p = places(c, own);
-  if (p.cfg.store && !isDir(p.store)) refuse(`${p.cfgPath} names the store ${p.store}, which is missing`);
+  if (p.cfg.store && !existsSync(p.map)) refuse(`${p.cfgPath} names the store ${p.store}, which ${isDir(p.store) ? 'holds no map.json' : 'is missing'}`);
   const map = loadMap(p.map, c.home);
   if (!map.roots.length && !map.repos.some((e) => e.profile === 'local')) return undefined;
   const cwd = isDir(input.cwd) ? input.cwd : c.cwd;
-  let repo, context;
-  try { repo = keptRepo(c, data, cwd, repoOf(c, cwd, Date.now() + c.limit)); } catch (e) {
+  let repo, context, late;
+  try { repo = repoOf(c, cwd, Date.now() + c.limit); } catch (e) {
     if (!(e instanceof Unknown)) throw e;
     // Where git gives no answer in time, the start is read as the repository git gave at the directory's last start.
     repo = keptRepo(c, data, cwd);
-    msgs.push(repo === undefined ? `primer: the context of ${slash(cwd)} is unknown, since git gave no answer within ${c.limit / 1000} s`
-      : `primer: git gave no answer within ${c.limit / 1000} s, so ${slash(cwd)} is read as ${repo ? 'the repository git gave' : 'outside a git work tree, as git gave'} at an earlier start there`);
+    msgs.push(late = repo === undefined ? `primer: the context of ${slash(cwd)} is unknown, since git gave no answer within ${c.limit / 1000} s`
+      : `primer: git gave no answer within ${c.limit / 1000} s, so ${slash(cwd)} is read as ${repo ? 'the repository git gave' : 'a directory with no layers, as it was'} at an earlier start there`);
     if (repo === undefined) return none(`git gave no answer within ${c.limit / 1000} s, so whether ${slash(cwd)} has layers is unknown`);
   }
   const entry = repo && match(map, repo, c.platform), root = repo && !entry && under(map, repo.root, c.platform);
+  // Where git reads no repository in a directory that holds .git, as with a damaged HEAD, the path of a local entry, or a kept repository a local entry still matches, stops the load.
+  if (!late) keptRepo(c, data, cwd, entry?.profile === 'local' ? { ...repo, remotes: entry.remotes } : repo === null && topOf(c, cwd) && (entryAt(map, topOf(c, cwd), c.platform) || [keptRepo(c, data, cwd)].some((k) => k && match(map, k, c.platform)?.profile === 'local')) ? refuse(`git read no repository at ${slash(cwd)}, though ${topOf(c, cwd)} holds .git`) : null);
   if (root) msgs.push(`primer: ${repo.root} is unmapped, under ${root} of the map's roots; run /primer to map it`);
+  if (repo && !entry) { const at = entryAt(map, repo.root, c.platform); if (at) refuse(`${repo.root} is the path of the map's entry of group ${at.group} and has none of its remotes`); }
   if (entry?.profile !== 'local') return undefined;
-  const parts = layersOf(p, entry).filter((x) => x.text), whole = layer === 'all' ? parts : parts.filter((x) => x.name === layer);
-  context = joined(whole) || undefined;
-  // The host gives a session a preview of a string over its cap, which keeps the string's start: the first line there says where each layer is whole.
-  if (context?.length > CAP) context = `primer: the text below is ${context.length} characters, over the host's cap of ${CAP}, so a session holds a preview of it; each layer is whole in its file: ${whole.map((x) => x.file).join(', ')}\n\n${context}`;
+  const all = layersOf(p, entry), parts = all.filter((x) => x.text), whole = layer === 'all' ? parts : parts.filter((x) => x.name === layer), bad = all.filter((x) => x.bad && (layer === 'all' || x.name === layer)).map((x) => `primer: the ${x.name} layer is not loaded: ${x.bad}`), empty = !parts.length && !all.some((x) => x.bad) && none(`each layer file of group ${entry.group} is missing or empty`);
+  // A line for a start read from a kept answer and one for each layer whose file is no file open the string; with no layer at all, one line says so.
+  const note = late && lead && (bad.length || whole.length) ? `${late}\n\n` : '', body = [...bad, joined(whole)].filter(Boolean).join('\n\n'), n = (note + body).length;
+  // The host gives a session a preview of a string over its cap, which keeps the string's start: a line there, after any note of a kept answer, says a layer is whole only once its file is read.
+  context = note + (n > CAP ? `primer: the text below is ${n} characters, over the host's cap of ${CAP}, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${whole.map((x) => x.file).join(', ')}\n\n` : '') + body || empty || undefined;
   // A resumed session still holds the string it was last given, so it gets one only where the string differs from that one: the
   // digest of each string given is kept under the data directory by session and layer, for 30 days after the session's last
   // start, and a session with none kept gets the string. With no absolute data directory, or an id that names no file, nothing is kept
@@ -332,7 +337,7 @@ function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) 
   if (input.source === 'resume' && (!mark || same)) context = undefined;
   const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
     : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
-  if (apart(c, p)) msgs.push(`primer: ${apart(c, p)}`);
+  for (const said of [...bad, empty, apart(c, p) && `primer: ${apart(c, p)}`]) if (said) msgs.push(said);
   for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
   // The notice hook runs at startup alone, and so does this.
   const told = (input.source ?? 'startup') === 'startup' && !quiet && lead && notice(c, input, data, repo);
@@ -380,14 +385,14 @@ function status(c) {
 
 function delivery(c, p) {
   const map = loadMap(p.map, c.home);
-  const lines = [`primer: ${p.own}${existsSync(p.own) ? '' : ' (missing)'}`, `store: ${p.store}${p.cfg.store && !isDir(p.store) ? ' (missing)' : ''}`, `map: ${p.map} (${map.repos.length} repositories, ${map.roots.length} roots)`];
+  const lines = [`primer: ${p.own}${existsSync(p.own) ? '' : ' (missing)'}`, `store: ${p.store}${p.cfg.store && !isDir(p.store) ? ' (missing)' : ''}`, `map: ${p.map} (${p.cfg.store && !existsSync(p.map) ? 'missing' : `${map.repos.length} repositories, ${map.roots.length} roots`})`];
   let repo;
   try { repo = repoOf(c, c.cwd, Date.now() + c.limit); } catch (e) {
     if (!(e instanceof Unknown)) throw e;
     return [...lines, `check git: unknown, no answer within ${c.limit / 1000} s`];
   }
-  if (!repo) return [...lines, `repository: none, ${slash(c.cwd)} is in no git work tree`];
-  const entry = match(map, repo, c.platform), root = under(map, repo.root, c.platform);
+  if (!repo) return [...lines, `repository: none, ${topOf(c, c.cwd) ? `git read none at ${slash(c.cwd)}, though ${topOf(c, c.cwd)} holds .git` : `${slash(c.cwd)} is in no git work tree`}`];
+  const entry = match(map, repo, c.platform), root = under(map, repo.root, c.platform), at = !entry && entryAt(map, repo.root, c.platform);
   lines.push(`repository: ${repo.root} (${repo.remotes.join(', ') || 'no remote'})`, `entry: ${entry ? shown(entry) : 'none'}`, `profile: ${entry?.profile ?? 'none'}`);
   // A review file that cannot be read costs its own line and not the rest of the report.
   let rv = null;
@@ -395,7 +400,7 @@ function delivery(c, p) {
   if (rv && existsSync(rv.path)) lines.push(`review: ${rv.path}, ${rv.logs.length} log directories, ${rv.entry ? `${rv.skip.length} notes skipped and transcripts ${rv.transcripts ? 'on' : 'off'} for this repository` : 'no entry for this repository'}`);
   if (entry?.profile === 'local') {
     const parts = layersOf(p, entry), n = joined(parts).length;
-    for (const x of parts) lines.push(`layer ${x.name}: ${x.file}, ${x.text ? `${x.text.length} characters, canary ${x.canary}` : 'missing or empty'}`);
+    for (const x of parts) lines.push(`layer ${x.name}: ${x.file}, ${x.text ? `${x.text.length} characters, canary ${x.canary}` : x.bad ? 'not a file' : 'missing or empty'}`);
     lines.push(`check size: ${n} characters as emitted, ${n > CAP ? 'over' : 'within'} the cap of ${CAP}`);
   }
   for (const said of [left(c, p), apart(c, p)]) if (said) lines.push(`check machine: ${said}`);
@@ -404,7 +409,7 @@ function delivery(c, p) {
   const mine = ofMachine(c, p);
   for (const f of [join(p.store, 'shared.md'), ...mdIn(join(p.store, 'groups')), ...filesIn(join(p.store, 'docs')), ...filesIn(join(p.store, 'skills')), join(p.store, 'ledger.jsonl'), ...filesIn(join(p.store, 'copies'))]) for (const hit of mine(readText(f))) lines.push(`check tracked: ${held(c, p, f)}:${hit}`);
   for (const f of [p.map, join(p.store, 'copies.json')]) for (const hit of mine(readText(f), true)) lines.push(`check tracked: ${held(c, p, f)}:${hit}`);
-  return [...lines, `check map: ${entry ? 'mapped' : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
+  return [...lines, `check map: ${entry ? 'mapped' : at ? `unmapped, at the path of the entry of group ${at.group}, with none of its remotes` : root ? `unmapped, under the root ${root}` : 'unmapped, under no root'}`, `check git: answered within ${c.limit / 1000} s`];
 }
 
 const MEASURE = 'measure takes nothing, or --with <file> <layer>, the layer being shared.md, groups/<group>.md, machine.md or machine/<group>.md';
@@ -424,7 +429,7 @@ function measure(c, args) {
   const out = [`primer: the host's cap is ${CAP} characters per context string, counted as emitted`], size = (x) => x.text?.length ?? 0;
   const hits = swap && keyOf(swap.file, c.platform).startsWith(`${keyOf(p.store, c.platform)}/`) ? ofMachine(c, p)(swap.buf.toString('utf8')).map((hit) => `check tracked: ${args[2]}:${hit}`) : [];
   const line = (who, e) => {
-    const now = layersOf(p, e), next = swap ? layersOf(p, e, swap) : now, n = joined(next).length;
+    const now = layersOf(p, e).map((x) => (x.bad ? refuse(x.bad) : x)), next = swap ? layersOf(p, e, swap) : now, n = joined(next).length;
     const parts = now.map((x, i) => `${x.name} ${size(x)}${x.file === swap?.file ? ` -> ${size(next[i])}` : ''}`);
     return `${who}: ${swap ? `${joined(now).length} -> ` : ''}${n} characters (${parts.join(', ')}), ${n > CAP ? 'over' : 'within'} the cap`;
   };
@@ -599,7 +604,7 @@ function reach(c, data, input) {
   const other = !(mine && k(mine.root) === k(repo.root)), entry = other && map && match(map, repo, c.platform), home = map && mine && match(map, mine, c.platform);
   // A session that started in a local repository holds the shared and machine layers, and the group's two where the two share one.
   const has = (x) => home?.profile === 'local' && (!x.name.endsWith('group') || home.group === entry.group);
-  const layers = entry?.profile === 'local' && joined(layersOf(p, entry).filter((x) => !has(x))), files = other ? instructionsOf(repo.top) : [];
+  const layers = entry?.profile === 'local' && joined(layersOf(p, entry).filter((x) => (x.bad ? refuse(x.bad) : !has(x)))), files = other ? instructionsOf(repo.top) : [];
   const text = [files.length && `instruction files: ${files.join(', ')}`, layers && `context, which follows.\n\n${layers}`].filter(Boolean).join('; nor its ');
   // Recorded last, so an error above leaves the next edit to be answered; a record that cannot be written answers every edit.
   if (log) try { mkdirSync(dirname(log), { recursive: true }); appendFileSync(log, `${k(top)}\n`); } catch {}

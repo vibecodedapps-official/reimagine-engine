@@ -2,7 +2,7 @@
 // call that makes a commit. The hook's own denial is tested in outbound.test.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chained } from '../../plugins/rules/scripts/chain.mjs';
+import { chained, pushed } from '../../plugins/rules/scripts/chain.mjs';
 
 test('R405: a push is chained where it runs after a call that makes a commit, as the shell reads the command', () => {
   // Each case is a command, whether PowerShell reads it, and whether the push is chained.
@@ -167,8 +167,49 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     // A # starts a comment at the start of a word: not right after the ) of a $( ), but right after a } in PowerShell.
     ['git commit -m x; echo $(date)#tag "$(git push --dry-run)"', false, false],
     ['git commit -m x; if ($?) {echo hi}# it\'s (\necho "$(git push --dry-run)"', true, false],
+    // A shell that runs what a substitution prints may run a commit's message read back, so the message is read as words.
+    ['git add -A && git commit -qm "git push -q"; eval "$(git log -1 --format=%s)"', false, true],
+    ['git add -A && git commit -qm "git push -q"; bash -c \'eval "$(git log -1 --format=%s)"\'', false, true],
+    ['git commit -qm "git push -q"; echo "$(eval "$(git log -1 --format=%s)")"', false, true],
+    // A message can only be read back by a shell that runs after the commit.
+    ['eval "$(ssh-agent -s)" && git commit -m "Fix push retry"', false, false],
+    ['source "$(poetry env info --path)/bin/activate" && git commit -m "Fix push retry"', false, false],
+    // A quoted value that holds the subcommand with more words, as -ArgumentList takes, names the call.
+    ["git commit -m x; Start-Process git -ArgumentList 'push','-q' -Wait -NoNewWindow", true, true],
+    ["git commit -m x; Start-Process git -ArgumentList 'push -q' -Wait -NoNewWindow", true, true],
+    ['git commit -m x; Start-Process git -ArgumentList "push -q" -Wait -NoNewWindow', true, true],
+    ["Start-Process git -ArgumentList 'commit','-m','x' -Wait; git push", true, true],
+    // A dry-run flag in the value that names the subcommand sends nothing.
+    ["git commit -m x; Start-Process git -ArgumentList 'push','--dry-run' -Wait", true, false],
+    ["git commit -m x; Start-Process git -ArgumentList 'push --dry-run' -Wait", true, false],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
+});
+
+test('R405: a push is found among the calls of a command, with the words it is given', () => {
+  // Each case is a command, whether PowerShell reads it, and the words of its pushes, null where it holds no push.
+  const cases = [
+    ['git push', false, ''],
+    ['git -c user.name="A&B" push -q origin main', false, '-q origin main'],
+    ["git -c credential.helper='!f() { :; }; f' push origin HEAD:topic", false, 'origin HEAD:topic'],
+    ['g=git; $g push -u origin HEAD', false, '-u origin HEAD'],
+    ['g=git; $g push origin main', false, 'origin main'],
+    ['X=1 $g push origin main', false, 'origin main'],
+    ['$DOCKER push image:tag', false, 'image:tag'],
+    ['make -C $DIR push', false, null],
+    ['cp "$f" push', false, null],
+    ['echo $USER "push the button"', false, null],
+    ['git push origin main; git push origin v1', false, 'origin main origin v1'],
+    // A redirect and the file it names stay on the machine.
+    ['git push origin main 2>/tmp/zq/push.log', false, 'origin main'],
+    ['git push origin main > out.log 2>&1', false, 'origin main'],
+    ["Start-Process git -ArgumentList 'push','origin','topic' -Wait", true, 'origin topic -Wait'],
+    ['git stash push -m wip', false, null],
+    ['git status; echo push', false, null],
+    ['docker push image:tag', false, null],
+    ['git commit -m "git push origin topic"', false, null],
+  ];
+  for (const [command, ps, want] of cases) assert.equal(pushed(command, ps), want, command);
 });
 
 test('R405: a long run of substitutions is read in linear time', () => {

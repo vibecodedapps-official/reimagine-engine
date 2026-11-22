@@ -1057,6 +1057,21 @@ describe('primer drift hook', () => {
       // A body that expands under an unquoted end word can assign the name, so it is not followed.
       for (const command of ['B=notes; cat <<EOF\n$((B=1))\nEOF\ngit merge -q "$B"', 'B=notes; cat <<EOF\n${B:=feat}\nEOF\ngit merge -q "$B"']) assert.equal(await check(command, dir), unread, command);
     });
+    test('a merge, a cherry-pick, a rebase or an am in a command the check cannot read to its end is denied', async () => {
+      const dir = await clone();
+      await git(dir, 'checkout', '-q', '-b', 'feat');
+      await git(dir, 'add', '-f', 'CLAUDE.md');
+      await git(dir, 'commit', '-q', '-m', 'hub');
+      await git(dir, 'checkout', '-q', 'main');
+      rmSync(join(dir, '.claude'), { recursive: true, force: true });
+      const unread = (sub) => deny(lead(dir) + 'a git ' + sub + ' in a command that cannot be read to its end is not read, so the call is denied; run it as a command of its own');
+      // A )) the shell reads as text, a ( after a < inside arithmetic and a process substitution each end the read.
+      for (const command of ['((true) ); echo "))"; cat <<EOF # ))\nit\'s\nEOF\ngit merge -q feat', 'for ((i=0; i<(n-1); i++)); do :; done; git merge -q feat', 'n=$((1<<(k+1))); git merge -q feat', 'if (( x<(y+1) )); then echo ok; fi; git merge -q feat', '((true) ); cat <<EOF >part$((1+1)).txt\nit\'s\nEOF\ngit merge -q feat', 'echo "it\'s; git merge -q feat']) assert.equal(await check(command, dir), unread('merge'), command);
+      assert.equal(await check('diff <(sort a.txt) <(sort b.txt); git -C . rebase feat', dir), unread('rebase'));
+      // The call is denied by its words, so one that a text only names is denied too; a call that ends one under way, and a text with none, pass.
+      assert.equal(await check('diff <(sort a.txt) <(sort b.txt) && echo run git merge next', dir), unread('merge'));
+      for (const command of ['diff <(sort a.txt) <(sort b.txt); git merge --abort', 'diff <(git log main) <(git log feat); echo merged']) assert.equal(await check(command, dir), '', command);
+    });
     test('an add, a commit and a merge are read through timeout and nice, and on the right of a PowerShell assignment', async () => {
       const dir = await clone(), merged = await clone();
       const reason = deny(lead(dir) + 'the call would add ' + both);

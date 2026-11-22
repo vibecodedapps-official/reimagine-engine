@@ -313,8 +313,8 @@ function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) 
     if (repo === undefined) return none(`git gave no answer within ${c.limit / 1000} s, so whether ${slash(cwd)} has layers is unknown`);
   }
   const entry = repo && match(map, repo, c.platform), root = repo && !entry && under(map, repo.root, c.platform);
-  // Where git reads no repository in a directory that holds .git, as with a damaged HEAD, the path of a local entry or a kept repository stops the load.
-  if (!late) keptRepo(c, data, cwd, entry?.profile === 'local' ? { ...repo, remotes: entry.remotes } : repo === null && topOf(c, cwd) && (entryAt(map, topOf(c, cwd), c.platform) || keptRepo(c, data, cwd)) ? refuse(`git read no repository at ${slash(cwd)}, though ${topOf(c, cwd)} holds .git`) : null);
+  // Where git reads no repository in a directory that holds .git, as with a damaged HEAD, the path of a local entry, or a kept repository a local entry still matches, stops the load.
+  if (!late) keptRepo(c, data, cwd, entry?.profile === 'local' ? { ...repo, remotes: entry.remotes } : repo === null && topOf(c, cwd) && (entryAt(map, topOf(c, cwd), c.platform) || [keptRepo(c, data, cwd)].some((k) => k && match(map, k, c.platform)?.profile === 'local')) ? refuse(`git read no repository at ${slash(cwd)}, though ${topOf(c, cwd)} holds .git`) : null);
   if (root) msgs.push(`primer: ${repo.root} is unmapped, under ${root} of the map's roots; run /primer to map it`);
   if (repo && !entry) { const at = entryAt(map, repo.root, c.platform); if (at) refuse(`${repo.root} is the path of the map's entry of group ${at.group} and has none of its remotes`); }
   if (entry?.profile !== 'local') return undefined;

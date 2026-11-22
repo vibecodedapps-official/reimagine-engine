@@ -179,6 +179,9 @@ test('R405: a push is chained where it runs after a call that makes a commit, as
     ["git commit -m x; Start-Process git -ArgumentList 'push -q' -Wait -NoNewWindow", true, true],
     ['git commit -m x; Start-Process git -ArgumentList "push -q" -Wait -NoNewWindow', true, true],
     ["Start-Process git -ArgumentList 'commit','-m','x' -Wait; git push", true, true],
+    // A dry-run flag in the value that names the subcommand sends nothing.
+    ["git commit -m x; Start-Process git -ArgumentList 'push','--dry-run' -Wait", true, false],
+    ["git commit -m x; Start-Process git -ArgumentList 'push --dry-run' -Wait", true, false],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });
@@ -197,6 +200,9 @@ test('R405: a push is found among the calls of a command, with the words it is g
     ['cp "$f" push', false, null],
     ['echo $USER "push the button"', false, null],
     ['git push origin main; git push origin v1', false, 'origin main origin v1'],
+    // A redirect and the file it names stay on the machine.
+    ['git push origin main 2>/tmp/zq/push.log', false, 'origin main'],
+    ['git push origin main > out.log 2>&1', false, 'origin main'],
     ["Start-Process git -ArgumentList 'push','origin','topic' -Wait", true, 'origin topic -Wait'],
     ['git stash push -m wip', false, null],
     ['git status; echo push', false, null],

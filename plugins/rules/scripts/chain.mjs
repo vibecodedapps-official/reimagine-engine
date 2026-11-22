@@ -52,9 +52,9 @@ function flags(words, loose = false, skip = null) {
     for (; j < words.length && words[j].w.startsWith('-'); j++) if (VALUED.test(words[j].w)) j++;
     // The subcommand may share a quoted word with the words after it, as in the 'push','-q' and the "push -q" that -ArgumentList takes.
     const head = bare(words[j]?.w ?? '').split(/[\s,]+/), sub = head[0].toLowerCase(), args = words.slice(j + 1), opts = args.filter((x) => !x.q).map((x) => bare(x.w));
-    // A redirect and the file it names are no argument of the pull.
+    // A redirect and the file it names are no argument of the pull or the push.
     const named = args.filter((x, k) => !(!x.q && REDIRECT.test(x.w)) && !(k > 0 && !args[k - 1].q && /^\d*[<>]+&?$/.test(args[k - 1].w)));
-    if (sub === 'push') { const sends = loose || !opts.some((o) => DRY.test(o)); out.chains ||= sends && !loose && out.makes && words[i].n > made; out.pushes ||= sends; if (git || words.slice(0, i).every((x) => /^[A-Za-z_]\w*=/.test(x.w))) (out.sent ??= []).push(...head.slice(1), ...args.map((x) => x.w)); }
+    if (sub === 'push') { const sends = loose || ![...head.slice(1), ...opts].some((o) => DRY.test(o)); out.chains ||= sends && !loose && out.makes && words[i].n > made; out.pushes ||= sends; if (git || words.slice(0, i).every((x) => /^[A-Za-z_]\w*=/.test(x.w))) (out.sent ??= []).push(...head.slice(1), ...named.map((x) => x.w)); }
     else if (MAKERS.has(sub)) out.makes ||= loose || (!opts.some((o) => IDLE.test(o)) && !(sub === 'pull' && opts.includes('--ff-only') && named.every((x) => !x.q && UPSTREAM.test(bare(x.w)))));
     if (out.makes) made ??= words[i].n;
     if (sub === 'commit' && skip) args.forEach((x, k) => { const v = !x.q && /^(?:-[A-Za-z]*m|--message)$/.test(x.w) ? args[k + 1] : null; if (v && !/[$`]/.test(v.w)) skip.push([v.a, v.b]); });

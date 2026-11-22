@@ -346,6 +346,11 @@ describe('session-start', () => {
     const stray = repo('nothing-stray', 'https://example.invalid/team/stray.git');
     writeFileSync(join(stray, '.git', 'HEAD'), 'not a ref\n');
     assert.equal(start(cfg, stray).stdout, '');
+    // A clone kept under an entry the map has since lost, with the entry's path unmatched too, costs no session a line.
+    const left = repo('nothing-left', 'https://example.invalid/team/app.git'), lost = config(local({ repos: [{ remotes: ['example.invalid/team/other'], path: 'unused', group: 'app', profile: 'local' }] }), { group: GROUP });
+    start(cfg, left);
+    writeFileSync(join(left, '.git', 'HEAD'), 'not a ref\n');
+    assert.equal(start(lost, left).stdout, '');
     // Status gives the cause of each of these two states.
     assert.equal(run(['status'], { cwd: hurt, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n').at(-2), `repository: none, git read none at ${slash(hurt)}, though ${slash(hurt)} holds .git`);
     assert.equal(run(['status'], { cwd: moved, extraEnv: { CLAUDE_CONFIG_DIR: at.dir } }).stdout.split('\n').at(-3), 'check map: unmapped, at the path of the entry of group app, with none of its remotes');

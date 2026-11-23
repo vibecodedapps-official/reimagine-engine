@@ -311,9 +311,77 @@ test('R405: a definition is found after an option of command or time, an assignm
   assert.equal(pushed('git push >log\\ file origin main', false), 'origin main');
 });
 
+test('R405: a definition is found after a brace joined to a redirect, in words a shell runs with escaped characters, after a quoted option, an index with a blank and a ${...} that holds a ;', () => {
+  // Each case is a command, whether PowerShell reads it, and whether the push is chained.
+  const cases = [
+    // A { before a redirect or a continued line is a word by itself, and {name} before one is part of its sign.
+    ['{>o trap "git push -q" EXIT; git commit -qm x; }', false, true],
+    ['{</dev/null trap "git push -q" EXIT; git commit -qm x; }', false, true],
+    ['{>>o trap "git push -q" EXIT; git commit -qm x; }', false, true],
+    ['{<<<x trap "git push -q" EXIT; git commit -qm x; }', false, true],
+    ['{>&2 trap "git push -q" EXIT; git commit -qm x; }', false, true],
+    ['true; {>o trap "git push -q" EXIT; git commit -qm x; }', false, true],
+    ['if :; then {>o trap "git push -q" EXIT; }; fi; git commit -qm x; true', false, true],
+    ['{\\\n trap "git push -q" EXIT; git commit -qm x; }', false, true],
+    ['{fd}>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    // After a word that names a shell an escaped character is the character, and a word that holds one is a text the shell may run.
+    ['eval f\\(\\) \\{ git push -q\\; \\}; git commit -qm x; f', false, true],
+    ['eval true\\; trap \\" git push -q \\" EXIT; git commit -qm x; true', false, true],
+    ['eval \\{ trap \\" git push -q \\" EXIT\\; \\}; git commit -qm x; true', false, true],
+    ['pwsh -NoProfile -c 1\\; function f \\{ git push -q \\}\\; git commit -qm x\\; f', false, true],
+    ['pwsh -NoProfile -c 1`; function f `{ git push -q `}`; git commit -qm x`; f', true, true],
+    ['trap git\\ push\\ -q EXIT; git commit -qm x; true', false, true],
+    ['eval trap\\ \\"git\\ push\\ -q\\"\\ EXIT; git commit -qm x; true', false, true],
+    ['bash -c trap\\ \\"git\\ push\\ -q\\"\\ EXIT\\;git\\ commit\\ -qm\\ x', false, true],
+    ['eval echo \\; trap x; git push -q; git commit -qm x', false, true],
+    // A dash stays a dash where it is quoted or escaped.
+    ['command $"-p" trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['command "-p" trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['command \'-p\' trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['command $\'-p\' trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['command \\-p trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    // After an = PowerShell reads an escaped space or tab as a space.
+    ['$s =` { git push -q }; git commit -qm x; & $s', true, true],
+    ['$s=` { git push -q }; git commit -qm x; & $s', true, true],
+    ['$s =`\t{ git push -q }; git commit -qm x; & $s', true, true],
+    // A ${...} is part of its word up to its closing brace, the substitutions in it are still run, and one left open is read by its words alone.
+    ['x=${y:-a;b} trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x=${y:-a|b} trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x=${y:-a&b} trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x=${y:-${z:-a;b}} trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x=${y:-$(git commit -qm x)}; git push -q', false, true],
+    ['echo ${y:-a; git commit -qm x; git push -q', false, true],
+    // The second $ of $$ opens none.
+    ['echo $${a; trap "git push -q" EXIT; git commit -qm x; echo }', false, true],
+    ['echo $$${a;b} function f; git push -q; git commit -qm x', false, false],
+    // An index may hold a blank or a bracket.
+    ['x[1 + 1]=1 trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x[ 0 ]=1 trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['a=(0); x[a[0]]=1 trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    // With no shell named, no command start and no option, the same characters define nothing.
+    ['x{ trap "git push -q" EXIT; git commit -qm x; true', false, false],
+    ['echo a.{js,ts} trap "git push -q" EXIT; git commit -qm x; true', false, false],
+    ['echo \\; trap "git push -q" EXIT; git commit -qm x; true', false, false],
+    ['\\{ trap "git push -q" EXIT; git commit -qm x; true', false, false],
+    ['echo x{>o trap "git push -q" EXIT; git commit -qm x; true', false, false],
+    ['git push -q; git commit -qm x; function` f', true, false],
+    ['command "-v" trap "git push -q" EXIT; git commit -qm x; true', false, false],
+    ['command \\-v trap "git push -q" EXIT; git commit -qm x; true', false, false],
+    ['command "my-prog" trap "git push -q" EXIT; git commit -qm x; true', false, false],
+    ['echo git\\ commit\\ -m\\ x\\;git\\ push', false, false],
+    ['echo ${y:-a;b} function f; git push -q; git commit -qm x', false, false],
+    ['echo x[ 0 ]=1 trap x; git push -q; git commit -qm x', false, false],
+    // The walk does not tell an argument from the word that starts a command, so a { or {name} joined to a redirect after echo, and a script block after an escaped space in an argument that ends in =, read as a definition.
+    ['echo {>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['echo {fd}>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['git push -q; git commit -qm x; Write-Output a=` { b }', true, true],
+  ];
+  for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
+});
+
 test('R405: a run of assignments or of options is read in linear time', () => {
   const started = Date.now();
-  for (const [piece, count] of [[';a=1', 128000], [';command -x -x', 16000], [';x[', 64000], ['{a=', 64000]]) assert.equal(chained(piece.repeat(count) + '; git push -q; git commit -qm x', false), false, piece);
+  for (const [piece, count] of [[';a=1', 128000], [';command -x -x', 16000], [';x[', 64000], ['{a=', 64000], ['x[0]=1 ', 16000], ['x[ ', 64000], ['$' + '{a;', 64000], ['{\\\n', 64000], ['$a ', 64000], ['$$"a" ', 64000]]) assert.equal(chained(piece.repeat(count) + '; git push -q; git commit -qm x', false), false, piece);
   assert.ok(Date.now() - started < 5000);
 });
 

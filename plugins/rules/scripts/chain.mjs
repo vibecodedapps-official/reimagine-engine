@@ -107,14 +107,14 @@ const pairs = (s, ps) => {
 // that holds them. ps reads the text as PowerShell does: a backtick escapes, and a here-string is one quoted text.
 function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
-  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0, bare = -2, last = ' ', named = false, open = 0, pid = -2, tgt = false, fun = false;
+  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0, bare = -2, last = ' ', named = false, open = 0, pid = -2, tgt = false, hs = false, fun = false;
   // Each word keeps the place it starts and ends at in s, and the count of PowerShell } read before it; skip holds the places of the commit messages of s itself.
   // A quoted text of letters and dashes alone, an empty one too, stands as it is in plain, so tr''ap reads as trap; any other leaves one ", so a word that is all quoted is still a word there, as the target of a redirect is.
   // An empty one leaves a " too only where last, the character of plain before it that is no space, is one of < > & |, so the next word is no target.
-  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; cur.e = q && t === ''; if (q) texts.push(t); const p = q && !/^[A-Za-z-]*$/.test(t) ? '"' : t; plain += p; if (p) last = p.at(-1); };
+  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces, t: tgt && !hs }; cur.w += t; cur.q ||= q; cur.e = q && t === ''; if (q) texts.push(t); const p = q && !/^[A-Za-z-]*$/.test(t) ? '"' : t; plain += p; if (p) last = p.at(-1); };
   // A character that only stands in its word, an escaped one that is no letter or dash (after a word that names a shell every one outside a redirect's target is kept) and for the Bash tool a brace that is no word by itself, leaves one " in plain too, and its word is not marked as quoted.
-  const lit = (t) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.e = false; plain += last = '"'; };
-  const end = () => { if (cur) { if (cur.e && '<>&|'.includes(last)) plain += last = '"'; if (cur.x) texts.push(cur.w.slice(cur.s ?? 0)); words.push({ ...cur, b: pos }); named ||= shell(cur, words.length - 1); tgt &&= cur.s === cur.w.length; } cur = null; };
+  const lit = (t) => { cur ??= { w: '', q: false, a: pos, n: braces, t: tgt && !hs }; cur.w += t; cur.e = false; plain += last = '"'; };
+  const end = () => { if (cur) { if (cur.e && '<>&|'.includes(last)) plain += last = '"'; if (cur.x) texts.push(...[cur.t ? '' : cur.w.slice(0, cur.f ?? cur.w.length), cur.f !== undefined && hs ? cur.w.slice(cur.s) : ''].filter(Boolean)); words.push({ ...cur, b: pos }); named ||= shell(cur, words.length - 1); tgt &&= cur.s === cur.w.length; } cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
   // A command at the end of a pipe that names a shell runs the texts of the command before it. What it runs cannot be
@@ -210,11 +210,12 @@ function walk(s, ps, depth) {
     else if (';&|\n()'.includes(c) && !('&|'.includes(c) && s[i - 1] === '>' && bare === i - 1)) { end(); plain += last = c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
     else {
       // For the Bash tool a brace is a word by itself before a blank, a redirect, a character that ends a command or a continued line, and the } of {name} before a redirect is part of its sign.
-      if (c === '$') pid = pid === i - 1 ? -2 : i; else if (c === '<' || c === '>') tgt = true;
+      if (c === '$') pid = pid === i - 1 ? -2 : i; else if (c === '<' || c === '>') { tgt = true; hs = c === '<' && s[i - 1] === '<' && s[i - 2] === '<'; }
       if (ps || (c !== '{' && c !== '}')) add(c);
       else if (cur) { CONT.lastIndex = i + 1; CONT.test(s); if (c === '}' && '<>'.includes(s[CONT.lastIndex] ?? ' ') && !cur.q && !cur.x && /^\{[A-Za-z_]\w*$/.test(cur.w)) add(c); else lit(c); }
       else { CONT.lastIndex = i + 1; CONT.test(s); if (' \t\r\n;&|()<>'.includes(s[CONT.lastIndex] ?? ' ')) add(c); else lit(c); }
-      if (c === '<' || c === '>' || ('&|'.includes(c) && cur.s === cur.w.length - 1)) cur.s = cur.w.length; // cur.s: the place right after the last redirect sign typed outside quotes and escapes
+      if ((c === '<' || c === '>') && cur.f === undefined) cur.f = cur.w.length - 1;
+      if (c === '<' || c === '>' || ('&|'.includes(c) && cur.s === cur.w.length - 1)) cur.s = cur.w.length; // cur.s: the place right after the last redirect sign typed outside quotes and escapes, cur.f the place where the first such sign starts
       bare = i;
     }
   }

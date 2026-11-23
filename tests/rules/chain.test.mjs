@@ -336,6 +336,10 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['bash -c trap\\ \\"git\\ push\\ -q\\"\\ EXIT\\;git\\ commit\\ -qm\\ x', false, true],
     ['eval echo \\; trap x; git push -q; git commit -qm x', false, true],
     ['git commit -qm x; bash <<<git\\ push\\ -q', false, true],
+    ['git commit -qm x; eval git\\ push\\ -q>/dev/null', false, true],
+    ['git commit -qm x; bash <<< git\\ push\\ -q', false, true],
+    ['git commit -qm x; eval echo hi >git\\ push', false, false],
+    ['git commit -qm x; eval echo hi > git\\ push', false, false],
     ['git commit -qm x; bash<<<git\\ push\\ -q', false, true],
     // The target of a redirect is the outer shell's, so an escaped character in it stays one character.
     ['eval >o\\ x trap "git push -q" EXIT; git commit -qm x; true', false, true],

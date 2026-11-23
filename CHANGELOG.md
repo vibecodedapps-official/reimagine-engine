@@ -2,7 +2,7 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
-## rules 0.1.50 - 2026-11-22
+## rules 0.1.50 - 2026-11-23
 
 - A push after a commit is denied where a trap, a function or a filter is defined after an option of `command`, `builtin`, `eval` or `time`, after an assignment written `x+=1` or `x[0]=1`, after a redirect whose target holds an escaped space, or with its word in `$"..."`. `command -p trap "git push -q" EXIT; git commit -qm x` passed, and so did the same after `time -p`, `x+=1` and `>o\ x` and written `$"trap"`: the pattern that finds where a command starts read none of the four spellings.
 - A character that only stands in its word starts no command: an escaped `;`, and for the Bash tool a brace inside a word. `echo \; trap x`, `echo a.{js,ts} trap x` and `rsync -a --exclude={node_modules,.git}` each counted as a definition, so a push before a pull in such a command was denied.

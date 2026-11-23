@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The outbound check, a PreToolUse hook: denies a commit, a push or a forge post whose text holds a string listed in rules-outbound.txt in $CLAUDE_CONFIG_DIR, else ~/.claude. Usage: node
-// outbound.mjs, with the hook's input on stdin. With no list file it does nothing; a command it cannot read to its end is denied where it may push or post.
+// outbound.mjs, with the hook's input on stdin. With no list file it does nothing; a command it cannot read to its end is denied.
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
@@ -80,8 +80,8 @@ export function namedFiles(command, own = false) {
 }
 
 // The directories a command names after cd, pushd, Set-Location, Push-Location or -C. A -C is loose unless it is an
-// option of git itself, since grep -C 3 and make -C build name no folder to push from. A -c value is matched whole in a lookahead, quoted parts and bare characters while they pair and then the rest of the word, so it is never tried another way.
-const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?=(?<v>(?:"[^"]*"|'[^']*'|[^\s"'])*\S*))\k<v>|-[^\sC]\S*))*\s+$`, 'i');
+// option of git itself, since grep -C 3 and make -C build name no folder to push from. A -c value starts at a character that is no space and is matched whole in a lookahead, quoted parts and bare characters while they pair and then the rest of the word, so it is never tried another way.
+const GIT_C = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?["']?(?:\s+(?:-c\s+(?=\S)(?=(?<v>(?:"[^"]*"|'[^']*'|[^\s"'])*\S*))\k<v>|-[^\sC]\S*))*\s+$`, 'i');
 export function namedDirs(command) {
   const dir = (m) => ({ dir: unquote(m[1]), span: m.indices[1] });
   return [...all(command, String.raw`(?<![${EDGE}])(?:cd|pushd|Set-Location|Push-Location)\s+(?:-(?:Literal)?Path\s+)?${VALUE}`, 'dgi').map(dir),
@@ -278,15 +278,15 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   return notes.length ? [warn(`rules: ${notes.join(', ')} could not be read, so ${notes.length === 1 ? 'its text was' : 'their texts were'} not checked against ${path}`)] : [];
 }
 
-// The read of one input runs under a limit of its own, so the host is answered while it still waits. A command the read did not get through is denied
-// where it holds git, push, a forge program or a post: phrase, found with its line continuations, quotes, backticks and, for git and push, slashes aside.
+// The read of one input runs under a limit of its own, so the host is answered while it still waits. A command or an MCP input the read did not get through, stopped at the limit or by an error of the script, is denied:
+// no search of its text tells whether it pushes or posts, since a quote the shell reads and an expansion that gives nothing can stand inside a program's name.
 export function main({ env = process.env, home = homedir(), platform = process.platform, stdin = () => readFileSync(0, 'utf8'), limit = 50000 } = {}) {
   const path = listPath(env, home);
   let list, input;
   try { list = parseList(decode(readFileSync(path))); input = JSON.parse(stdin()); } catch { return []; }
   try { return runInNewContext('run()', { run: () => check(input, list, path, { home, platform, env }) }, { timeout: limit }); } catch (e) {
-    const command = input?.tool_input?.command, text = typeof command === 'string' ? flat(command) : '', plain = text.replace(/[/`]\r?\n/g, '').replace(/["'`]/g, ''), bare = plain.replaceAll('/', ''), late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '';
-    return ['git', 'push'].some((w) => bare.includes(w)) || FORGE.some((w) => has(plain, w)) || list.post.some((p) => text.includes(flat(p))) ? [deny(`rules: the command could not be read${late}, so it was not checked against ${path}; send its git and forge calls as shorter commands of their own`)] : [];
+    const late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '', shell = typeof input?.tool_input?.command === 'string';
+    return [deny(`rules: the ${shell ? 'command' : 'tool input'} could not be read${late}, so it was not checked against ${path}; send it ${shell ? 'as shorter commands' : 'in smaller calls'}`)];
   }
 }
 

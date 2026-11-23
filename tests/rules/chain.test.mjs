@@ -235,6 +235,38 @@ test('R405: a push is found among the calls of a command, with the words it is g
   for (const [command, ps, want] of cases) assert.equal(pushed(command, ps), want, command);
 });
 
+test('R405: a definition is found after a redirect whose sign ends in | and after an empty quoted word', () => {
+  // Each case is a command, whether PowerShell reads it, and whether the push is chained.
+  const cases = [
+    ['>| "o" trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['2>| "o" trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    [">| 'o x' trap \"git push -q\" EXIT; git commit -qm x; true", false, true],
+    ['>| o trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['>|"o" trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['<<<"" trap "git push -q" EXIT; git commit -qm x', false, true],
+    ['<<< "" trap "git push -q" EXIT; git commit -qm x', false, true],
+    ["<<< $'' trap \"git push -q\" EXIT; git commit -qm x", false, true],
+    ["<<<'' trap \"git push -q\" EXIT; git commit -qm x", false, true],
+    ['>"" trap "git push -q" EXIT; git commit -qm x', false, true],
+    // An empty quoted text joined to letters still leaves the word whole.
+    ["tr''ap \"git push -q\" EXIT; git commit -qm x", false, true],
+    ["''trap \"git push -q\" EXIT; git commit -qm x", false, true],
+    ["trap'' \"git push -q\" EXIT; git commit -qm x", false, true],
+    // An empty quoted text after eval is no redirect target.
+    ['eval "" trap \'git push -q\' EXIT; git commit -qam x', false, true],
+    // With no definition after it, neither form chains a push that comes first.
+    ['echo a >| "o"; git push -q; git commit -qm x', false, false],
+    ['git push -q >| o | cat; git commit -qm x', false, false],
+    ['echo "" trap; git push -q; git commit -qm x', false, false],
+  ];
+  for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
+  // The | of >| ends no command, so the words after the file are still the push's.
+  assert.equal(pushed('git push -q >| out.log origin v1', false), '-q origin v1');
+  // A > escaped or closing a PowerShell comment is no redirect sign, so the | after it ends the command.
+  assert.equal(pushed('echo \\>|git push origin main:side', false), 'origin main:side');
+  assert.equal(pushed('echo a <# c #>|git push -q', true), '-q');
+});
+
 test('R405: a long run of substitutions is read in linear time', () => {
   const started = Date.now();
   assert.equal(chained('echo ' + '$('.repeat(20000) + ' && git commit -m x && git push', false), true);

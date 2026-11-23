@@ -456,16 +456,26 @@ test('R405: a commit followed by a git call with many quoted -c values is answer
   assert.deepEqual(namedDirs('grep -C 3 x').map((d) => [d.dir, d.loose]), [['3', true]]);
 });
 
-test('R405: a command the read does not get through is denied where it holds git, push or a forge program, and else goes ahead', () => {
+test('R405: a git call with many -c options, each with spaces and no value after it, is answered within the hook\'s limit', () => {
   const w = world();
   w.list('zqxlisted');
-  const reason = (late) => `rules: the command could not be read${late}, so it was not checked against ${w.listFile}; send its git and forge calls as shorter commands of their own`;
+  const started = Date.now();
+  for (const gap of ['  ', '    ']) denied(w.shell('git commit -qm "note zqxlisted"; git' + ` -c${gap}-a`.repeat(40) + ' x -C .; git push -q'), 'zqxlisted', 'the command', w);
+  assert.ok(Date.now() - started < 5000);
+  assert.deepEqual(namedDirs('git -c  user.name=x -C repo push').map((d) => [d.dir, d.loose]), [['repo', false]]);
+  assert.deepEqual(namedDirs('git -c  -C x push').map((d) => [d.dir, d.loose]), [['x', true]]);
+});
+
+test('R405: a command the read does not get through is denied, whatever it holds', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const reason = (late) => `rules: the command could not be read${late}, so it was not checked against ${w.listFile}; send it as shorter commands`;
   // The read of 100,000 blank lines takes seconds, and is stopped at the limit given.
   const stopped = (command) => inWorld(w, () => main({ env: w.env, home: w.home, stdin: () => JSON.stringify({ tool_name: 'Bash', tool_input: { command }, cwd: w.work }), limit: 250 })).map((l) => JSON.parse(l).hookSpecificOutput);
   const started = Date.now();
   assert.deepEqual(stopped('git push -q' + '\n'.repeat(100000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
   assert.deepEqual(stopped('gh pr list' + '\n'.repeat(100000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
-  assert.deepEqual(stopped('echo done' + '\n'.repeat(100000)), []);
+  assert.deepEqual(stopped('echo done' + '\n'.repeat(100000)), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason(' in 0.25 seconds') }]);
   assert.ok(Date.now() - started < 30000);
   // The read of 300,000 words ends in an error of the script.
   assert.deepEqual(w.shell('git push -q; bash' + " ''".repeat(300000)), { decision: 'deny', reason: reason('') });
@@ -474,7 +484,14 @@ test('R405: a command the read does not get through is denied where it holds git
   const many = " ''".repeat(300000), denial = { decision: 'deny', reason: reason('') };
   for (const command of ['/usr/local/bin/gh pr list; bash' + many, '~/bin/glab mr list; bash' + many, 'C:\\tools\\az.cmd repos pr list; bash' + many, 'gi\\\nt pu\\\nsh -q; bash' + many, 'gi\\\r\nt pu\\\r\nsh -q; bash' + many]) assert.deepEqual(w.shell(command), denial);
   assert.deepEqual(w.shell('gi`\nt pu`\nsh -q; bash' + many, 'PowerShell'), denial);
-  none(w.shell('echo done; bash' + many));
+  // A program's name behind an expansion that gives nothing, or split by a quote only PowerShell reads, is in no search of the text.
+  assert.deepEqual(w.shell('"$E"gh pr create --title x; bash' + many), denial);
+  assert.deepEqual(w.shell('gi\u2018\u2019t pu\u2018\u2019sh -q; bash' + many, 'PowerShell'), denial);
+  assert.deepEqual(w.shell('echo done; bash' + many), denial);
+  // An MCP input the read is stopped on is denied too, and one that is read holds no listed string.
+  const mcp = (limit) => inWorld(w, () => main({ env: w.env, home: w.home, stdin: () => JSON.stringify({ tool_name: 'mcp__shell__run', tool_input: { text: 'a '.repeat(10000000) } }), ...(limit && { limit }) }));
+  assert.deepEqual(mcp(1).map((l) => JSON.parse(l).hookSpecificOutput), [{ hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: `rules: the tool input could not be read in 0.001 seconds, so it was not checked against ${w.listFile}; send it in smaller calls` }]);
+  assert.deepEqual(mcp(), []);
 });
 
 test('R405: a push is found behind a quoted & or ;, and after a word that may expand to git', () => {

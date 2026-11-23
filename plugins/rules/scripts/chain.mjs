@@ -23,7 +23,7 @@ const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))
 const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i), rest = /^[^\n]*/.exec(s.slice(i))[0]; return (line.lastIndexOf('((') > line.lastIndexOf('))') && rest.includes('))')) || (line.lastIndexOf('$[') > line.lastIndexOf(']') && rest.includes(']')); };
 // A function, a trap or a script block in a variable runs where it is called, so its calls run in an order the text does not show.
 // A definition counts where a command starts, after any keyword or builtin that leaves it one, and after an assignment or a redirect, whose sign, the & or | that may end it included, is taken whole so a word of several brackets is matched one way, and name() is one for the Bash tool alone, since PowerShell calls a method that way.
-const START = String.raw`(?:^|[;&|(){}\n])\s*(?:(?:then|do|else|elif|if|while|until|!|builtin|command|eval|time|[A-Za-z_]\w*=\S*|(?=(?<r>\d*[<>]+[&|]?))\k<r>\s*\S+)\s+)*`;
+const START = String.raw`(?:^|[;&|(){}\n])\s*(?:(?:then|do|else|elif|if|while|until|!|(?:builtin|command|eval|time)(?:\s+-(?![a-zA-Z]*[vV])[^\s;&|(){}]*)*|[A-Za-z_]\w*(?:\[[^\]\s;&|(){}]*\])?\+?=[^\s;&|(){}]*|(?=(?<r>\d*[<>]+[&|]?))\k<r>\s*\S+)\s+)*`;
 const DEFINES = [String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){};&|=]+\s*\(\s*\)|trap\s)`, String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|trap[\s{])`].map((d) => new RegExp(START + d + String.raw`|=\s*\{`, 'i'));
 const defines = (text, ps) => DEFINES[ps ? 1 : 0].test(text);
 
@@ -108,6 +108,8 @@ function walk(s, ps, depth) {
   // A quoted text of letters alone, an empty one too, stands as it is in plain, so tr''ap reads as trap; any other leaves one ", so a word that is all quoted is still a word there, as the target of a redirect is.
   // An empty one leaves a " too only where last, the character of plain before it that is no space, is one of < > & |, so the next word is no target.
   const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; cur.e = q && t === ''; if (q) texts.push(t); const p = q && !/^[A-Za-z]*$/.test(t) ? '"' : t; plain += p; if (p) last = p.at(-1); };
+  // A character that only stands in its word, an escaped one that is no letter and for the Bash tool a brace that is no word by itself, leaves one " in plain too, and its word is not marked as quoted.
+  const lit = (t) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.e = false; plain += last = '"'; };
   const end = () => { if (cur) { if (cur.e && '<>&|'.includes(last)) plain += last = '"'; words.push({ ...cur, b: pos }); } cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
@@ -145,14 +147,17 @@ function walk(s, ps, depth) {
     if (close >= 0) { add('$'); i = close; }
     else if (c === esc) {
       // A line continued with the escape character is one line.
-      if (n === '\r' && s[i + 2] === '\n') i += 2; else if (n === '\n') i++; else { add(n ?? ''); i++; }
+      if (n === '\r' && s[i + 2] === '\n') i += 2; else if (n === '\n') i++;
+      else if (ps && !cur && (n === ' ' || n === '\t')) { plain += n; i++; } // Between words PowerShell reads an escaped space as a space.
+      else { if (/^[A-Za-z]?$/.test(n ?? '')) add(n ?? ''); else lit(n); i++; }
     } else if (ps && c === '@' && (n === "'" || n === '"') && /^[ \t]*\r?\n/.test(s.slice(i + 2, i + 200))) {
       const open = s.indexOf('\n', i), last = s.indexOf('\n' + n + '@', open);
       if (last < 0) return null;
       add(s.slice(open + 1, Math.max(last, open + 1)), true);
       if (n === '"') subs(open + 1, last);
       i = last + 2;
-    } else if (!ps && c === '$' && n === "'") {
+    } else if (!ps && c === '$' && n === '"' && s[i - 1] !== '$') ; // $"..." is a double-quoted text, so its $ is no character of the word; the second $ of $$ is.
+    else if (!ps && c === '$' && n === "'") {
       // An ANSI-C quoted text ends at the first ' no backslash escapes, and is read decoded.
       let t = '', j = i + 2;
       for (; j < s.length && s[j] !== "'"; j++) t += s[j] === '\\' ? ({ n: '\n', t: '\t', r: '\r' })[s[++j]] ?? s[j] ?? '' : s[j];
@@ -191,7 +196,7 @@ function walk(s, ps, depth) {
     else if (' \t\r'.includes(c)) { end(); plain += c; }
     // The & of a redirect such as 2>&1 and the | of >| end no command.
     else if (';&|\n()'.includes(c) && !('&|'.includes(c) && s[i - 1] === '>' && bare === i - 1)) { end(); plain += last = c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
-    else { add(c); bare = i; }
+    else { if (!ps && (c === '{' || c === '}') && (cur || !' \t\r\n;&|()'.includes(n ?? ' '))) lit(c); else add(c); bare = i; }
   }
   pos = s.length;
   cut();

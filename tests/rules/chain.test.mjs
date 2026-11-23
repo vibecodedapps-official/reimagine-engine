@@ -357,6 +357,7 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['x=${y:-a|b} trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['x=${y:-a&b} trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['x=${y:-${z:-a;b}} trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x=${y:-${ :; } a;b} trap "git push -q" EXIT; git commit -qm x', false, true],
     ['x=${y:-$(git commit -qm x)}; git push -q', false, true],
     ['echo ${y:-a; git commit -qm x; git push -q', false, true],
     // Before a blank or a | the brace opens commands the shell runs in place.
@@ -364,6 +365,7 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['git commit -qm x; echo ${|git push -q;}', false, true],
     ['git commit -qm x; echo ${y:-${ git push -q; }}', false, true],
     ['git commit -qm x; echo ${\\\n git push -q; }', false, true],
+    ['echo ${ trap "git push -q" EXIT; }; git commit -qm x; true', false, true],
     ['bash -c \'trap "git push -q" EXIT; git commit -qm x\'; echo ${a:-${ b; }}', false, true],
     // The second $ of $$ opens none.
     ['echo $${a; trap "git push -q" EXIT; git commit -qm x; echo }', false, true],
@@ -385,10 +387,13 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['echo git\\ commit\\ -m\\ x\\;git\\ push', false, false],
     ['echo ${y:-a;b} function f; git push -q; git commit -qm x', false, false],
     ['echo x[ 0 ]=1 trap x; git push -q; git commit -qm x', false, false],
-    // The walk does not tell an argument from the word that starts a command, so a { or {name} joined to a redirect after echo, and a script block after an escaped space in an argument that ends in =, read as a definition.
+    ['\\{fd}>o trap x; git push -q; git commit -qm x', false, false],
+    ['\'{fd\'}>o trap x; git push -q; git commit -qm x', false, false],
+    // The walk does not tell an argument from the word that starts a command, so a { or {name} joined to a redirect after echo, and a script block after an escaped space in an argument that ends in =, read as a definition, and a shell named by an argument reads an escaped ; after it as the end of a command.
     ['echo {>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['echo {fd}>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['git push -q; git commit -qm x; Write-Output a=` { b }', true, true],
+    ['echo eval x\\; trap y EXIT; git push -q; git commit -qm x', false, true],
   ];
   for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
 });

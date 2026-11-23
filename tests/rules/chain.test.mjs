@@ -267,6 +267,56 @@ test('R405: a definition is found after a redirect whose sign ends in | and afte
   assert.equal(pushed('echo a <# c #>|git push -q', true), '-q');
 });
 
+test('R405: a definition is found after an option of command or time, an assignment with += or to an element, an escaped space and in $"..."', () => {
+  // Each case is a command, whether PowerShell reads it, and whether the push is chained.
+  const cases = [
+    ['time -p trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['command -p trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['command -- trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['builtin -- trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x+=1 trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x[0]=1 trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x=1 y+=2 trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['time -p command -p x+=1 trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    // An escaped space stays in the target of a redirect and in the value of an assignment.
+    ['>o\\ x trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['>|o\\ x trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['<<<x\\ y trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['<<<\\  trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['A=a\\ b trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['$"trap" "git push -q" EXIT; git commit -qm x; true', false, true],
+    // An escaped character and a brace inside a value or an index end neither.
+    ['x=a\\;b trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x=a{b trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x=${HOME}/a trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['x[a\\;]=1 trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    // Between words PowerShell reads an escaped space as a space.
+    ['` trap { git push -q }; git commit -m x', true, true],
+    // command -v and -V only name the word, and a value ends where its command does, so the trap after it is an argument.
+    ['command -v trap; git push -q; git commit -qm x', false, false],
+    ['command -pv trap x; git push -q; git commit -qm x', false, false],
+    ['x=a;b trap y; git push -q; git commit -qm x', false, false],
+    ['echo a\\ trap; git push -q; git commit -qm x', false, false],
+    ['echo x >o\\ x; git push -q; git commit -qm x', false, false],
+    // An escaped ; and a brace inside a word start no command.
+    ['echo \\; trap x; git push -q; git commit -qm x', false, false],
+    ['x\\=1 trap x; git push -q; git commit -qm x', false, false],
+    ['echo a.{js,ts} trap x; git push -q; git commit -qm x', false, false],
+    ['git push && git pull && rsync -a --exclude={node_modules,.git} . /backup', false, false],
+  ];
+  for (const [command, ps, want] of cases) assert.equal(chained(command, ps), want, command);
+  // The $ of $"..." is no character of the word, and an escaped space puts no redirect target among the words of a push.
+  assert.equal(pushed('git push -q origin $"main"', false), '-q origin main');
+  assert.equal(pushed('git push origin $$"x"', false), 'origin $$x');
+  assert.equal(pushed('git push >log\\ file origin main', false), 'origin main');
+});
+
+test('R405: a run of assignments or of options is read in linear time', () => {
+  const started = Date.now();
+  for (const [piece, count] of [[';a=1', 128000], [';command -x -x', 16000], [';x[', 64000], ['{a=', 64000]]) assert.equal(chained(piece.repeat(count) + '; git push -q; git commit -qm x', false), false, piece);
+  assert.ok(Date.now() - started < 5000);
+});
+
 test('R405: a long run of substitutions is read in linear time', () => {
   const started = Date.now();
   assert.equal(chained('echo ' + '$('.repeat(20000) + ' && git commit -m x && git push', false), true);

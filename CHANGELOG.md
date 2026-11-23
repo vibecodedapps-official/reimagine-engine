@@ -8,7 +8,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 - The same holds where `eval` or another shell gets the definition in words with escaped characters. `eval true\; trap \" git push -q \" EXIT; git commit -qm x` and `pwsh -c 1\; function f \{ git push -q \}\; git commit -qm x\; f` passed since 0.1.50, and `trap git\ push\ -q EXIT; git commit -qm x` always had: after a word that names a shell an escaped character is now read as the character, and a word that holds one as a text the shell may run.
 - A quoted or escaped dash is a dash, an index may hold a blank or a bracket, and a `${...}` is part of its word up to its closing brace. `command "-p" trap`, `command \-p trap`, `x[1 + 1]=1 trap` and `x=${y:-a;b} trap`, each before `"git push -q" EXIT; git commit -qm x`, passed.
 - Through the PowerShell tool a script block assigned with an escaped space between the `=` and the `{` is a definition. It passed since 0.1.50, which took the escaped space for a character of the word.
-- A command of many words that hold a `$` is read in time that grows with its length: one read of 64,000 words `$a` took 83 seconds, past the hook's limit, and takes 0.05.
+- A word that holds a `$` no longer costs a copy of the rest of its command, unless a commit-making subcommand or `push` follows it: one read of 64,000 words `$a` took 83 seconds, past the hook's limit, and takes 0.05.
 
 ## rules 0.1.50 - 2026-11-23
 

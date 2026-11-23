@@ -324,6 +324,7 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['if :; then {>o trap "git push -q" EXIT; }; fi; git commit -qm x; true', false, true],
     ['{\\\n trap "git push -q" EXIT; git commit -qm x; }', false, true],
     ['{fd}>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['{fd}\\\n>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
     // After a word that names a shell an escaped character is the character, and a word that holds one is a text the shell may run.
     ['eval f\\(\\) \\{ git push -q\\; \\}; git commit -qm x; f', false, true],
     ['eval true\\; trap \\" git push -q \\" EXIT; git commit -qm x; true', false, true],
@@ -334,11 +335,13 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['eval trap\\ \\"git\\ push\\ -q\\"\\ EXIT; git commit -qm x; true', false, true],
     ['bash -c trap\\ \\"git\\ push\\ -q\\"\\ EXIT\\;git\\ commit\\ -qm\\ x', false, true],
     ['eval echo \\; trap x; git push -q; git commit -qm x', false, true],
+    ['git commit -qm x; bash <<<git\\ push\\ -q', false, true],
     // The target of a redirect is the outer shell's, so an escaped character in it stays one character.
     ['eval >o\\ x trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['eval >a\\;b trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['eval > a\\;b trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['eval 2>|a\\;b trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['eval >"o>" true\\; trap \\" git push -q \\" EXIT; git commit -qm x; true', false, true],
     // A dash stays a dash where it is quoted or escaped.
     ['command $"-p" trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['command "-p" trap "git push -q" EXIT; git commit -qm x; true', false, true],
@@ -360,6 +363,8 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['git commit -qm x; echo ${ git push -q; }', false, true],
     ['git commit -qm x; echo ${|git push -q;}', false, true],
     ['git commit -qm x; echo ${y:-${ git push -q; }}', false, true],
+    ['git commit -qm x; echo ${\\\n git push -q; }', false, true],
+    ['bash -c \'trap "git push -q" EXIT; git commit -qm x\'; echo ${a:-${ b; }}', false, true],
     // The second $ of $$ opens none.
     ['echo $${a; trap "git push -q" EXIT; git commit -qm x; echo }', false, true],
     ['echo $$${a;b} function f; git push -q; git commit -qm x', false, false],

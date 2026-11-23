@@ -19,9 +19,9 @@ const shell = (x, k) => { const name = base(x.w.split(/[<>]/)[0]); return SHELLS
 const REDIRECT = /^\d*[<>]/;
 // The operator and end word of a here-document: bare, quoted, after a backslash or after <<-.
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))/;
-// Whether the << at place i stands inside (( )) or $[ ] that closes on the same line, where it shifts a number and opens no here-document.
 // The continued lines after a place.
 const CONT = /(?:\\\r?\n)*/y;
+// Whether the << at place i stands inside (( )) or $[ ] that closes on the same line, where it shifts a number and opens no here-document.
 const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i), rest = /^[^\n]*/.exec(s.slice(i))[0]; return (line.lastIndexOf('((') > line.lastIndexOf('))') && rest.includes('))')) || (line.lastIndexOf('$[') > line.lastIndexOf(']') && rest.includes(']')); };
 // A function, a trap or a script block in a variable runs where it is called, so its calls run in an order the text does not show.
 // A definition counts where a command starts, after any keyword or builtin that leaves it one, and after an assignment or a redirect, whose sign, the & or | that may end it included, is taken whole so a word of several brackets is matched one way, and name() is one for the Bash tool alone, since PowerShell calls a method that way.
@@ -114,7 +114,7 @@ function walk(s, ps, depth) {
   const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; cur.e = q && t === ''; if (q) texts.push(t); const p = q && !/^[A-Za-z-]*$/.test(t) ? '"' : t; plain += p; if (p) last = p.at(-1); };
   // A character that only stands in its word, an escaped one that is no letter and for the Bash tool a brace that is no word by itself, leaves one " in plain too, and its word is not marked as quoted.
   const lit = (t) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.e = false; plain += last = '"'; };
-  const end = () => { if (cur) { if (cur.e && '<>&|'.includes(last)) plain += last = '"'; if (cur.x) texts.push(cur.w); words.push({ ...cur, b: pos }); named ||= shell(cur, words.length - 1); tgt &&= /[<>][&|]?$/.test(cur.w); } cur = null; };
+  const end = () => { if (cur) { if (cur.e && '<>&|'.includes(last)) plain += last = '"'; if (cur.x) texts.push(cur.w.replace(/^\d*[<>]+[&|]?/, '')); words.push({ ...cur, b: pos }); named ||= shell(cur, words.length - 1); tgt &&= !cur.q && !cur.x && /^(?:\d*|\{\w+\})[<>]+[&|]?$/.test(cur.w); } cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
   // A command at the end of a pipe that names a shell runs the texts of the command before it. What it runs cannot be
@@ -183,8 +183,8 @@ function walk(s, ps, depth) {
       if (j >= s.length) return null;
       add(t, true);
       i = j;
-    } else if (!ps && c === '$' && n === '{' && pid !== i - 1 && !' \t\r\n|'.includes(s[i + 2] ?? 'x')) { add('$'); lit('{'); open++; i++; }
-    else if (open && c === '$' && n === '{') return null; // Before a blank or a | the brace opens commands the shell runs, which inside another one are read by their words alone. // A ${...} is part of its word up to its closing brace, whatever ends a command outside it.
+    } else if (!ps && c === '$' && n === '{' && pid !== i - 1 && (CONT.lastIndex = i + 2, CONT.test(s), !' \t\r\n|'.includes(s[CONT.lastIndex] ?? 'x'))) { add('$'); lit('{'); open++; i++; } // A ${...} is part of its word up to its closing brace, whatever ends a command outside it; before a blank or a | the brace opens commands instead.
+    else if (open && c === '$' && n === '{' && pid !== i - 1) { open = 0; add(c); } // A ${ inside one ends that part, and its { opens the commands it holds.
     else if (open && (c === '}' || ' \t\r\n;&|()<>'.includes(c))) { lit(c); if (c === '}') open--; }
     else if (c === '#' && (!cur || (ps && s[i - 1] === '{'))) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (ps && c === '<' && n === '#') { const j = s.indexOf('#>', i + 2); i = j < 0 ? s.length : j + 1; }
@@ -208,7 +208,7 @@ function walk(s, ps, depth) {
       // For the Bash tool a brace is a word by itself before a blank, a redirect, a character that ends a command or a continued line, and the } of {name} before a redirect is part of its sign.
       if (c === '$') pid = pid === i - 1 ? -2 : i; else if (c === '<' || c === '>') tgt = true;
       if (ps || (c !== '{' && c !== '}')) add(c);
-      else if (cur) { if (c === '}' && '<>'.includes(n ?? ' ') && /^\{[A-Za-z_]\w*$/.test(cur.w)) add(c); else lit(c); }
+      else if (cur) { CONT.lastIndex = i + 1; CONT.test(s); if (c === '}' && '<>'.includes(s[CONT.lastIndex] ?? ' ') && /^\{[A-Za-z_]\w*$/.test(cur.w)) add(c); else lit(c); }
       else { CONT.lastIndex = i + 1; CONT.test(s); if (' \t\r\n;&|()<>'.includes(s[CONT.lastIndex] ?? ' ')) add(c); else lit(c); }
       bare = i;
     }

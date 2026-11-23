@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.52 - 2026-11-23
+
+- A push after a commit is denied where a trap is set after the redirect `{name[index]}>file`. `{a[0]}>o trap "git push -q" EXIT; git commit -qm x` passed since 0.1.50: the name between the braces was read as letters, digits and `_` alone.
+- `$BASH` and `$0`, the running shell, are shell names as `$SHELL` is, with braces or in quotes too. `$BASH -c "git commit -qm x; git push -q"` always passed, since the text after it was read as no command.
+- A `${ cmd; }` inside a double-quoted text is read as commands, and its command counts as one that defines what runs later. `echo "${ trap 'git push -q' EXIT; }"; git commit -qm x` always passed: 0.1.51 read such a block only outside quotes. The text after a `<<<`, where the shell runs no such block, is left as it was.
+
 ## rules 0.1.51 - 2026-11-23
 
 - A push after a commit is denied where a trap is set right after a `{` joined to a redirect or to a continued line, or after the redirect `{name}>file`. `{>o trap "git push -q" EXIT; git commit -qm x; }` and `{fd}>o trap "git push -q" EXIT; git commit -qm x` passed since 0.1.50, which took each brace for a character of a word.

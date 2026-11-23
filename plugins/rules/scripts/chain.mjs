@@ -19,11 +19,13 @@ const shell = (x, k) => { const name = base(x.w.split(/[<>]/)[0]); return SHELLS
 const REDIRECT = /^\d*[<>]/;
 // The operator and end word of a here-document: bare, quoted, after a backslash or after <<-.
 const HEREDOC = /^<<(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()'"\\]+))/;
+// The continued lines after a place.
+const CONT = /(?:\\\r?\n)*/y;
 // Whether the << at place i stands inside (( )) or $[ ] that closes on the same line, where it shifts a number and opens no here-document.
 const shifts = (s, i) => { const line = s.slice(s.lastIndexOf('\n', i) + 1, i), rest = /^[^\n]*/.exec(s.slice(i))[0]; return (line.lastIndexOf('((') > line.lastIndexOf('))') && rest.includes('))')) || (line.lastIndexOf('$[') > line.lastIndexOf(']') && rest.includes(']')); };
 // A function, a trap or a script block in a variable runs where it is called, so its calls run in an order the text does not show.
 // A definition counts where a command starts, after any keyword or builtin that leaves it one, and after an assignment or a redirect, whose sign, the & or | that may end it included, is taken whole so a word of several brackets is matched one way, and name() is one for the Bash tool alone, since PowerShell calls a method that way.
-const START = String.raw`(?:^|[;&|(){}\n])\s*(?:(?:then|do|else|elif|if|while|until|!|(?:builtin|command|eval|time)(?:\s+-(?![a-zA-Z]*[vV])[^\s;&|(){}]*)*|[A-Za-z_]\w*(?:\[[^\]\s;&|(){}]*\])?\+?=[^\s;&|(){}]*|(?=(?<r>\d*[<>]+[&|]?))\k<r>\s*\S+)\s+)*`;
+const START = String.raw`(?:^|[;&|(){}\n])\s*(?:(?:then|do|else|elif|if|while|until|!|(?:builtin|command|eval|time)(?:\s+-(?![a-zA-Z]*[vV])[^\s;&|(){}]*)*|[A-Za-z_]\w*(?:\[(?:[^\];&|(){}\n]|\](?!\+?=))*\])?\+?=[^\s;&|(){}]*|(?=(?<r>\d*[<>]+[&|]?))\k<r>\s*\S+)\s+)*`;
 const DEFINES = [String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|[^\s(){};&|=]+\s*\(\s*\)|trap\s)`, String.raw`(?:(?:function|filter)\s+[^\s(){};&|=]|trap[\s{])`].map((d) => new RegExp(START + d + String.raw`|=\s*\{`, 'i'));
 const defines = (text, ps) => DEFINES[ps ? 1 : 0].test(text);
 
@@ -51,7 +53,9 @@ function flags(words, loose = false, skip = null) {
     let j = i + 1;
     for (; j < words.length && words[j].w.startsWith('-'); j++) if (VALUED.test(words[j].w)) j++;
     // The subcommand may share a quoted word with the words after it, as in the 'push','-q' and the "push -q" that -ArgumentList takes.
-    const head = bare(words[j]?.w ?? '').split(/[\s,]+/), sub = head[0].toLowerCase(), args = words.slice(j + 1), opts = args.filter((x) => !x.q).map((x) => bare(x.w));
+    const head = bare(words[j]?.w ?? '').split(/[\s,]+/), sub = head[0].toLowerCase();
+    if (sub !== 'push' && !MAKERS.has(sub)) continue;
+    const args = words.slice(j + 1), opts = args.filter((x) => !x.q).map((x) => bare(x.w));
     // A redirect and the file it names are no argument of the pull or the push.
     const named = args.filter((x, k) => !(!x.q && REDIRECT.test(x.w)) && !(k > 0 && !args[k - 1].q && /^\d*[<>]+[&|]?$/.test(args[k - 1].w)));
     if (sub === 'push') { const sends = loose || ![...head.slice(1), ...opts].some((o) => DRY.test(o)); out.chains ||= sends && !loose && out.makes && words[i].n > made; out.pushes ||= sends; if (git || words.slice(0, i).every((x) => /^[A-Za-z_]\w*=/.test(x.w))) (out.sent ??= []).push(...head.slice(1), ...named.map((x) => x.w)); }
@@ -103,14 +107,14 @@ const pairs = (s, ps) => {
 // that holds them. ps reads the text as PowerShell does: a backtick escapes, and a here-string is one quoted text.
 function walk(s, ps, depth) {
   const parts = [], esc = ps ? '`' : '\\';
-  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0, bare = -2, last = ' ';
+  let words = [], texts = [], early = [], held = [], cur = null, shut = null, after = -1, plain = '', lost = false, vague = false, shown = -1, pos = 0, braces = 0, bare = -2, last = ' ', named = false, open = 0, pid = -2, tgt = false, hs = false, fun = false;
   // Each word keeps the place it starts and ends at in s, and the count of PowerShell } read before it; skip holds the places of the commit messages of s itself.
-  // A quoted text of letters alone, an empty one too, stands as it is in plain, so tr''ap reads as trap; any other leaves one ", so a word that is all quoted is still a word there, as the target of a redirect is.
+  // A quoted text of letters and dashes alone, an empty one too, stands as it is in plain, so tr''ap reads as trap; any other leaves one ", so a word that is all quoted is still a word there, as the target of a redirect is.
   // An empty one leaves a " too only where last, the character of plain before it that is no space, is one of < > & |, so the next word is no target.
-  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.q ||= q; cur.e = q && t === ''; if (q) texts.push(t); const p = q && !/^[A-Za-z]*$/.test(t) ? '"' : t; plain += p; if (p) last = p.at(-1); };
-  // A character that only stands in its word, an escaped one that is no letter and for the Bash tool a brace that is no word by itself, leaves one " in plain too, and its word is not marked as quoted.
-  const lit = (t) => { cur ??= { w: '', q: false, a: pos, n: braces }; cur.w += t; cur.e = false; plain += last = '"'; };
-  const end = () => { if (cur) { if (cur.e && '<>&|'.includes(last)) plain += last = '"'; words.push({ ...cur, b: pos }); } cur = null; };
+  const skip = [], add = (t, q = false) => { cur ??= { w: '', q: false, a: pos, n: braces, t: tgt && !hs }; cur.w += t; cur.q ||= q; cur.e = q && t === ''; if (q) texts.push(t); const p = q && !/^[A-Za-z-]*$/.test(t) ? '"' : t; plain += p; if (p) last = p.at(-1); };
+  // A character that only stands in its word, an escaped one that is no letter or dash (after a word that names a shell every one outside a redirect's target is kept) and for the Bash tool a brace that is no word by itself, leaves one " in plain too, and its word is not marked as quoted.
+  const lit = (t) => { cur ??= { w: '', q: false, a: pos, n: braces, t: tgt && !hs }; cur.w += t; cur.e = false; plain += last = '"'; };
+  const end = () => { if (cur) { if (cur.e && '<>&|'.includes(last)) plain += last = '"'; if (cur.x) texts.push(...[cur.t ? '' : cur.w.slice(0, cur.f ?? cur.w.length), cur.f !== undefined && hs ? cur.w.slice(cur.s) : ''].filter(Boolean)); words.push({ ...cur, b: pos }); named ||= shell(cur, words.length - 1); tgt &&= cur.s === cur.w.length; } cur = null; };
   // A text with a typed \n or \r, which printf may turn into a line break, is read as written and with them as line breaks.
   const both = (t) => [t, t.replace(/\\[nr]/g, '\n')].filter((x, k, a) => a.indexOf(x) === k).flatMap((x) => read(x, ps, depth + 1));
   // A command at the end of a pipe that names a shell runs the texts of the command before it. What it runs cannot be
@@ -118,15 +122,15 @@ function walk(s, ps, depth) {
   const cut = (pipe = false, paren = false) => {
     end();
     const given = early.length > 0;
-    if (words.some(shell)) {
+    if (named) {
       early.push(...[...held, ...texts].flatMap(both));
       vague ||= paren || [...words.map((x) => x.w), ...held, ...texts].some((t) => t.includes('$'));
     }
     // A shell given what a substitution prints, in this command or in a text or a substitution it holds, may run the message of a commit made before it, read back, as eval "$(git log -1 --format=%s)" does.
-    if ((given && words.some(shell)) || early.some((p) => p.prints)) shown = pos;
+    if ((given && named) || early.some((p) => p.prints)) shown = pos;
     if (words.length) held = pipe ? [...held, ...texts] : [];
-    parts.push(...early, flags(words, false, depth || words.some(shell) ? null : skip));
-    [words, texts, early] = [[], [], []];
+    parts.push(...early, flags(words, false, depth || named ? null : skip));
+    [words, texts, early, named, tgt] = [[], [], [], false, false];
   };
   // Where the substitution that opens at place i closes, its text read as commands; -1 where none opens. A $( that does not
   // close, and a text that cannot be followed, end the read of s, which is then given up.
@@ -148,16 +152,17 @@ function walk(s, ps, depth) {
     else if (c === esc) {
       // A line continued with the escape character is one line.
       if (n === '\r' && s[i + 2] === '\n') i += 2; else if (n === '\n') i++;
-      else if (ps && !cur && (n === ' ' || n === '\t')) { plain += n; i++; } // Between words PowerShell reads an escaped space as a space.
-      else { if (/^[A-Za-z]?$/.test(n ?? '')) add(n ?? ''); else lit(n); i++; }
+      else if (ps && (!cur || cur.w.endsWith('=')) && (n === ' ' || n === '\t')) { end(); plain += n; i++; } // Between words and after an = PowerShell reads an escaped space as a space.
+      // After a word that names a shell, which runs its words as a text, an escaped character is the character, the target of a redirect aside, which the shell keeps; a word that holds one is a text as a quoted one is.
+      else { if ((named && !tgt) || /^[A-Za-z-]?$/.test(n ?? '')) add(n ?? ''); else lit(n); cur.x = true; i++; }
     } else if (ps && c === '@' && (n === "'" || n === '"') && /^[ \t]*\r?\n/.test(s.slice(i + 2, i + 200))) {
       const open = s.indexOf('\n', i), last = s.indexOf('\n' + n + '@', open);
       if (last < 0) return null;
       add(s.slice(open + 1, Math.max(last, open + 1)), true);
       if (n === '"') subs(open + 1, last);
       i = last + 2;
-    } else if (!ps && c === '$' && n === '"' && s[i - 1] !== '$') ; // $"..." is a double-quoted text, so its $ is no character of the word; the second $ of $$ is.
-    else if (!ps && c === '$' && n === "'") {
+    } else if (!ps && c === '$' && n === '"' && pid !== i - 1) ; // $"..." is a double-quoted text, so its $ is no character of the word; the second $ of $$ is, here and before ' and {.
+    else if (!ps && c === '$' && n === "'" && pid !== i - 1) {
       // An ANSI-C quoted text ends at the first ' no backslash escapes, and is read decoded.
       let t = '', j = i + 2;
       for (; j < s.length && s[j] !== "'"; j++) t += s[j] === '\\' ? ({ n: '\n', t: '\t', r: '\r' })[s[++j]] ?? s[j] ?? '' : s[j];
@@ -178,7 +183,14 @@ function walk(s, ps, depth) {
       if (j >= s.length) return null;
       add(t, true);
       i = j;
-    } else if (c === '#' && (!cur || (ps && s[i - 1] === '{'))) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
+    } else if (!ps && c === '$' && n === '{' && pid !== i - 1) {
+      // A ${...} is part of its word up to its closing brace, whatever ends a command outside it; before a blank or a | the brace runs commands in place, whose end is not followed, so the text counts as one that defines what runs later.
+      CONT.lastIndex = i + 2; CONT.test(s);
+      if (' \t\r\n|'.includes(s[CONT.lastIndex] ?? 'x')) { fun = true; open = 0; add(c); }
+      else { add('$'); lit('{'); open++; i++; }
+    }
+    else if (open && (c === '}' || ' \t\r\n;&|()<>'.includes(c))) { lit(c); if (c === '}') open--; }
+    else if (c === '#' && (!cur || (ps && s[i - 1] === '{'))) while (i + 1 < s.length && s[i + 1] !== '\n') i++;
     else if (ps && c === '<' && n === '#') { const j = s.indexOf('#>', i + 2); i = j < 0 ? s.length : j + 1; }
     else if (doc) {
       // The body starts after this line, or after the body of a here-document opened earlier on it, and ends before the end
@@ -196,11 +208,20 @@ function walk(s, ps, depth) {
     else if (' \t\r'.includes(c)) { end(); plain += c; }
     // The & of a redirect such as 2>&1 and the | of >| end no command.
     else if (';&|\n()'.includes(c) && !('&|'.includes(c) && s[i - 1] === '>' && bare === i - 1)) { end(); plain += last = c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
-    else { if (!ps && (c === '{' || c === '}') && (cur || !' \t\r\n;&|()'.includes(n ?? ' '))) lit(c); else add(c); bare = i; }
+    else {
+      // For the Bash tool a brace is a word by itself before a blank, a redirect, a character that ends a command or a continued line, and the } of {name} before a redirect is part of its sign.
+      if (c === '$') pid = pid === i - 1 ? -2 : i; else if (c === '<' || c === '>') { tgt = true; hs = c === '<' && s[i - 1] === '<' && s[i - 2] === '<'; }
+      if (ps || (c !== '{' && c !== '}')) add(c);
+      else if (cur) { CONT.lastIndex = i + 1; CONT.test(s); if (c === '}' && '<>'.includes(s[CONT.lastIndex] ?? ' ') && !cur.q && !cur.x && /^\{[A-Za-z_]\w*$/.test(cur.w)) add(c); else lit(c); }
+      else { CONT.lastIndex = i + 1; CONT.test(s); if (' \t\r\n;&|()<>'.includes(s[CONT.lastIndex] ?? ' ')) add(c); else lit(c); }
+      if ((c === '<' || c === '>') && cur.f === undefined) cur.f = cur.w.length - 1;
+      if (c === '<' || c === '>' || ('&|'.includes(c) && cur.s === cur.w.length - 1)) cur.s = cur.w.length; // cur.s: the place right after the last redirect sign typed outside quotes and escapes, cur.f the place where the first such sign starts
+      bare = i;
+    }
   }
   pos = s.length;
   cut();
-  return lost ? null : [...parts, { fn: defines(plain, ps), sh: vague, skip: skip.filter(([a]) => a > shown), prints: shown >= 0 }];
+  return lost || open ? null : [...parts, { fn: fun || defines(plain, ps), sh: vague, skip: skip.filter(([a]) => a > shown), prints: shown >= 0 }];
 }
 
 // A text read by its words alone, split at each quote and at each character that ends a command.

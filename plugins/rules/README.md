@@ -98,8 +98,10 @@ With `check: diff`, a `git push` that runs in the same command after a `git comm
 
 - A comment, a quoted message and a quoted text another program prints are neither a commit nor a push.
 - A push with `--dry-run` or `-n`, and one after a `git pull --ff-only` that names no remote, is not denied.
-- A command that defines a function or a filter, sets a trap or assigns a script block to a variable is denied for a push anywhere in it. A definition counts where a command starts, also after an option of `command`, `builtin`, `eval` or `time`, an assignment or a redirect.
+- A command that defines a function or a filter, sets a trap or assigns a script block to a variable is denied for a push anywhere in it. A definition counts where a command starts, also after an option of `command`, `builtin`, `eval` or `time`, an assignment, a redirect or a `{` joined to one.
 - A command that hands a shell a variable or a substitution, as `eval "$x"` and `bash -c "$(...)"` do, is read by its words alone, the message of a commit left out unless a command after it hands a shell a substitution, which may print the message back, so there a commit and a push are denied even where both are only text.
+- After `eval` or another shell an escaped character is read as the character, and a word with an escaped character as a text the shell may run, as a quoted one is: `eval true\; trap ...` and `trap git\ push EXIT`.
+- A command that holds bash's `${ cmd; }` counts as one that defines what runs later, so a push anywhere in it is denied.
 - A commit or a push that a script, a git alias or a program other than a shell makes is not seen.
 - A definition or a push whose word the shell builds is not seen either: `t=trap; $t`, a push held in a variable, a shell alias, and in PowerShell a script block kept by anything but an assignment or a function.
 

@@ -2,6 +2,15 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.51 - 2026-11-23
+
+- A push after a commit is denied where a trap is set right after a `{` joined to a redirect or to a continued line, or after the redirect `{name}>file`. `{>o trap "git push -q" EXIT; git commit -qm x; }` and `{fd}>o trap "git push -q" EXIT; git commit -qm x` passed since 0.1.50, which took each brace for a character of a word.
+- The same holds where `eval` or another shell gets the definition in words with escaped characters. `eval true\; trap \" git push -q \" EXIT; git commit -qm x` and `pwsh -c 1\; function f \{ git push -q \}\; git commit -qm x\; f` passed since 0.1.50, and `trap git\ push\ -q EXIT; git commit -qm x` always had: after a word that names a shell an escaped character is now read as the character, and a word that holds one as a text the shell may run.
+- A quoted or escaped dash is a dash, an index may hold a blank or a bracket, and a `${...}` is part of its word up to its closing brace. `command "-p" trap`, `command \-p trap`, `x[1 + 1]=1 trap` and `x=${y:-a;b} trap`, each before `"git push -q" EXIT; git commit -qm x`, passed.
+- A command that holds bash's `${ cmd; }` or `${|cmd;}` counts as one that defines what runs later, so a push anywhere in it is denied where it also makes a commit. The hook does not follow where the commands of such a block end, so a trap set inside one, as in `echo ${ trap "git push -q" EXIT; }; git commit -qm x`, was not found.
+- Through the PowerShell tool a script block assigned with an escaped space between the `=` and the `{` is a definition. It passed since 0.1.50, which took the escaped space for a character of the word.
+- A word that holds a `$` no longer costs a copy of the rest of its command, unless a commit-making subcommand or `push` follows it: one read of 64,000 words `$a` took 83 seconds, past the hook's limit, and takes 0.05.
+
 ## rules 0.1.50 - 2026-11-23
 
 - A push after a commit is denied where a trap, a function or a filter is defined after an option of `command`, `builtin`, `eval` or `time`, after an assignment written `x+=1` or `x[0]=1`, after a redirect whose target holds an escaped space, or with its word in `$"..."`. `command -p trap "git push -q" EXIT; git commit -qm x` passed, and so did the same after `time -p`, `x+=1` and `>o\ x` and written `$"trap"`: the pattern that finds where a command starts read none of the four spellings.

@@ -334,6 +334,11 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['eval trap\\ \\"git\\ push\\ -q\\"\\ EXIT; git commit -qm x; true', false, true],
     ['bash -c trap\\ \\"git\\ push\\ -q\\"\\ EXIT\\;git\\ commit\\ -qm\\ x', false, true],
     ['eval echo \\; trap x; git push -q; git commit -qm x', false, true],
+    // The target of a redirect is the outer shell's, so an escaped character in it stays one character.
+    ['eval >o\\ x trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['eval >a\\;b trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['eval > a\\;b trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['eval 2>|a\\;b trap "git push -q" EXIT; git commit -qm x; true', false, true],
     // A dash stays a dash where it is quoted or escaped.
     ['command $"-p" trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['command "-p" trap "git push -q" EXIT; git commit -qm x; true', false, true],
@@ -351,6 +356,10 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['x=${y:-${z:-a;b}} trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['x=${y:-$(git commit -qm x)}; git push -q', false, true],
     ['echo ${y:-a; git commit -qm x; git push -q', false, true],
+    // Before a blank or a | the brace opens commands the shell runs in place.
+    ['git commit -qm x; echo ${ git push -q; }', false, true],
+    ['git commit -qm x; echo ${|git push -q;}', false, true],
+    ['git commit -qm x; echo ${y:-${ git push -q; }}', false, true],
     // The second $ of $$ opens none.
     ['echo $${a; trap "git push -q" EXIT; git commit -qm x; echo }', false, true],
     ['echo $$${a;b} function f; git push -q; git commit -qm x', false, false],

@@ -87,7 +87,9 @@ primer: auto memory has 2 notes and 3 feedback entries since the last review; ru
 
 Right after a review a single new entry makes no notice, since the session that reviews logs one about its own run; the next review reads it. An entry that names another repository or none is counted in no repository, and a review reads it only when you ask.
 
-The fold-back review in `maintain` reads this repository's entries, classes each item, and checks the evidence, worth and placement of the ones this repository's context can hold; an item for the house rules or another plugin is listed by its kind with its count, unchecked. It asks once about what it would fold, hold or reject. `scripts/ledger.mjs` keeps one line per item in `ledger.jsonl` in the store, with its status and how often it was seen, so a held item that comes up again returns with its count, and a later item that matches a folded rule counts as that rule's failure. The review ends by writing `.reviewed` in `feedback/` of the config folder, which holds how far each repository has read each log, those of the directories `review.json` names among them, so two config folders that share one plugins folder each keep their own.
+The fold-back review in `maintain` reads this repository's entries, classes each item, and checks the evidence, worth and placement of the ones this repository's context can hold; an item for the house rules or another plugin is listed by its kind with its count, unchecked. It asks once about what it would fold, hold or reject.
+
+`scripts/ledger.mjs` keeps one line per item in `ledger.jsonl` in the store, with its status and how often it was seen, so a held item that comes up again returns with its count, and a later item that matches a folded rule counts as that rule's failure. The review ends by writing `.reviewed` in `feedback/` of the config folder, which holds how far each repository has read each log, those of the directories `review.json` names among them, so two config folders that share one plugins folder each keep their own.
 
 ## Review settings
 
@@ -111,20 +113,150 @@ A file in another form, a misspelled key or a relative path included, is refused
 
 ## Reach hook
 
-Before Claude Code edits a file in a repository other than the one the session started in, the hook tells it, once per repository and session, what it has not loaded there: the paths of the repository's root instruction files and unscoped rules, and the layers of a `local` repository, less the ones a session that started in a `local` repository already holds. A file under the configuration directory, or of the store or the machine's directory, is never answered. It records each repository in a file per session under the plugin's data directory. An edit in the session's own repository costs one Node start and no `git` call. It never blocks an edit, and where `node` is missing the edit goes through.
+Before Claude Code edits a file in a repository other than the one the session started in, the hook tells it, once per repository and session, what it has not loaded there: the paths of the repository's root instruction files and unscoped rules, and the layers of a `local` repository, less the ones a session that started in a `local` repository already holds. A file under the configuration directory, or of the store or the machine's directory, is never answered.
+
+It records each repository in a file per session under the plugin's data directory. An edit in the session's own repository costs one Node start and no `git` call. It never blocks an edit, and where `node` is missing the edit goes through.
 
 ## Local profile
 
 On its first run in a repository whose hub has no `<!-- primer -->` marker, `/primer` asks once which profile applies, with no default, and records the answer:
 
 - `shared`: everything above. Instruction files live in the work tree and are committed.
-- `local`: nothing is written or committed in the work tree. The repository's context lives in a store outside it and reaches each session through a SessionStart hook, and each subagent that loads instruction files through a SubagentStart hook. A resumed session gets it again only where it differs from what the session was last given. Where no layer loads, as with a `map.json` or a `config.json` that cannot be read, a store that `config.json` names and that is missing or holds no `map.json`, a `local` repository whose layer files are each missing or empty, a clone of a `local` entry that git cannot read, a clone at the path of a `local` entry that has none of its remotes, or a `git` that gives no answer within 5 seconds in a directory no earlier start read, the session gets one line that says no layer is loaded and why, a subagent and a session no one attends included, and `scripts/primer.mjs status` shows the cause. Where `git` is slow in a directory an earlier start read, the layers load as at that start, and the first line of the context says so. A directory in the place of one layer's file costs that layer alone, and a line says so. A string over the host's cap of 10,000 characters holds at its start a line that names each layer's file and says a session holds a layer whole only once it has read that file, since a session holds only a preview of the string. Instruction files and a `.claude/settings.json` that the team tracks are read and never written; what you add to them goes in the store, and a setting of your own is proposed for `.claude/settings.local.json`.
+- `local`: nothing is written or committed in the work tree. The repository's context lives in a store outside it and reaches each session through a SessionStart hook, and each subagent that loads instruction files through a SubagentStart hook. Instruction files and a `.claude/settings.json` that the team tracks are read and never written; what you add to them goes in the store, and a setting of your own is proposed for `.claude/settings.local.json`.
 
-The store is `~/.claude/reimagine-primer/store/` (under `$CLAUDE_CONFIG_DIR` when set), or the directory the `store` key of `reimagine-primer/config.json` names, such as one you keep under version control. A file of the store writes a path under your config folder as `<config>/`, read under the config folder of each session, and any other path under your home directory as `~/`, so a store you version or share names no home directory and no config folder. `status` names each line of the store's layers, documents, skills, ledger and copy snapshots that holds this machine's home directory, host name or user name, or a term you list in `terms.txt` in the machine's directory, one a line: it gives the file, the line and the kind and quotes none of the text, and `/primer` proposes to move the line to the machine's side or to reword it. It reads `map.json` and `copies.json` for your listed terms alone, since those two hold this machine's paths by design; a remote that holds a listed term is told, and what to do about it is yours to decide. Where the store sits inside a repository, `/primer` writes its files there and leaves the commit to you. It holds `map.json`, which records each repository's profile and group, `shared.md` for every mapped repository and `groups/<group>.md` for one group of sibling repositories. A procedure is kept there as a skill, `skills/<name>/SKILL.md`, and `scripts/primer.mjs skills --link` links each one into the `skills/` folder of your config folder, where Claude Code loads it as a personal skill, so `/name` runs it. Claude Code lists a personal skill in every repository, so `/primer` names a skill for one group `<group>-<name>`. Each config folder and each machine makes its own links, and `status` names the skills that have none. `reimagine-primer/machine.md` holds what belongs to this machine alone, and `reimagine-primer/machine/<group>.md` what belongs to one group on this machine, which loads in that group's repositories only. That directory belongs to one config folder: a session started under another finds no map, so it loads no layer and its commits are not checked, until `/primer` there names the first folder's store with `map --set --store <path>`. The machine's files stay each folder's own, so the second folder loads none of them until it has them too, or until both folders name one directory for them with `map --set --local <path>`; a `machine.md` left behind in a folder is then not read, and `status` says so. While the default folder reads machine files and a second folder names no directory for them, each start in a `local` repository under the second says that no machine layer is loaded, and so does `status`. A clone matches its repository's entry whatever the letter case of the remote, and with the older `visualstudio.com` hosts of Azure DevOps read as `dev.azure.com`; a remote written another way, such as one with no project against one with a project, is another entry. `/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 5-second limit each show a warning at session start. In a `local` repository the loader also gives the notice above. `scripts/primer.mjs measure` prints each mapped repository's context string as emitted against the cap, and `measure --with <file> <layer>` the size before and after a proposed layer, which `/primer` shows before it proposes an addition.
+### What a session gets
 
-In a `local` repository, the drift hook runs a staging check on each `git add` and `git commit`, which denies one that would stage or commit `CLAUDE.md`, `CLAUDE.local.md` or `AGENTS.md` at any depth, anything under `.claude/`, `.agents/` or `.reimagine/`, `.reimagine.json`, `.mcp.json`, or a `.gitignore` line that names one of them, unless the upstream's default branch already tracks it. The names count in any letter case. An add and a commit in one command are judged by what both would add. A call under `env`, `sudo`, `timeout` or `nice`, or in PowerShell on the right of an assignment to a variable, is read as the call it runs. A command it cannot resolve counts as staging every file git does not ignore; the `info/exclude` lines `/primer` offers keep the agent files out of that. A `git merge`, `git cherry-pick`, `git rebase` or `git am` is checked by the files its commits would add and the `.gitignore` lines they add: one that names its commits by a branch, a tag or an id, or its patches as files, is read, and one the check cannot read, such as a name held in a variable or a patch on standard input, is denied with a reason that says so. A `--continue` is checked as the commit it makes. What one of the four brings is read before the command runs, so what runs before it in the same command matters. It is still read after a `cd`, a `git add`, a `git commit`, the start or `--continue` of another of the four, each with no `$(...)` in a quoted word, and a call that only reads: `git status`, `log`, `show`, `diff`, `rev-parse`, `rev-list`, `merge-base`, `describe` or `ls-files`, a `git branch` or `git remote` that only lists, and `echo`, `printf`, `pwd`, `true`, `ls`, `date`, `cat`, `head`, `tail`, `wc`, `grep` or `cut`, in Bash `set` with only the options `-e`, `-u` and `-x`, or `-o` with `pipefail`, `errexit`, `nounset` or `xtrace` (any other, such as `-a`, exports what follows), and in PowerShell `Write-Host`, `Write-Output`, `Get-Location`, `Get-Content` or `Select-Object`, each named with no directory and with no `>` to a file, whatever the call. A variable is followed where the command opens by setting it to a plain text, `R=/work/app` in Bash, one to a command and ended by `;`, `&&` or a line break, or `$r = 'C:\work\app'` in PowerShell, and later names it alone, as in `git -C "$R" merge feat`: the text may hold no expansion and, in Bash, no space, no pattern character and no other character the shell reads as syntax, the name may not start with `GIT_` or start another followed name, nor be one the shell computes or will not assign (`PWD`, `OLDPWD`, `_`, `DIRSTACK`, `GROUPS`, `SHELLOPTS` and the like, and each name that starts with `BASH` or `ZSH`; in PowerShell `$PWD`, `$_`, `$LASTEXITCODE`, `$matches`, `$args`, `$input`, `$error`, `$IsWindows`, each name that starts with `PS` or ends in `Preference`, and the like), the text may not start with `~`, which a shell does not expand in a value, the command may set the name once, and no other word may hold it; after a call that is not one of those just listed, a `source` or a function among them, no name is followed, nor after a call that can write a variable whose name it does not spell: a `printf -v`, in Bash a word that holds `${` or `$[` in a form other than `${name}` alone, and in PowerShell a call that reads or changes directory with a common parameter that names a variable, such as `-OutVariable` or `-ov`; any other use leaves the word unread, as before. After one `git checkout` or `git switch` to an existing local branch, with no option, it is read against that branch and against the branch you are on, and denied on what either would bring; a switch that makes a branch, and a second switch, deny it. After a `git fetch` with no option but `--all`, `--prune`, `--no-tags` and those for its output, and no `tag` word, it is read as the remote-tracking branches stand before the fetch, so what the fetch itself brings is not read, as with a pull, and a merge of `FETCH_HEAD` is denied. After a switch, a name read from the head, such as `HEAD~1` or `@{u}`, a `git am` and a `--continue` are denied too. After anything else, a `git stash`, a `git reset` or a script among them, the call is denied: run the merge as a command of its own. A call the check cannot read is denied wherever it runs: an interactive rebase, whose steps an editor writes, a rebase with `-x` or `--exec`, and an am with `-p<n>`, `--directory` or `--patch-format`. `git pull`, `git revert` and a `git reset` to another commit are not read, nor is one of the four inside a substitution; one of the four after a here-document or a here-string is read as any other call, a followed variable among its words where the here-document's end word is quoted or its body holds no `$` and no backtick, and one a here-document's body may run, or one after an end word the check cannot read, is denied, with a reason that names the here-document; one of the four in a command the check cannot read to its end, as with a quote left open or after a process substitution such as `<(...)`, is denied, with a reason that says to run it as a command of its own; the text given to `sh`, `bash`, `dash` or `zsh` with `-c` is read where it holds no expansion. The check reads these commands as a session ordinarily writes them, and it guards against a slip rather than closing every way in: a git alias, an `eval`, a script, and a subcommand held in a variable are not read. A command handed to `pwsh`, `powershell` or `cmd` is not read either, and counts as unresolved when it names an add or a commit. Where it cannot tell which repository a command runs in, as after a `cd` to a relative name that does not start with a dot in a command that names `CDPATH` or runs with one in its environment, which sends a `cd` to another folder, it checks every `local` repository of the map, so a deny may name a repository other than the one you are in. While `map.json` cannot be read, it denies every `git add` and `git commit` and every start or `--continue` of those four, naming the file, and passes other commands. Where `node` is missing, the check cannot run and the call goes through. An error of the check denies the call, and where primer's own directory exists so does a script of the plugin that cannot be loaded, for each command whose text names a commit or a git add, stage, merge, cherry-pick, rebase or am.
+A resumed session gets the context again only where it differs from what the session was last given.
 
-The check reads the work tree before the command runs, so it cannot see a file the same command makes and then commits, as a script or a `>` before `git add -A && git commit` does. The hook therefore runs again after each shell call: where the command may have committed, it reads the newest hundred commits no remote holds yet, or, where the command pushes, which it does where it reads a `git push`, a `git` call that sets an alias to a push with `-c`, or the word `push` in a call that is no `git` call, in an assignment, in a substitution that names `git`, or in a text the check stopped reading or that may run a git call it does not see, as a word that no letter, digit, underscore or hyphen touches, those the upstream's default branch lacks, since the commit is on a remote by then and the notice says a remote may already hold it, a merge against its first parent, in each repository the command names and the one the hook runs in, and tells Claude Code of each agent file one of them adds, with the commit's id and the name's control characters left out. It denies nothing, since the commit is made. The commit is still local unless the same command pushed it, and after a push to the upstream's default branch in the same command the hook says nothing, since that branch holds the commit by then: send a push as a command of its own, so the commit is told of before it leaves. An unpushed commit of yours that adds an agent file is named the same way at each later commit. That read needs Git 2.31 or later and says nothing on an older one.
+Where no layer loads, the session gets one line that says no layer is loaded and why, a subagent and a session no one attends included, and `scripts/primer.mjs status` shows the cause. No layer loads with:
+
+- a `map.json` or a `config.json` that cannot be read
+- a store that `config.json` names and that is missing or holds no `map.json`
+- a `local` repository whose layer files are each missing or empty
+- a clone of a `local` entry that git cannot read
+- a clone at the path of a `local` entry that has none of its remotes
+- a `git` that gives no answer within 5 seconds in a directory no earlier start read
+
+Some layers still load in these cases:
+
+- Where `git` is slow in a directory an earlier start read, the layers load as at that start, and the first line of the context says so.
+- A directory in the place of one layer's file costs that layer alone, and a line says so.
+- A string over the host's cap of 10,000 characters holds at its start a line that names each layer's file and says a session holds a layer whole only once it has read that file, since a session holds only a preview of the string.
+
+### The store
+
+The store is `~/.claude/reimagine-primer/store/` (under `$CLAUDE_CONFIG_DIR` when set), or the directory the `store` key of `reimagine-primer/config.json` names, such as one you keep under version control. Where the store sits inside a repository, `/primer` writes its files there and leaves the commit to you. It holds:
+
+- `map.json`, which records each repository's profile and group
+- `shared.md` for every mapped repository
+- `groups/<group>.md` for one group of sibling repositories
+
+A procedure is kept there as a skill, `skills/<name>/SKILL.md`, and `scripts/primer.mjs skills --link` links each one into the `skills/` folder of your config folder, where Claude Code loads it as a personal skill, so `/name` runs it. Claude Code lists a personal skill in every repository, so `/primer` names a skill for one group `<group>-<name>`. Each config folder and each machine makes its own links, and `status` names the skills that have none.
+
+A clone matches its repository's entry whatever the letter case of the remote, and with the older `visualstudio.com` hosts of Azure DevOps read as `dev.azure.com`; a remote written another way, such as one with no project against one with a project, is another entry.
+
+### A store you version or share
+
+A file of the store writes a path under your config folder as `<config>/`, read under the config folder of each session, and any other path under your home directory as `~/`, so a store you version or share names no home directory and no config folder.
+
+`status` names each line of the store's layers, documents, skills, ledger and copy snapshots that holds this machine's home directory, host name or user name, or a term you list in `terms.txt` in the machine's directory, one a line: it gives the file, the line and the kind and quotes none of the text, and `/primer` proposes to move the line to the machine's side or to reword it.
+
+It reads `map.json` and `copies.json` for your listed terms alone, since those two hold this machine's paths by design; a remote that holds a listed term is told, and what to do about it is yours to decide.
+
+### This machine's files
+
+`reimagine-primer/machine.md` holds what belongs to this machine alone, and `reimagine-primer/machine/<group>.md` what belongs to one group on this machine, which loads in that group's repositories only.
+
+That directory belongs to one config folder:
+
+- A session started under another finds no map, so it loads no layer and its commits are not checked, until `/primer` there names the first folder's store with `map --set --store <path>`.
+- The machine's files stay each folder's own, so the second folder loads none of them until it has them too, or until both folders name one directory for them with `map --set --local <path>`; a `machine.md` left behind in a folder is then not read, and `status` says so.
+- While the default folder reads machine files and a second folder names no directory for them, each start in a `local` repository under the second says that no machine layer is loaded, and so does `status`.
+
+### Status and size
+
+`/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 5-second limit each show a warning at session start. In a `local` repository the loader also gives the notice above.
+
+`scripts/primer.mjs measure` prints each mapped repository's context string as emitted against the cap, and `measure --with <file> <layer>` the size before and after a proposed layer, which `/primer` shows before it proposes an addition.
+
+### The staging check
+
+In a `local` repository, the drift hook runs a staging check on each `git add` and `git commit`, which denies one that would stage or commit `CLAUDE.md`, `CLAUDE.local.md` or `AGENTS.md` at any depth, anything under `.claude/`, `.agents/` or `.reimagine/`, `.reimagine.json`, `.mcp.json`, or a `.gitignore` line that names one of them, unless the upstream's default branch already tracks it. The names count in any letter case.
+
+- An add and a commit in one command are judged by what both would add.
+- A call under `env`, `sudo`, `timeout` or `nice`, or in PowerShell on the right of an assignment to a variable, is read as the call it runs.
+- A command it cannot resolve counts as staging every file git does not ignore; the `info/exclude` lines `/primer` offers keep the agent files out of that.
+
+### A merge, cherry-pick, rebase or am
+
+A `git merge`, `git cherry-pick`, `git rebase` or `git am` is checked by the files its commits would add and the `.gitignore` lines they add: one that names its commits by a branch, a tag or an id, or its patches as files, is read, and one the check cannot read, such as a name held in a variable or a patch on standard input, is denied with a reason that says so. A `--continue` is checked as the commit it makes.
+
+What one of the four brings is read before the command runs, so what runs before it in the same command matters. It is still read after:
+
+- a `cd`, a `git add`, a `git commit`, the start or `--continue` of another of the four, each with no `$(...)` in a quoted word
+- a call that only reads: `git status`, `log`, `show`, `diff`, `rev-parse`, `rev-list`, `merge-base`, `describe` or `ls-files`, a `git branch` or `git remote` that only lists, and `echo`, `printf`, `pwd`, `true`, `ls`, `date`, `cat`, `head`, `tail`, `wc`, `grep` or `cut`
+- in Bash, `set` with only the options `-e`, `-u` and `-x`, or `-o` with `pipefail`, `errexit`, `nounset` or `xtrace` (any other, such as `-a`, exports what follows)
+- in PowerShell, `Write-Host`, `Write-Output`, `Get-Location`, `Get-Content` or `Select-Object`
+
+Each is named with no directory and with no `>` to a file, whatever the call.
+
+After other calls:
+
+- After one `git checkout` or `git switch` to an existing local branch, with no option, it is read against that branch and against the branch you are on, and denied on what either would bring; a switch that makes a branch, and a second switch, deny it.
+- After a `git fetch` with no option but `--all`, `--prune`, `--no-tags` and those for its output, and no `tag` word, it is read as the remote-tracking branches stand before the fetch, so what the fetch itself brings is not read, as with a pull, and a merge of `FETCH_HEAD` is denied.
+- After a switch, a name read from the head, such as `HEAD~1` or `@{u}`, a `git am` and a `--continue` are denied too.
+- After anything else, a `git stash`, a `git reset` or a script among them, the call is denied: run the merge as a command of its own.
+
+### A variable the command sets
+
+A variable is followed where the command opens by setting it to a plain text, `R=/work/app` in Bash, one to a command and ended by `;`, `&&` or a line break, or `$r = 'C:\work\app'` in PowerShell, and later names it alone, as in `git -C "$R" merge feat`:
+
+- The text may hold no expansion and, in Bash, no space, no pattern character and no other character the shell reads as syntax.
+- The text may not start with `~`, which a shell does not expand in a value.
+- The name may not start with `GIT_` or start another followed name.
+- The name may not be one the shell computes or will not assign: `PWD`, `OLDPWD`, `_`, `DIRSTACK`, `GROUPS`, `SHELLOPTS` and the like, and each name that starts with `BASH` or `ZSH`; in PowerShell `$PWD`, `$_`, `$LASTEXITCODE`, `$matches`, `$args`, `$input`, `$error`, `$IsWindows`, each name that starts with `PS` or ends in `Preference`, and the like.
+- The command may set the name once, and no other word may hold it.
+- After a call that is not one of those a merge is still read after, a `source` or a function among them, no name is followed.
+- No name is followed after a call that can write a variable whose name it does not spell: a `printf -v`, in Bash a word that holds `${` or `$[` in a form other than `${name}` alone, and in PowerShell a call that reads or changes directory with a common parameter that names a variable, such as `-OutVariable` or `-ov`.
+
+Any other use leaves the word unread, as before.
+
+### What the check denies or leaves unread
+
+Denied wherever it runs:
+
+- A call the check cannot read: an interactive rebase, whose steps an editor writes, a rebase with `-x` or `--exec`, and an am with `-p<n>`, `--directory` or `--patch-format`.
+- One of the four that a here-document's body may run, or one after an end word the check cannot read, with a reason that names the here-document.
+- One of the four in a command the check cannot read to its end, as with a quote left open or after a process substitution such as `<(...)`, with a reason that says to run it as a command of its own.
+
+Read:
+
+- One of the four after a here-document or a here-string is read as any other call, a followed variable among its words where the here-document's end word is quoted or its body holds no `$` and no backtick.
+- The text given to `sh`, `bash`, `dash` or `zsh` with `-c` is read where it holds no expansion.
+
+Not read:
+
+- `git pull`, `git revert` and a `git reset` to another commit are not read, nor is one of the four inside a substitution.
+- The check reads these commands as a session ordinarily writes them, and it guards against a slip rather than closing every way in: a git alias, an `eval`, a script, and a subcommand held in a variable are not read.
+- A command handed to `pwsh`, `powershell` or `cmd` is not read either, and counts as unresolved when it names an add or a commit.
+
+### When the check cannot tell or cannot run
+
+- Where it cannot tell which repository a command runs in, as after a `cd` to a relative name that does not start with a dot in a command that names `CDPATH` or runs with one in its environment, which sends a `cd` to another folder, it checks every `local` repository of the map, so a deny may name a repository other than the one you are in.
+- While `map.json` cannot be read, it denies every `git add` and `git commit` and every start or `--continue` of those four, naming the file, and passes other commands.
+- Where `node` is missing, the check cannot run and the call goes through.
+- An error of the check denies the call, and where primer's own directory exists so does a script of the plugin that cannot be loaded, for each command whose text names a commit or a git add, stage, merge, cherry-pick, rebase or am.
+
+### After the command
+
+The check reads the work tree before the command runs, so it cannot see a file the same command makes and then commits, as a script or a `>` before `git add -A && git commit` does. The hook therefore runs again after each shell call. Where the command may have committed, it reads commits, a merge against its first parent, in each repository the command names and the one the hook runs in, and tells Claude Code of each agent file one of them adds, with the commit's id and the name's control characters left out:
+
+- Where the command does not push, it reads the newest hundred commits no remote holds yet.
+- Where the command pushes, it reads those the upstream's default branch lacks, since the commit is on a remote by then and the notice says a remote may already hold it.
+
+The command pushes where the check reads a `git push`, a `git` call that sets an alias to a push with `-c`, or the word `push` in a call that is no `git` call, in an assignment, in a substitution that names `git`, or in a text the check stopped reading or that may run a git call it does not see, as a word that no letter, digit, underscore or hyphen touches.
+
+It denies nothing, since the commit is made. The commit is still local unless the same command pushed it, and after a push to the upstream's default branch in the same command the hook says nothing, since that branch holds the commit by then: send a push as a command of its own, so the commit is told of before it leaves. An unpushed commit of yours that adds an agent file is named the same way at each later commit. That read needs Git 2.31 or later and says nothing on an older one.
 
 ## Copies and transcripts
 
@@ -153,7 +285,9 @@ claude --resume 11111111-2222-4333-8444-555555555555 --model <model> --effort hi
 
 To go back, paste the last line in a shell in the entry's directory, under the config folder its `record:` line names (set `CLAUDE_CONFIG_DIR` first where that is not your shell's): a session resumed by its id from another directory runs there. `/primer:park list` prints the entries, numbered, with the age of each session's record, and `/primer:park done` removes this session's entry, or the entry of the number you give. You can also delete an entry's lines in the file yourself.
 
-Only the command starts the skill, and `scripts/park.mjs` makes every write, with no model call: the session supplies the two lines of words, and the rest comes from what Claude Code gives a shell call and from the session's record. The entry's directory is the one the session started in, so a `cd` the session made into a directory of it changes nothing; a session that moved into another work tree is named by that one. Claude Code documents that record's format as internal, so the command leaves out `--model` or `--effort` when the script cannot read one, and says so; a resumed session keeps its model without the flag. An entry holds nothing of the session's progress, so a session has no reason to write it again until you run the command again. One run at a time writes the file: a second run waits a few seconds for the first. A line you add inside an entry, between its first line and its command, stays in it.
+Only the command starts the skill, and `scripts/park.mjs` makes every write, with no model call: the session supplies the two lines of words, and the rest comes from what Claude Code gives a shell call and from the session's record. The entry's directory is the one the session started in, so a `cd` the session made into a directory of it changes nothing; a session that moved into another work tree is named by that one.
+
+Claude Code documents that record's format as internal, so the command leaves out `--model` or `--effort` when the script cannot read one, and says so; a resumed session keeps its model without the flag. An entry holds nothing of the session's progress, so a session has no reason to write it again until you run the command again. One run at a time writes the file: a second run waits a few seconds for the first. A line you add inside an entry, between its first line and its command, stays in it.
 
 Claude Code deletes a session's record once it is older than `cleanupPeriodDays`, 30 days unless you set it, and that entry's command then resumes nothing. Every run marks each entry with the day its record was last written, or the day a run first did not find it. The script changes no setting.
 

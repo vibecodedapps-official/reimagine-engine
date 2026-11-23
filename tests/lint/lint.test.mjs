@@ -425,6 +425,16 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     const text = read(dir, 'README.md').split('\n').filter((l) => l.trim() !== '/plugin uninstall loop@reimagine-engine').join('\n');
     put(dir, 'README.md', text);
   }, 1, ['README.md: no line /plugin uninstall loop@reimagine-engine']);
+  negative('R219: <readme>:<line>: a paragraph or list item over the 120-word cap', (dir) => {
+    put(dir, 'README.md', 'w '.repeat(121) + '\n\n' + read(dir, 'README.md'));
+    put(dir, 'plugins/loop/README.md', '- short\n- ' + 'w '.repeat(120) + '\n- short\n\n' + read(dir, 'plugins/loop/README.md'));
+    bump(dir, 'loop');
+  }, 2, ['README.md:1: a paragraph or list item of 121 words, over the 120-word cap', 'plugins/loop/README.md:2: a paragraph or list item of 121 words, over the 120-word cap']);
+  positive('R219: a README paragraph at 120 words passes, and so does a longer one in a README not yet capped', (dir) => {
+    put(dir, 'README.md', 'w '.repeat(120) + '\n\n' + read(dir, 'README.md'));
+    append(dir, 'plugins/gate/README.md', '\n' + 'w '.repeat(121) + '\n');
+    bump(dir, 'gate');
+  });
 
   negative('R39: <file>: frontmatter lacks disable-model-invocation: true', (dir) => {
     edit(dir, 'plugins/rules/skills/rules/SKILL.md', 'disable-model-invocation: true\n', '');

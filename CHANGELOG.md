@@ -2,6 +2,14 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.49 - 2026-11-22
+
+- The README's outbound check section is split under headings, one list item per case: what is read, files a post names, folders and paths, time limits, a push after a commit, and what is not covered. Each fix had added its case to one paragraph, which had grown to 667 words. No case is added or dropped.
+
+## primer 0.1.31 - 2026-11-22
+
+- The README's local profile section is split under headings, one list item per case: what a session gets, the store, this machine's files, the staging check, a merge, a variable the command sets, and what runs after the command. Each fix had added its case to one paragraph, and the largest had grown to 1,156 words. No case is added or dropped.
+
 ## rules 0.1.48 - 2026-11-22
 
 - Every command the hook cannot read to its end is denied, whatever it holds, and so is an MCP call it cannot read. The denial of 0.1.47 searched the text for `git`, `push` or a forge program, and a name split by a quote that only PowerShell reads, or written after an empty `"$E"`, is in no such search: a commit with a listed word and a push spelled that way, followed by 100,000 blank lines, went ahead at the limit.

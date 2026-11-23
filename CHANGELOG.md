@@ -4,10 +4,10 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## rules 0.1.48 - 2026-11-22
 
-- Every command the hook cannot read to its end is denied, whatever it holds, and so is an MCP call it cannot read. The denial of 0.1.47 searched the text for `git`, `push` or a forge program, and a name split by a quote that only PowerShell reads, or written after an empty `"$E"`, is in no such search: a commit with a listed word and a push spelled that way, followed by `cd .;` 15,000 times, went ahead at the limit and reached a remote.
+- Every command the hook cannot read to its end is denied, whatever it holds, and so is an MCP call it cannot read. The denial of 0.1.47 searched the text for `git`, `push` or a forge program, and a name split by a quote that only PowerShell reads, or written after an empty `"$E"`, is in no such search: a commit with a listed word and a push spelled that way, followed by 100,000 blank lines, went ahead at the limit.
 - A push after a commit is denied where a trap, a function or a filter is defined after a redirect written `>|`. `>| "o" trap "git push -q" EXIT; git commit -qm x` passed since 0.1.47, and the same with a bare target always had: the `|` was taken for the redirect's target, and the word after the real target for a plain word.
 - The same holds after an empty quoted word, as in `<<<"" trap "git push -q" EXIT; git commit -qm x`. An empty quoted text left nothing in the text read for a definition, so the word after it was taken for the redirect's target.
-- A git call with many `-c` options, each followed by two or more spaces, is read in milliseconds. The pattern that tells whether a `-C` is git's own let a `-c` value be empty, so the spaces could fall on either side of it: 26 such options held the hook for 35 seconds and 40 past its limit.
+- A git call with many `-c` options, each followed by two or more spaces, is read in milliseconds. The pattern that tells whether a `-C` is git's own let a `-c` value be empty, so the spaces could fall on either side of it: with two spaces 26 such options held the hook for 14 seconds and 28 past its limit.
 - The README says to reload the plugins in a session that was open during an update. Such a session ran with no hook once the folder of the old version was gone.
 
 ## rules 0.1.47 - 2026-11-22

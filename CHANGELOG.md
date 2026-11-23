@@ -4,9 +4,9 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 ## rules 0.1.52 - 2026-11-23
 
-- A push after a commit is denied where a trap is set after the redirect `{name[index]}>file`. `{a[0]}>o trap "git push -q" EXIT; git commit -qm x` passed since 0.1.50: the name between the braces was read as letters, digits and `_` alone.
-- `$BASH` and `$0`, the running shell, are shell names as `$SHELL` is, with braces or in quotes too. `$BASH -c "git commit -qm x; git push -q"` always passed, since the text after it was read as no command.
-- A `${ cmd; }` inside a double-quoted text is read as commands, and its command counts as one that defines what runs later. `echo "${ trap 'git push -q' EXIT; }"; git commit -qm x` always passed: 0.1.51 read such a block only outside quotes. The text after a `<<<`, where the shell runs no such block, is left as it was.
+- A push after a commit is denied where a trap is set after the redirect `{name[index]}>file`, a nested index as `{a[b[0]]}` included. `{a[0]}>o trap "git push -q" EXIT; git commit -qm x` passed since 0.1.50: the name between the braces was read as letters, digits and `_` alone.
+- `$BASH` and `$0`, the running shell, are shell names as `$SHELL` is, with braces or in quotes too, through the Bash tool. `$BASH -c "git commit -qm x; git push -q"` always passed, since the text after it was read as no command.
+- A command with a `${ cmd; }` inside a double-quoted text, or in the body of a here-document under an unquoted end word, is read by its words alone as well, so a commit and a push anywhere in it are denied. `echo "${ trap 'git push -q' EXIT; }"; git commit -qm x` always passed: 0.1.51 read such a block only outside quotes.
 
 ## rules 0.1.51 - 2026-11-23
 

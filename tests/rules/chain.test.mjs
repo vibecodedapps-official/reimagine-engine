@@ -395,7 +395,7 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['echo x[ 0 ]=1 trap x; git push -q; git commit -qm x', false, false],
     ['\\{fd}>o trap x; git push -q; git commit -qm x', false, false],
     ['\'{fd\'}>o trap x; git push -q; git commit -qm x', false, false],
-    // The redirect {name[index]}>file, the running shell named by $BASH or $0, and a ${ cmd; } inside a double-quoted text, which the text after a <<< does not run.
+    // The redirect {name[index]}>file, the running shell named by $BASH or $0, and a ${ cmd; } inside a double-quoted text, in the text after a <<< and in a here-document body under an unquoted end word too.
     ['{a[0]}>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['{a[0]}>>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['\\{a[0]}>o trap x; git push -q; git commit -qm x', false, false],
@@ -411,8 +411,17 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
     ['echo $"a ${ f() { git push -q; }; }"; git commit -qm x; f', false, true],
     ['echo "$${ trap \'git push -q\' EXIT; }"; git commit -qm x; true', false, false],
     ['echo "\\${ trap \'git push -q\' EXIT; }"; git commit -qm x; true', false, false],
-    ['cat <<<"${ trap \'git push -q\' EXIT; }"; git commit -qm x; true', false, false],
+    ['cat <<<"${ trap \'git push -q\' EXIT; }"; git commit -qm x; true', false, true],
     ['echo "${x} git push"; git commit -qm x; true', false, false],
+    ['{a[b[0]]}>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
+    ['{a[]}>o trap x; git push -q; git commit -qm x', false, false],
+    ['echo "${ true "a"; trap \'git push -q\' EXIT; }"; git commit -qm x; true', false, true],
+    ['echo "${ echo \\"; trap \'git push -q\' EXIT; echo \\"; }"; git commit -qm x; true', false, true],
+    [': <<EOF\n${ trap \'git push -q\' EXIT; }\nEOF\ngit commit -qm x; true', false, true],
+    [': <<\'EOF\'\n${ trap \'git push -q\' EXIT; }\nEOF\ngit commit -qm x; true', false, false],
+    ['git commit -qm "built ${ date; }: fix git push retry"', false, true],
+    ['$BASH -c "git commit -m \'fix push retry\'"', false, true],
+    [`'a' -replace 'a', '$0'; git push -q; git commit -qm x`, true, false],
     // The walk does not tell an argument from the word that starts a command, so a { or {name} joined to a redirect after echo, and a script block after an escaped space in an argument that ends in =, read as a definition, and a shell named by an argument reads an escaped ; after it as the end of a command.
     ['echo {>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
     ['echo {fd}>o trap "git push -q" EXIT; git commit -qm x; true', false, true],
@@ -425,6 +434,7 @@ test('R405: a definition is found after a brace joined to a redirect, in words a
 test('R405: a run of assignments or of options is read in linear time', () => {
   const started = Date.now();
   for (const [piece, count] of [[';a=1', 128000], [';command -x -x', 16000], [';x[', 64000], ['{a=', 64000], ['x[0]=1 ', 16000], ['x[ ', 64000], ['$' + '{a;', 64000], ['{\\\n', 64000], ['$a ', 64000], ['$$"a" ', 64000]]) assert.equal(chained(piece.repeat(count) + '; git push -q; git commit -qm x', false), false, piece);
+  assert.equal(chained('{a[' + 'x'.repeat(32000) + '}>'.repeat(32000) + '; git push -q; git commit -qm x', false), false);
   assert.ok(Date.now() - started < 5000);
 });
 

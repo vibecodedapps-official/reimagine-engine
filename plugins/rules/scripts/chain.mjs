@@ -12,8 +12,8 @@ const UPSTREAM = /^(?:--ff-only|--no-rebase|--prune|-p|-q|--quiet|-v|--verbose)$
 const VALUED = /^(?:-[Cc]|--(?:git-dir|work-tree|namespace|config-env))$/;
 // An option with which a call makes no commit, and one with which a push sends nothing: -n alone or among push's own one-letter flags.
 const IDLE = /^(?:--abort|--quit|--dry-run|--edit-todo|--show-current-patch(?:=.*)?|--help|-h)$/, DRY = /^(?:--dry-run|--help|-h|-[46dfnquv]*n[46dfnquv]*)$/;
-// A program that runs the text it is given as a command; a . does where it starts the command.
-const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'ksh', 'fish', '$shell', '${shell}', 'eval', 'source', 'trap', 'pwsh', 'powershell', 'cmd', 'iex', 'invoke-expression', '[scriptblock]::create'].flatMap((n) => [n, n + '.exe']));
+// A program that runs the text it is given as a command, the running shell by its $BASH or $0 too; a . does where it starts the command.
+const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'ksh', 'fish', '$shell', '${shell}', '$bash', '${bash}', '$0', '${0}', 'eval', 'source', 'trap', 'pwsh', 'powershell', 'cmd', 'iex', 'invoke-expression', '[scriptblock]::create'].flatMap((n) => [n, n + '.exe']));
 const shell = (x, k) => { const name = base(x.w.split(/[<>]/)[0]); return SHELLS.has(name) || (k === 0 && name === '.'); };
 // A redirect: the word it starts is no argument of a call.
 const REDIRECT = /^\d*[<>]/;
@@ -175,12 +175,17 @@ function walk(s, ps, depth) {
       add(s.slice(i + 1, j), true);
       i = j;
     } else if (c === '"') {
-      let t = '', j = i + 1;
+      // A ${ before a blank or a | runs its words as commands inside a double-quoted text as well, the text after a <<< aside: the text is read as commands and counts as a definition.
+      let t = '', j = i + 1, block = false, dp = -2;
       for (; j < s.length && s[j] !== '"'; j++) {
         const k = ran(j);
-        if (k >= 0) { t += '$'; j = k; } else if (s[j] === esc && (ps || '"\\$`\n'.includes(s[j + 1] ?? 'x'))) { const e = s[++j] ?? ''; t += ps ? ({ n: '\n', r: '\r' })[e] ?? e : e; } else t += s[j];
+        if (k >= 0) { t += '$'; j = k; } else if (s[j] === esc && (ps || '"\\$`\n'.includes(s[j + 1] ?? 'x'))) { const e = s[++j] ?? ''; t += ps ? ({ n: '\n', r: '\r' })[e] ?? e : e; } else {
+          if (s[j] === '$') { if (dp === j - 1) dp = -2; else { dp = j; CONT.lastIndex = j + 2; CONT.test(s); block ||= !ps && s[j + 1] === '{' && ' \t\r\n|'.includes(s[CONT.lastIndex] ?? 'x'); } }
+          t += s[j];
+        }
       }
       if (j >= s.length) return null;
+      if (block && !(tgt && hs)) { fun = true; early.push(...both(t)); }
       add(t, true);
       i = j;
     } else if (!ps && c === '$' && n === '{' && pid !== i - 1) {
@@ -209,10 +214,10 @@ function walk(s, ps, depth) {
     // The & of a redirect such as 2>&1 and the | of >| end no command.
     else if (';&|\n()'.includes(c) && !('&|'.includes(c) && s[i - 1] === '>' && bare === i - 1)) { end(); plain += last = c; cut(c === '|' && n !== '|' && s[i - 1] !== '|', c === '('); if (c === '\n' && after >= 0) [i, after] = [after - 1, -1]; }
     else {
-      // For the Bash tool a brace is a word by itself before a blank, a redirect, a character that ends a command or a continued line, and the } of {name} before a redirect is part of its sign.
+      // For the Bash tool a brace is a word by itself before a blank, a redirect, a character that ends a command or a continued line, and the } of {name} or {name[index]} before a redirect is part of its sign.
       if (c === '$') pid = pid === i - 1 ? -2 : i; else if (c === '<' || c === '>') { tgt = true; hs = c === '<' && s[i - 1] === '<' && s[i - 2] === '<'; }
       if (ps || (c !== '{' && c !== '}')) add(c);
-      else if (cur) { CONT.lastIndex = i + 1; CONT.test(s); if (c === '}' && '<>'.includes(s[CONT.lastIndex] ?? ' ') && !cur.q && !cur.x && /^\{[A-Za-z_]\w*$/.test(cur.w)) add(c); else lit(c); }
+      else if (cur) { CONT.lastIndex = i + 1; CONT.test(s); if (c === '}' && '<>'.includes(s[CONT.lastIndex] ?? ' ') && !cur.q && !cur.x && /^\{[A-Za-z_]\w*(?:\[[^\]]*\])?$/.test(cur.w)) add(c); else lit(c); }
       else { CONT.lastIndex = i + 1; CONT.test(s); if (' \t\r\n;&|()<>'.includes(s[CONT.lastIndex] ?? ' ')) add(c); else lit(c); }
       if ((c === '<' || c === '>') && cur.f === undefined) cur.f = cur.w.length - 1;
       if (c === '<' || c === '>' || ('&|'.includes(c) && cur.s === cur.w.length - 1)) cur.s = cur.w.length; // cur.s: the place right after the last redirect sign typed outside quotes and escapes, cur.f the place where the first such sign starts

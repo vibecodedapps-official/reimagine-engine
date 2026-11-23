@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Repository lint: checks the repository this file sits in and depends on nothing but node: built-ins.
 //   syntax and import rules for every .mjs, script budgets
-//   catalog and manifest consistency, README install lines, skill, style, hook and agent shapes
+//   catalog and manifest consistency, README install lines and paragraph size, skill, style, hook and agent shapes
 //   ASCII, licenses, what a plugin may ship, executables and their tests, .gitattributes
 //   the chat block, the loop skill's supporting files, gh api spans, the audit plugin_version literals
 //   the tag rule, CHANGELOG headings, owner-specific strings
@@ -81,6 +81,9 @@ const OWN_ALLOW_RULE = [GUARD_SKILL, LOOP_SKILL, GATE_SKILL];
 
 const HEADING = new RegExp(`^## (${[...NAMES, ...RETIRED].join('|')}) (${SEMVER_CORE}) - (\\d{4}-\\d{2}-\\d{2})$`);
 const FENCE = /^\s*```/;
+const README_BLOCK_WORDS = 120;
+// READMEs still to be brought under the cap, each with the next change to its plugin.
+const README_UNCAPPED = ['audit', 'gate', 'guard'];
 
 const ROOT_HOOKS = {
   hooks: {
@@ -380,6 +383,24 @@ function readmeFailures(ctx) {
       const line = `/plugin ${verb} ${n}@reimagine-engine`;
       if (!lines.includes(line)) out.push(`README.md: no line ${line}`);
     }
+  }
+  // A block is a paragraph, a list item or a table row.
+  for (const path of ['README.md', ...NAMES.filter((n) => !README_UNCAPPED.includes(n)).map((n) => `plugins/${n}/README.md`)]) {
+    let start = 0;
+    let last = 0;
+    let words = 0;
+    const end = () => {
+      if (words > README_BLOCK_WORDS) out.push(`${path}:${start}: a paragraph or list item of ${words} words, over the ${README_BLOCK_WORDS}-word cap`);
+      words = 0;
+    };
+    for (const { n, line } of outsideFences(ctx.text(path) ?? '')) {
+      if (n !== last + 1 || /^\s*([-*|]|\d+\.)(\s|$)/.test(line)) end();
+      if (words === 0) start = n;
+      words += line.split(/\s+/).filter(Boolean).length;
+      if (!line.trim()) end();
+      last = n;
+    }
+    end();
   }
   return out;
 }

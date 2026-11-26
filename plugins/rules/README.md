@@ -44,7 +44,7 @@ Run `/rules:refactor` in a repository for a read-only review of the whole tree a
 
 Ask for a handoff prompt, or run `/rules:handoff-prompt`, for a prompt that carries this session's work to a later session, from a summary or a single idea, in one block for you to paste; it states what was settled and what is open as you left it, suggests nothing, and writes no file.
 
-A draft for someone else, such as a reply, a ticket comment or an email, is checked by `/rules:draft` before it is first shown or published. An email draft is one HTML file in the scratch directory the house rules name, ready to open in a browser and paste, and the reply shows its text.
+A draft for someone else, such as a reply, a ticket comment or an email, is checked by `/rules:draft` before it is first shown or published. An email draft, or a draft with a table for a chat, is one HTML file in the scratch directory the house rules name, ready to open in a browser and paste, and the reply shows its text.
 
 ## Feedback log
 
@@ -66,8 +66,8 @@ A denial names the string, where it was found and the list file, and for a comma
 ### What is read
 
 - At a `git commit`, `git merge` or `git tag`, and at any `gh`, `az` or `glab` call or command that holds a `post:` phrase: the whole command, with each file it names as a message or a body, `$(cat <file>)` and a `<` redirect included.
-- At a `git push`: the messages of the commits on any local branch, and on a tag the push names, that no remote-tracking branch holds yet, so a commit on a branch you are not pushing is denied too.
-- At a `git push` also: the push's own words and the name of the branch you are on, so a listed string in a refspec or a branch name is denied as well.
+- At a command that holds the words `git` and `push`, other than `git stash push`: the messages of the commits on any local branch that no remote-tracking branch holds yet, so a commit on a branch you are not pushing is denied too.
+- At a plain `git push` also: its own words, the commits of a tag it names and the name of the branch you are on, so a listed string in a refspec or a branch name is denied as well.
 - At an MCP tool call: every string value the tool is given.
 
 A command is taken for a commit, a merge or a tag where one of its lines holds `git` and that word, or where it holds both anywhere and a `$` or the word `xargs`, and for a forge call where it holds `gh`, `az` or `glab` as a word, so a command that only writes a local file is read too when its text does.
@@ -92,25 +92,28 @@ A command is taken for a commit, a merge or a tag where one of its lines holds `
 - The hook has 60 seconds, and its `git` calls and the search of what they return share 45 of them; a push whose commits cannot be read in that time is denied and can be run again.
 - A command the hook cannot read to its end, in 50 seconds or because of an error of its own, is denied whatever it holds, and so is an MCP call it cannot read: send it as shorter commands, or in smaller calls.
 
-### A push after a commit, with `check: diff`
+### A push and another call in one command, with `check: diff`
 
-With `check: diff`, a `git push` that runs in the same command after a `git commit`, `merge`, `cherry-pick`, `rebase`, `am`, `revert` or `pull` is denied, since a commit that call makes is not there to read before the command runs: send the push as a command of its own. The calls are read as the shell runs them:
+With `check: diff`, a command that holds the words `git` and `push` is denied unless it is one plain git call, after the commits already there are read. A commit that the same command makes, by a commit, a merge, a pull or a script, is not there to read before the command runs. Send the push as a command of its own.
 
-- A comment, a quoted message and a quoted text another program prints are neither a commit nor a push.
-- A push with `--dry-run` or `-n`, and one after a `git pull --ff-only` that names no remote, is not denied.
-- A command that defines a function or a filter, sets a trap or assigns a script block to a variable is denied for a push anywhere in it. A definition counts where a command starts, also after an option of `command`, `builtin`, `eval` or `time`, an assignment, a redirect or a `{` joined to one.
-- A command that hands a shell a variable or a substitution, as `eval "$x"` and `bash -c "$(...)"` do, is read by its words alone, the message of a commit left out unless a command after it hands a shell a substitution, which may print the message back, so there a commit and a push are denied even where both are only text.
-- The running shell named by `$BASH` or `$0` is a shell as `$SHELL` is, through the Bash tool, so the text after `$BASH -c` is read as commands.
-- After `eval` or another shell an escaped character is read as the character, and a word with an escaped character as a text the shell may run, as a quoted one is: `eval true\; trap ...` and `trap git\ push EXIT`.
-- A command that holds bash's `${ cmd; }` counts as one that defines what runs later, so a push anywhere in it is denied. With the block inside a double-quoted text or a here-document body, the command is read by its words alone, so a commit and a push are denied even where both are only text.
-- A commit or a push that a script, a git alias or a program other than a shell makes is not seen.
-- A definition or a push whose word the shell builds is not seen either: `t=trap; $t`, a push held in a variable, a shell alias, and in PowerShell a script block kept by anything but an assignment or a function.
+- A plain call is `git` or `git.exe` by that name, with no other program, assignment or second command around it. Before the subcommand only `-C <folder>`, `--no-pager`, `-P` and `--no-optional-locks` may stand, so `git -c` is no plain call.
+- One `cd <folder> &&` may come first and `2>&1` may end it: `cd repo && git push`, `git -C repo push` and `git push 2>&1` are read and pass.
+- A pipe, a redirect, `;`, `&&`, a `$`, a backtick, a comment, a continued line or a here-document makes the command no plain call, so `git pull --ff-only && git push`, `git push | tail -3` and PowerShell's `git push; $LASTEXITCODE` are denied.
+- Quoted text counts as the shell reads it: `git commit -m "fix push retry"` and `git log --grep push` are plain calls and pass, while `git add . && git commit -m "fix push retry"` is denied.
+- The words count in any command, so a search or a forge call whose text holds both, as `rg "git push" docs`, is denied too. Keep the two words out of other commands, or send them through a file tool.
+- Without `check: diff` none of these is denied for its form. A command that holds both words has its commits read, and only a plain `git push` also has its own words and the name of its branch read.
+
+### When the hook cannot read
+
+- A list file that is there and cannot be read, as when another program holds it, denies a command that commits, pushes or posts until it can be read. A missing list still turns the check off.
+- A push from a repository whose commits git cannot read, for a reason other than time, is denied and can be run again once git reads them. A folder that is no repository is passed over.
 
 ### Not covered
 
 - A commit, push or post made by a script the session runs, though a commit made that way is still read at a typed push, and a `post:` line has the script's command and the files it names read, not a text the script builds or reads by itself.
+- A push or a `git` whose word the shell builds, as `g"it" pu\sh` or a program held in a variable, and a push through an alias set in an earlier call, whose command holds no `push`.
+- Without `check: diff`, a commit and a push typed in one call, where only the command and the files it names are read.
 - A message read from a file by a command other than `cat`, `Get-Content` or a redirect.
-- A commit and a push typed in one call, where only the command and the files it names are read.
 - A push from a folder the hook cannot find whose name stands inside a quoted string or after a line break in the command.
 - A commit whose `git` and `commit` sit on two lines of one call with no `$` and no `xargs` in it, as with an alias defined there.
 - Calls the host makes itself.

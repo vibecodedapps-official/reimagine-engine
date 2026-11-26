@@ -288,7 +288,7 @@ function analyze(typed, st, vars = new Map(), alone = false) {
 const BRINGS = {
   merge: /^(-[mFsX]|--(message|file|strategy|strategy-option|into-name|cleanup))$/,
   'cherry-pick': /^(-[mX]|--(mainline|strategy|strategy-option|cleanup|empty))$/,
-  rebase: /^(-[sXC]|--(strategy|strategy-option|whitespace|empty))$/,
+  rebase: /^(-[sXC]|--(strategy|strategy-option|whitespace|empty|trailer))$/,
   am: /^(-C|--(whitespace|empty|quoted-cr|exclude|include|resolvemsg))$/,
 };
 const brings = (sub) => Object.hasOwn(BRINGS, sub);
@@ -298,10 +298,10 @@ const UNREAD = { rebase: /^(-[qvnfrpmk]*[xi]|--exe?c?(=|$)|--in[a-z]*$)/, am: /^
 // A call that ends or steps over a merge, a cherry-pick, a rebase or an am under way brings nothing in.
 const ENDS = new Set(['--abort', '--skip', '--quit', '--edit-todo', '--show-current-patch']);
 const ends = (w) => ENDS.has(w) || (typeof w === 'string' && w.startsWith('--show-current-patch='));
-// An end word ends the call only where each word before it is an option that takes no value word, so a word that git may take as a
-// value is never read as one; any other call goes on to brought().
-const takes = (sub, w) => BRINGS[sub].test(w) || UNREAD[sub]?.test(w) || (sub === 'rebase' && w === '--onto');
-const stops = (sub, args) => { const k = args.findIndex((x) => ends(x.w)); return k >= 0 && args.slice(0, k).every((x) => x.w.startsWith('-') && x.w !== '-' && !takes(sub, x.w)); };
+// An end word ends the call only where it comes first or after these flags alone, which take no value: git may take it as the
+// value of any other option, a shortened one included. Any other call goes on to brought(), where an end word leaves it unread.
+const QUIET = new Set(['-q', '--quiet', '-v', '--verbose']);
+const stops = (sub, args) => { const k = args.findIndex((x) => ends(x.w)); return k >= 0 && args.slice(0, k).every((x) => QUIET.has(x.w)); };
 
 // What a patch in git's form holds: the files it creates, the target of a rename among them, and the lines it adds to each ignore
 // file; null for a new file or a target whose header the script cannot read.
@@ -324,13 +324,13 @@ function patched(c, dir, text, base = 'HEAD') {
 // A merge or a rebase brings each commit that a commit it names holds and the
 // head does not, with the upstream of the branch where it names none; a cherry-pick brings each commit it names and each commit
 // of a range, a merge among them read against each parent; an am brings what its patch files hold, and a file with no file header
-// is unread. A --continue is read as the commit it makes, and a call that ends one brings nothing new.
+// is unread. A --continue is read as the commit it makes, and an end word met here may be an option's value, so the call is unread.
 function brought(c, { sub, dir, args, sh, msys, home }, top) {
   const named = [];
   for (let i = 0; i < args.length; i++) {
     const { w, bad } = args[i];
     if (bad || UNREAD[sub]?.test(w)) return null;
-    if (ends(w)) return { paths: [], ignores: [] };
+    if (ends(w)) return null;
     if (w === '--continue' || (sub === 'am' && (w === '--resolved' || w === '-r'))) return planOf(c, { sub: 'commit', dir, args: [] }, top);
     if (sub === 'rebase' && w === '--onto') { if (!args[++i] || args[i].bad) return null; named.push(args[i].w); }
     else if (sub === 'rebase' && w.startsWith('--onto=')) named.push(w.slice(7));

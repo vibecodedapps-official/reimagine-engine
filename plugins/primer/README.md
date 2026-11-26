@@ -192,7 +192,7 @@ A `git merge`, `git cherry-pick`, `git rebase` or `git am` is checked by the fil
 
 One of the four is read only where it is the whole command: one call with `git` as its first word, or after assignments in Bash, as in `git merge feat`, `GIT_EDITOR=true git rebase --continue` or `git -C ../app rebase main 2>&1`, or such a call after one `cd` to a folder the check can follow and `&&`, as in `cd ../app && git merge feat`, read in that folder.
 
-Before or after any other call, a second `cd` or a `cd` ended by `;` included, behind `timeout`, `nice`, `sudo` or `env`, in a text given to `bash -c`, or on the right of a PowerShell assignment, it is denied with a reason that says to send it alone. A call that brings nothing passes wherever it stands: one with `--abort`, `--skip`, `--quit`, `--edit-todo` or `--show-current-patch` among its options, or with `--help` or `-h` first.
+Before or after any other call, a second `cd` or a `cd` ended by `;` included, behind `timeout`, `nice`, `sudo` or `env`, in a text given to `bash -c`, or on the right of a PowerShell assignment, it is denied with a reason that says to send it alone. A call that brings nothing passes wherever it stands: one with `--abort`, `--skip`, `--quit`, `--edit-todo` or `--show-current-patch` first or after only `-q`, `--quiet`, `-v` or `--verbose`, or with `--help` or `-h` first.
 
 ### A variable the command sets
 

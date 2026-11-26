@@ -770,7 +770,7 @@ describe('primer drift hook', () => {
       const hub = slash(join(patches, '0001-hub.patch')), notes = slash(join(patches, '0001-notes.patch'));
       for (const command of ['git merge feat', 'git merge --no-ff -m "take it" notes feat', `git cherry-pick ${tip}`, 'git cherry-pick -x main..feat', 'git cherry-pick main..later', 'git rebase feat', 'git rebase --onto feat main',
         `git am ${hub}`, `git am -3 ${notes} ${hub}`, 'git merge gone', 'git rebase gone', `git am ${slash(join(patches, 'all.mbox'))}`,
-        'git cherry-pick -m 1 feat', 'git cherry-pick --mainline=1 feat', 'git cherry-pick -m 1 main..joined', 'git cherry-pick -m 2 feat', 'git cherry-pick --mainline 2 feat', 'git merge feat 2>&1', 'git -C src merge feat 2>/dev/null', 'X=1 git merge feat', `git am --resolvemsg --skip ${hub}`, 'git cherry-pick --empty --skip feat']) {
+        'git cherry-pick -m 1 feat', 'git cherry-pick --mainline=1 feat', 'git cherry-pick -m 1 main..joined', 'git cherry-pick -m 2 feat', 'git cherry-pick --mainline 2 feat', 'git merge feat 2>&1', 'git -C src merge feat 2>/dev/null', 'X=1 git merge feat', `git am --resolvemsg --skip ${hub}`, 'git cherry-pick --empty --skip feat', 'git rebase --trailer --abort feat']) {
         assert.equal(await check(command, dir), reason, command);
       }
       const line = deny(lead(dir) + 'the call would add the line CLAUDE.md in .gitignore, which names an agent file');
@@ -779,7 +779,7 @@ describe('primer drift hook', () => {
         assert.equal(await check(command, dir), '', command);
       }
       const blind = (sub) => deny(lead(dir) + `what git ${sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read`);
-      for (const [sub, rest] of [['merge', '"$BRANCH"'], ['merge', 'no-such-branch'], ['cherry-pick', ''], ['rebase', '-x "npm test" notes'], ['rebase', "-x'npm test' notes"], ['rebase', '--exe "npm test" notes'], ['rebase', '-i notes'], ['rebase', '-ki notes'], ['rebase', '--interactive notes'], ['cherry-pick', '--onto --output=' + slash(join(patches, 'made.txt'))], ['am', ''], ['am', '--directory=sub ' + hub], ['am', slash(join(patches, 'none.patch'))], ['am', slash(join(patches, 'plain.patch'))], ['am', '--patch-format=mbox ' + hub], ['rebase', '-x --abort main'], ['rebase', '--exec --abort main'], ['rebase', '--onto --abort main'], ['am', '--directory --skip x.patch']]) {
+      for (const [sub, rest] of [['merge', '"$BRANCH"'], ['merge', 'no-such-branch'], ['cherry-pick', ''], ['rebase', '-x "npm test" notes'], ['rebase', "-x'npm test' notes"], ['rebase', '--exe "npm test" notes'], ['rebase', '-i notes'], ['rebase', '-ki notes'], ['rebase', '--interactive notes'], ['cherry-pick', '--onto --output=' + slash(join(patches, 'made.txt'))], ['am', ''], ['am', '--directory=sub ' + hub], ['am', slash(join(patches, 'none.patch'))], ['am', slash(join(patches, 'plain.patch'))], ['am', '--patch-format=mbox ' + hub], ['rebase', '-x --abort main'], ['rebase', '--exec --abort main'], ['rebase', '--onto --abort main'], ['am', '--directory --skip x.patch'], ['am', '--dir --skip ' + hub], ['am', '--excl --skip ' + hub]]) {
         assert.equal(await check(`git ${sub} ${rest}`.trim(), dir), blind(sub), `${sub} ${rest}`);
       }
       assert.equal(existsSync(join(patches, 'made.txt')), false);

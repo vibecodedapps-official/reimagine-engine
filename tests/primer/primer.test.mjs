@@ -336,13 +336,13 @@ describe('session-start', () => {
     const at = config({ version: 1, repos: [{ remotes: ['example.invalid/team/app'], path: slash(moved), group: 'app', profile: 'local' }], roots: [] }, { group: GROUP });
     const other = `${none}${slash(moved)} is the path of the map's entry of group app and has none of its remotes`;
     assert.equal(start(at, moved).stdout, context(other, other));
-    // A clone git cannot read, as with a damaged HEAD file, which git answers as no repository.
+    // A clone git cannot read, as with a damaged HEAD file, which git answers as no repository, matches no entry by its remotes,
+    // so away from an entry's path it gets no line, after a start that read it too.
     const cfg = config(local(), { group: GROUP }), hurt = repo('nothing-hurt', 'https://example.invalid/team/app.git');
     start(cfg, hurt);
     writeFileSync(join(hurt, '.git', 'HEAD'), 'not a ref\n');
-    const unread = `${none}git read no repository at ${slash(hurt)}, though ${slash(hurt)} holds .git`;
-    assert.equal(start(cfg, hurt).stdout, context(unread, unread));
-    // A clone at the path of a local entry gets the line at its first start there, with no answer kept.
+    assert.equal(start(cfg, hurt).stdout, '');
+    // A clone at the path of a local entry gets the line at its first start there.
     const fresh = repo('nothing-fresh', 'https://example.invalid/team/fresh.git');
     const byPath = config({ version: 1, repos: [{ remotes: ['example.invalid/team/fresh'], path: slash(fresh), group: 'app', profile: 'local' }], roots: [] }, { group: GROUP });
     writeFileSync(join(fresh, '.git', 'HEAD'), 'not a ref\n');
@@ -352,7 +352,7 @@ describe('session-start', () => {
     const stray = repo('nothing-stray', 'https://example.invalid/team/stray.git');
     writeFileSync(join(stray, '.git', 'HEAD'), 'not a ref\n');
     assert.equal(start(cfg, stray).stdout, '');
-    // A clone kept under an entry the map has since lost, with the entry's path unmatched too, costs no session a line.
+    // A clone of an entry the map has since lost, with the entry's path unmatched too, costs no session a line.
     const left = repo('nothing-left', 'https://example.invalid/team/app.git'), lost = config(local({ repos: [{ remotes: ['example.invalid/team/other'], path: 'unused', group: 'app', profile: 'local' }] }), { group: GROUP });
     start(cfg, left);
     writeFileSync(join(left, '.git', 'HEAD'), 'not a ref\n');
@@ -387,7 +387,7 @@ function slowGit() {
 }
 
 describe('the git limit', () => {
-  test('when git does not answer within the limit and no earlier start is kept, the context says so and the message says unknown', () => {
+  test('when git does not answer within the limit, the context says so and the message says unknown', () => {
     const dir = repo('slow', 'https://example.invalid/team/app.git');
     const cfg = config(local(), { group: GROUP });
     const slow = { ...slowGit(), CLAUDE_CONFIG_DIR: cfg.dir };
@@ -401,107 +401,23 @@ describe('the git limit', () => {
     assert.equal(shown.at(-1), 'check git: unknown, no answer within 1 s');
   });
 
-  test('when git does not answer within the limit the layers load from the repository git gave at the directory\'s last start', () => {
-    const dir = repo('slow-kept', 'https://example.invalid/team/app.git'), data = join(base, 'data-kept');
-    const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
-    const from = (extra, input) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir, ...input }), limit: 1000 });
-    assert.deepEqual(from(env), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: layers } })]);
-    // The context opens with the line that says which repository the layers are read for, at a subagent's start too.
-    const slow = slowGit(), note = `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there`;
-    assert.deepEqual(from(slow), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: `${note}\n\n${layers}` }, systemMessage: note })]);
-    assert.deepEqual(from(slow, { hook_event_name: 'SubagentStart', agent_type: 'general-purpose' }), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: `${note}\n\n${layers}` } })]);
-    // A kept answer is read for its own directory alone.
-    const other = repo('slow-other', 'https://example.invalid/team/app.git');
-    assert.equal(JSON.parse(main(['session-start', 'all', data], { env: { ...slow, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: other }), limit: 1000 })[0]).systemMessage, `primer: the context of ${slash(other)} is unknown, since git gave no answer within 1 s`);
-  });
-
-  test('a kept answer holds no credential of a remote URL, and the layers still load from it', () => {
-    const dir = repo('slow-secret', 'https://x-access-token:s3cr3t-token@example.invalid/team/app.git'), data = join(base, 'data-secret');
-    const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
-    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
-    assert.equal(JSON.parse(from(env)[0]).hookSpecificOutput.additionalContext, layers);
-    const kept = readdirSync(join(data, 'repo'));
-    assert.equal(kept.length, 1);
-    assert.ok(!readFileSync(join(data, 'repo', kept[0]), 'utf8').includes('s3cr3t-token'));
-    assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
-  });
-
-  test('a kept answer holds the repository of a local entry alone, each URL with no user, query or fragment', () => {
-    const data = join(base, 'data-bare'), cfg = config(local(), { group: GROUP });
-    const from = (cwd) => main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd }), limit: 1000 });
-    const kept = () => readdirSync(join(data, 'repo')).map((f) => readFileSync(join(data, 'repo', f), 'utf8'));
-    // A clone that no local entry holds keeps no root and no URL.
-    from(repo('kept-unmapped', 'https://example.invalid/team/unmapped.git'));
-    assert.deepEqual(kept(), ['null']);
-    const dir = repo('kept-urls', 'https://example.invalid/team/app.git');
-    git(dir, 'remote', 'add', 'query', 'https://example.invalid/team/x.git?token=q-s3cr3t#f-s3cr3t');
-    git(dir, 'remote', 'add', 'user', 'https://x-token@u-s3cr3t@example.invalid/team/y.git');
-    from(dir);
-    const { remotes, urls } = JSON.parse(kept().find((t) => t !== 'null'));
-    assert.deepEqual(remotes, ['example.invalid/team/app']);
-    assert.deepEqual(urls, ['https://example.invalid/team/app.git', 'https://example.invalid/team/x.git', 'https://example.invalid/team/y.git']);
-    for (const secret of ['q-s3cr3t', 'f-s3cr3t', 'u-s3cr3t']) assert.ok(!kept().join('').includes(secret), secret);
-  });
-
-  test('a local entry whose remote holds a query loads its layers at a slow start after a start git answered', () => {
-    const dir = repo('slow-query', 'https://example.invalid/team/q.git?x=1'), data = join(base, 'data-query');
-    const cfg = config(local({ repos: [{ remotes: ['example.invalid/team/q.git?x=1'], path: 'unused', group: 'app', profile: 'local' }] }), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
-    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
-    assert.equal(JSON.parse(from(env)[0]).hookSpecificOutput.additionalContext, layers);
-    assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
-  });
-
-  test('a slow start whose layers are over the cap opens with the note of the kept answer, then the line about the cap', () => {
-    const dir = repo('slow-over', 'https://example.invalid/team/app.git'), data = join(base, 'data-over');
-    const cfg = config(local(), { group: `${'a'.repeat(9990)}\n` });
-    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
-    from(env);
-    const text = JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext;
-    assert.ok(text.startsWith(`primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\nprimer: the text below is `), text.slice(0, 400));
-    assert.ok(text.includes(`characters, over the host's cap of 10000, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${join(cfg.store, 'groups', 'app.md')}\n\nprimer layer group from `));
-  });
-
-  test('a start that git answers as no repository, in a clone it cannot read, leaves the kept answer in place', () => {
-    const dir = repo('slow-hurt', 'https://example.invalid/team/app.git'), data = join(base, 'data-hurt');
-    const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
-    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
-    from(env);
-    writeFileSync(join(dir, '.git', 'HEAD'), 'not a ref\n');
-    from(env);
-    assert.equal(JSON.parse(from(slowGit())[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
-  });
-
-  test('a kept answer of a directory started within 30 days is not removed by another directory\'s write', () => {
-    const dir = repo('slow-old', 'https://example.invalid/team/app.git'), other = repo('slow-old-other', 'https://example.invalid/team/other.git'), data = join(base, 'data-old');
-    const cfg = config(local(), { group: GROUP }), layers = part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e');
-    const from = (extra, cwd) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd }), limit: 1000 });
-    from(env, dir);
-    const [file] = readdirSync(join(data, 'repo')), old = new Date(Date.now() - 31 * 864e5);
-    utimesSync(join(data, 'repo', file), old, old);
-    from(env, dir);
-    from(env, other);
-    assert.ok(existsSync(join(data, 'repo', file)));
-    assert.equal(JSON.parse(from(slowGit(), dir)[0]).hookSpecificOutput.additionalContext, `primer: git gave no answer within 1 s, so ${slash(dir)} is read as the repository git gave at an earlier start there\n\n${layers}`);
-  });
-
-  test('a kept answer last written more than 30 days before is not read where git gives no answer', () => {
-    const dir = repo('slow-stale', 'https://example.invalid/team/app.git'), data = join(base, 'data-stale');
-    const cfg = config(local(), { group: GROUP });
-    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
-    from(env);
-    const [file] = readdirSync(join(data, 'repo')), old = new Date(Date.now() - 31 * 864e5);
-    utimesSync(join(data, 'repo', file), old, old);
-    const line = `primer: no context layer is loaded at this start: git gave no answer within 1 s, so whether ${slash(dir)} has layers is unknown`;
-    assert.deepEqual(from(slowGit()), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line }, systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
-  });
-
-  test('a directory with no local entry is read as one with no layers where git gives no answer, and the message says so', () => {
+  test('a directory with no local entry under a root gets the same line where git gives no answer within the limit', () => {
     const dir = join(base, 'slow-plain'), data = join(base, 'data-plain');
     mkdirSync(dir);
     const cfg = config(local({ roots: [slash(base)] }), { group: GROUP });
     const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
     assert.deepEqual(from(env), []);
-    assert.deepEqual(from(slowGit()), [JSON.stringify({ systemMessage: `primer: git gave no answer within 1 s, so ${slash(dir)} is read as a directory with no layers, as it was at an earlier start there` })]);
+    const line = `primer: no context layer is loaded at this start: git gave no answer within 1 s, so whether ${slash(dir)} has layers is unknown`;
+    assert.deepEqual(from(slowGit()), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line }, systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
+  });
+
+  test('a start removes the repositories an earlier version kept under repo/ of the data directory, and keeps none', () => {
+    const dir = repo('kept-gone', 'https://example.invalid/team/app.git'), data = join(base, 'data-gone');
+    const cfg = config(local(), { group: GROUP });
+    write(data, 'repo/0123456789abcdef', JSON.stringify({ root: slash(dir), top: slash(dir), remotes: ['example.invalid/team/app'], names: ['origin'], urls: ['https://example.invalid/team/app.git'] }));
+    const out = main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    assert.equal(JSON.parse(out[0]).hookSpecificOutput.additionalContext, part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e'));
+    assert.equal(existsSync(join(data, 'repo')), false);
   });
 });
 
@@ -525,7 +441,7 @@ describe('status', () => {
       `layer machine-group: ${join(cfg.own, 'machine', 'app.md')}, missing or empty`,
       `check size: ${shared.length + group.length + 194} characters as emitted, within the cap of 10000`,
       'check map: mapped',
-      'check git: answered within 5 s',
+      'check git: answered within 30 s',
       '',
     ].join('\n'));
   });
@@ -534,7 +450,7 @@ describe('status', () => {
     const cfg = config(local({ roots: [slash(base)] }));
     const dir = repo('status-unmapped');
     assert.equal(run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n').slice(3).join('\n'),
-      `repository: ${slash(dir)} (no remote)\nentry: none\nprofile: none\ncheck map: unmapped, under the root ${slash(base)}\ncheck git: answered within 5 s\n`);
+      `repository: ${slash(dir)} (no remote)\nentry: none\nprofile: none\ncheck map: unmapped, under the root ${slash(base)}\ncheck git: answered within 30 s\n`);
     const plain = join(base, 'status-plain');
     mkdirSync(plain);
     assert.equal(run(['status'], { cwd: plain }).stdout, [
@@ -1182,15 +1098,17 @@ describe('the notice', () => {
     const data = join(base, `notice-data-${++seq}`), a = config(local(), { group: GROUP }), b = config(local(), { group: GROUP }), c = config(local(), { group: GROUP });
     const from = (x) => both(data, { transcript_path: join(x.dir, 'projects', key, 'test.jsonl') });
     const said = (n) => message(`primer: ${n} feedback entries since the last review; run /primer`);
+    // With neither stamp, no review has run in the repository.
+    const first = (n) => message(`primer: ${n} feedback entries; no review has run here; run /primer`);
     stamps(data, {});
     write(a.dir, 'feedback/2026-11-01.md', '## app: one\n\n## app: two\n');
     write(b.dir, 'feedback/2026-11-01.md', '## app: one\n\n## app: two\n');
     // A stamp in the earlier form, one line that holds a time, counts for nothing, and neither does another repository's line.
     write(a.dir, 'feedback/.reviewed', '2026-11-01T00:00:00.000Z\nanother-key\t2\t2026-11-01.md\n');
-    assert.deepEqual(from(a), [said(2), said(2)]);
+    assert.deepEqual(from(a), [first(2), first(2)]);
     write(a.dir, 'feedback/.reviewed', `another-key\t2\t2026-11-01.md\n${key}\t2\t2026-11-01.md\n`);
     assert.deepEqual(from(a), ['', '']);
-    assert.deepEqual(from(b), [said(2), said(2)]);
+    assert.deepEqual(from(b), [first(2), first(2)]);
     // The reviewing session logs its own entry after the stamp is written.
     write(a.dir, 'feedback/2026-11-01.md', '## app: one\n\n## app: two\n\n## app: three\n');
     assert.deepEqual(from(a), ['', '']);
@@ -1200,13 +1118,13 @@ describe('the notice', () => {
     // A directory of the stamp's name is no stamp, and the directory's own name is one of the repository's.
     write(c.dir, 'feedback/2026-11-01.md', '## notice-both: by its directory\n\n## notice: a shorter name\n');
     mkdirSync(join(c.dir, 'feedback', '.reviewed'));
-    assert.deepEqual(from(c), [said(1), said(1)]);
+    assert.deepEqual(from(c), [first(1), first(1)]);
   });
 
   test('review.json in the machine\'s directory leaves a note out of the count and names more log directories, for both hooks', () => {
     const data = join(base, `notice-data-${++seq}`), a = config(local(), { group: GROUP }), more = join(base, `more-logs-${seq}`), file = join(a.own, 'review.json');
     const from = () => both(data, { transcript_path: join(a.dir, 'projects', key, 'test.jsonl') });
-    const notes = (n) => message(`primer: auto memory has ${n} notes since the last review; run /primer`);
+    const notes = (n) => message(`primer: auto memory has ${n} notes; no review has run here; run /primer`);
     cpSync(join(memory, 'memory'), join(a.dir, 'projects', key, 'memory'), { recursive: true });
     stamps(data, {});
     assert.deepEqual(from(), [notes(2), notes(2)]);
@@ -1219,7 +1137,7 @@ describe('the notice', () => {
     write(more, 'notes.txt', '## app: no log\n');
     write(more, 'a/b/c/2026-11-22.md', '## app: too deep\n');
     write(a.own, 'review.json', JSON.stringify({ logs: [slash(more)], repositories: { [slash(dir)]: { skip: ['item-ids-are-numbers.md', 'no-direct-push.md'], transcripts: false } } }));
-    const entries = message('primer: 2 feedback entries since the last review; run /primer');
+    const entries = message('primer: 2 feedback entries; no review has run here; run /primer');
     assert.deepEqual(from(), [entries, entries]);
     const status = run(['status'], { cwd: dir, extraEnv: { CLAUDE_CONFIG_DIR: a.dir } }).stdout.split('\n').filter((l) => l.startsWith('review:'));
     assert.deepEqual(status, [`review: ${file}, 1 log directories, 2 notes skipped and transcripts off for this repository`]);
@@ -1234,6 +1152,15 @@ describe('the notice', () => {
       assert.ok(report.includes(`check review: ${file} is not a primer review file`), text);
       assert.ok(report.some((l) => l.startsWith('profile: ')), text);
     }
+  });
+
+  test('a notice that stops on an error of its own leaves the layers in place and says so in one line', () => {
+    const data = join(base, `notice-data-${++seq}`), loop = join(data, 'reviewed', key);
+    mkdirSync(dirname(loop), { recursive: true });
+    // A stamp that is a link to itself, which no stat can follow.
+    symlinkSync(loop, loop, 'junction');
+    const out = run(['session-start', 'all', data], { input: JSON.stringify({ transcript_path: join(cfg.dir, 'projects', key, 'test.jsonl'), cwd: dir, source: 'startup' }) }).stdout;
+    assert.equal(out, context(part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e'), `primer: the review notice stopped on an error of its own: ELOOP: too many symbolic links encountered, stat '${loop}'`));
   });
 
   test('the loader gives no notice on a later source or in a session no one attends', () => {

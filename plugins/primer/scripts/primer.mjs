@@ -259,25 +259,11 @@ export function notice(c, input, data, repo) {
   const n = notesOf(memory, rv.skip).filter((x) => !rv.skip.includes(x.name.toLowerCase()) && ['feedback', 'project'].includes(x.type) && (noted === null || (x.modified && x.modified > since))).length;
   const fb = feedbackOf(config, repo, rv.logs), own = fb.logs.reduce((a, l) => a + l.unread.filter((e) => e.own).length, 0), m = fb.reviewed && own < 2 ? 0 : own;
   const what = n && m ? `auto memory has ${n} notes and ${m} feedback entries` : n ? `auto memory has ${n} notes` : `${m} feedback entries`;
-  return n || m ? `primer: ${what} since the last review; run /primer` : null;
+  return n || m ? `primer: ${what}${noted === null && !fb.reviewed ? '; no review has run here' : ' since the last review'}; run /primer` : null;
 }
 
 // Removes the files of a directory last written more than 30 days before.
 const prune = (dir) => { for (const f of readdirSync(dir).map((x) => join(dir, x))) if (Date.now() - (statSync(f, { throwIfNoEntry: false })?.mtimeMs ?? Date.now()) > 30 * 864e5) rmSync(f, { force: true }); };
-// The repository git gave at a directory's last start, kept under the data directory by the directory's path and read where git
-// gives no answer in time; undefined where none is kept. Every start git answers writes one: a local entry's repository, with the entry's remotes as the map holds them and each URL with no user, query
-// or fragment, and null for any other directory, whose path and URL are not kept; one written more than 30 days before is removed at the next read or write.
-function keptRepo(c, data, cwd, repo) {
-  const file = data && isAbsolute(data) ? join(data, 'repo', createHash('sha256').update(keyOf(cwd, c.platform)).digest('hex').slice(0, 16)) : null, bare = (u) => u.replace(/^([A-Za-z][\w+.-]*:\/\/)?[^/]*@/, '$1').replace(/[?#].*$/, '');
-  if (repo === undefined) { try { prune(dirname(file)); const v = JSON.parse(readText(file)); return v === null || (typeof v.root === 'string' && typeof v.top === 'string' && [v.remotes, v.names, v.urls].every(Array.isArray)) ? v : undefined; } catch { return undefined; } }
-  if (file) try {
-    mkdirSync(dirname(file), { recursive: true });
-    prune(dirname(file));
-    writeFileSync(file, JSON.stringify(repo && { ...repo, urls: repo.urls.map(bare) }));
-  } catch {}
-  return repo;
-}
-
 function sessionStart(c, layer, input, data) {
   // At a subagent's start no check or notice runs, and the agent types that start without instruction files get no layer either.
   const sub = input.hook_event_name === 'SubagentStart', quiet = sub || c.env.CLAUDE_CODE_SESSION_ATTENDED === '0', lead = layer === 'all' || layer === 'group';
@@ -303,26 +289,23 @@ function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) 
   const map = loadMap(p.map, c.home);
   if (!map.roots.length && !map.repos.some((e) => e.profile === 'local')) return undefined;
   const cwd = isDir(input.cwd) ? input.cwd : c.cwd;
-  let repo, context, late;
+  let repo, context;
   try { repo = repoOf(c, cwd, Date.now() + c.limit); } catch (e) {
     if (!(e instanceof Unknown)) throw e;
-    // Where git gives no answer in time, the start is read as the repository git gave at the directory's last start.
-    repo = keptRepo(c, data, cwd);
-    msgs.push(late = repo === undefined ? `primer: the context of ${slash(cwd)} is unknown, since git gave no answer within ${c.limit / 1000} s`
-      : `primer: git gave no answer within ${c.limit / 1000} s, so ${slash(cwd)} is read as ${repo ? 'the repository git gave' : 'a directory with no layers, as it was'} at an earlier start there`);
-    if (repo === undefined) return none(`git gave no answer within ${c.limit / 1000} s, so whether ${slash(cwd)} has layers is unknown`);
+    msgs.push(`primer: the context of ${slash(cwd)} is unknown, since git gave no answer within ${c.limit / 1000} s`);
+    return none(`git gave no answer within ${c.limit / 1000} s, so whether ${slash(cwd)} has layers is unknown`);
   }
   const entry = repo && match(map, repo, c.platform), root = repo && !entry && under(map, repo.root, c.platform);
-  // Where git reads no repository in a directory that holds .git, as with a damaged HEAD, the path of a local entry, or a kept repository a local entry still matches, stops the load.
-  if (!late) keptRepo(c, data, cwd, entry?.profile === 'local' ? { ...repo, remotes: entry.remotes } : repo === null && topOf(c, cwd) && (entryAt(map, topOf(c, cwd), c.platform) || [keptRepo(c, data, cwd)].some((k) => k && match(map, k, c.platform)?.profile === 'local')) ? refuse(`git read no repository at ${slash(cwd)}, though ${topOf(c, cwd)} holds .git`) : null);
+  // Where git reads no repository in a directory that holds .git, as with a damaged HEAD, the path of a local entry stops the load.
+  if (repo === null && topOf(c, cwd) && entryAt(map, topOf(c, cwd), c.platform)) refuse(`git read no repository at ${slash(cwd)}, though ${topOf(c, cwd)} holds .git`);
   if (root) msgs.push(`primer: ${repo.root} is unmapped, under ${root} of the map's roots; run /primer to map it`);
   if (repo && !entry) { const at = entryAt(map, repo.root, c.platform); if (at) refuse(`${repo.root} is the path of the map's entry of group ${at.group} and has none of its remotes`); }
   if (entry?.profile !== 'local') return undefined;
   const all = layersOf(p, entry), parts = all.filter((x) => x.text), whole = layer === 'all' ? parts : parts.filter((x) => x.name === layer), bad = all.filter((x) => x.bad && (layer === 'all' || x.name === layer)).map((x) => `primer: the ${x.name} layer is not loaded: ${x.bad}`), empty = !parts.length && !all.some((x) => x.bad) && none(`each layer file of group ${entry.group} is missing or empty`);
-  // A line for a start read from a kept answer and one for each layer whose file is no file open the string; with no layer at all, one line says so.
-  const note = late && lead && (bad.length || whole.length) ? `${late}\n\n` : '', body = [...bad, joined(whole)].filter(Boolean).join('\n\n'), n = (note + body).length;
-  // The host gives a session a preview of a string over its cap, which keeps the string's start: a line there, after any note of a kept answer, says a layer is whole only once its file is read.
-  context = note + (n > CAP ? `primer: the text below is ${n} characters, over the host's cap of ${CAP}, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${whole.map((x) => x.file).join(', ')}\n\n` : '') + body || empty || undefined;
+  // A line for each layer whose file is no file opens the string; with no layer at all, one line says so.
+  const body = [...bad, joined(whole)].filter(Boolean).join('\n\n'), n = body.length;
+  // The host gives a session a preview of a string over its cap, which keeps the string's start: a line there says a layer is whole only once its file is read.
+  context = (n > CAP ? `primer: the text below is ${n} characters, over the host's cap of ${CAP}, so a session holds a preview of it and holds each layer whole only once it has read the layer's file: ${whole.map((x) => x.file).join(', ')}\n\n` : '') + body || empty || undefined;
   // A resumed session still holds the string it was last given, so it gets one only where the string differs from that one: the
   // digest of each string given is kept under the data directory by session and layer, for 30 days after the session's last
   // start, and a session with none kept gets the string. With no absolute data directory, or an id that names no file, nothing is kept
@@ -334,13 +317,16 @@ function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) 
     writeFileSync(mark, digest);
   } catch { mark = null; }
   if (mark) try { prune(dirname(mark)); } catch {}
+  // An earlier version kept the repository git gave at each start under repo/, with its path and remote URLs; nothing reads it now.
+  if (data && isAbsolute(data)) try { rmSync(join(data, 'repo'), { recursive: true, force: true }); } catch {}
   if (input.source === 'resume' && (!mark || same)) context = undefined;
   const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
     : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));
   for (const said of [...bad, empty, apart(c, p) && `primer: ${apart(c, p)}`]) if (said) msgs.push(said);
   for (const s of sizes) if (s.text.length > CAP) msgs.push(`primer: ${s.what} is ${s.text.length} characters as emitted, over the host's cap of ${CAP}${s.of}`);
   // The notice hook runs at startup alone, and so does this.
-  const told = (input.source ?? 'startup') === 'startup' && !quiet && lead && notice(c, input, data, repo);
+  let told;
+  try { told = (input.source ?? 'startup') === 'startup' && !quiet && lead && notice(c, input, data, repo); } catch (e) { told = `primer: the review notice stopped on an error of its own: ${e?.message ?? e}`; }
   if (told) msgs.push(told);
   return context;
 }
@@ -597,7 +583,8 @@ function reach(c, data, input) {
   if (p && [p.store, p.local].some(inside)) return [];
   const log = data && isAbsolute(data) && typeof input.session_id === 'string' && GROUP.test(input.session_id) ? join(data, 'reach', input.session_id) : null;
   if (log && readText(log).split('\n').includes(k(top))) return [];
-  const deadline = Date.now() + c.limit, repo = repoOf(c, top, deadline), mine = own && repoOf(c, own, deadline);
+  // The entry stops at 10 s, so the git calls here get 5 s at most.
+  const deadline = Date.now() + Math.min(c.limit, 5000), repo = repoOf(c, top, deadline), mine = own && repoOf(c, own, deadline);
   if (!repo) return [];
   const map = p && loadMap(p.map, c.home);
   // Another work tree of the session's repository is its own: it is recorded and gets nothing.
@@ -675,7 +662,7 @@ function mapVerb(c, [op, ...args]) {
 }
 
 // Returns the output lines; a refusal throws. limit is the time the loader's and status's git calls share, in milliseconds.
-export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd(), stdin = () => readFileSync(0, 'utf8'), limit = 5000, user, host = hostname() } = {}) {
+export function main(argv, { env = process.env, platform = process.platform, home = homedir(), cwd = process.cwd(), stdin = () => readFileSync(0, 'utf8'), limit = 30000, user, host = hostname() } = {}) {
   const [verb, ...rest] = argv, c = { env, platform, home, cwd, limit, host, user: user ?? (() => { try { return userInfo().username; } catch { return ''; } })() };
   const input = () => { try { const v = JSON.parse(stdin()); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } };
   if (verb === 'session-start') { try { return sessionStart(c, rest[0], input(), rest[1]); } catch { return []; } }

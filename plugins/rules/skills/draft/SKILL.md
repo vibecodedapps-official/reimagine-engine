@@ -28,4 +28,4 @@ Notes stay outside the draft: what was left out and why, what could not be verif
 
 ## Email
 
-An email draft is one HTML file in the scratch directory the house rules name, ready to open in a browser and paste, with its links and tables. It is the only stored copy, and the reply shows the draft as text taken from that file. Every other draft is Markdown. No draft is kept in two formats.
+An email draft, or a draft with a table for a chat, is one HTML file in the scratch directory the house rules name, ready to open in a browser and paste, with its links and tables. It is the only stored copy, and the reply shows the draft as text taken from that file. Every other draft is Markdown. No draft is kept in two formats.

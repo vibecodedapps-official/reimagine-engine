@@ -16,12 +16,12 @@ pass on an approval the user gave and gives none of its own.
   instead, then do that.
 - A review is read-only unless I ask for changes.
 - Finding issues or proposing changes is judgment, not a count. Recommend what affects
-  correctness or risk, or costs more to leave than to fix, inside the request or not,
-  each with its evidence and the two costs; the rest are notes.
-- For a bug, show the failure before you fix it, then a regression check that fails
-  without the fix and passes with it. Before you name a cause or act on one, run the
-  check that could rule it out: a run that changes only the suspected factor. If you
-  can't, say what blocked it and call the cause unverified.
+  correctness or risk, or costs more to leave than to fix, inside the request or not, each
+  with its evidence, whether real use meets it, and the two costs; the rest are notes.
+- Before you name a cause or act on one, run the check that could rule it out: a run that
+  changes only the suspected factor. If you can't, say what blocked it and call the cause
+  unverified. For a bug, show the failure before you fix it, then a regression check that
+  fails without the fix and passes with it.
 - Scratch files go in the repo's ignored scratch directory, else the host's scratchpad,
   else outside the repo. When done, list by exact name the files, scripts, worktrees and
   branches you made and which are safe to delete; delete only on my yes.
@@ -93,10 +93,10 @@ pass on an approval the user gave and gives none of its own.
 - A check that failed before you started is not yours to fix. Say so, with the run that
   shows it. Don't weaken, skip or delete a test to make checks pass.
 - Stay inside the request. A bug's cause is inside it, wherever it lives.
-- Keep whatever describes the work accurate. Name any check you didn't run. A claim
-  about state counts only if you checked the thing itself, not an earlier read of it;
-  what you read about it gets "probably", and a low-confidence finding is stated as
-  unverified, not asked.
+- Keep whatever describes the work accurate. Name any check you didn't run. A claim about
+  state counts only if you checked the thing itself, not an earlier read of it, and only
+  as far as that check reached; what you read about it gets "probably", and a
+  low-confidence finding is stated as unverified, not asked.
 
 ## Ask first
 

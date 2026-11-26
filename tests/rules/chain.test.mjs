@@ -121,6 +121,18 @@ test('R405: a command holds a push where it holds git and push as words, and is 
     ['cd ~/git && docker push x', false, null],
     ['CD x && git push', true, { sub: 'push', args: [] }],
     ['Cd x && git push', true, { sub: 'push', args: [] }],
+    ['git -C stash push', false, { sub: 'push', args: [] }],
+    ['git -C ../my-stash push', false, { sub: 'push', args: [] }],
+    ['git -C ~/src/stash push origin main', false, { sub: 'push', args: ['origin', 'main'] }],
+    ['git --git-dir=x/stash push', false, null],
+    ['git.exe stash push -m wip', false, undefined],
+    // Under Bash a backslash and a line break join a line; PowerShell has no such continuation.
+    ['git\\\n push origin main', false, null],
+    ['git\\\r\n push origin main', false, null],
+    ['git pu\\\nsh origin main', false, null],
+    ['git\\\n push origin main', true, undefined],
+    ['cd C:\\git\\app && docker push x', false, undefined],
+    ['cd repo\ngit push', false, null],
     ['git add . && git commit -m "fix push retry"', false, null],
     ['git pull --ff-only && git push', false, null],
     ['rg "git push" docs', false, null],
@@ -141,4 +153,7 @@ test('R405: a long run of spaces in a command is read in linear time', () => {
   const start = Date.now();
   assert.deepEqual(plain(`git push${' '.repeat(200000)}x`), { sub: 'push', args: ['x'] });
   assert.ok(Date.now() - start < 2000);
+  const again = Date.now();
+  for (const command of [`git stash${' '.repeat(200000)}push`, `stash${' '.repeat(200000)}push git`, `git${' '.repeat(200000)}stash push`]) pushing(command);
+  assert.ok(Date.now() - again < 2000);
 });

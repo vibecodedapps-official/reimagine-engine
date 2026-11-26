@@ -66,7 +66,7 @@ A denial names the string, where it was found and the list file, and for a comma
 ### What is read
 
 - At a `git commit`, `git merge` or `git tag`, and at any `gh`, `az` or `glab` call or command that holds a `post:` phrase: the whole command, with each file it names as a message or a body, `$(cat <file>)` and a `<` redirect included.
-- At a command that holds the words `git` and `push`: the messages of the commits on any local branch that no remote-tracking branch holds yet, so a commit on a branch you are not pushing is denied too. `git` does not count as part of a path, as in `.git` or `~/git/app`, and `git stash push` is no push wherever it stands.
+- At a command that holds the words `git` and `push`: the messages of the commits on any local branch that no remote-tracking branch holds yet, so a commit on a branch you are not pushing is denied too. `git` does not count as part of a path, as in `.git` or `~/git/app`, and `git stash push` is no push, nor is a plain `git stash` call. Under Bash a backslash and a line break join a line before the words are looked for.
 - At a plain `git push` also: its own words, the commits of a tag it names and the name of the branch you are on, so a listed string in a refspec or a branch name is denied as well.
 - At an MCP tool call: every string value the tool is given.
 
@@ -101,7 +101,7 @@ With `check: diff`, a command that holds the words `git` and `push` is denied un
 - A pipe, a redirect, `;`, `&&`, a `$`, a backtick, a comment, a continued line or a here-document makes the command no plain call, so `git pull --ff-only && git push`, `git push | tail -3` and PowerShell's `git push; $LASTEXITCODE` are denied.
 - Quoted text counts as the shell reads it: `git commit -m "fix push retry"` and `git log --grep push` are plain calls and pass, while `git add . && git commit -m "fix push retry"` is denied.
 - The words count in any command, so a search or a forge call whose text holds both, as `rg "git push" docs`, is denied too. Keep the two words out of other commands, or send them through a file tool.
-- Without `check: diff` none of these is denied for its form. A command that holds both words has its commits read; one that is no plain call also has the whole command read as the words of a push, every tag read and the name of its branch read, while a plain `git push` has its own words, the tags it names and the name of its branch read.
+- Without `check: diff` none of these is denied for its form. A command that holds both words has its commits read; one that is no plain call also has the whole command read as the words of a push, less the folders and files the hook resolved, with every tag and the name of its branch read, while a plain `git push` has its own words, the tags it names and the name of its branch read.
 
 ### When the hook cannot read
 

@@ -14,7 +14,7 @@
 //   skills   each skill of the store and its link in <config>/skills; --link makes the missing links
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, rmdirSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir, hostname, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -284,8 +284,9 @@ function sessionStart(c, layer, input, data) {
 
 // The context string of a start, with the warnings and the notice pushed to msgs; undefined where the start gets none.
 function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) {
-  // Nothing reads repo/ under the data directory, which may hold paths and remote URLs, so a start removes it.
-  if (data && isAbsolute(data)) try { rmSync(join(data, 'repo'), { recursive: true, force: true }); } catch {}
+  // Nothing reads repo/ under the data directory, which may hold paths and remote URLs, so a start removes its files named by 16
+  // hexadecimal characters and then the directory, if it is empty.
+  if (data && isAbsolute(data)) try { const at = join(data, 'repo'); for (const e of readdirSync(at, { withFileTypes: true })) if (e.isFile() && /^[0-9a-f]{16}$/.test(e.name)) rmSync(join(at, e.name)); rmdirSync(at); } catch {}
   const p = places(c, own);
   if (p.cfg.store && !existsSync(p.map)) refuse(`${p.cfgPath} names the store ${p.store}, which ${isDir(p.store) ? 'holds no map.json' : 'is missing'}`);
   const map = loadMap(p.map, c.home);

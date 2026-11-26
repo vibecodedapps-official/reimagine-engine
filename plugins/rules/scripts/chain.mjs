@@ -2,7 +2,7 @@
 // A command that holds more can make a commit no check before it reads, and one the shell builds is not the text that runs.
 // A module of outbound.mjs, which is at its budget.
 
-const EDGE = 'A-Za-z0-9_-', GIT = new RegExp(String.raw`(?<![.${EDGE}])git(?![\\/${EDGE}])`, 'i'), PUSH = new RegExp(String.raw`(?<![${EDGE}])(?<!stash\s+)push(?![${EDGE}])`, 'i');
+const EDGE = 'A-Za-z0-9_-', GIT = new RegExp(String.raw`(?<![.${EDGE}])git(?![\\/${EDGE}])`, 'i'), PUSH = new RegExp(String.raw`(?<![${EDGE}])(?<!(?<![.${EDGE}])git(?:\.exe)?\s+stash\s+)push(?![${EDGE}])`, 'i');
 // git's own options a plain call may hold before its subcommand; -C takes the next word as its value.
 const OWN = new Set(['--no-pager', '-P', '--no-optional-locks']);
 // Outside a quoted text, a character that ends a command, starts another or has the shell build a word; a # and, for the
@@ -48,5 +48,12 @@ export function plain(command, ps) {
 }
 
 // What a command is to the push check: undefined where it does not hold git and push as words, null where it holds both and is
-// no plain call, else its call.
-export const pushing = (command, ps) => (GIT.test(command) && PUSH.test(command) ? plain(command, ps) : undefined);
+// no plain call, else its call. For Bash the words are looked for in the command with each backslash and line break pair removed, as
+// the shell joins a continued line; git stash push is no push.
+export function pushing(command, ps) {
+  const text = ps ? command : command.replace(/\\\r?\n/g, '');
+  return GIT.test(text) && PUSH.test(text) ? plain(command, ps) : undefined;
+}
+
+// Whether a call from pushing() sends commits: any command that holds a push, but a plain git stash call.
+export const sends = (call) => call !== undefined && call?.sub !== 'stash';

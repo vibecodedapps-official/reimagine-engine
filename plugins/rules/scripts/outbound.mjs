@@ -8,7 +8,7 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runInNewContext } from 'node:vm';
-import { pushing } from './chain.mjs';
+import { pushing, sends } from './chain.mjs';
 import { targets } from './rules.mjs';
 
 export const LIST_FILE = 'rules-outbound.txt';
@@ -203,7 +203,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     return resolve(base, p);
   };
   const why = postWord(command, list), posts = why !== null, call = pushing(command, tool === 'PowerShell');
-  const pushes = call !== undefined && call?.sub !== 'stash';
+  const pushes = sends(call);
   const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
   // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape
@@ -230,9 +230,9 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     dirs.push(...found.map((dir) => ({ ...d, dir })));
     if (!found.length && bare(d.span[0]) && !d.dir.startsWith('-') && !d.loose) missing.push(d.dir);
   }
-  const texts = [], notes = [];
+  const texts = [], notes = [], kept = dirs.map((d) => d.span).filter(typed);
   if (posts) {
-    const kept = dirs.map((d) => d.span).filter(typed), seen = new Set();
+    const seen = new Set();
     for (const { file, loud, mention, span } of namedFiles(command, own)) {
       let read = false;
       for (const full of new Set([cwd, ...dirs.map((d) => d.dir)].map((base) => local(file, base)))) {
@@ -255,7 +255,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   const first = hit(texts);
   if (first) return first;
   if (pushes) {
-    const sent = call === null ? without(command, dirs.map((d) => d.span).filter(typed)) : call.sub === 'push' ? call.args.join(' ') : null, mine = sent !== null && hit([{ where: call === null ? 'the command, which may hold a push' : 'the words of the push', text: sent }]); if (mine) return mine;
+    const sent = call === null ? without(command, kept) : call.sub === 'push' ? call.args.join(' ') : null, mine = sent !== null && hit([{ where: call === null ? 'the command, which may hold a push' : 'the words of the push', text: sent }]); if (mine) return mine;
     // A folder spelled two ways is read once.
     const real = (p) => { try { return realpathSync.native(p); } catch { return p; } }, read = new Set();
     for (const dir of [cwd, ...dirs.map((d) => d.dir)]) {
@@ -283,8 +283,8 @@ export function main({ env = process.env, home = homedir(), platform = process.p
   let list, input;
   try { list = parseList(decode(readFileSync(path))); } catch (e) { if (e?.code === 'ENOENT' || e?.code === 'ENOTDIR') return []; }
   try { input = JSON.parse(stdin()); } catch { return []; }
-  const typed = input?.tool_input?.command, ps = input?.tool_name === 'PowerShell';
-  if (!list) return (ps || input?.tool_name === 'Bash') && typeof typed === 'string' && (postWord(typed, { post: [] }) !== null || pushing(typed, ps) !== undefined) ? [deny(`rules: ${path} is there and cannot be read, so the command was not checked against it; run it again once the file can be read`)] : [];
+  const typed = input?.tool_input?.command, ps = input?.tool_name === 'PowerShell', call = typeof typed === 'string' ? pushing(typed, ps) : undefined;
+  if (!list) return (ps || input?.tool_name === 'Bash') && typeof typed === 'string' && (postWord(typed, { post: [] }) !== null || sends(call)) ? [deny(`rules: ${path} is there and cannot be read, so the command was not checked against it; run it again once the file can be read`)] : [];
   try { return runInNewContext('run()', { run: () => check(input, list, path, { home, platform, env }) }, { timeout: limit }); } catch (e) {
     const late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '', shell = typeof input?.tool_input?.command === 'string';
     return [deny(`rules: the ${shell ? 'command' : 'tool input'} could not be read${late}, so it was not checked against ${path}; send it ${shell ? 'as shorter commands' : 'in smaller calls'}`)];

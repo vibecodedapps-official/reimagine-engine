@@ -287,9 +287,9 @@ function analyze(typed, st, vars = new Map(), alone = false) {
 // other option is read as a flag, so a value taken for a commit is one git cannot read, which denies.
 const BRINGS = {
   merge: /^(-[mFsX]|--(message|file|strategy|strategy-option|into-name|cleanup))$/,
-  'cherry-pick': /^(-[mX]|--(mainline|strategy|strategy-option|cleanup))$/,
-  rebase: /^(-[sX]|--(strategy|strategy-option|whitespace|empty))$/,
-  am: /^--(whitespace|empty|quoted-cr|exclude|include)$/,
+  'cherry-pick': /^(-[mX]|--(mainline|strategy|strategy-option|cleanup|empty))$/,
+  rebase: /^(-[sXC]|--(strategy|strategy-option|whitespace|empty))$/,
+  am: /^(-C|--(whitespace|empty|quoted-cr|exclude|include|resolvemsg))$/,
 };
 const brings = (sub) => Object.hasOwn(BRINGS, sub);
 // An option that runs a command, hands the steps to an editor, moves the paths of a patch or names another form of patch leaves
@@ -298,8 +298,10 @@ const UNREAD = { rebase: /^(-[qvnfrpmk]*[xi]|--exe?c?(=|$)|--in[a-z]*$)/, am: /^
 // A call that ends or steps over a merge, a cherry-pick, a rebase or an am under way brings nothing in.
 const ENDS = new Set(['--abort', '--skip', '--quit', '--edit-todo', '--show-current-patch']);
 const ends = (w) => ENDS.has(w) || (typeof w === 'string' && w.startsWith('--show-current-patch='));
-// An argument that ends one, which is not the value of the option before it.
-const stops = (sub, args) => args.some((x, k) => ends(x.w) && !BRINGS[sub].test(args[k - 1]?.w ?? ''));
+// An end word ends the call only where each word before it is an option that takes no value word, so a word that git may take as a
+// value is never read as one; any other call goes on to brought().
+const takes = (sub, w) => BRINGS[sub].test(w) || UNREAD[sub]?.test(w) || (sub === 'rebase' && w === '--onto');
+const stops = (sub, args) => { const k = args.findIndex((x) => ends(x.w)); return k >= 0 && args.slice(0, k).every((x) => x.w.startsWith('-') && x.w !== '-' && !takes(sub, x.w)); };
 
 // What a patch in git's form holds: the files it creates, the target of a rename among them, and the lines it adds to each ignore
 // file; null for a new file or a target whose header the script cannot read.

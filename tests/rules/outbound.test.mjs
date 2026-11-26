@@ -140,6 +140,16 @@ test('R405: a file the command names after -F, --file or --body-file, or as @<fi
   none(w.shell('gh api repos/o/r/issues -F title=x -f body=y'));
 });
 
+test('R405: a push chained after a post is searched without the files the post left out', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w);
+  mkdirSync(join(dir, 'zqxlisted'));
+  writeFileSync(join(dir, 'zqxlisted', 'msg.txt'), 'a clean message\n');
+  none(w.shell('git commit -F zqxlisted/msg.txt && git push', 'Bash', dir));
+  denied(w.shell('git commit -F zqxlisted/msg.txt && git push origin main:zqxlisted', 'Bash', dir), 'zqxlisted', 'the command', w);
+});
+
 test('R405: a path the hook resolved is left out of the search, so a folder that holds a listed name denies nothing', () => {
   const w = world();
   w.list('zqxlisted');
@@ -514,6 +524,15 @@ test('R405: git stash push is no push, and any other command that holds git and 
   denied(w.shell('git commit -m "clean" && git push', 'Bash', dir), 'zqxlisted', 'commit ', w);
 });
 
+test('R405: a push from a repository in a folder named stash is read', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w, 'stash');
+  w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'zqxlisted');
+  denied(w.shell('git -C stash push', 'Bash', w.root), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git -C ../stash push', 'Bash', w.work), 'zqxlisted', 'commit ', w);
+});
+
 test('R405: a control character in a message does not cut the rest of it off', () => {
   const w = world();
   w.list('zqxlisted');
@@ -659,6 +678,8 @@ test('R405: a push reads each folder with two git calls, one for its commits and
   // cd - names no folder.
   w.list('zqxlisted');
   assert.equal(gitCalls(w, 'cd - && git push', other), 2);
+  // The command is no plain call, so each folder it names is read with two git calls: its commits and its branch.
+  assert.equal(gitCalls(w, `cd "${dir}" && cd - && git push`, other), 4);
 });
 
 test('R405: a push whose read runs past the hook\'s own limit is denied, with the folder and the limit named', () => {
@@ -702,7 +723,7 @@ test('R405: a list that is there and cannot be read denies a command that posts 
   for (const command of ['git commit -m x', 'git push', 'git add . && git push', 'git log --grep push', 'gh pr list']) assert.deepEqual(w.shell(command), unread, command);
   assert.deepEqual(w.shell('git push', 'PowerShell'), unread);
   // No post: phrase is known while the list cannot be read, and an MCP input is not read for a push.
-  for (const command of ['echo done', 'docker push image:tag', 'node tools/send.mjs --body x']) none(w.shell(command));
+  for (const command of ['echo done', 'docker push image:tag', 'node tools/send.mjs --body x', 'git stash save "push later"', 'git stash push -m "push wip"']) none(w.shell(command));
   none(w.run({ hook_event_name: 'PreToolUse', tool_name: 'mcp__forge__post_comment', tool_input: { body: 'git push' }, cwd: w.work }));
   none(w.run({ hook_event_name: 'PreToolUse', tool_name: 'mcp__x__exec', tool_input: { command: 'git push' }, cwd: w.work }));
   none(w.shell('git stash push -m wip'));

@@ -368,9 +368,10 @@ test('R405: a commit only a tag reaches is read when the push names the tag', ()
   none(w.shell(`git commit -m "push ${Array.from({ length: 70 }, (_, i) => `w${i}`).join(' ')}"`, 'Bash', dir));
   for (const command of ['git push -q origin v1', 'git push origin v1.0.0+build.5', 'git push origin +v1.0.0+build.5', 'git push origin tag v1', "git push origin 'refs/tags/v1'", 'git push origin +v1:refs/tags/v2', 'git push origin rel/1.0', "git push origin 'refs/tags/*'", 'git push origin tags/v1', "git push origin 'v1!'", 'git push origin release-\u{1F680}', 'git push origin v1 \u0000']) denied(w.shell(command, 'Bash', dir), 'zqxlisted', 'commit ', w);
   denied(w.shell('git push origin v1', 'PowerShell', dir), 'zqxlisted', 'commit ', w);
-  // A command that is no plain call gives no words, so a tag a push in it names is not read.
-  none(w.shell('git push origin --delete v1 && git push origin v1', 'Bash', dir));
-  none(w.shell('git push --dry-run -d origin x; git push origin v1', 'Bash', dir));
+  // A command that is no plain call has every tag read, so a tag a push in it names is found.
+  denied(w.shell('git push origin --delete v1 && git push origin v1', 'Bash', dir), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git push --dry-run -d origin x; git push origin v1', 'Bash', dir), 'zqxlisted', 'commit ', w);
+  denied(w.shell('git fetch && git push origin v1', 'Bash', dir), 'zqxlisted', 'commit ', w);
   // A push that deletes a tag, or has a refspec with no source, sends no commit.
   for (const command of ['git push origin --delete v1', 'git push origin -d v1', 'git push origin :v1', 'git push origin :refs/tags/v1']) none(w.shell(command, 'Bash', dir));
   // Where the words of the pushes hold more than 4,000 characters, every tag is read, as past 64 words.
@@ -400,11 +401,20 @@ test('R405: a push is read for the name of the branch its folder is on and for i
   denied(w.shell('git push origin main:zqxlisted', 'PowerShell', dir), 'zqxlisted', 'the words of the push', w);
   w.git(dir, 'switch', '-q', '-c', 'zqxlisted-notes');
   denied(w.shell('git push -u origin HEAD', 'Bash', dir), 'zqxlisted', `the name of the branch ${dir} is on`, w);
-  // A push in a command that is no plain call gives no words, so the name of its branch is not read.
-  none(w.shell('git -c user.name=x push -u origin HEAD', 'Bash', dir));
+  // A push in a command that is no plain call has the name of its branch read too, and the whole command as its words.
+  denied(w.shell('git -c user.name=x push -u origin HEAD', 'Bash', dir), 'zqxlisted', `the name of the branch ${dir} is on`, w);
+  denied(w.shell('git push -u origin HEAD 2>&1 | tail -5', 'Bash', dir), 'zqxlisted', `the name of the branch ${dir} is on`, w);
+  denied(w.shell('git status && git push origin main:zqxlisted', 'Bash', dir), 'zqxlisted', 'the command, which may hold a push', w);
   // An allow line takes the name out, as it does any text.
   w.list('zqxlisted', 'allow: zqxlisted-notes');
   none(w.shell('git push -u origin HEAD', 'Bash', dir));
+});
+
+test('R405: a folder the command resolves and names is left out of the words read for a push', () => {
+  const w = world();
+  w.list('zqxlisted');
+  const dir = repo(w, 'zqxlisted-repo');
+  none(w.shell(`cd '${dir}' && git status && git push`));
 });
 
 test('R405: the name of the branch is read only where a push is found, and a push\'s own words where no commit can be read', () => {
@@ -602,7 +612,7 @@ test('R405: with check: diff, a command that holds git and push and is no plain 
     'git --no-pager log --oneline --grep revert && git push', 'git -c commit.gpgsign=false log && git push', 'git push 2>&1 | tail -3', 'bash -c "git commit -m x; git push"', 'git add . && git commit -m "fix push retry"', 'rg "git push" docs',
     'gh pr create --title t --body "run git push after the merge"']) assert.deepEqual(w.shell(command, 'Bash', dir), { decision: 'deny', reason }, command);
   for (const command of ['git commit -m x; git push', 'git push; $LASTEXITCODE']) assert.deepEqual(w.shell(command, 'PowerShell', dir), { decision: 'deny', reason }, command);
-  // A plain call is read as before: a push alone, after one cd or with -C, ending in 2>&1, and a commit or a log that only holds the word.
+  // A plain call is read: a push alone, after one cd or with -C, ending in 2>&1, and a commit or a log that only holds the word.
   for (const command of ['git push', 'cd . && git push', 'git -C . push', 'git push 2>&1', 'git commit -m "push later"', 'git commit -m "fix push retry"', 'git commit -m "see git push docs"', 'git commit -m "teach the git hook to read a push"',
     'git commit -m "fix(rules): deny git commit && git push in one command"', 'git commit -m "docs: run git merge; then git push"', 'git log --grep push']) none(w.shell(command, 'Bash', dir));
   none(w.shell('git push origin main 2>&1', 'PowerShell', dir));
@@ -647,6 +657,7 @@ test('R405: a push reads each folder with two git calls, one for its commits and
   assert.equal(gitCalls(w, `git -C "${dir}" push`, other), 4);
   assert.equal(gitCalls(w, `git -C "${dir}" push`, `${dir}${sep}.`), 2);
   // cd - names no folder.
+  w.list('zqxlisted');
   assert.equal(gitCalls(w, 'cd - && git push', other), 2);
 });
 
@@ -677,7 +688,7 @@ test('R405: a push from a repository whose commits git cannot read is denied, an
   w.git(dir, 'commit', '-q', '--allow-empty', '-m', 'zqxlisted');
   // git log refuses a log.date it does not know, while git rev-parse still finds the repository.
   w.git(dir, 'config', 'log.date', 'bogus');
-  const lost = { decision: 'deny', reason: `rules: the commits a push from ${dir} would send could not be read, so the push was not checked against ${w.listFile}; run it again` };
+  const lost = { decision: 'deny', reason: `rules: the commits a push from ${dir} would send could not be read, since git log failed there, so the command was not checked against ${w.listFile}; run git log in that folder to see why` };
   assert.deepEqual(w.shell('git push', 'Bash', dir), lost);
   w.list('zqxlisted', 'check: diff');
   assert.deepEqual(w.shell('git push', 'Bash', dir), lost);
@@ -693,6 +704,8 @@ test('R405: a list that is there and cannot be read denies a command that posts 
   // No post: phrase is known while the list cannot be read, and an MCP input is not read for a push.
   for (const command of ['echo done', 'docker push image:tag', 'node tools/send.mjs --body x']) none(w.shell(command));
   none(w.run({ hook_event_name: 'PreToolUse', tool_name: 'mcp__forge__post_comment', tool_input: { body: 'git push' }, cwd: w.work }));
+  none(w.run({ hook_event_name: 'PreToolUse', tool_name: 'mcp__x__exec', tool_input: { command: 'git push' }, cwd: w.work }));
+  none(w.shell('git stash push -m wip'));
   none(w.run('not json'));
   // A config folder that is a file holds no list.
   w.env.CLAUDE_CONFIG_DIR = join(w.root, 'empty.gitconfig');

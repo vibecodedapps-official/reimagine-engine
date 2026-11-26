@@ -411,12 +411,21 @@ describe('the git limit', () => {
     assert.deepEqual(from(slowGit()), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line }, systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
   });
 
-  test('a start removes the repositories an earlier version kept under repo/ of the data directory, and keeps none', () => {
+  test('a start removes the directory repo/ under the data directory', () => {
     const dir = repo('kept-gone', 'https://example.invalid/team/app.git'), data = join(base, 'data-gone');
     const cfg = config(local(), { group: GROUP });
     write(data, 'repo/0123456789abcdef', JSON.stringify({ root: slash(dir), top: slash(dir), remotes: ['example.invalid/team/app'], names: ['origin'], urls: ['https://example.invalid/team/app.git'] }));
     const out = main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
     assert.equal(JSON.parse(out[0]).hookSpecificOutput.additionalContext, part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e'));
+    assert.equal(existsSync(join(data, 'repo')), false);
+  });
+
+  test('a start in a directory the map does not hold removes the directory repo/ under the data directory too', () => {
+    const dir = repo('kept-other', 'https://example.invalid/team/other.git'), data = join(base, 'data-other');
+    const cfg = config(local(), { group: GROUP });
+    write(data, 'repo/0123456789abcdef', JSON.stringify({ root: slash(dir), top: slash(dir), remotes: ['example.invalid/team/other'], names: ['origin'], urls: ['https://example.invalid/team/other.git'] }));
+    const out = main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    assert.deepEqual(out, []);
     assert.equal(existsSync(join(data, 'repo')), false);
   });
 });

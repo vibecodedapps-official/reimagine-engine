@@ -174,7 +174,7 @@ That directory belongs to one config folder:
 
 ### Status and size
 
-`/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 5-second limit each show a warning at session start. In a `local` repository the loader also gives the notice above.
+`/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 30-second limit each show a warning at session start. In a `local` repository the loader also gives the notice above.
 
 `scripts/primer.mjs measure` prints each mapped repository's context string as emitted against the cap, and `measure --with <file> <layer>` the size before and after a proposed layer, which `/primer` shows before it proposes an addition.
 
@@ -190,7 +190,9 @@ In a `local` repository, the drift hook runs a staging check on each `git add` a
 
 A `git merge`, `git cherry-pick`, `git rebase` or `git am` is checked by the files its commits would add and the `.gitignore` lines they add: one that names its commits by a branch, a tag or an id, or its patches as files, is read, and one the check cannot read, such as a name held in a variable or a patch on standard input, is denied with a reason that says so. A `--continue` is checked as the commit it makes.
 
-One of the four is read only where it is the whole command: one call with `git` as its first word, as in `git merge feat` or `git -C ../app rebase main 2>&1`, or such a call after one `cd` to a folder the check can follow and `&&`, as in `cd ../app && git merge feat`, read in that folder. Before or after any other call, a second `cd` or a `cd` ended by `;` included, behind `timeout`, `nice` or `env`, or on the right of a PowerShell assignment, it is denied with a reason that says to send it alone. A call that brings nothing, with `--abort`, `--skip`, `--quit`, `--edit-todo`, `--show-current-patch`, `--help` or `-h`, passes wherever it stands.
+One of the four is read only where it is the whole command: one call with `git` as its first word, or after assignments in Bash, as in `git merge feat`, `GIT_EDITOR=true git rebase --continue` or `git -C ../app rebase main 2>&1`, or such a call after one `cd` to a folder the check can follow and `&&`, as in `cd ../app && git merge feat`, read in that folder.
+
+Before or after any other call, a second `cd` or a `cd` ended by `;` included, behind `timeout`, `nice`, `sudo` or `env`, in a text given to `bash -c`, or on the right of a PowerShell assignment, it is denied with a reason that says to send it alone. A call that brings nothing passes wherever it stands: one with `--abort`, `--skip`, `--quit`, `--edit-todo` or `--show-current-patch` among its options, or with `--help` or `-h` first.
 
 ### A variable the command sets
 

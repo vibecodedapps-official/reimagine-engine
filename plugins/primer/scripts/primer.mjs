@@ -284,6 +284,8 @@ function sessionStart(c, layer, input, data) {
 
 // The context string of a start, with the warnings and the notice pushed to msgs; undefined where the start gets none.
 function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) {
+  // Nothing reads repo/ under the data directory, which may hold paths and remote URLs, so a start removes it.
+  if (data && isAbsolute(data)) try { rmSync(join(data, 'repo'), { recursive: true, force: true }); } catch {}
   const p = places(c, own);
   if (p.cfg.store && !existsSync(p.map)) refuse(`${p.cfgPath} names the store ${p.store}, which ${isDir(p.store) ? 'holds no map.json' : 'is missing'}`);
   const map = loadMap(p.map, c.home);
@@ -317,8 +319,6 @@ function layersAt(c, layer, input, data, own, { sub, quiet, lead, none }, msgs) 
     writeFileSync(mark, digest);
   } catch { mark = null; }
   if (mark) try { prune(dirname(mark)); } catch {}
-  // An earlier version kept the repository git gave at each start under repo/, with its path and remote URLs; nothing reads it now.
-  if (data && isAbsolute(data)) try { rmSync(join(data, 'repo'), { recursive: true, force: true }); } catch {}
   if (input.source === 'resume' && (!mark || same)) context = undefined;
   const sizes = layer === 'all' ? [{ text: joined(parts), what: 'the context string', of: ` (${parts.map((x) => `${x.name} ${x.text.length}`).join(', ')})` }]
     : parts.map((x) => ({ text: x.text, what: `the ${x.name} layer`, of: '' }));

@@ -266,8 +266,8 @@ function analyze(typed, st, vars = new Map(), alone = false) {
     st.pushes ||= sub === 'push' || words.some((x) => x.sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\bpush\b/i.test(x.w));
     if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) { st.calls.push({ sub, dir, args }); still = true; }
     // A call for help, and one that ends or steps over a merge under way, bring nothing in. One of the four is read only as the
-    // whole command, with git as its first word.
-    else if (brings(sub) && first !== '--help' && first !== '-h' && !ends(first)) { st.calls.push({ sub, dir, args, alone: alone && i === 0, sh: st.sh, msys: st.msys, home: st.home }); still = true; }
+    // whole command, with git as its first word or after assignments under sh.
+    else if (brings(sub) && first !== '--help' && first !== '-h' && !stops(sub, args)) { st.calls.push({ sub, dir, args, alone: alone && words.slice(0, i).every((x) => st.sh && !x.sub && /^[A-Za-z_]\w*=/.test(x.w)), sh: st.sh, msys: st.msys, home: st.home }); still = true; }
     else still = plain && keeps(sub, args);
   } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = st.hidden = true;
   // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
@@ -298,6 +298,8 @@ const UNREAD = { rebase: /^(-[qvnfrpmk]*[xi]|--exe?c?(=|$)|--in[a-z]*$)/, am: /^
 // A call that ends or steps over a merge, a cherry-pick, a rebase or an am under way brings nothing in.
 const ENDS = new Set(['--abort', '--skip', '--quit', '--edit-todo', '--show-current-patch']);
 const ends = (w) => ENDS.has(w) || (typeof w === 'string' && w.startsWith('--show-current-patch='));
+// An argument that ends one, which is not the value of the option before it.
+const stops = (sub, args) => args.some((x, k) => ends(x.w) && !BRINGS[sub].test(args[k - 1]?.w ?? ''));
 
 // What a patch in git's form holds: the files it creates, the target of a rename among them, and the lines it adds to each ignore
 // file; null for a new file or a target whose header the script cannot read.

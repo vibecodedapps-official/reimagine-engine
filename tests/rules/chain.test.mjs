@@ -63,6 +63,9 @@ test('R405: a command that is more than one plain git call is not plain', () => 
     ['(git push)', false],
     ['git push &', false],
     ['cd a && cd b && git push', false],
+    ['cd - && git push', false],
+    ['cd -P x && git push', false],
+    ['CD x && git push', false],
     ['cd x && git push && echo ok', false],
     ['git push\ngit status', false],
     // A substitution, a variable, a comment, a continued line and a quote left open.
@@ -110,7 +113,14 @@ test('R405: a command holds a push where it holds git and push as words, and is 
     ['git push origin main 2>&1', true, { sub: 'push', args: ['origin', 'main'] }],
     ['git commit -m "fix push retry"', false, { sub: 'commit', args: ['-m', 'fix push retry'] }],
     ['git log --grep push', false, { sub: 'log', args: ['--grep', 'push'] }],
-    ['git stash push -m wip', false, { sub: 'stash', args: ['push', '-m', 'wip'] }],
+    ['git stash push -m wip', false, undefined],
+    ['git stash push -m wip && git switch main', false, undefined],
+    ['git stash push && git push', false, null],
+    ['cd /home/u/git/app && npx prisma db push', false, undefined],
+    ['cat .git/config; echo push', false, undefined],
+    ['cd ~/git && docker push x', false, null],
+    ['CD x && git push', true, { sub: 'push', args: [] }],
+    ['Cd x && git push', true, { sub: 'push', args: [] }],
     ['git add . && git commit -m "fix push retry"', false, null],
     ['git pull --ff-only && git push', false, null],
     ['rg "git push" docs', false, null],
@@ -125,4 +135,10 @@ test('R405: a command holds a push where it holds git and push as words, and is 
     ['g"it" pu\\sh', false, undefined],
   ];
   for (const [command, ps, want] of cases) assert.deepEqual(pushing(command, ps), want, command);
+});
+
+test('R405: a long run of spaces in a command is read in linear time', () => {
+  const start = Date.now();
+  assert.deepEqual(plain(`git push${' '.repeat(200000)}x`), { sub: 'push', args: ['x'] });
+  assert.ok(Date.now() - start < 2000);
 });

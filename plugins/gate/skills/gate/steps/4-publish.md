@@ -29,6 +29,6 @@ Either file is written whole to a temporary file beside it and moved over with `
 
 ## The report
 
-Read `report.md` and write the report from the record to `<record>/report.md`. Then print its whole text, unchanged, as the last text of this target, with no summary, note or offer, since a headless caller sees only the last message. Where a run with a record is one step of a larger request, give the report's path in its place, and the session's instructions end the reply.
+Read `report.md` and write the report from the record to `<record>/report.md`. Then print its whole text, unchanged, as the last text of this target, with no summary, note or offer, since a headless caller sees only the last message. Where a run with a record is one step of a larger request, give the report's path in its place.
 
-With another target left in the order of the reading block, read `steps/0-preflight.md` for it, without its section on instruction files and the permission statement, which ran once. Otherwise the run is over.
+With another target left in the reading block's order, read `steps/0-preflight.md` for it, without its section on instruction files and the permission statement, which ran once. Otherwise the run is over, and the session's instructions end such a reply.

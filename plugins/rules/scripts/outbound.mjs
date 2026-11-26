@@ -110,12 +110,12 @@ function git(dir, args, left = () => Infinity) {
 const or = (call, other) => { try { return call(); } catch (e) { if (e instanceof Late) throw e; return other(); } }; // other's answer where the call fails with time left
 
 // The texts of the commits a push from dir could send: those HEAD, a local branch or a tag the push names reaches and no remote-tracking ref holds; with diff, their added lines and file names too, lost where the diff could not be read.
-// sent holds the words of the push and gives the tag patterns, none where the command is no plain call; past 64 words, or 4,000 characters of them, every tag is read. One git call; a call with no time left throws Late.
-export function leaving(dir, command, diff, left, sent = null) {
+// sent holds the words of the push, the whole command where it is no plain call, and gives the tag patterns; with every, or past 64 words or 4,000 characters of them, every tag is read. One git call; a call with no time left throws Late.
+export function leaving(dir, command, diff, left, sent = null, every = false) {
   const del = (t) => t === '--delete' || /^-[46fquv]*d[46fquv]*$/.test(t);
   const given = (sent ?? '').split('\n').flatMap((line) => { const words = line.split(/[\s"'`,]+/); return words.some(del) ? [] : words.filter((t) => !/^\+?:/.test(t)).flatMap((t) => t.replace(/^\+/, '').split(':')); });
   const names = [...new Set(given)].filter((t) => t && t.length < 256 && !t.startsWith('-') && !/[\0-\x1f\x7f]/.test(t));
-  const tags = names.length > 64 || names.join('').length > 4000 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : [...new Set(names.flatMap((t) => [t, t.replace(/^(?:refs\/)?tags\//, '')]))].filter(Boolean).map((t) => `--tags=${/[*?[]/.test(t) ? t : t.at(-1) > '\x7f' ? `${t}*` : `${t.slice(0, -1)}[\\${t.at(-1)}]`}`);
+  const tags = every || names.length > 64 || names.join('').length > 4000 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : [...new Set(names.flatMap((t) => [t, t.replace(/^(?:refs\/)?tags\//, '')]))].filter(Boolean).map((t) => `--tags=${/[*?[]/.test(t) ? t : t.at(-1) > '\x7f' ? `${t}*` : `${t.slice(0, -1)}[\\${t.at(-1)}]`}`);
   const id = randomBytes(8).toString('hex');
   const args = (patch, tip = ['HEAD']) => ['--no-replace-objects', '-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
     `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, ...tip, '--branches', ...tags, '--not', '--remotes'];
@@ -203,7 +203,7 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     return resolve(base, p);
   };
   const why = postWord(command, list), posts = why !== null, call = pushing(command, tool === 'PowerShell');
-  const pushes = call !== undefined && call?.sub !== 'stash', sent = call?.sub === 'push' ? call.args.join(' ') : null;
+  const pushes = call !== undefined && call?.sub !== 'stash';
   const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
   // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape
@@ -255,16 +255,16 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   const first = hit(texts);
   if (first) return first;
   if (pushes) {
-    if (sent !== null) { const mine = hit([{ where: 'the words of the push', text: sent }]); if (mine) return mine; }
+    const sent = call === null ? without(command, dirs.map((d) => d.span).filter(typed)) : call.sub === 'push' ? call.args.join(' ') : null, mine = sent !== null && hit([{ where: call === null ? 'the command, which may hold a push' : 'the words of the push', text: sent }]); if (mine) return mine;
     // A folder spelled two ways is read once.
     const real = (p) => { try { return realpathSync.native(p); } catch { return p; } }, read = new Set();
     for (const dir of [cwd, ...dirs.map((d) => d.dir)]) {
       if (read.has(real(dir))) continue;
       read.add(real(dir));
       let out, found;
-      try { out = leaving(dir, command, list.diff, left, sent); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: or(() => git(dir, ['symbolic-ref', '-q', '--short', 'HEAD'], left), () => '') }]), ...out.texts], left); } catch (e) {
+      try { out = leaving(dir, command, list.diff, left, sent, call === null); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: or(() => git(dir, ['symbolic-ref', '-q', '--short', 'HEAD'], left), () => '') }]), ...out.texts], left); } catch (e) {
         if (e instanceof Late) return [deny(`rules: the commits a push from ${dir} would send could not be read in ${limit / 1000} seconds, so the push was not checked against ${path}; run it again`)];
-        if (or(() => git(dir, ['rev-parse', '--git-dir'], left), () => '')) return [deny(`rules: the commits a push from ${dir} would send could not be read, so the push was not checked against ${path}; run it again`)];
+        if (or(() => git(dir, ['rev-parse', '--git-dir'], left), () => '')) return [deny(`rules: the commits a push from ${dir} would send could not be read, since git log failed there, so the command was not checked against ${path}; run git log in that folder to see why`)];
         continue; // A folder that is no repository sends nothing.
       }
       if (found) return found;
@@ -283,8 +283,8 @@ export function main({ env = process.env, home = homedir(), platform = process.p
   let list, input;
   try { list = parseList(decode(readFileSync(path))); } catch (e) { if (e?.code === 'ENOENT' || e?.code === 'ENOTDIR') return []; }
   try { input = JSON.parse(stdin()); } catch { return []; }
-  const typed = input?.tool_input?.command;
-  if (!list) return typeof typed === 'string' && (postWord(typed, { post: [] }) !== null || pushing(typed) !== undefined) ? [deny(`rules: ${path} is there and cannot be read, so the command was not checked against it; run it again once the file can be read`)] : [];
+  const typed = input?.tool_input?.command, ps = input?.tool_name === 'PowerShell';
+  if (!list) return (ps || input?.tool_name === 'Bash') && typeof typed === 'string' && (postWord(typed, { post: [] }) !== null || pushing(typed, ps) !== undefined) ? [deny(`rules: ${path} is there and cannot be read, so the command was not checked against it; run it again once the file can be read`)] : [];
   try { return runInNewContext('run()', { run: () => check(input, list, path, { home, platform, env }) }, { timeout: limit }); } catch (e) {
     const late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '', shell = typeof input?.tool_input?.command === 'string';
     return [deny(`rules: the ${shell ? 'command' : 'tool input'} could not be read${late}, so it was not checked against ${path}; send it ${shell ? 'as shorter commands' : 'in smaller calls'}`)];

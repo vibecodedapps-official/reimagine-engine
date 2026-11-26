@@ -2,7 +2,7 @@
 // A command that holds more can make a commit no check before it reads, and one the shell builds is not the text that runs.
 // A module of outbound.mjs, which is at its budget.
 
-const word = (w) => new RegExp(String.raw`(?<![A-Za-z0-9_-])${w}(?![A-Za-z0-9_-])`, 'i'), GIT = word('git'), PUSH = word('push');
+const EDGE = 'A-Za-z0-9_-', GIT = new RegExp(String.raw`(?<![.${EDGE}])git(?![\\/${EDGE}])`, 'i'), PUSH = new RegExp(String.raw`(?<![${EDGE}])(?<!stash\s+)push(?![${EDGE}])`, 'i');
 // git's own options a plain call may hold before its subcommand; -C takes the next word as its value.
 const OWN = new Set(['--no-pager', '-P', '--no-optional-locks']);
 // Outside a quoted text, a character that ends a command, starts another or has the shell build a word; a # and, for the
@@ -15,7 +15,7 @@ const BASH = ';&|<>()$`\n\r', PS = BASH + '{}';
 // git.exe by that name alone, and an option of git itself other than -C and those above. With ps the command is read as
 // PowerShell reads it, its curly quotes as plain ones.
 export function plain(command, ps) {
-  const text = (ps ? command.replace(/[\u2018-\u201b]/g, "'").replace(/[\u201c-\u201e]/g, '"') : command).trim().replace(/\s+2>&1$/, '');
+  const text = (ps ? command.replace(/[\u2018-\u201b]/g, "'").replace(/[\u201c-\u201e]/g, '"') : command).trim().replace(/\s2>&1$/, '').trimEnd();
   const stop = ps ? PS : BASH;
   let words = [], word = null, quote = null, led = false;
   for (let i = 0; i < text.length; i += 1) {
@@ -30,7 +30,7 @@ export function plain(command, ps) {
       else word += c;
     } else if (c === ' ' || c === '\t') { if (word !== null) words.push(word); word = null; }
     else if (c === "'" || c === '"') { quote = c; word ??= ''; }
-    else if (c === '&' && next === '&' && !led && words.length + (word !== null) === 2 && words[0] === 'cd') { led = true; words = []; word = null; i += 1; }
+    else if (c === '&' && next === '&' && !led && words.length + (word !== null) === 2 && (ps ? words[0].toLowerCase() : words[0]) === 'cd' && !(word ?? words[1]).startsWith('-')) { led = true; words = []; word = null; i += 1; }
     else if (stop.includes(c) || (word === null && (c === '#' || (ps && c === '@')))) return null;
     else if (c === '\\' && !ps) { if (next === undefined || next === '\n' || next === '\r') return null; word = (word ?? '') + next; i += 1; }
     else word = (word ?? '') + c;

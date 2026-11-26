@@ -16,7 +16,7 @@ const ran = (t) => { let out = '', d = 0, tick = false; for (let i = 0; i < t.le
 // The simple commands of a shell text, each a list of words { w, bad, sub, git }, with ( and ) kept: bad marks an expansion the
 // script cannot resolve, a brace expansion among them, sub a command substitution inside a quoted word, git one that stages or
 // commits with git, also in a redirect target, which sets lost and hidden; a list carries wrote where the command sends its output
-// to a file, and moved where a redirect or a here-document with no command before it wrote or ran. Null for a quote
+// to a file, and moved where a here-document's body may run a command or a redirect with no command before it wrote. Null for a quote
 // left open or a process substitution outside quotes. A here-document's body is left out and the text after its end line is read
 // on; the list carries lost, hidden where the body names a git add, stage or commit, and brings, one of the four as a git call,
 // where the body may run it (an unquoted end word and a substitution in the body) or the end word cannot be read (then the rest
@@ -85,7 +85,7 @@ function commands(s, ps) {
         [out.lost, out.hidden] = [true, out.hidden || hides(body)];
         // An expansion in such a body can assign a variable, as $((B=2)) and ${B:=x} do.
         if (open && /[$`]/.test(body)) out.expands = true;
-        if (runs) { words.wrote = true; out.brings ??= BROUGHT.exec(ran(body))?.[1].toLowerCase(); }
+        if (runs) { words.wrote = out.moved = true; out.brings ??= BROUGHT.exec(ran(body))?.[1].toLowerCase(); }
         end();
         s = s.slice(0, e + 1) + lines.slice(k + 1).join('\n');
         i += doc[0].length - 1;
@@ -97,6 +97,7 @@ function commands(s, ps) {
       skip = ch === '>' && amp ? '>&' : ch;
     } else if (' \t\r\n;&|()'.includes(ch) || (!ps && ch === '`') || ('{}'.includes(ch) && (ps || (!inw && (ch === '}' || nx === undefined || ' \t\r\n'.includes(nx)))))) {
       end();
+      if (ch === '&' && nx === '&') words.and = true;
       if (ch === '(' && nx === '(') arith = true; else if (ch === '\n' || (ch === ')' && nx === ')')) arith = false;
       if (!' \t\r'.includes(ch)) { cut(); if (ch === '(' || ch === ')') out.push(ch); }
     } else {
@@ -117,39 +118,35 @@ const ASSIGN = /^(?:\[[^\]]*\])*\$[\w:]+(?:((?:\?\?|[-+*/%])?=)(.*))?$/;
 const OPERATOR = /^(?:\?\?|[-+*/%])?=(.*)$/;
 const SHELLS = new Set(['sh', 'bash', 'dash', 'zsh', 'sh.exe', 'bash.exe']);
 const CDS = new Set(['cd', 'chdir', 'pushd', 'popd', 'set-location', 'sl', 'push-location', 'pop-location']);
-// The calls that change nothing a merge, a cherry-pick, a rebase or an am is read from: no ref, no index entry and no patch file.
+// The calls after which a name the command follows still holds the text it was set to: they write no variable of the shell.
 // A program counts by the word as typed, with no directory part.
 const READS = new Set(['echo', 'printf', 'pwd', 'true', 'ls', 'date', 'cat', 'head', 'tail', 'wc', 'grep', 'cut', 'write-host', 'write-output', 'get-location', 'get-content', 'select-object']);
 const GIT_READS = new Set(['status', 'log', 'show', 'diff', 'rev-parse', 'rev-list', 'merge-base', 'describe', 'ls-files']);
 const LISTS = { branch: /^(--show-current|--list|-l|-a|--all|-r|--remotes|-v|-vv)$/, remote: /^-v$/ };
 const FETCH_OPTIONS = /^(--all|--prune|-p|-q|--quiet|-v|--verbose|--no-tags|--progress|--no-progress)$/;
-// A git call that leaves a later one of the four readable: a subcommand that only reads, with no option that names a file to
-// write and no argument the script cannot read; a branch or a remote call that only lists; and a fetch of only those options and
-// names with no ':' or '+' and not 'tag', which moves remote-tracking refs and FETCH_HEAD alone, so the later call is read as those
-// refs stand before it.
+// A git call after which the followed names stand: a subcommand that only reads, with no option that names a file to write and
+// no argument the script cannot read; a branch or a remote call that only lists; and a fetch of only those options and names
+// with no ':' or '+' and not 'tag'.
 const keeps = (sub, args) => (GIT_READS.has(sub) ? !args.some((x) => x.bad || x.w.startsWith('--output'))
   : Object.hasOwn(LISTS, sub) ? args.every((x) => LISTS[sub].test(x.w)) : sub === 'fetch' && args.every((x) => !x.bad && (FETCH_OPTIONS.test(x.w) || !(/^-|[:+]/.test(x.w) || x.w === 'tag'))));
-// The head a checkout or a switch leaves, as { rev, branch }, where it names a branch alone; null for any other form.
-function switched([x, ...more]) {
-  return x && !more.length && !x.bad && !x.w.startsWith('-') ? { rev: `refs/heads/${x.w}`, branch: x.w } : null;
-}
-
 // Collects each git add and git commit of a shell text with the directory it runs in, by the drift hook's grammar, following a
 // cd to a plain directory; sets lost for a change of directory or a word it cannot follow, and for a work tree or a git
 // directory named apart from the working directory, whose repository it still names. far says a directory is unknown, and
-// hidden that the text may run an add or a commit the script does not see.
+// hidden that the text may run an add or a commit the script does not see. alone says the text is one simple command, or one cd
+// joined by && to one, which a merge, a cherry-pick, a rebase or an am has to be to be read.
 function scan(s, ps, st, top = false) {
   const list = commands(s, ps), dirs = [], { n, at } = top && list ? followed(s, ps, list) : { n: 0, at: new Map() };
+  const cd = list?.length === 2 && list[0].and && !list[0].wrote && list[0].length === 2 && base(list[0][0].w) === 'cd' && Array.isArray(list[1]);
+  const alone = top && (list?.length === 1 || cd) && Array.isArray(list.at(-1)) && !list.stopped && !list.moved;
   if (!list || list.lost) st.lost = true;
   if (!list || list.stopped || list.hidden) st.pushes ||= /(?<![\w-])push(?![\w-])/i.test(s);
   if (!list || list.hidden) st.hidden = true;
   if (n) st.pushes ||= list.slice(0, n).some((w) => Array.isArray(w) && w.some((x) => /\bpush\b/i.test(x.w)));
-  if (list?.moved) st.moved = true;
-  for (const item of (list ?? []).slice(n)) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st, at);
+  for (const item of (list ?? []).slice(n)) if (item === '(') dirs.push(st.dir); else if (item === ')') st.dir = dirs.pop() ?? st.dir; else analyze(item, st, at, alone && item === list.at(-1) && !st.far);
   // One of the four that a here-document may run, that follows an end word the script cannot read, or that a text not read to its end
-  // names as a git call, is a call it does not read, in a directory it does not know.
+  // names as a git call, is a call that is not a command of its own, in a directory the script does not know.
   const unread = list ? list.brings : BROUGHT.exec(s.replace(/[\\`^]\r?\n/g, ' '))?.[1].toLowerCase();
-  if (unread) { st.far = true; st.calls.push({ sub: unread, dir: st.dir, args: [], moved: true, doc: list ? 'that a here-document runs or hides' : 'in a command that cannot be read to its end' }); }
+  if (unread) { st.far = true; st.calls.push({ sub: unread, dir: st.dir, args: [] }); }
 }
 
 // The names a shell computes or will not assign, which read back another text than the one assigned: under sh those of bash and
@@ -202,7 +199,7 @@ const setOnly = (rest) => {
   return true;
 };
 
-function analyze(typed, st, vars = new Map()) {
+function analyze(typed, st, vars = new Map(), alone = false) {
   // Under sh an expansion in braces or brackets may assign a name it does not spell, as $[$x=1], ${a[$x=1]} and ${(P)x::=v} do; ${name} alone only reads.
   if (st.sh && typed.some((x) => /\$[[{]/.test(x.w) && !/^\$\{\w+\}$/.test(x.w))) vars.clear();
   const words = Object.assign(typed.map((x) => { const m = x.bad && vars.size ? /^\$\{?(\w+)\}?$/.exec(x.w) : null, k = m && (st.sh ? m[1] : m[1].toLowerCase()); return m && vars.has(k) ? { ...x, w: vars.get(k), bad: false } : x; }), { wrote: typed.wrote });
@@ -236,14 +233,11 @@ function analyze(typed, st, vars = new Map()) {
     // timeout takes its duration before the command.
     if (b === 'timeout') i++;
   }
-  if (i >= words.length) { st.pushes ||= words.some((x) => /\bpush\b/i.test(x.w)); if (words.wrote || words.some((x) => x.sub)) st.moved = true; return; }
+  if (i >= words.length) { st.pushes ||= words.some((x) => /\bpush\b/i.test(x.w)); return; }
   const b = base(words[i].w), rest = words.slice(i + 1);
-  // What a merge, a cherry-pick, a rebase or an am brings is read before the command runs, so a call that runs before it in the
-  // same command may change it. A change of directory, a git add, a git commit and a call that only reads change nothing that is
-  // read, the first checkout or switch of the command, to a branch named alone, says which head the later call is read against,
-  // a fetch leaves it read as the remote-tracking refs stand, and the text a shell is given has its own calls judged: these leave
-  // a later one readable. A call that writes a file or holds a command substitution, an assignment before the program included,
-  // leaves no later call readable, whatever the call, since the substitution may run any call.
+  // The followed names stand after a change of directory, a git add, a git commit, one of the four, a call that only reads and a
+  // shell whose text has its own calls judged; any other call may rewrite one, and so may a call that writes a file or holds a
+  // command substitution, an assignment before the program included, since the substitution may run any call.
   const plain = !words.wrote && !words.some((x) => x.sub);
   let still = CDS.has(b);
   if (SHELLS.has(b)) {
@@ -271,36 +265,31 @@ function analyze(typed, st, vars = new Map()) {
     const sub = rest[j]?.w === 'stage' ? 'add' : rest[j]?.w, args = rest.slice(j + 1), first = args[0]?.w;
     st.pushes ||= sub === 'push' || words.some((x) => x.sub && /(?:\$\(|`|[;&|])\s*["']?git\b[^)`]*\bpush\b/i.test(x.w));
     if (sub === 'add' || (sub === 'commit' && !args.some((x) => ['--dry-run', '--help', '-h'].includes(x.w)))) { st.calls.push({ sub, dir, args }); still = true; }
-    // A call for help, and one that ends or steps over a merge under way, bring nothing in.
-    else if (brings(sub) && first !== '--help' && first !== '-h' && !ends(first)) { st.calls.push({ sub, dir, args, moved: st.moved, head: st.head, fetched: st.fetched, sh: st.sh, msys: st.msys, home: st.home }); still = true; }
-    else if (plain && (sub === 'checkout' || sub === 'switch') && !st.head && switched(args)) {
-      st.head = switched(args);
-      still = true;
-    } else {
-      still = plain && keeps(sub, args);
-      if (still && sub === 'fetch') st.fetched = true;
-    }
+    // A call for help, and one that ends or steps over a merge under way, bring nothing in. One of the four is read only as the
+    // whole command, with git as its first word or after assignments under sh.
+    else if (brings(sub) && first !== '--help' && first !== '-h' && !stops(sub, args)) { st.calls.push({ sub, dir, args, alone: alone && words.slice(0, i).every((x) => st.sh && !x.sub && /^[A-Za-z_]\w*=/.test(x.w)), sh: st.sh, msys: st.msys, home: st.home }); still = true; }
+    else still = plain && keeps(sub, args);
   } else if (b === 'xargs' && rest.some((x) => /^git(\.exe)?$/.test(base(x.w)))) st.lost = st.hidden = true;
   // A command handed to another shell is not read: one that names an add, stage or commit, or holds an expansion, may run one.
   else if (/^(pwsh|powershell|cmd)(\.exe)?$/.test(b) && (rest.some((x) => x.bad) || hides(rest.map((x) => x.w).join(' ')))) st.lost = st.hidden = true;
-  // set changes the options of sh, and only the ones in setOnly leave the later call read; in PowerShell the word is a command that writes a variable.
+  // set changes the options of sh, and only the ones in setOnly leave the followed names; in PowerShell the word is a command that writes a variable.
   else still = plain && (READS.has(words[i].w.toLowerCase()) || (st.sh && words[i].w === 'set' && setOnly(rest)));
   // A call that only reads or changes directory may still write a variable whose name no word spells: printf -v, and in PowerShell a common parameter that names one.
   if (still && (st.sh ? b === 'printf' && (rest[0]?.bad || rest[0]?.w.startsWith('-v')) : (READS.has(b) || CDS.has(b)) && rest.some((x) => NAMED.test(x.w)))) vars.clear();
   // A push is read from a git call; the word alone counts in any other program, which may be a script or an eval, in an assignment, in a
   // substitution that names git, and, in scan(), in a text not parsed to its end, since each may push out of sight.
   if (!/^git(\.exe)?$/.test(b) && !(SHELLS.has(b) && still) && !CDS.has(b)) st.pushes ||= words.some((x) => /\bpush\b/i.test(x.w));
-  // A call that leaves no later one readable may also rewrite a followed variable, with no word that spells it.
-  if (!still || !plain) { st.moved = true; vars.clear(); }
+  // Any other call may rewrite a followed variable with no word that spells it.
+  if (!still || !plain) vars.clear();
 }
 
 // The commands that bring commits made elsewhere into the history, each with the options that take the next word as a value; any
 // other option is read as a flag, so a value taken for a commit is one git cannot read, which denies.
 const BRINGS = {
   merge: /^(-[mFsX]|--(message|file|strategy|strategy-option|into-name|cleanup))$/,
-  'cherry-pick': /^(-[mX]|--(mainline|strategy|strategy-option|cleanup))$/,
-  rebase: /^(-[sX]|--(strategy|strategy-option|whitespace|empty))$/,
-  am: /^--(whitespace|empty|quoted-cr|exclude|include)$/,
+  'cherry-pick': /^(-[mX]|--(mainline|strategy|strategy-option|cleanup|empty))$/,
+  rebase: /^(-[sXC]|--(strategy|strategy-option|whitespace|empty|trailer))$/,
+  am: /^(-C|--(whitespace|empty|quoted-cr|exclude|include|resolvemsg))$/,
 };
 const brings = (sub) => Object.hasOwn(BRINGS, sub);
 // An option that runs a command, hands the steps to an editor, moves the paths of a patch or names another form of patch leaves
@@ -309,6 +298,10 @@ const UNREAD = { rebase: /^(-[qvnfrpmk]*[xi]|--exe?c?(=|$)|--in[a-z]*$)/, am: /^
 // A call that ends or steps over a merge, a cherry-pick, a rebase or an am under way brings nothing in.
 const ENDS = new Set(['--abort', '--skip', '--quit', '--edit-todo', '--show-current-patch']);
 const ends = (w) => ENDS.has(w) || (typeof w === 'string' && w.startsWith('--show-current-patch='));
+// An end word ends the call only where it comes first or after these flags alone, which take no value: git may take it as the
+// value of any other option, a shortened one included. Any other call goes on to brought(), where an end word leaves it unread.
+const QUIET = new Set(['-q', '--quiet', '-v', '--verbose']);
+const stops = (sub, args) => { const k = args.findIndex((x) => ends(x.w)); return k >= 0 && args.slice(0, k).every((x) => QUIET.has(x.w)); };
 
 // What a patch in git's form holds: the files it creates, the target of a rename among them, and the lines it adds to each ignore
 // file; null for a new file or a target whose header the script cannot read.
@@ -326,26 +319,19 @@ function patched(c, dir, text, base = 'HEAD') {
   return { paths, ignores, blocks: blocks.length };
 }
 
-// The revisions a name holds, a range two, each cut before its first ~, ^ or :; relative where one names the head or a ref of it.
-const sides = (n) => n.split(/\.{2,3}/).map((x) => x.split(/[~^:]/)[0]);
-const relative = (n) => sides(n).some((x) => x === '' || x.includes('@') || /^(\w+_)?HEAD$/i.test(x));
-const atFetch = (n) => sides(n).some((x) => /^FETCH_HEAD$/i.test(x));
-
 // What a merge, a cherry-pick, a rebase or an am would add to the history: the files the commits it names add, a rename read as a
-// new file, and the lines they add to an ignore file; null where the command does not say which commits, git cannot read them, or
-// another call runs before it in the same command. A merge or a rebase brings each commit that a commit it names holds and the
+// new file, and the lines they add to an ignore file; null where the command does not say which commits or git cannot read them.
+// A merge or a rebase brings each commit that a commit it names holds and the
 // head does not, with the upstream of the branch where it names none; a cherry-pick brings each commit it names and each commit
 // of a range, a merge among them read against each parent; an am brings what its patch files hold, and a file with no file header
-// is unread. A --continue is read as the commit it makes, and a call that ends one brings nothing new.
-function brought(c, { sub, dir, args, moved, head, fetched, sh, msys, home }, top) {
-  if (moved) return null;
-  const after = !!head;
+// is unread. A --continue is read as the commit it makes, and an end word met here may be an option's value, so the call is unread.
+function brought(c, { sub, dir, args, sh, msys, home }, top) {
   const named = [];
   for (let i = 0; i < args.length; i++) {
     const { w, bad } = args[i];
     if (bad || UNREAD[sub]?.test(w)) return null;
-    if (ends(w)) return { paths: [], ignores: [] };
-    if (w === '--continue' || (sub === 'am' && (w === '--resolved' || w === '-r'))) return after ? null : planOf(c, { sub: 'commit', dir, args: [] }, top);
+    if (ends(w)) return null;
+    if (w === '--continue' || (sub === 'am' && (w === '--resolved' || w === '-r'))) return planOf(c, { sub: 'commit', dir, args: [] }, top);
     if (sub === 'rebase' && w === '--onto') { if (!args[++i] || args[i].bad) return null; named.push(args[i].w); }
     else if (sub === 'rebase' && w.startsWith('--onto=')) named.push(w.slice(7));
     else if (BRINGS[sub].test(w)) i++;
@@ -354,10 +340,6 @@ function brought(c, { sub, dir, args, moved, head, fetched, sh, msys, home }, to
   }
   // A name that starts with a dash would reach git as an option.
   if (named.some((n) => n.startsWith('-'))) return null;
-  // After a switch the index and the files are the new head's, and HEAD, @{upstream} and the like name the new head's: an am, a
-  // --continue and a name relative to the head are unread. A fetch rewrote FETCH_HEAD.
-  if (after && (sub === 'am' || named.some(relative))) return null;
-  if (fetched && named.some(atFetch)) return null;
   // The form of the output is pinned, whatever the user's configuration sets.
   const out = (...a) => { const r = git(c, dir, ['-c', 'core.quotepath=off', '-c', 'diff.noprefix=false', '-c', 'diff.mnemonicPrefix=false', '-c', 'diff.relative=false', ...a]); return r.status === 0 ? r.stdout : null; };
   const log = ['log', '--format=', '-m', '--no-renames', '--no-color', '--no-ext-diff', '--no-textconv'], ignored = ':(top,glob)**/.gitignore';
@@ -368,19 +350,9 @@ function brought(c, { sub, dir, args, moved, head, fetched, sh, msys, home }, to
   };
   // A ~ and, under Git Bash, a drive path such as /c/work are the shell's to place.
   const file = (f) => { try { const p = patched(c, dir, readFileSync(resolve(dir, sh ? tilde(msys ? f.replace(/^\/([A-Za-z])(?=\/|$)/, '$1:/') : f, home) : f), 'utf8')); return p?.blocks ? p : null; } catch { return null; } };
-  // After a checkout or a switch in the same command the call runs on the head that leaves, or on the head as it stands where the
-  // switch fails, so it is read against HEAD and the head the switch names; a head git cannot read is unread.
-  const known = (rev) => out('rev-parse', '-q', '--verify', `${rev}^{commit}`) !== null;
-  if (head && !known(head.rev)) return null;
-  const bases = [{ rev: 'HEAD', up: '@{upstream}' }, ...(head ? [{ rev: head.rev, up: `${head.branch}@{upstream}` }] : [])];
-  // With no commit named, a merge or a rebase takes the upstream of the branch each base is on; where the switch fails and the
-  // branch as it stands has none, git brings nothing.
-  const ups = (b) => (head && b.up === '@{upstream}' && !known(b.up) ? [] : [b.up]);
-  const plans = bases.flatMap((b) => {
-    if (sub === 'am') return named.length ? named.map(file) : [null];
-    if (sub === 'cherry-pick') return [named.length ? read(['--no-walk=unsorted'], named, b.rev) : null];
-    return (named.length || args.some((x) => x.w === '--root') ? named : ups(b)).map((r) => r && read([], [`${b.rev}..${r}`], b.rev));
-  });
+  // With no commit named, a merge or a rebase takes the upstream of the branch.
+  const plans = sub === 'am' ? (named.length ? named.map(file) : [null]) : sub === 'cherry-pick' ? [named.length ? read(['--no-walk=unsorted'], named, 'HEAD') : null]
+    : (named.length || args.some((x) => x.w === '--root') ? named : ['@{upstream}']).map((r) => read([], [`HEAD..${r}`], 'HEAD'));
   return plans.every(Boolean) ? { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) } : null;
 }
 
@@ -447,9 +419,9 @@ function records(text) {
 const isAgent = (p) => { const s = p.toLowerCase().split('/'); return AGENT_NAMES.has(s.at(-1)) || s.some((x) => AGENT_DIRS.has(x)); };
 const namesAgent = (l) => !l.startsWith('#') && l.replace(/^!/, '').toLowerCase().split('/').some((x) => AGENT_NAMES.has(x) || AGENT_DIRS.has(x));
 
-// The remote a branch tracks, else origin, else the only remote, else null; the current branch where none is named.
-function remoteOf(c, repo, branch) {
-  const row = git(c, repo.top, ['for-each-ref', '--format=%(HEAD)%(refname:lstrip=2) %(upstream:remotename)', 'refs/heads']).stdout.split('\n').map((l) => /^(.)(\S+) (.*)$/.exec(l)).find((m) => m && (branch === undefined ? m[1] === '*' : m[2] === branch));
+// The remote the current branch tracks, else origin, else the only remote, else null.
+function remoteOf(c, repo) {
+  const row = git(c, repo.top, ['for-each-ref', '--format=%(HEAD)%(refname:lstrip=2) %(upstream:remotename)', 'refs/heads']).stdout.split('\n').map((l) => /^(.)(\S+) (.*)$/.exec(l)).find((m) => m && m[1] === '*');
   return row?.[3] || (repo.names.includes('origin') ? 'origin' : new Set(repo.names).size === 1 ? repo.names[0] : null);
 }
 
@@ -496,7 +468,7 @@ function read(c, input, after = false) {
   const own = join(configOf(c, input), 'reimagine-primer'), command = input.tool_input?.command;
   if (!existsSync(own) || typeof command !== 'string' || !/commit|[Gg][Ii][Tt][\s\S]*(?:add|stage|merge|cherry-pick|rebase|\bam\b)/.test(command)) return null;
   const ps = input.tool_name === 'PowerShell', cwd = isDir(input.cwd) ? input.cwd : c.cwd;
-  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false, sh: !ps, moved: false, head: undefined, fetched: false, pushes: false, cdpath: /cdpath/i.test(command) || (!ps && !!c.env.CDPATH) };
+  const st = { dir: cwd, home: c.home, msys: c.platform === 'win32' && !ps, calls: [], lost: false, far: false, hidden: false, sh: !ps, pushes: false, cdpath: /cdpath/i.test(command) || (!ps && !!c.env.CDPATH) };
   scan(command, ps, st, true);
   if (!st.calls.length && !st.hidden) return null;
   const path = places(c, own).map, map = (() => { try { return loadMap(path, c.home); } catch (e) { if (e instanceof Refusal) return null; throw e; } })();
@@ -521,12 +493,11 @@ export function staged(c, input) {
   for (const { dir, repo } of repos) {
     // The calls of one directory are checked by what they would add together when each one resolves: an add extends the index a
     // later commit takes, and a commit holds no more than the index and what it names.
-    // After a switch to a branch whose remote is not the current branch's, the upstream read is the wrong remote's, so the call is unread.
-    const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => (x.head && remoteOf(c, repo, x.head.branch) !== remoteOf(c, repo) ? null : planOf(c, { ...x, dir }, repo.top))), whole = !st.lost && plans.length && plans.every(Boolean);
+    const calls = st.calls.filter((x) => st.far || x.dir === dir), plans = calls.map((x) => (brings(x.sub) && !x.alone ? null : planOf(c, { ...x, dir }, repo.top))), whole = !st.lost && plans.length && plans.every(Boolean);
     // What an unread merge brings is not in the work tree, so no count of the files there stands in for it.
     const blind = calls.find((x, i) => brings(x.sub) && !plans[i]);
-    if (blind?.doc) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; a git ${blind.sub} ${blind.doc} is not read, so the call is denied; run it as a command of its own`)];
-    if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read where each call before it in the command is a cd, a git add, a git commit, a git fetch, a checkout or a switch to a branch, or a call that only reads; an am, a --continue and a name read from the head after a switch, and FETCH_HEAD after a fetch, run as a command of their own`)];
+    if (blind && !blind.alone) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; a git ${blind.sub} is read only as a command of its own, so the call is denied; send it alone`)];
+    if (blind) return [deny(`primer: ${repo.top} has the local profile, which keeps agent files out of its history; what git ${blind.sub} would bring in cannot be read from the command, so the call is denied; a commit named by a branch, a tag or an id, or a patch given as a file, can be read`)];
     const reason = whole ? verdict(c, repo, { paths: plans.flatMap((p) => p.paths), ignores: plans.flatMap((p) => p.ignores) }) : verdict(c, repo, null, plans.filter(Boolean));
     if (reason) return [deny(reason)];
   }

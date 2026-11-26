@@ -77,6 +77,8 @@ const notice = (cwd, config, data, transcriptKey, envOverride = {}) => {
 };
 
 const line = (n) => `{"systemMessage":"primer: auto memory has ${n} notes since the last review; run /primer"}\n`;
+// Where no review has run, as with no stamp.
+const first = (n) => `{"systemMessage":"primer: auto memory has ${n} notes; no review has run here; run /primer"}\n`;
 
 const snapshot = (dir) => {
   const out = [];
@@ -119,10 +121,10 @@ describe('R258: primer notice hook', () => {
     assert.equal(notice(dir, config, data), line(1));
   });
 
-  test('counts every feedback and project note without a stamp', () => {
+  test('counts every feedback and project note without a stamp, and says no review has run', () => {
     const dir = repo('no-stamp');
     const { config, data } = place(dir, { stamp: false });
-    assert.equal(notice(dir, config, data), line(2));
+    assert.equal(notice(dir, config, data), first(2));
   });
 
   test('prints nothing when the hub has no marker', () => {
@@ -140,13 +142,13 @@ describe('R258: primer notice hook', () => {
   test('reads the AGENTS.md that a CLAUDE.md adapter names', () => {
     const dir = repo('adapter', { 'CLAUDE.md': '@AGENTS.md\n', 'AGENTS.md': hub });
     const { config, data } = place(dir, { stamp: false });
-    assert.equal(notice(dir, config, data), line(2));
+    assert.equal(notice(dir, config, data), first(2));
   });
 
   test('reads a hub with CRLF line endings', () => {
     const dir = repo('crlf', { 'CLAUDE.md': '<!-- primer -->\r\n# demo\r\n' });
     const { config, data } = place(dir, { stamp: false });
-    assert.equal(notice(dir, config, data), line(2));
+    assert.equal(notice(dir, config, data), first(2));
   });
 
   test('finds the main checkout memory from a linked worktree', () => {
@@ -161,7 +163,7 @@ describe('R258: primer notice hook', () => {
     const dir = join(base, 'plain_dir.v1');
     write(dir, 'CLAUDE.md', hub);
     const { config, data } = place(dir, { stamp: false });
-    assert.equal(notice(realpathSync.native(dir), config, data), line(2));
+    assert.equal(notice(realpathSync.native(dir), config, data), first(2));
   });
 
   test('prints nothing without a memory directory', () => {
@@ -200,7 +202,7 @@ describe('R258: primer notice hook', () => {
   test('reads the directory autoMemoryDirectory names in the project settings', () => {
     const { memory, config, data } = away('moved');
     const dir = repo('moved-project', { 'CLAUDE.md': hub, '.claude/settings.json': `{\n  "autoMemoryDirectory": ${JSON.stringify(memory)}\n}\n` });
-    assert.equal(notice(dir, config, data), line(2));
+    assert.equal(notice(dir, config, data), first(2));
   });
 
   test('takes autoMemoryDirectory from the local settings before the project and user settings', () => {
@@ -213,7 +215,7 @@ describe('R258: primer notice hook', () => {
       '.claude/settings.json': JSON.stringify({ autoMemoryDirectory: empty }),
       '.claude/settings.local.json': JSON.stringify({ autoMemoryDirectory: memory }),
     });
-    assert.equal(notice(dir, config, data), line(2));
+    assert.equal(notice(dir, config, data), first(2));
   });
 
   test('reads a ~/ autoMemoryDirectory from the user settings against the home folder', () => {
@@ -222,7 +224,7 @@ describe('R258: primer notice hook', () => {
     cpSync(join(fixture, 'memory'), join(home, 'mem'), { recursive: true });
     write(config, 'settings.json', '{"autoMemoryDirectory": "~/mem"}');
     const dir = repo('moved-user');
-    assert.equal(notice(dir, config, data, undefined, { HOME: home, USERPROFILE: home }), line(2));
+    assert.equal(notice(dir, config, data, undefined, { HOME: home, USERPROFILE: home }), first(2));
   });
 
   // The notes sit under one of two home folders; the hook reads the other one's ~/mem only when it picks the wrong folder.
@@ -240,12 +242,12 @@ describe('R258: primer notice hook', () => {
 
   test('reads a ~/ autoMemoryDirectory against USERPROFILE on Windows when it is set and differs from HOME', { skip: process.platform !== 'win32' }, () => {
     const { config, data, dir, env: homeEnv } = homes('moved-profile', 'profile');
-    assert.equal(notice(dir, config, data, undefined, homeEnv), line(2));
+    assert.equal(notice(dir, config, data, undefined, homeEnv), first(2));
   });
 
   test('reads a ~/ autoMemoryDirectory against HOME off Windows even when USERPROFILE is set', { skip: process.platform === 'win32' }, () => {
     const { config, data, dir, env: homeEnv } = homes('moved-home', 'home');
-    assert.equal(notice(dir, config, data, undefined, homeEnv), line(2));
+    assert.equal(notice(dir, config, data, undefined, homeEnv), first(2));
   });
 
   test('lets the first settings file that sets autoMemoryDirectory decide, even when its value is not a path', () => {
@@ -276,29 +278,29 @@ describe('R258: primer notice hook', () => {
   };
 
   test('falls through to the derived directory when a local autoMemoryDirectory is a relative path', () => {
-    assert.equal(derivedOr('derived-relative', '"mem"'), line(2));
+    assert.equal(derivedOr('derived-relative', '"mem"'), first(2));
   });
 
   test('falls through to the derived directory when a local autoMemoryDirectory is an empty string', () => {
-    assert.equal(derivedOr('derived-empty', '""'), line(2));
+    assert.equal(derivedOr('derived-empty', '""'), first(2));
   });
 
   test('falls through to the derived directory when a local autoMemoryDirectory is a drive path off Windows', { skip: process.platform === 'win32' }, () => {
-    assert.equal(derivedOr('derived-drive', '"C:/mem"'), line(2));
+    assert.equal(derivedOr('derived-drive', '"C:/mem"'), first(2));
   });
 
   test('reads an autoMemoryDirectory rooted with / but no drive on the drive of the working directory on Windows', { skip: process.platform !== 'win32' }, () => {
     const { memory, config, data } = away('rooted');
     const rooted = memory.replace(/^[A-Za-z]:/, '').replaceAll('\\', '/');
     const dir = repo('rooted-project', { 'CLAUDE.md': hub, '.claude/settings.local.json': JSON.stringify({ autoMemoryDirectory: rooted }) });
-    assert.equal(notice(dir, config, data), line(2));
+    assert.equal(notice(dir, config, data), first(2));
   });
 
   test('reads <config>/projects/<name>/memory when the host named the project directory', () => {
     const { config, data } = away('unused');
     cpSync(join(fixture, 'memory'), join(config, 'projects', 'work_1', 'memory'), { recursive: true });
     const dir = repo('named');
-    assert.equal(notice(dir, config, data, 'work_1', { CLAUDE_CONFIG_DIR: config, CLAUDE_CODE_PROJECT_DIR_NAME: 'work_1' }), line(2));
+    assert.equal(notice(dir, config, data, 'work_1', { CLAUDE_CONFIG_DIR: config, CLAUDE_CODE_PROJECT_DIR_NAME: 'work_1' }), first(2));
   });
 
   test('reads the derived directory when the host did not take the project directory name', () => {
@@ -306,7 +308,7 @@ describe('R258: primer notice hook', () => {
     for (const extra of [{ CLAUDE_CODE_PROJECT_DIR_NAME: 'work_1' }, { CLAUDE_CODE_PROJECT_DIR_NAME: 'con' }, { CLAUDE_CODE_PROJECT_DIR_NAME: 'a b' }]) {
       const { config, data } = place(dir, { stamp: false });
       const r = notice(dir, config, data, undefined, extra.CLAUDE_CODE_PROJECT_DIR_NAME === 'work_1' ? extra : { CLAUDE_CONFIG_DIR: config, ...extra });
-      assert.equal(r, line(2), JSON.stringify(extra));
+      assert.equal(r, first(2), JSON.stringify(extra));
     }
   });
 

@@ -77,7 +77,7 @@ When a session starts in a repository whose hub starts with `<!-- primer -->`, t
 primer: auto memory has 2 notes since the last review; run /primer
 ```
 
-`/primer` in `maintain` mode reviews them and records the review, after which the line goes until new notes arrive. Without the marker the notice says nothing. It never writes a file.
+Where no review has run in the repository yet, the line ends `; no review has run here; run /primer` instead. `/primer` in `maintain` mode reviews them and records the review, after which the line goes until new notes arrive. Without the marker the notice says nothing. It never writes a file. Where the notice itself stops on an error, the layers still load and the line reads `primer: the review notice stopped on an error of its own:` with the error.
 
 The notice also counts the feedback entries under `~/.claude/feedback/` (under `$CLAUDE_CONFIG_DIR` when set) that name this repository and came after its last fold-back review. The house rules have each session write an entry there, headed by the repository it worked in, unless loaded context names another log, which primer reads only where `review.json` names its directory, below. An entry is a `## ` section of a log, and it names a repository in its heading, by the directory's name or by the last part of a remote's URL:
 
@@ -133,13 +133,12 @@ Where no layer loads, the session gets one line that says no layer is loaded and
 - a `map.json` or a `config.json` that cannot be read
 - a store that `config.json` names and that is missing or holds no `map.json`
 - a `local` repository whose layer files are each missing or empty
-- a clone of a `local` entry that git cannot read
+- a clone at the path of a `local` entry that git cannot read
 - a clone at the path of a `local` entry that has none of its remotes
-- a `git` that gives no answer within 5 seconds in a directory no earlier start read
+- a `git` that gives no answer within 30 seconds
 
 Some layers still load in these cases:
 
-- Where `git` is slow in a directory an earlier start read, the layers load as at that start, and the first line of the context says so.
 - A directory in the place of one layer's file costs that layer alone, and a line says so.
 - A string over the host's cap of 10,000 characters holds at its start a line that names each layer's file and says a session holds a layer whole only once it has read that file, since a session holds only a preview of the string.
 
@@ -175,7 +174,7 @@ That directory belongs to one config folder:
 
 ### Status and size
 
-`/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 5-second limit each show a warning at session start. In a `local` repository the loader also gives the notice above.
+`/primer` runs `scripts/primer.mjs status`, which shows a repository's entry, each layer's file, size and canary, and the delivery checks: a context string over the host's 10,000-character cap, a repository that is unmapped under a directory the map lists, and git calls that ran past their 30-second limit each show a warning at session start. In a `local` repository the loader also gives the notice above.
 
 `scripts/primer.mjs measure` prints each mapped repository's context string as emitted against the cap, and `measure --with <file> <layer>` the size before and after a proposed layer, which `/primer` shows before it proposes an addition.
 
@@ -184,39 +183,27 @@ That directory belongs to one config folder:
 In a `local` repository, the drift hook runs a staging check on each `git add` and `git commit`, which denies one that would stage or commit `CLAUDE.md`, `CLAUDE.local.md` or `AGENTS.md` at any depth, anything under `.claude/`, `.agents/` or `.reimagine/`, `.reimagine.json`, `.mcp.json`, or a `.gitignore` line that names one of them, unless the upstream's default branch already tracks it. The names count in any letter case.
 
 - An add and a commit in one command are judged by what both would add.
-- A call under `env`, `sudo`, `timeout` or `nice`, or in PowerShell on the right of an assignment to a variable, is read as the call it runs.
+- A call under `env`, `sudo`, `timeout` or `nice`, or in PowerShell on the right of an assignment to a variable, is read as the call it runs; one of the four below is not.
 - A command it cannot resolve counts as staging every file git does not ignore; the `info/exclude` lines `/primer` offers keep the agent files out of that.
 
 ### A merge, cherry-pick, rebase or am
 
 A `git merge`, `git cherry-pick`, `git rebase` or `git am` is checked by the files its commits would add and the `.gitignore` lines they add: one that names its commits by a branch, a tag or an id, or its patches as files, is read, and one the check cannot read, such as a name held in a variable or a patch on standard input, is denied with a reason that says so. A `--continue` is checked as the commit it makes.
 
-What one of the four brings is read before the command runs, so what runs before it in the same command matters. It is still read after:
+One of the four is read only where it is the whole command: one call with `git` as its first word, or after assignments in Bash, as in `git merge feat`, `GIT_EDITOR=true git rebase --continue` or `git -C ../app rebase main 2>&1`, or such a call after one `cd` to a folder the check can follow and `&&`, as in `cd ../app && git merge feat`, read in that folder.
 
-- a `cd`, a `git add`, a `git commit`, the start or `--continue` of another of the four, each with no `$(...)` in a quoted word
-- a call that only reads: `git status`, `log`, `show`, `diff`, `rev-parse`, `rev-list`, `merge-base`, `describe` or `ls-files`, a `git branch` or `git remote` that only lists, and `echo`, `printf`, `pwd`, `true`, `ls`, `date`, `cat`, `head`, `tail`, `wc`, `grep` or `cut`
-- in Bash, `set` with only the options `-e`, `-u` and `-x`, or `-o` with `pipefail`, `errexit`, `nounset` or `xtrace` (any other, such as `-a`, exports what follows)
-- in PowerShell, `Write-Host`, `Write-Output`, `Get-Location`, `Get-Content` or `Select-Object`
-
-Each is named with no directory and with no `>` to a file, whatever the call.
-
-After other calls:
-
-- After one `git checkout` or `git switch` to an existing local branch, with no option, it is read against that branch and against the branch you are on, and denied on what either would bring; a switch that makes a branch, and a second switch, deny it.
-- After a `git fetch` with no option but `--all`, `--prune`, `--no-tags` and those for its output, and no `tag` word, it is read as the remote-tracking branches stand before the fetch, so what the fetch itself brings is not read, as with a pull, and a merge of `FETCH_HEAD` is denied.
-- After a switch, a name read from the head, such as `HEAD~1` or `@{u}`, a `git am` and a `--continue` are denied too.
-- After anything else, a `git stash`, a `git reset` or a script among them, the call is denied: run the merge as a command of its own.
+Before or after any other call, a second `cd` or a `cd` ended by `;` included, behind `timeout`, `nice`, `sudo` or `env`, in a text given to `bash -c`, or on the right of a PowerShell assignment, it is denied with a reason that says to send it alone. A call that brings nothing passes wherever it stands: one with `--abort`, `--skip`, `--quit`, `--edit-todo` or `--show-current-patch` first or after only `-q`, `--quiet`, `-v` or `--verbose`, or with `--help` or `-h` first.
 
 ### A variable the command sets
 
-A variable is followed where the command opens by setting it to a plain text, `R=/work/app` in Bash, one to a command and ended by `;`, `&&` or a line break, or `$r = 'C:\work\app'` in PowerShell, and later names it alone, as in `git -C "$R" merge feat`:
+A variable is followed where the command opens by setting it to a plain text, `R=/work/app` in Bash, one to a command and ended by `;`, `&&` or a line break, or `$r = 'C:\work\app'` in PowerShell, and later names it alone, as in `git -C "$R" add src`:
 
 - The text may hold no expansion and, in Bash, no space, no pattern character and no other character the shell reads as syntax.
 - The text may not start with `~`, which a shell does not expand in a value.
 - The name may not start with `GIT_` or start another followed name.
 - The name may not be one the shell computes or will not assign: `PWD`, `OLDPWD`, `_`, `DIRSTACK`, `GROUPS`, `SHELLOPTS` and the like, and each name that starts with `BASH` or `ZSH`; in PowerShell `$PWD`, `$_`, `$LASTEXITCODE`, `$matches`, `$args`, `$input`, `$error`, `$IsWindows`, each name that starts with `PS` or ends in `Preference`, and the like.
 - The command may set the name once, and no other word may hold it.
-- After a call that is not one of those a merge is still read after, a `source` or a function among them, no name is followed.
+- No name is followed after any call but a `cd`, a `git add` or `git commit`, one of the four, a git call that only reads (`git status`, `log`, `show`, `diff`, `rev-parse`, `rev-list`, `merge-base`, `describe` or `ls-files`, a `git branch` or `git remote` that only lists, and a `git fetch` of only its output options and remote names), `echo`, `printf`, `pwd`, `true`, `ls`, `date`, `cat`, `head`, `tail`, `wc`, `grep` or `cut`, in Bash `set` with only `-e`, `-u`, `-x` or `-o` with `pipefail`, `errexit`, `nounset` or `xtrace`, and in PowerShell `Write-Host`, `Write-Output`, `Get-Location`, `Get-Content` or `Select-Object`; each is named with no directory, no `>` to a file and no `$(...)`, so a `source` or a function ends it.
 - No name is followed after a call that can write a variable whose name it does not spell: a `printf -v`, in Bash a word that holds `${` or `$[` in a form other than `${name}` alone, and in PowerShell a call that reads or changes directory with a common parameter that names a variable, such as `-OutVariable` or `-ov`.
 
 Any other use leaves the word unread, as before.
@@ -226,12 +213,10 @@ Any other use leaves the word unread, as before.
 Denied wherever it runs:
 
 - A call the check cannot read: an interactive rebase, whose steps an editor writes, a rebase with `-x` or `--exec`, and an am with `-p<n>`, `--directory` or `--patch-format`.
-- One of the four that a here-document's body may run, or one after an end word the check cannot read, with a reason that names the here-document.
-- One of the four in a command the check cannot read to its end, as with a quote left open or after a process substitution such as `<(...)`, with a reason that says to run it as a command of its own.
+- One of the four that a here-document's body may run, one after an end word the check cannot read, and one in a command the check cannot read to its end, as with a quote left open or after a process substitution such as `<(...)`, with the reason that says to send it alone.
 
 Read:
 
-- One of the four after a here-document or a here-string is read as any other call, a followed variable among its words where the here-document's end word is quoted or its body holds no `$` and no backtick.
 - The text given to `sh`, `bash`, `dash` or `zsh` with `-c` is read where it holds no expansion.
 
 Not read:

@@ -8,7 +8,7 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runInNewContext } from 'node:vm';
-import { chained, pushed } from './chain.mjs';
+import { pushing, sends } from './chain.mjs';
 import { targets } from './rules.mjs';
 
 export const LIST_FILE = 'rules-outbound.txt';
@@ -110,12 +110,12 @@ function git(dir, args, left = () => Infinity) {
 const or = (call, other) => { try { return call(); } catch (e) { if (e instanceof Late) throw e; return other(); } }; // other's answer where the call fails with time left
 
 // The texts of the commits a push from dir could send: those HEAD, a local branch or a tag the push names reaches and no remote-tracking ref holds; with diff, their added lines and file names too, lost where the diff could not be read.
-// sent holds the words of each push, one push to a line, and gives the tag patterns, none where only the hook's pattern found the push; past 64 words, or 4,000 characters of them, every tag is read. One git call; a call with no time left throws Late.
-export function leaving(dir, command, diff, left, sent = null) {
+// sent holds the words of the push, the whole command where it is no plain call, and gives the tag patterns; with every, or past 64 words or 4,000 characters of them, every tag is read. One git call; a call with no time left throws Late.
+export function leaving(dir, command, diff, left, sent = null, every = false) {
   const del = (t) => t === '--delete' || /^-[46fquv]*d[46fquv]*$/.test(t);
   const given = (sent ?? '').split('\n').flatMap((line) => { const words = line.split(/[\s"'`,]+/); return words.some(del) ? [] : words.filter((t) => !/^\+?:/.test(t)).flatMap((t) => t.replace(/^\+/, '').split(':')); });
   const names = [...new Set(given)].filter((t) => t && t.length < 256 && !t.startsWith('-') && !/[\0-\x1f\x7f]/.test(t));
-  const tags = names.length > 64 || names.join('').length > 4000 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : [...new Set(names.flatMap((t) => [t, t.replace(/^(?:refs\/)?tags\//, '')]))].filter(Boolean).map((t) => `--tags=${/[*?[]/.test(t) ? t : t.at(-1) > '\x7f' ? `${t}*` : `${t.slice(0, -1)}[\\${t.at(-1)}]`}`);
+  const tags = every || names.length > 64 || names.join('').length > 4000 || new RegExp(String.raw`(?<=^|\s)--(?:tags|follow-tags|mirror)(?![${EDGE}])`).test(command) ? ['--tags'] : [...new Set(names.flatMap((t) => [t, t.replace(/^(?:refs\/)?tags\//, '')]))].filter(Boolean).map((t) => `--tags=${/[*?[]/.test(t) ? t : t.at(-1) > '\x7f' ? `${t}*` : `${t.slice(0, -1)}[\\${t.at(-1)}]`}`);
   const id = randomBytes(8).toString('hex');
   const args = (patch, tip = ['HEAD']) => ['--no-replace-objects', '-c', 'core.quotepath=off', 'log', '--no-color', '--no-show-signature', ...(patch ? ['--no-ext-diff', '--no-textconv', '-p', '-U0'] : []),
     `--format=%x1e${id}m%h%x1f%B%x1e${id}p`, ...tip, '--branches', ...tags, '--not', '--remotes'];
@@ -152,9 +152,7 @@ const deny = (reason) => JSON.stringify({ hookSpecificOutput: { hookEventName: '
 const warn = (text) => JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: text } });
 
 const TEXT = ['commit', 'commit-tree', 'merge', 'tag'], FORGE = ['gh', 'az', 'glab'];
-// git push in one simple command, but not git stash push.
 const CONTINUED = /(?:[\\`]|\([ \t]*)\r?\n/g;
-const PUSH = new RegExp(String.raw`(?<![${EDGE}])git(?:\.exe)?(?![${EDGE}])[^|;&\n]*?\s(?<!stash\s+)push(?![${EDGE}])`, 'i');
 const firstText = (s) => TEXT.map((w) => [w, word(w).exec(s)?.index ?? Infinity]).reduce((a, b) => (b[1] < a[1] ? b : a), ['', Infinity])[0];
 // What makes a command a forge post, as the denial names it, or null. git and a subcommand count where one line holds both, a line continued with a backslash, a backtick or an open parenthesis at its end being one,
 // so a text that names git and holds the word on another line is no post; beside a $ or the word xargs they count anywhere in the command, since a variable or the input of xargs may hold either. The denial names
@@ -204,8 +202,8 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     }
     return resolve(base, p);
   };
-  const why = postWord(command, list), posts = why !== null, sends = () => pushed(command, tool === 'PowerShell');
-  let sent = posts ? null : sends(), pushes = sent !== null || PUSH.test(command.replace(CONTINUED, ' '));
+  const why = postWord(command, list), posts = why !== null, call = pushing(command, tool === 'PowerShell');
+  const pushes = sends(call);
   const flatCommand = flat(command), own = list.post.some((p) => flatCommand.includes(flat(p)));
   if (!posts && !pushes) return [];
   // Whether a place in the command is outside a quoted string and on its first line, read with the tool's escape
@@ -232,9 +230,9 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
     dirs.push(...found.map((dir) => ({ ...d, dir })));
     if (!found.length && bare(d.span[0]) && !d.dir.startsWith('-') && !d.loose) missing.push(d.dir);
   }
-  const texts = [], notes = [];
+  const texts = [], notes = [], kept = dirs.map((d) => d.span).filter(typed);
   if (posts) {
-    const kept = dirs.map((d) => d.span).filter(typed), seen = new Set();
+    const seen = new Set();
     for (const { file, loud, mention, span } of namedFiles(command, own)) {
       let read = false;
       for (const full of new Set([cwd, ...dirs.map((d) => d.dir)].map((base) => local(file, base)))) {
@@ -256,34 +254,37 @@ export function check(input, list, path, { home, platform, tmp = tmpdir(), env =
   }
   const first = hit(texts);
   if (first) return first;
-  if (posts) { sent = sends(); pushes ||= sent !== null; } // The chain read comes after the post is answered, so a slow one holds no denial of a post back.
   if (pushes) {
-    if (sent !== null) { const mine = hit([{ where: 'the words of the push', text: sent }]); if (mine) return mine; }
+    const sent = call === null ? without(command, kept) : call.sub === 'push' ? call.args.join(' ') : null, mine = sent !== null && hit([{ where: call === null ? 'the command, which may hold a push' : 'the words of the push', text: sent }]); if (mine) return mine;
     // A folder spelled two ways is read once.
     const real = (p) => { try { return realpathSync.native(p); } catch { return p; } }, read = new Set();
     for (const dir of [cwd, ...dirs.map((d) => d.dir)]) {
       if (read.has(real(dir))) continue;
       read.add(real(dir));
       let out, found;
-      try { out = leaving(dir, command, list.diff, left, sent); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: or(() => git(dir, ['symbolic-ref', '-q', '--short', 'HEAD'], left), () => '') }]), ...out.texts], left); } catch (e) {
+      try { out = leaving(dir, command, list.diff, left, sent, call === null); found = hit([...(sent === null ? [] : [{ where: `the name of the branch ${dir} is on`, text: or(() => git(dir, ['symbolic-ref', '-q', '--short', 'HEAD'], left), () => '') }]), ...out.texts], left); } catch (e) {
         if (e instanceof Late) return [deny(`rules: the commits a push from ${dir} would send could not be read in ${limit / 1000} seconds, so the push was not checked against ${path}; run it again`)];
-        continue;
+        if (or(() => git(dir, ['rev-parse', '--git-dir'], left), () => '')) return [deny(`rules: the commits a push from ${dir} would send could not be read, since git log failed there, so the command was not checked against ${path}; run git log in that folder to see why`)];
+        continue; // A folder that is no repository sends nothing.
       }
       if (found) return found;
       if (out.lost) notes.push(`the diff of the commits in ${dir}`);
     }
-    if (list.diff && chained(command, tool === 'PowerShell')) return [deny(`rules: the push follows a call in the same command that makes a commit, which cannot be read before the command runs, so the push was not checked against ${path}; send the push as a command of its own`)];
+    if (list.diff && call === null) return [deny(`rules: the command holds the words git and push and is not one plain git call, so a commit it makes could not be read before it runs and it was not checked against ${path}; send the push as a command of its own`)];
     if (missing.length) return [deny(`rules: the folder ${missing[0]}, which the command names, was not found, so a push from it was not checked against ${path}; name it by a path that exists when the command is typed`)];
   }
   return notes.length ? [warn(`rules: ${notes.join(', ')} could not be read, so ${notes.length === 1 ? 'its text was' : 'their texts were'} not checked against ${path}`)] : [];
 }
 
 // The read of one input runs under a limit of its own, so the host is answered while it still waits. A command or an MCP input the read did not get through, stopped at the limit or by an error of the script, is denied:
-// no search of its text tells whether it pushes or posts, since a quote the shell reads and an expansion that gives nothing can stand inside a program's name.
+// no search of its text tells whether it pushes or posts, since a quote the shell reads and an expansion that gives nothing can stand inside a program's name. A list that is there and cannot be read checks nothing, so a command that posts or pushes is denied until it can be.
 export function main({ env = process.env, home = homedir(), platform = process.platform, stdin = () => readFileSync(0, 'utf8'), limit = 50000 } = {}) {
   const path = listPath(env, home);
   let list, input;
-  try { list = parseList(decode(readFileSync(path))); input = JSON.parse(stdin()); } catch { return []; }
+  try { list = parseList(decode(readFileSync(path))); } catch (e) { if (e?.code === 'ENOENT' || e?.code === 'ENOTDIR') return []; }
+  try { input = JSON.parse(stdin()); } catch { return []; }
+  const typed = input?.tool_input?.command, ps = input?.tool_name === 'PowerShell', call = typeof typed === 'string' ? pushing(typed, ps) : undefined;
+  if (!list) return (ps || input?.tool_name === 'Bash') && typeof typed === 'string' && (postWord(typed, { post: [] }) !== null || sends(call)) ? [deny(`rules: ${path} is there and cannot be read, so the command was not checked against it; run it again once the file can be read`)] : [];
   try { return runInNewContext('run()', { run: () => check(input, list, path, { home, platform, env }) }, { timeout: limit }); } catch (e) {
     const late = e?.code === 'ERR_SCRIPT_EXECUTION_TIMEOUT' ? ` in ${limit / 1000} seconds` : '', shell = typeof input?.tool_input?.command === 'string';
     return [deny(`rules: the ${shell ? 'command' : 'tool input'} could not be read${late}, so it was not checked against ${path}; send it ${shell ? 'as shorter commands' : 'in smaller calls'}`)];

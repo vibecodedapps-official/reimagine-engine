@@ -2,6 +2,31 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## rules 0.1.53 - 2026-11-26
+
+- With `check: diff`, a command that holds the words `git` and `push` passes only where it is one plain git call, and is denied otherwise with the reason to send the push as a command of its own. The hook no longer walks a command for a push after a commit: each release since 0.1.44 closed more spellings that hid one, nearly all written to try the walk, and a session that sends its push alone writes none of them. Now denied too: `git pull --ff-only && git push`, a push piped to `tail`, and a command that only names both words, as `git add . && git commit -m "fix push retry"` or a search for `git push`. One `cd <folder> &&` before the call and one `2>&1` after it are part of a plain call.
+- Without `check: diff`, a command that holds both words and is no plain call is read as a push that may stand anywhere in it: the whole command is searched as the words of one, every tag is read, and so is the name of the branch. The walk gave each push of such a command its own words, so a command with a listed string elsewhere in its text, or with a tag no remote holds that reaches a listed commit, is now denied whatever it sends.
+- The word `git` does not count as part of a path, as in `.git` or `~/git/app`, nor `push` right after `git stash`.
+- A list file that is there and cannot be read denies a commit, a post or a push in a shell command. Every call went ahead unchecked, as with a directory in the file's place. A missing file still leaves the check off.
+- A command that holds `git` and `push`, in a folder whose commits git cannot list, is denied with a reason that says `git log` failed there. The folder was passed over with no word, as with a `log.date` value git refuses, so a commit with a listed message was pushed. A folder that is no repository is still passed over.
+- A recommended finding says whether real use meets it. A run of releases closed command forms that, nearly all, only made-up input met.
+- The sentences on naming a cause lead their item, with no word changed. Standing second in the item on bugs, they read as a rule for bugs, and a cause in a status report was named with no run behind it.
+- A claim about state counts only as far as its check reached. Claims were wider than their checks: a figure for one place given for every place a change reached, a measure from a fixture given as the product's, a comparison of two versions from one run. An installed block reads `stale` once; run `/rules` to take the new text.
+- Concise Plain 4.19. A draft takes its voice from the sender's own earlier messages, where it took only density and form from the thread; the clause that a draft is plain and professional when there is no thread is cut to pay for it.
+- The `draft` skill makes one HTML file for a draft with a table for a chat, as for an email. Such a draft was written as text and asked for again as HTML to paste.
+
+## primer 0.1.32 - 2026-11-26
+
+- A `git merge`, `cherry-pick`, `rebase` or `am` is read only where it is the whole command, one `cd <folder> &&` before it aside, and is denied anywhere else with the reason to send it alone. The check read one of the four after a growing list of earlier calls, behind `timeout`, `nice` and a PowerShell assignment, and around here-documents, and by one count 52 of 123 such calls were still denied as unread. Now denied too: `git fetch && git merge origin/main`, `git status && git merge feat` and `git add x && git rebase --continue`. An add and a commit are read as before, but that a name set before a `git checkout` or a `git switch` of the same command is not followed after it, so an add there has every `local` repository checked. An assignment before `git` through the Bash tool, as in `GIT_EDITOR=true git rebase --continue`, leaves the call whole.
+- The loader keeps no answer of git from one start for the next. Where git gave no answer in time, a start was read as the repository kept from the directory's last start, which could load another repository's layers. A start removes the files an earlier version wrote in `repo/` under the plugin's data directory, which held paths and remote URLs, and the directory once it is empty.
+- The git calls of a start, and of `status`, share 30 seconds where they shared 5. One start in a hundred on a loaded machine passed 5 seconds. A start that passes 30 runs without its layers and says so in its context.
+- An error in the count for the review notice costs the notice alone, and the message names it. The count ran inside the load, so an error in it would have replaced the layers with the line that the loader stopped. None was seen.
+- The review notice ends `; no review has run here; run /primer` in a repository where none has. It said `since the last review` there, and counted every note and feedback entry.
+
+## gate 0.1.24 - 2026-11-26
+
+- A run that is one step of a larger request gives the path of its report in place of the text, and the session's own instructions end the reply. The publish step had the report printed whole as the last text with nothing after it, which a session that still owed work could not keep: of six such runs, four gave the path, one printed the report and went on, and one named no path. A run on its own still prints the report last.
+
 ## rules 0.1.52 - 2026-11-23
 
 - A push after a commit is denied where a trap is set after the redirect `{name[index]}>file`, a nested index as `{a[b[0]]}` included. `{a[0]}>o trap "git push -q" EXIT; git commit -qm x` passed since 0.1.50: the name between the braces was read as letters, digits and `_` alone.

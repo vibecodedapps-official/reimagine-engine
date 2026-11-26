@@ -2,7 +2,7 @@
 
 Fill every section from the record, `passes.json`, `findings.json` and the saved reviews, never from memory. A run's passes are those whose `run` is its number. Every section is present, and an empty one says `none`.
 
-With a record, write the report to `report.md` in it, as `record.md`, Write discipline, says, and print the same text. With no record, the report names the preflight item that failed and its fix, or each target that did not resolve and why. A headless caller sees only the last message, so the header alone must let a reader find the record.
+With a record, write the report as `record.md`, Write discipline, says. With no record, the report names the preflight item that failed and its fix, or each target that did not resolve and why. A headless caller sees only the last message, so the header alone must let a reader find the record.
 
 The report may name models, agents and tools, because it stays in the record.
 

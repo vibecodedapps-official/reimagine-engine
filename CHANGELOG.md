@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.35 - 2026-11-27
+
+- The README calls `base` an example, beside `checks`. It said every other value shown is a default, above `"base": "main"`, while the default is the repository's default branch.
+
 ## guard 0.1.7 - 2026-11-27
 
 - The README's list of what the ask hook does not see names a command a skill or a slash command runs as it loads, for which the host calls no tool-call hook, and the README says that no call asks in a session whose settings turn a plugin's hooks off. It read as if every shell command passes the hook.

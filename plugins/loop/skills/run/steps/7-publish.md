@@ -22,7 +22,7 @@ A question about a commit, a push or a pull request, raised because an ask-first
 
 Commit the work of each slice whose closing commit is not yet on the branch, one commit per slice, and record each sha as the slice's `commit` in steps.json. Log each commit in `run.md` as a line `- commit <full sha> <subject>`; a later run tells the loop's own commits from foreign ones by these lines alone.
 
-- Write the message as `type(scope): subject`, lowercase, with a body that says why the change was made. When the repository's instruction files set another form, follow them.
+- Write the message as `type(scope): subject`, lowercase, with a body that says why the change was made and, where the commit makes a design choice, the choice and the option it rejected. When the repository's instruction files set another form, follow them.
 - Write a bare `@token` in backticks.
 - Name no model, agent type, tool, review pass or level, or a term the suite or a run coined, in the subject or the body. Type no attribution trailer of your own, and keep one the host's attribution setting adds, even where it names a model or tool.
 - Stage paths by name only. Never run `git add -A` or `git add .`.
@@ -57,11 +57,11 @@ Every body file is written with the Write tool first, in its own call. The publi
 
 Add `--head <branch>` on a continued branch. The title is the single ticket's title, or the plan's one-line summary when there are several inputs, at most 70 characters. Record the pull request in steps.json as `runs[].pr`, in the form `github:<owner>/<repo>#<n>`, from the url `gh pr create` prints, before any other call.
 
-A pull request opened on a continued branch lists, under "Decisions for the reviewer", the commits that were on the branch before the run (the Branch state list in this run's section of `inputs.md`, own and foreign) and says the branch carries them from before this change and they were reviewed with it. One made after the record's last Step 5 pass is named as not reviewed, as item 1 below says.
+A pull request opened on a continued branch lists, under "Before merging", the commits that were on the branch before the run (the Branch state list in this run's section of `inputs.md`, own and foreign) and says the branch carries them from before this change and they were reviewed with it. One made after the record's last Step 5 pass is named as not reviewed, as item 1 below says.
 
 **One open pull request on the branch.** It is this loop's own when a `runs` entry in `steps.json` names it in `pr` (`record.md`, steps.json, item 2). Read `pr-body.md`. After the push, with `<pr>` the pull request number:
 
-1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. A commit on the branch that no run made and no slice's `commit` names is listed under "Decisions for the reviewer" as not the loop's, and as not reviewed when it was made after the record's last Step 5 pass, so that the `head` of Step 5's entry in `steps.json` does not hold it. This is the run's only edit of that body, except the one in 7.3, item 3, after a repair; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
+1. When it is this loop's own, update its body once in this run. Write the body for the whole branch from the `## Pull request body` template, covering every input of every run of the record, to the run's body file, then run `gh pr edit <pr> --body-file <absolute path>`. A commit on the branch that no run made and no slice's `commit` names is listed under "Before merging" as not the loop's, and as not reviewed when it was made after the record's last Step 5 pass, so that the `head` of Step 5's entry in `steps.json` does not hold it. This is the run's only edit of that body, except the one in 7.3, item 3, after a repair; in a multi-repository run it also carries the sibling links (`multi-repo.md`).
 2. Write the continued pull request comment from the `## Continued pull request comment` template to `<record>/comment-<n>.md`, numbered as `record.md` says, then post it: `gh pr comment <pr> --body-file <absolute path to comment-<n>.md>`. This is the run's one comment on the pull request.
 3. When it is not this loop's own, the comment is all: never edit its body.
 

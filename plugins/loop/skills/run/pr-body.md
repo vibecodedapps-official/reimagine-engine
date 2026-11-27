@@ -10,18 +10,12 @@ Write the body to the run's body file in the record: `pr-body.md`, or `pr-body-<
 
 ```
 ## What changed
-<per input: the ticket, file or description, "complete" or "partial", and what changed>
+<per input: the ticket, file or description, "complete" or "partial", and what the change does, with a behavior that differs from the ticket's text or that a reader could take for a bug said there>
 
-## Where the ticket and the code differ
-<where a ticket and the code disagreed, and what the change follows>
-
-## Decisions for the reviewer
-<design choices; options rejected and why; behavior a reader could take for a bug>
+## Before merging
+<a check not run because only the merge or a deploy after it runs it, with what to watch; a check that fails without this change too, with the evidence>
 <on a continued branch: this branch carries <n> commits from before this change; they were reviewed with it, and they are listed here>
 <commits on the branch that are not the loop's, as `steps/7-publish.md`, 7.2, says>
-
-## Checks not run
-<each check not run, with the reason and, for one someone must still run, the ticket that tracks it; each check deferred to CI, by job name; each check failing at baseline, with the evidence>
 
 ## Follow-ups
 <one line per ticket: what it holds, in one line, and its ticket reference; "none">
@@ -32,6 +26,8 @@ Write the body to the run's body file in the record: `pr-body.md`, or `pr-body-<
 ## Closes
 <one line per ticket>
 ```
+
+A line is in the body only when its reader would review or merge the change differently for it. The rest has another home and is not repeated here: a design choice and the option it rejected, in the message of the commit that makes it (`steps/7-publish.md`, 7.1) and in the report's Decisions, or, on a run that ends `prepared` and so writes no commit message, as one clause of that input's What changed line; ticket text the code had made wrong, in `inputs.md`; a check someone must still run, in its ticket, which Follow-ups names (`tickets.md`); every other check, in the report's Checks; a note, in the report alone (`tickets.md`).
 
 `## Follow-ups` holds one line per ticket, from the latest `new` or `existing` `- ticket` line of `run.md` for it across every run of the record; items that share a ticket share its line. An item settled, put to the user or not yet filed is not listed (`tickets.md`).
 

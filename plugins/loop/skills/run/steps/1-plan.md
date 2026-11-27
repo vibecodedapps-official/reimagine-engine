@@ -42,8 +42,7 @@ Never adopt multi-repository scope from prose alone. The gate stays in force for
 
 1.3 Verify each claim in the code. For a bug, reproduce it, or run a check that confirms or rejects the explanation, and show the failure before you plan a fix. Write what you ran and saw in `inputs.md`.
 
-1.4 When the ticket text has drifted from the code, record in `inputs.md` what changed and why, plan against the corrected text, and carry the correction to the pull request body (its Where the ticket and the code differ section).
-
+1.4 When the ticket text has drifted from the code, record in `inputs.md` what changed and why, and plan against the corrected text; `pr-body.md` says what of it the pull request body carries.
 1.5 Mark each input `buildable`, `partial` or `blocked` in `inputs.md`, with the reason. Partial and blocked inputs stay in the run and are reported per input.
 
 1.6 Read `risk.md`. Judge the risk floor on the inputs. Record in `inputs.md` the trigger or `none`, and the effort in force. Then write Step 1 `complete`.

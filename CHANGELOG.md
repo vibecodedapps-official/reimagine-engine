@@ -2,6 +2,10 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.35 - 2026-11-27
+
+- `shapes.md` says that a `[` in a `paths` glob starts a bracket expression and gives the escaped form, `'app/\[slug\]/**'`. A rule for a directory named `[slug]`, written as the name stands, was denied by the drift hook as matching no tracked file, or passed for a sibling directory of one letter.
+
 ## loop 0.1.35 - 2026-11-27
 
 - The README calls `base` an example, beside `checks`. It said every other value shown is a default, above `"base": "main"`, while the default is the repository's default branch.

@@ -1,6 +1,6 @@
 ---
 name: primer
-description: 'Keeps the CLAUDE.md, rules and skills of a repository in the forms Claude Code loads. Run /primer alone, with a mode, or with one item to record, such as a checklist just run.'
+description: 'Sets up and checks the CLAUDE.md, rules and skills of a repository. Run /primer alone, with a mode, or with one item to record.'
 argument-hint: "[init | adopt | maintain | move | one item to record]"
 disable-model-invocation: true
 allowed-tools:
@@ -27,7 +27,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 ## Choose the mode
 
 - The first line of the reply, before any read beyond what choosing needs and before any write, is exactly `primer: mode <init|adopt|maintain|move> (<one-line reason>)`, with no text before it but the profile question, and the second is `primer: profile <shared|local>`. A reply that reports a stop in place of a pass still opens with both lines.
-- The profile: a hub whose line 1 is the marker is `shared`; else the `profile:` line of `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status` names it. With none, the reply is only one question, with no default: `shared`, instruction files in the work tree, committed, or `local`, the context in a store outside the repository that a hook loads, with nothing written or committed in the work tree. The question names the run that records the answer, `map --add --profile <shared|local>`, by the same script; run it on the answer. Without an answer write nothing.
+- The profile: a hub whose line 1 is the marker is `shared`; else the `profile:` line of `node "${CLAUDE_PLUGIN_ROOT}/scripts/primer.mjs" status` names it. With none, the reply is one sentence on what primer sets up, then one question, with no default: `shared`, instruction files in the work tree, committed, or `local`, the context in a store outside the repository that a hook loads, with nothing written or committed in the work tree. The question names the run that records the answer, `map --add --profile <shared|local>`, by the same script; run it on the answer. Without an answer write nothing.
 - A `local` run reads `local.md` in this skill's directory before the mode line and follows it where it differs from this file.
 - Find files with `git ls-files`, `git ls-files --others --exclude-standard` (untracked, not ignored) and `git ls-files --others --ignored --exclude-standard` (ignored). The mode is chosen from the files on disk, ignored ones included.
 - In a `shared` run, when the root `CLAUDE.md` or root `AGENTS.md` is ignored by git, say so after the profile line and stop with nothing written.
@@ -39,6 +39,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 
 ## Every mode
 
+- After the two lines, one sentence says what the run changed, or what a yes would change, for sessions here. Outside the forms, a path, command, size or count appears only where the user acts on it.
 - Writes are documentation files only: `CLAUDE.md` and `AGENTS.md` at any depth, `.claude/rules/**`, `.claude/skills/**`, `README.md`, and Markdown under `docs/`.
 - Never edit code, configuration, settings, CI files, package manifests, `CLAUDE.local.md`, anything git ignores, or the auto memory directory. The exceptions are a memory note the user approves for deletion in its own question, and the review stamp of Maintain step 3.
 - Never install a git hook and never write a linter rule, a test or a hook. Where placement item 1 or 2 applies, the plan proposes the check, hook or settings key for the user.

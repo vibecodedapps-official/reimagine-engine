@@ -2,6 +2,12 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## guard 0.1.7 - 2026-11-27
+
+- The README's list of what the ask hook does not see names a command a skill or a slash command runs as it loads, for which the host calls no tool-call hook, and the README says that no call asks in a session whose settings turn a plugin's hooks off. It read as if every shell command passes the hook.
+- The Uninstall section says that the denial record goes with the plugin data directory at an uninstall from the last scope that holds the plugin, and names `--keep-data`. It said nothing of the record.
+- Six blocks of the README are split at a sentence, with no word changed, so none is over 120 words.
+
 ## audit 0.1.34 - 2026-11-27
 
 - The README says that an uninstall from the last scope that holds the plugin deletes the plugin data directory, with the run registry and the runs kept there, and names `--keep-data`. It said they stay, and on 2.1.332 an uninstall removed a file placed in that directory.

@@ -2,15 +2,15 @@
   "name": "reimagine-engine",
   "owner": { "name": "vibecodedapps.net" },
   "metadata": {
-    "version": "0.1.158",
+    "version": "0.1.159",
     "description": "A suite of Claude Code plugins: house rules, a ticket-to-pull-request loop, a read-only audit of finished pull requests, a review gate, instruction-file maintenance, auto mode trust for listed repositories, and a review of pull requests someone else wrote."
   },
   "plugins": [
     {
       "name": "rules",
       "source": "./plugins/rules",
-      "description": "House rules for Claude Code sessions: one block in your CLAUDE.md, kept current, plus the Concise Plain output style, a refactor review against them, a handoff prompt skill and a check on drafts written for other people.",
-      "version": "0.1.53"
+      "description": "House rules for Claude Code sessions, which say when a session asks first, how it tests and when work is done: one block in your CLAUDE.md, kept current, plus the Concise Plain output style, a refactor review against them, a handoff prompt skill and a check on drafts written for other people.",
+      "version": "0.1.54"
     },
     {
       "name": "loop",

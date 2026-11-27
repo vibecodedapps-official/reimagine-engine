@@ -6,10 +6,6 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 - The offer of the outbound list and the README say that the starter lines deny a commit or a pull request body that carries the host's default attribution, and name the `attribution` setting the host documents for hiding it. A user who took the starter lines with attribution at its default had each such commit denied, and nothing said to expect it.
 
-## primer 0.1.35 - 2026-11-27
-
-- `shapes.md` says that a `[` in a `paths` glob starts a bracket expression and gives the escaped form, `'app/\[slug\]/**'`. A rule for a directory named `[slug]`, written as the name stands, was denied by the drift hook as matching no tracked file, or passed for a sibling directory of one letter.
-
 ## loop 0.1.35 - 2026-11-27
 
 - The README calls `base` an example, beside `checks`. It said every other value shown is a default, above `"base": "main"`, while the default is the repository's default branch.

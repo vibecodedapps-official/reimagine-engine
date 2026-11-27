@@ -54,6 +54,11 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd)
 ro=$here/../../plugins/audit/scripts/readonly.sh
 sh_bin=${RO_SH:-sh}
+
+GIT_CONFIG_GLOBAL=/dev/null
+GIT_CONFIG_NOSYSTEM=1
+export GIT_CONFIG_GLOBAL GIT_CONFIG_NOSYSTEM
+
 # Every temporary path, the fixtures and run directories included, lives under one root,
 # removed as one quoted path, so a temp path that holds a space cannot split the cleanup.
 root=$(mktemp -d)

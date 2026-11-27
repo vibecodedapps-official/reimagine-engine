@@ -73,6 +73,8 @@ An `az repos` write that names no repository and runs outside a flagged checkout
 
 With nobody to answer, as in an unattended or `claude -p` run, the host denies a call that asks, so such a run cannot push or post to a flagged repository. When the hook itself cannot run, as with no `node` on the PATH, or runs past its 10-second limit, the call goes on without a prompt; the hook's `git` calls stop after 8 seconds together and it asks then, and guard's allow entries do not cover a flagged repository. The prompt was checked in auto mode, and in no other permission mode.
 
+The hook runs only where the host runs a plugin's hooks. In a session whose settings set `disableAllHooks`, or whose managed settings set `allowManagedHooksOnly` and do not enable guard, no call asks.
+
 When `reimagine-guard.json` cannot be read, or is missing while the settings file holds guard's entries, the hook asks before every push, every `gh` and `az repos` write and every command that holds a `post:` phrase, whatever its repository, until you correct the file or run `/guard`. Raw calls and MCP calls pass then, since nothing can aim them without the list. With no repository flagged it does nothing.
 
 The hook does not see:
@@ -81,6 +83,7 @@ The hook does not see:
 - a command a `post:` line names, typed with a `..` segment or doubled spaces inside the phrase, and one that names an Azure DevOps repository alone, by an option other than `--repository` or `-r`, outside a flagged checkout;
 - a program started by another program, such as `Start-Process` or a script language's subprocess call;
 - the host's own calls;
+- a command a skill or a slash command runs as it loads, written in its file after a `!`, since the host calls no tool-call hook for it;
 - a raw call that names the repository only by an id, or whose address is put together from variables;
 - a request made through a program's own HTTP classes rather than a command;
 - an MCP tool that acts on a repository it is told neither by name nor by path, or only by an id, and one that writes under a name that reads as a read;

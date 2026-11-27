@@ -186,7 +186,7 @@ A post you ask for, and every drafted ticket or pull request text, is written fo
 
 ## Uninstall
 
-Run `/plugin uninstall audit@reimagine-engine`. The run registry and any runs in the plugin data directory stay, and so do run directories in your repositories; delete them if you want them gone.
+Run `/plugin uninstall audit@reimagine-engine`. Uninstalling from the last scope that holds the plugin deletes the plugin data directory, and with it the run registry and any runs kept there; `claude plugin uninstall --keep-data audit@reimagine-engine`, from a shell, keeps them. Run directories in your repositories stay; delete them if you want them gone.
 
 ## License
 

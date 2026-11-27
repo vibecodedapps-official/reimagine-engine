@@ -129,7 +129,7 @@ If you install your user settings from a shared file by a merge that replaces th
 1. In a folder that reads another folder's list through `/guard use`, delete this folder's `reimagine-guard.json` and run `/guard`, which takes this folder's entries out and leaves the list; `/guard clear` there would empty the list for both folders. Otherwise run `/guard clear` and reply with the sentence the skill asks for; a plain yes writes nothing and leaves the entries in place.
 
    It takes every guard entry out and deletes the list. When the copied default lines are every current default, they go back to one `$defaults`. A settings file that had no `autoMode` before gets its original bytes back, except that an object that held only whitespace, such as `{ }`, comes back as `{}`; a file guard created is deleted unless it holds something else.
-2. Run `/plugin uninstall guard@reimagine-engine`.
+2. Run `/plugin uninstall guard@reimagine-engine`. Uninstalling from the last scope that holds the plugin deletes the plugin data directory, and the denial record with it; `claude plugin uninstall --keep-data guard@reimagine-engine`, from a shell, keeps it.
 
 ## License
 

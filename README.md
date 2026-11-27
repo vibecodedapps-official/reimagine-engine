@@ -84,7 +84,9 @@ Run `/rules --remove` first if you want the block out of your `CLAUDE.md`; it gi
 /plugin uninstall review@reimagine-engine
 ```
 
-The audit keeps its run registry in the plugin data directory; delete it by hand if you want it gone. Guard leaves the copies that each change to an existing settings file made, named like that file with `.reimagine-backup-<YYYYMMDDHHMMSS>` added (the name of its target, when `settings.json` is a symbolic link), beside it, and the list file `reimagine-guard.json` while the list still holds a repository; delete them by hand if you want them gone. Review leaves, in each clone it reviewed, the refs under `refs/reimagine/review/` and the entry of its scratch worktree, unless the commands a run listed removed them; `git update-ref -d <ref>` for each ref that `git for-each-ref refs/reimagine/review` lists, and `git worktree prune`, remove them by hand.
+Uninstalling a plugin from the last scope that holds it also deletes its data directory and what the plugin keeps there, such as the audit's run registry and runs, review's records and guard's denial record. `claude plugin uninstall --keep-data <plugin>@reimagine-engine`, from a shell, keeps the directory.
+
+Guard leaves the copies that each change to an existing settings file made, named like that file with `.reimagine-backup-<YYYYMMDDHHMMSS>` added (the name of its target, when `settings.json` is a symbolic link), beside it, and the list file `reimagine-guard.json` while the list still holds a repository; delete them by hand if you want them gone. Review leaves, in each clone it reviewed, the refs under `refs/reimagine/review/` and the entry of its scratch worktree, unless the commands a run listed removed them; `git update-ref -d <ref>` for each ref that `git for-each-ref refs/reimagine/review` lists, and `git worktree prune`, remove them by hand.
 
 ## Propose a change
 

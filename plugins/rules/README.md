@@ -1,6 +1,6 @@
 # rules
 
-House rules for Claude Code sessions: one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style, a refactor review against them, a handoff prompt skill and a check on drafts written for other people.
+House rules for Claude Code sessions, which say when a session asks first, how it tests and when work is done: one block in your `CLAUDE.md`, kept current by a script, plus the Concise Plain output style, a refactor review against them, a handoff prompt skill and a check on drafts written for other people.
 
 ## What it installs
 

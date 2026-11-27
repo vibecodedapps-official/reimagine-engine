@@ -1,7 +1,7 @@
 {
   "name": "primer",
-  "version": "0.1.32",
-  "description": "Project instructions in the forms Claude Code loads: a short CLAUDE.md, path-scoped rules, nested instructions and skills, with auto memory promoted into them and a hook that checks every commit.",
+  "version": "0.1.33",
+  "description": "Maintains a repository's Claude Code instruction files, which give each session its commands and constraints, and checks them against the code.",
   "author": { "name": "vibecodedapps.net" },
   "repository": "https://github.com/vibecodedapps-official/reimagine-engine",
   "license": "Apache-2.0"

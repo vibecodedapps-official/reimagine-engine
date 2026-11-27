@@ -1,6 +1,6 @@
 # primer
 
-Keeps a repository's project instructions in the forms Claude Code loads: a short `CLAUDE.md` hub, path-scoped rules under `.claude/rules/`, nested `CLAUDE.md` files and skills under `.claude/skills/`. It promotes auto memory into them and checks every commit with a hook.
+Maintains a repository's Claude Code instruction files, which give each session the repository's commands and constraints. They are a root `CLAUDE.md` (the hub), rules and skills: `/primer` writes them and checks them against the code, a hook checks each commit, and the `local` profile keeps them outside the repository.
 
 ## Install
 

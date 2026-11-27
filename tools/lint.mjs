@@ -82,8 +82,8 @@ const OWN_ALLOW_RULE = [GUARD_SKILL, LOOP_SKILL, GATE_SKILL];
 const HEADING = new RegExp(`^## (${[...NAMES, ...RETIRED].join('|')}) (${SEMVER_CORE}) - (\\d{4}-\\d{2}-\\d{2})$`);
 const FENCE = /^\s*```/;
 const README_BLOCK_WORDS = 120;
-// READMEs still to be brought under the cap, each with the next change to its plugin.
-const README_UNCAPPED = ['audit', 'gate', 'guard'];
+// READMEs still to be brought under the cap, each with the next change to it.
+const README_UNCAPPED = ['gate'];
 
 const ROOT_HOOKS = {
   hooks: {

@@ -80,7 +80,6 @@ paths:
 
 - Write `paths` as a YAML block list of quoted globs. The host also reads a comma-separated string, such as `paths: "src/**/*.ts, *.sql"`; keep that form where a file has it. Any other value is one the host cannot read.
 - A glob without a `/` matches at every depth. Brace groups such as `src/**/*.{ts,tsx}` are allowed.
-- A `[` starts a bracket expression, so `app/[slug]/**` does not name a directory called `[slug]`. Write a literal bracket with a backslash, in single quotes: `'app/\[slug\]/**'`.
 - Every glob must match a tracked file when the rule is committed. Scope follows the tasks the rule governs, not the paths it mentions.
 
 ## Skills

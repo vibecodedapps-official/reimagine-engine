@@ -87,7 +87,7 @@ One `### D<n>` per choice in the report's Decisions section, numbered in that or
   - review: `checkpoint (recommended option taken)`
   - run: `role: orchestrator`
   - Never a person's name, and never a model, an agent or a tool.
-- `recorded_at`: `url <link>` when the decision is published in a pull request or comment, else `checkpoint: <step>`.
+- `recorded_at`: `commit <sha>` when a commit's message states the decision, the sha written as in the ticket's `commits` entry, else `url <link>` when it is published in a pull request or comment, else `checkpoint: <step>`.
 - `status`: `taken`, `default taken` or `deferred`.
 
 ### Raised tickets
@@ -167,7 +167,7 @@ generated: 2026-10-14T19:41:07Z
   - chosen: three retries with exponential backoff, then queue
   - rejected: retry until the connection returns; why: a long outage would hold the sync worker with no bound
 - decided_by: role: session user (plan confirmation)
-- recorded_at: url https://github.com/acme/widget-app/pull/14
+- recorded_at: commit 4e1a9c2
 - status: taken
 
 ## Raised tickets

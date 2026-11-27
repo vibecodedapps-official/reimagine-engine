@@ -87,7 +87,7 @@ test('R352: a gh issue command names its repository, an az boards command passes
 test('R117: the pull request body has its sections in order, and the continued comment swaps Closes for Issues', () => {
   const body = PR_BODY.split('```\n')[1];
   assert.deepEqual([...body.matchAll(/^## (.+)$/gm)].map((m) => m[1]), [
-    'What changed', 'Where the ticket and the code differ', 'Decisions for the reviewer', 'Checks not run', 'Follow-ups', 'Related pull requests', 'Closes',
+    'What changed', 'Before merging', 'Follow-ups', 'Related pull requests', 'Closes',
   ]);
   const comment = PR_BODY.split('\n## Continued pull request comment\n')[1].split('```\n')[1];
   assert.deepEqual(comment.trim().split('\n'), ['## Issues', '<ref>: complete', '<ref>: partial']);

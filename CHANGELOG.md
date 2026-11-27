@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## loop 0.1.34 - 2026-11-27
+
+- The pull request body holds What changed, Before merging, Follow-ups, Related pull requests and Closes, and a line is in it only when its reader would review or merge the change differently for it. The sections Where the ticket and the code differ, Decisions for the reviewer and Checks not run are gone. On one pull request they held 22 bullets, among them notes the run had kept out of publication, a check that had passed and checks CI shows.
+- What changed says a behavior that differs from the ticket's text or that a reader could take for a bug. Before merging holds a check not run because only the merge or a deploy after it runs it, a check that fails without the change too, and the commits that are not the loop's.
+- A design choice and the option it rejected go in the message of the commit that makes it, and the handoff names that commit as the decision's record. A run that ends `prepared` writes no commit message and says the choice in What changed.
 ## rules 0.1.54 - 2026-11-27
 
 - Concise Plain 4.20. An explanation of something technical says in one clause what the thing is for, as a fact about it and not as a benefit to the reader, at no extra length. Explanations listed mechanics with no purpose, and a purpose, once asked for, read as a pitch. The chat block has the same line.

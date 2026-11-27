@@ -551,8 +551,9 @@ function topOf(c, path) {
 
 // The root instruction files and unscoped rules of a work tree, as the host would load them for a session started there.
 function instructionsOf(top) {
-  const hub = existsSync(join(top, 'CLAUDE.md')) ? readText(join(top, 'CLAUDE.md')) : null;
-  const names = ['CLAUDE.md', ...(hub === null || /^@AGENTS\.md(\r?\n)?$/.test(hub) ? ['AGENTS.md'] : []), '.claude/CLAUDE.md', 'CLAUDE.local.md'];
+  const own = ['CLAUDE.md', '.claude/CLAUDE.md', 'CLAUDE.local.md'], hub = existsSync(join(top, 'CLAUDE.md')) ? readText(join(top, 'CLAUDE.md')) : '';
+  // The host reads AGENTS.md where none of the three exists, or through the one-line file.
+  const names = ['CLAUDE.md', ...(!own.some((f) => existsSync(join(top, f))) || /^@AGENTS\.md(\r?\n)?$/.test(hub) ? ['AGENTS.md'] : []), ...own.slice(1)];
   const rules = [], walk = (d) => {
     for (const e of (() => { try { return readdirSync(d, { withFileTypes: true }); } catch { return []; } })()) {
       const f = join(d, e.name);

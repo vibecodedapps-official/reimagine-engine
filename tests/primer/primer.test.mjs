@@ -1022,6 +1022,18 @@ describe('reach', () => {
     rmSync(join(app, 'AGENTS.md'));
     assert.equal(edit(data, join(app, 'README.md'), { id: 's4', extraEnv: none }).stdout, '');
   });
+
+  test('a root AGENTS.md is not named beside a CLAUDE.local.md or a .claude/CLAUDE.md, where the host does not read it', () => {
+    const none = { CLAUDE_CONFIG_DIR: join(base, 'no-config') };
+    write(app, 'AGENTS.md', '# Agents\n');
+    write(app, 'CLAUDE.local.md', '# Mine\n');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(app, 'README.md'), { extraEnv: none }).stdout, said(`${lead(app)} instruction files: ${slash(app)}/CLAUDE.local.md`));
+    rmSync(join(app, 'CLAUDE.local.md'));
+    write(app, '.claude/CLAUDE.md', '# Dot\n');
+    assert.equal(edit(join(base, `reach-data-${++seq}`), join(app, 'README.md'), { extraEnv: none }).stdout, said(`${lead(app)} instruction files: ${slash(app)}/.claude/CLAUDE.md`));
+    rmSync(join(app, '.claude'), { recursive: true });
+    rmSync(join(app, 'AGENTS.md'));
+  });
 });
 
 // Requirement 410: what a store that may be shared holds of one machine, told by line and kind.

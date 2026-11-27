@@ -39,7 +39,7 @@ Before writing, moving or proposing anything, read `shapes.md` and `placement.md
 
 ## Every mode
 
-- After the two lines, one sentence says what the run changed, or what a yes would change, for sessions here. Outside the forms, a path, command, size or count appears only where the user acts on it.
+- After the two lines, one sentence says what the run changed, or what a yes would change, for sessions here; a reply that changes nothing and asks nothing has none. Outside the forms, a path, command, size or count appears only where the user acts on it.
 - Writes are documentation files only: `CLAUDE.md` and `AGENTS.md` at any depth, `.claude/rules/**`, `.claude/skills/**`, `README.md`, and Markdown under `docs/`.
 - Never edit code, configuration, settings, CI files, package manifests, `CLAUDE.local.md`, anything git ignores, or the auto memory directory. The exceptions are a memory note the user approves for deletion in its own question, and the review stamp of Maintain step 3.
 - Never install a git hook and never write a linter rule, a test or a hook. Where placement item 1 or 2 applies, the plan proposes the check, hook or settings key for the user.

@@ -1,12 +1,13 @@
 # reimagine-engine
 
 A suite of seven Claude Code plugins, built on three ideas: achieve more with less; say how, not what; take work from development to production in bulk.
+
 - `rules`: one block of working rules in your `CLAUDE.md` that every session loads, covering when to ask, how to test and what done means; plus the Concise Plain output style, a refactor review and a handoff prompt skill.
 - `loop`: plan, build, review and publish a bundle of tickets as one reviewed pull request per repository, resuming on the same branch when run again.
 - `audit`: a read-only, adversarial audit of finished pull requests that stops at a report, with an act step for approved items.
 - `gate`: code-review passes over a pull request, several, or a loop manifest, fixing what each pass finds until a pass finds nothing left to fix.
 - `primer`: maintains a repository's instruction files, which give each session its commands and constraints, and checks them against the code.
-- `guard`: lists the repositories auto mode trusts, which allows a push or a pull request there; `/guard` shows each settings change before writing it.
+- `guard`: lists the repositories auto mode trusts, which allows a push or a pull request there, or has the host ask first where you set `ask`; `/guard` shows each settings change before writing it.
 - `review`: a review of a pull request someone else wrote, ending in drafted comments for its author and a summary for the person who gates the merge, posted only on a later request, each post approved by name.
 
 Status: all seven plugins are released from `main`, each with its own version and tag `<plugin>--v<version>`.

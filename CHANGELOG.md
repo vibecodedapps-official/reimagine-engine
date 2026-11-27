@@ -2,7 +2,7 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
-## primer 0.1.33 - 2026-11-26
+## primer 0.1.33 - 2026-11-27
 
 - A `/primer` reply says in one sentence what the run changed, or what a yes would change, before its forms. A run listed forms, sizes and paths and never said it.
 - The profile question says what primer sets up.

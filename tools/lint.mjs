@@ -244,8 +244,6 @@ function loadContext() {
   };
 }
 
-// ---- rules 1 to 4
-
 async function syntaxFailures(ctx) {
   const results = await Promise.all(ctx.files.filter((f) => f.endsWith('.mjs')).map(async (file) => {
     try {
@@ -295,8 +293,6 @@ function budgetFailures(ctx) {
   }
   return out;
 }
-
-// ---- rules 5 to 18
 
 function catalogFailures(ctx) {
   const out = [];
@@ -371,8 +367,6 @@ function catalogFailures(ctx) {
   }
   return out;
 }
-
-// ---- rules 19 to 31
 
 function readmeFailures(ctx) {
   const out = [];
@@ -499,8 +493,6 @@ function hookFailures(ctx) {
   return out;
 }
 
-// ---- rules 32 to 39
-
 function fileFailures(ctx) {
   const out = [];
   for (const file of ctx.shipped) {
@@ -545,17 +537,17 @@ function fileFailures(ctx) {
   }
 
   const named = [];
-  const named37 = [];
+  const unheld = [];
   for (const file of ctx.shipped) {
     const m = /^plugins\/([^/]+)\/(skills|commands|agents|hooks)\//.exec(file);
     if (!m) continue;
     for (const hit of ctx.text(file).matchAll(/(?<![\w./-])(scripts|hooks)\/[A-Za-z0-9_.-]+\.(sh|mjs|js)\b/g)) {
       const target = `plugins/${m[1]}/${hit[0]}`;
-      if (!ctx.fileSet.has(target)) named37.push(`${file}: names ${hit[0]}, which ${target} does not hold`);
+      if (!ctx.fileSet.has(target)) unheld.push(`${file}: names ${hit[0]}, which ${target} does not hold`);
       else named.push(target);
     }
   }
-  out.push(...named37);
+  out.push(...unheld);
 
   const tests = ctx.files.filter((f) => f.startsWith('tests/'));
   const covered = (path) => {
@@ -570,8 +562,6 @@ function fileFailures(ctx) {
   for (const line of GITATTRIBUTES) if (!attributes.includes(line)) out.push(`.gitattributes: lacks the line ${line}`);
   return out;
 }
-
-// ---- rules 40 to 45
 
 function chatFailures(ctx) {
   const out = [];
@@ -670,8 +660,6 @@ function lastParagraph(text) {
   return lines.slice(start, end).join(' ');
 }
 
-// ---- rules 46 to 52
-
 function ghApiFailures(ctx) {
   const unclosed = [], noHost = [];
   for (const file of ctx.shipped.filter((f) => f.endsWith('.md'))) {
@@ -735,8 +723,6 @@ function pluginVersionFailures(ctx) {
   return out;
 }
 
-// ---- rules 53 to 56
-
 function tagFailures(ctx) {
   if (!ctx.isWork) return ['tag rule: not a git work tree'];
   if (ctx.shallow) return ['tag rule: the clone is shallow; fetch the full history and tags (git fetch --unshallow --tags)'];
@@ -755,8 +741,6 @@ function tagFailures(ctx) {
   }
   return [...below, ...changed];
 }
-
-// ---- rules 57 to 60
 
 function changelogFailures(ctx) {
   const out = [];
@@ -791,8 +775,6 @@ function changelogFailures(ctx) {
   }
   return out;
 }
-
-// ---- rules 61 to 64
 
 const HOME_WORDS = ['user', 'username', 'you', 'me', 'dev', 'name', 'example', 'runner'];
 const OWNER_WORDS = ['owner', 'org', 'example', 'acme', 'octo-org', 'octocat'];

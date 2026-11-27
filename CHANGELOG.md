@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.33 - 2026-11-26
+
+- A `/primer` reply says in one sentence what the run changed, or what a yes would change, before its forms. A run listed forms, sizes and paths and never said it.
+- The profile question says what primer sets up.
+- The `/init` sentence comes once in a run.
+- The README and the description say what primer is for before the file forms.
+
 ## rules 0.1.53 - 2026-11-26
 
 - With `check: diff`, a command that holds the words `git` and `push` passes only where it is one plain git call, and is denied otherwise with the reason to send the push as a command of its own. The hook no longer walks a command for a push after a commit: each release since 0.1.44 closed more spellings that hid one, nearly all written to try the walk, and a session that sends its push alone writes none of them. Now denied too: `git pull --ff-only && git push`, a push piped to `tail`, and a command that only names both words, as `git add . && git commit -m "fix push retry"` or a search for `git push`. One `cd <folder> &&` before the call and one `2>&1` after it are part of a plain call.

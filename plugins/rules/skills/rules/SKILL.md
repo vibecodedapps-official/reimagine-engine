@@ -63,7 +63,7 @@ Show the output of each `apply` and `decline` verbatim in a fenced code block.
 
 ## Step 3: always last
 
-Unless the argument is `--remove`, if `rules-outbound.txt` is missing from `$CLAUDE_CONFIG_DIR`, else `~/.claude`, ask once whether to create the outbound list, which the plugin's hook checks commits, pushes and forge posts against, and show its starter lines in the question: `Claude`, `Anthropic`, each model family name you know, and `reimagine`. On a yes, write it with the Write tool: those lines, then each string the user names, one per line.
+Unless the argument is `--remove`, if `rules-outbound.txt` is missing from `$CLAUDE_CONFIG_DIR`, else `~/.claude`, ask once whether to create the outbound list, which the plugin's hook checks commits, pushes and forge posts against, and show its starter lines in the question: `Claude`, `Anthropic`, each model family name you know, and `reimagine`. Say there that these lines deny a commit or a pull request body that carries the host's default attribution, which the `attribution` setting, with `commit` and `pr` empty, is documented to hide. On a yes, write it with the Write tool: those lines, then each string the user names, one per line.
 
 Print how to select the output style:
 

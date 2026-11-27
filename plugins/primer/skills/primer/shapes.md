@@ -126,7 +126,7 @@ Done when <one sentence>.
 - Say once in the reply that the host reads a root `AGENTS.md` directly from Claude Code 2.1.277, and that an older session needs a `CLAUDE.md` holding exactly `@AGENTS.md`.
 - A root `CLAUDE.md` that is exactly `@AGENTS.md` plus at most one newline is kept and followed.
 - When a root `CLAUDE.local.md` exists, the host does not read `AGENTS.md`. The plan proposes the one-line `CLAUDE.md` and writes it on the yes.
-- A nested `AGENTS.md` with no root one stays where it is and is listed. Never move it.
+- A nested `AGENTS.md` stays where it is and is listed. Never move it. Where a root `CLAUDE.md` exists or the plan writes one, the hub or the one-line file, the host does not read a nested `AGENTS.md`: the plan says so and proposes, beside each one whose directory has no `CLAUDE.md`, a `CLAUDE.md` holding exactly `@AGENTS.md`. That file takes none of the Nested CLAUDE.md shape.
 - Rules and skills are Claude-only files. A repository shared with other tools keeps its shared facts in `AGENTS.md`.
 
 ## Imports, prose and history

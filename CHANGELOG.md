@@ -7,7 +7,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 - Concise Plain 4.20. An explanation of something technical says in one clause what the thing is for, as a fact about it and not as a benefit to the reader, at no extra length. Explanations listed mechanics with no purpose, and a purpose, once asked for, read as a pitch. The chat block has the same line.
 - The README and the description say what the house rules set before they list the parts.
 
-## primer 0.1.33 - 2026-11-26
+## primer 0.1.33 - 2026-11-27
 
 - A `/primer` reply says in one sentence what the run changed, or what a yes would change, before its forms. A run listed forms, sizes and paths and never said it.
 - The profile question says what primer sets up.

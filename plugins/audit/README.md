@@ -41,7 +41,9 @@ Phrases the audit recognizes:
 
 Everything else goes in the manifest.
 
-Before it does anything else, the audit prints what it read: bundles, references, sources of truth, claims files, effort, budget, model overrides, and how each ticket was found. Then it asks you to pause background fetch, for example VS Code `git.autofetch`, since a fetch during the run can stop it. Under the default permission mode it asks before each script it runs and before each git read of a repository other than the session's folder; the skill pre-approves neither, since a pattern wide enough to cover those reads would also cover a git option that writes a file or runs a program. What it does pre-approve holds until your first reply. So a run with no one to answer needs a permission mode that lets its commands run. Allow rules of your own may not be enough: a rule matches a command issued alone, and a session often joins several in one call. The commands are its scripts run by `sh`, `git -C <repo>` reads, `mkdir`, `mv`, `stat`, `od`, `sha256sum` or `shasum`, `jq`, `awk` and `wc`.
+Before it does anything else, the audit prints what it read: bundles, references, sources of truth, claims files, effort, budget, model overrides, and how each ticket was found. Then it asks you to pause background fetch, for example VS Code `git.autofetch`, since a fetch during the run can stop it. Under the default permission mode it asks before each script it runs and before each git read of a repository other than the session's folder; the skill pre-approves neither, since a pattern wide enough to cover those reads would also cover a git option that writes a file or runs a program. What it does pre-approve holds until your first reply.
+
+So a run with no one to answer needs a permission mode that lets its commands run. Allow rules of your own may not be enough: a rule matches a command issued alone, and a session often joins several in one call. The commands are its scripts run by `sh`, `git -C <repo>` reads, `mkdir`, `mv`, `stat`, `od`, `sha256sum` or `shasum`, `jq`, `awk` and `wc`.
 
 Commands:
 
@@ -174,7 +176,9 @@ When a finding needs live data, the report holds a `live <id>` block with the ex
 
 ## Act
 
-`/audit:act <run-id> <item-id...>` commits the items you approve, by id. It first checks that the report is unchanged, that HEAD is the bundle branch, and that the tracked tree is clean; it never stashes, resets, cleans or checks out. It shows commits made since the audit and asks before it goes on. It runs the checks before the first change, makes one commit per ticket and repository (or per item with `--per-item`), shows each staged diff and asks before each commit. It never skips hooks. Act never pushes, and never edits a ticket unless you say so for that item. A post you ask for, and every drafted ticket or pull request text, is written for its reader: on a ticket, what changed, what happens next and who decides; on a pull request, what its reviewer needs about the code. It holds no audit id, stage, verdict or other term the audit coined, and no model, agent or tool; the evidence and the ids stay in the run directory. It ends with what was and was not committed, whether a force push is owed, and the log path.
+`/audit:act <run-id> <item-id...>` commits the items you approve, by id. It first checks that the report is unchanged, that HEAD is the bundle branch, and that the tracked tree is clean; it never stashes, resets, cleans or checks out. It shows commits made since the audit and asks before it goes on. It runs the checks before the first change, makes one commit per ticket and repository (or per item with `--per-item`), shows each staged diff and asks before each commit. It never skips hooks. Act never pushes, and never edits a ticket unless you say so for that item.
+
+A post you ask for, and every drafted ticket or pull request text, is written for its reader: on a ticket, what changed, what happens next and who decides; on a pull request, what its reviewer needs about the code. It holds no audit id, stage, verdict or other term the audit coined, and no model, agent or tool; the evidence and the ids stay in the run directory. It ends with what was and was not committed, whether a force push is owed, and the log path.
 
 ## Handoff
 

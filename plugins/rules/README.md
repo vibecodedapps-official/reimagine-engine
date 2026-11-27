@@ -60,6 +60,7 @@ A hook runs before each Bash, PowerShell and MCP tool call and denies a commit, 
 - `allow: <phrase>` takes the phrase out of the text before the search, so a team that tracks `CLAUDE.md` can list `claude` and allow `CLAUDE.md`.
 - `post: <phrase>` has any command that holds the phrase read as a forge post, so a script or a `curl` call that posts for you is checked: `post: tools/send.mjs`. Case and the direction of a slash do not count. The whole command is searched, so a script under a folder whose name holds a listed string needs an `allow:` line for that folder.
 - `check: diff` also reads the added lines of the commits a push sends, and the names of the files they add, a renamed file's new name among them. It is off by default.
+- The starter lines deny a commit or a pull request body that carries the host's default attribution, since its trailer names the model and its pull request line names the host. The `attribution` setting, with `commit` and `pr` empty, is documented to hide both.
 
 A denial names the string, where it was found and the list file, and for a command the words that made it a post; a text that trips it and posts nothing can be written with a file tool, which the hook does not read.
 

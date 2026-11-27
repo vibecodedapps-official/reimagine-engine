@@ -473,11 +473,21 @@ describe('status', () => {
     mkdirSync(plain);
     assert.equal(run(['status'], { cwd: plain }).stdout, [
       `primer: ${join(base, 'no-config', 'reimagine-primer')} (missing)`,
-      `store: ${join(base, 'no-config', 'reimagine-primer', 'store')}`,
+      `store: ${join(base, 'no-config', 'reimagine-primer', 'store')} (default, no local repository)`,
       `map: ${join(base, 'no-config', 'reimagine-primer', 'store', 'map.json')} (0 repositories, 0 roots)`,
       `repository: none, ${slash(plain)} is in no git work tree`,
       '',
     ].join('\n'));
+  });
+
+  test('the store line says so while config.json names no store and the map holds no local repository', () => {
+    const line = (cfg) => run(['status'], { extraEnv: { CLAUDE_CONFIG_DIR: cfg.dir } }).stdout.split('\n')[1];
+    const shared = { version: 2, repos: [{ remotes: ['example.invalid/team/site'], path: 'unused', group: 'site', profile: 'shared' }], roots: [] };
+    const fresh = config(shared), used = config(local()), named = config(shared);
+    write(named.own, 'config.json', JSON.stringify({ store: named.store }));
+    assert.equal(line(fresh), `store: ${fresh.store} (default, no local repository)`);
+    assert.equal(line(used), `store: ${used.store}`);
+    assert.equal(line(named), `store: ${named.store}`);
   });
 
   test('status takes no arguments, and an unknown verb is refused', () => {

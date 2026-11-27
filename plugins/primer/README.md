@@ -144,7 +144,7 @@ Some layers still load in these cases:
 
 ### The store
 
-The store is `~/.claude/reimagine-primer/store/` (under `$CLAUDE_CONFIG_DIR` when set), or the directory the `store` key of `reimagine-primer/config.json` names, such as one you keep under version control. Where the store sits inside a repository, `/primer` writes its files there and leaves the commit to you. It holds:
+The store is `~/.claude/reimagine-primer/store/` (under `$CLAUDE_CONFIG_DIR` when set), or the directory the `store` key of `reimagine-primer/config.json` names, such as one you keep under version control. Where the store sits inside a repository, `/primer` writes its files there and leaves the commit to you. While no store is named and no repository is `local` yet, `status` marks the store `(default, no local repository)`, and `/primer` asks on the first `local` answer which of the two the store is, before it records anything. It holds:
 
 - `map.json`, which records each repository's profile and group
 - `shared.md` for every mapped repository

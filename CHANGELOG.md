@@ -7,6 +7,11 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 - The pull request body holds What changed, Before merging, Follow-ups, Related pull requests and Closes, and a line is in it only when its reader would review or merge the change differently for it. The sections Where the ticket and the code differ, Decisions for the reviewer and Checks not run are gone. On one pull request they held 22 bullets, among them notes the run had kept out of publication, a check that had passed and checks CI shows.
 - What changed says a behavior that differs from the ticket's text or that a reader could take for a bug. Before merging holds a check not run because only the merge or a deploy after it runs it, a check that fails without the change too, and the commits that are not the loop's.
 - A design choice and the option it rejected go in the message of the commit that makes it, and the handoff names that commit as the decision's record. A run that ends `prepared` writes no commit message and says the choice in What changed.
+## audit 0.1.33 - 2026-11-27
+
+- `your decision` lists nothing an act line or a step of the plan takes, and the plan takes one option where a fix or a choice has two. A report listed there a contested item its recommended line took and a choice its plan had made.
+- No operation is drafted only to record in a pull request or a ticket what the code does. Text that is untrue of the head is still corrected, and a decision comment or a raised ticket keeps its operation. A report drafted pull request lines for four items, two of them notes.
+
 ## rules 0.1.54 - 2026-11-27
 
 - Concise Plain 4.20. An explanation of something technical says in one clause what the thing is for, as a fact about it and not as a benefit to the reader, at no extra length. Explanations listed mechanics with no purpose, and a purpose, once asked for, read as a pitch. The chat block has the same line.

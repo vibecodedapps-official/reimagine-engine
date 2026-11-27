@@ -146,9 +146,13 @@ result's text, approver and time; a `result_file` result's text is its copy
    4. **Disagreements kept**, as `report.md`, "4. Disagreements kept", says.
    5. **Recommended next steps**: the ordered plan of step 14.
    6. **Code fixes**, by repository and file, with item ids.
-   7. **Work-item fixes**, as `report.md`, "7. Work-item fixes", says. The operations
-      are decided here and numbered from `W1` in order, so step 7 writes the same list
-      with the same ids.
+   7. **Work-item fixes**, as `report.md`, "7. Work-item fixes", says. No operation is
+      written only to record, in a pull request's or a ticket's text, what the code
+      does: an item its code change settles, and one whose outcome its finding calls
+      right, get none. Text that says something untrue of the head is still corrected,
+      and a decision comment or a raised ticket keeps its operation. The operations are
+      decided here and numbered from `W1` in order, so step 7 writes the same list with
+      the same ids.
    8. **Decisions**, as `report.md`, "8. Decisions", says: the entries of the pass-one
       `## Decisions` and `## Scope` lists, each with its line from
       `## Decisions challenged` or `## Scope challenged`, or `not challenged` when that
@@ -301,9 +305,9 @@ result's text, approver and time; a `result_file` result's text is its copy
       nothing.
     - The ordered plan of section 5: two to five numbered steps, each with a reason
       clause, covering what to fix before merge, what to check live, and what to record
-      for later. It names which contested or decision items it takes and why;
-      contested items keep their status and the user chooses; a decision entry is
-      named in words, never with an invented `C<n>`.
+      for later. It names which contested or decision items it takes and why, and
+      takes one option where a fix or a choice has two; contested items keep their
+      status; a decision entry is named in words, never with an invented `C<n>`.
     - `/audit:act <run-id> <ids>`: the `act first` ids in that order, and only report
       items `C<n>`; omitted when none are listed. A decision or scope entry has no
       `C<n>` and never appears on either act line, and a `W<n>` operation is not an act
@@ -313,16 +317,16 @@ result's text, approver and time; a `result_file` result's text is its copy
       line: the strict ids in order, then the contested `C<n>` items the orchestrator
       would take that are fixable inside the bundle's repositories, by severity and id,
       each addition with a line `reason: <id>: <reason>`. It may stand alone when the
-      strict list is empty. The added items stay `contested` and stay under
-      `your decision`; the user chooses.
-    - `your decision: <list, or none>`: each `contested` or `provisional` item with what
-      it lacks; each item whose recommended change lies outside the bundle's
-      repositories; and, from section 8, each entry open for the user's authority with
-      the decision needed: decision claims of class `needs <owner>` or
-      `stale deferral`, every scope claim with its `include` or `defer`
-      recommendation, and each other decision the change needs and has not made.
-      Entries the change already settled (`evidenced`, `default taken`, made
-      decisions) stay in the report and are not listed.
+      strict list is empty. The added items stay `contested`.
+    - `your decision: <list, or none>`: what the run cannot settle for the user, and
+      nothing an act line or a step of the plan takes. Each `contested` or `provisional`
+      item that neither takes, with what it lacks; each item whose recommended change
+      lies outside the bundle's repositories; and, from section 8, each entry open for
+      the user's authority with the decision needed: decision claims of class `needs
+      <owner>` or `stale deferral`, every scope claim with its `include` or `defer`
+      recommendation, and each other decision the change needs and has not made. Entries
+      the change already settled (`evidenced`, `default taken`, made decisions) stay in
+      the report and are not listed.
     - `/audit:resume <run-id> --live <file>`, only when a Live checks block has
       `status` `not run: not approved` and resume would accept the import: the rerun
       stage it would compute is none or 6 or later, which here means every stage 1 to 5

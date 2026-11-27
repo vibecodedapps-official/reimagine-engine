@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## audit 0.1.34 - 2026-11-27
+
+- The README says that an uninstall from the last scope that holds the plugin deletes the plugin data directory, with the run registry and the runs kept there, and names `--keep-data`. It said they stay, and on 2.1.332 an uninstall removed a file placed in that directory.
+- Two paragraphs of the README are split at a sentence, with no word changed, so no block of it is over 120 words.
+
 ## primer 0.1.34 - 2026-11-27
 
 - On the first `local` answer under a config folder, `/primer` asks where the store is: the default directory, or one you keep elsewhere, such as one in a dotfiles repository. A run on a second machine asked for the profile alone and made a second store at the default path, beside the versioned one the first machine used, and sessions there loaded the new one. On a path it runs `map --set --store` and reads the map there, which may already hold the repository. The question ends with the first `local` repository or a named store.

@@ -372,7 +372,7 @@ function status(c) {
 
 function delivery(c, p) {
   const map = loadMap(p.map, c.home);
-  const lines = [`primer: ${p.own}${existsSync(p.own) ? '' : ' (missing)'}`, `store: ${p.store}${p.cfg.store && !isDir(p.store) ? ' (missing)' : ''}`, `map: ${p.map} (${p.cfg.store && !existsSync(p.map) ? 'missing' : `${map.repos.length} repositories, ${map.roots.length} roots`})`];
+  const lines = [`primer: ${p.own}${existsSync(p.own) ? '' : ' (missing)'}`, `store: ${p.store}${p.cfg.store ? (isDir(p.store) ? '' : ' (missing)') : map.repos.some((e) => e.profile === 'local') ? '' : ' (default, no local repository)'}`, `map: ${p.map} (${p.cfg.store && !existsSync(p.map) ? 'missing' : `${map.repos.length} repositories, ${map.roots.length} roots`})`];
   let repo;
   try { repo = repoOf(c, c.cwd, Date.now() + c.limit); } catch (e) {
     if (!(e instanceof Unknown)) throw e;

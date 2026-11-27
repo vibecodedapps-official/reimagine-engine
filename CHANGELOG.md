@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.34 - 2026-11-27
+
+- On the first `local` answer under a config folder, `/primer` asks where the store is: the default directory, or one you keep elsewhere, such as one in a dotfiles repository. A run on a second machine asked for the profile alone and made a second store at the default path, beside the versioned one the first machine used, and sessions there loaded the new one. On a path it runs `map --set --store` and reads the map there, which may already hold the repository. The question ends with the first `local` repository or a named store.
+- `status` ends its `store:` line with `(default, no local repository)` while no store is named and the map holds no `local` repository, which is the state the question is asked in.
+
 ## loop 0.1.34 - 2026-11-27
 
 - The pull request body holds What changed, Before merging, Follow-ups, Related pull requests and Closes, and a line is in it only when its reader would review or merge the change differently for it. The sections Where the ticket and the code differ, Decisions for the reviewer and Checks not run are gone. On one pull request they held 22 bullets, among them notes the run had kept out of publication, a check that had passed and checks CI shows.

@@ -57,7 +57,7 @@ Base. A pull request's base is its `baseRefName`, and "base <branch>" naming ano
 
 Checks. The run's checks come from the first source that gives any: the request, else the bundle's `checks` array, else `.reimagine.json` `checks`. The one list feeds the fix round, the child session's allowed tools, the permission statement and the report, which names the source. With no source no check runs, and the report says so.
 
-Scripts. `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs a script writes that absolute path, shown here as `<scripts>`, never the variable.
+Scripts. The session's shell has no plugin-root variable. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs a script writes that absolute path, shown here as `<scripts>`, never the variable.
 
 ## The reading block
 

@@ -85,6 +85,15 @@ test('R368: the plugin ships its manifest, LICENSE, README, the skill and its th
   ]);
 });
 
+test('R413: compaction recovery sits early in SKILL.md and has the run read SKILL.md again', () => {
+  const body = SKILL.replace(/^---\n[^]*?\n---\n/, '');
+  const start = body.indexOf('\n## Compaction recovery\n');
+  const end = body.indexOf('\n## ', start + 1);
+  assert.ok(start > 0, 'SKILL.md has no "Compaction recovery" section');
+  assert.ok(end < 15000, `"Compaction recovery" ends ${end} characters into SKILL.md, past what a compaction is sure to keep`);
+  assert.ok(body.slice(start, end).includes('`SKILL.md`'), '"Compaction recovery" does not name SKILL.md among what is read again');
+});
+
 test('R349: ## What leaves the run holds one item, the core.md item with its lines joined', () => {
   const core = CORE.split('\n- ').slice(1).map((s) => `- ${s.split('\n\n')[0].replace(/\s+/g, ' ').trim()}`);
   const items = section(SKILL, 'What leaves the run').filter((l) => /^\s*(?:[-*+]|\d+[.)])\s/.test(l));

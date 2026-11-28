@@ -57,6 +57,10 @@ Approved by this request: reads of the repository and the forge, a fetch of the 
 2. The user's instruction files win: an ask-first rule there still prompts.
 3. A denial is final, never retried and never done another way. A refused read or call is reported in the run's notes and its last message, as each agent reports its own.
 
+## Compaction recovery
+
+After a compaction, or whenever you cannot account for your state, stop. Before any other action read `SKILL.md` again, since the host keeps only the first part of it across a compaction. Then read the round's `reading.md`, for each approval and its answer, and `posted.md` where the round has one. The mode is `post` where the request says post or the round holds an `outbox/`, else the one `reading.md` gives; read that mode's file. With no `reading.md` yet, start again at The reading block.
+
 ## Record and workspace
 
 `<data>` is `${CLAUDE_PLUGIN_DATA}`, the plugin's data directory, which is not a shell variable; where the text still shows it unexpanded, it is `plugins/data/review-reimagine-engine`, or `plugins/data/review-inline` for a plugin loaded from a directory, under `$CLAUDE_CONFIG_DIR`, else under `~/.claude`. The record of a target is `<record>` = `<data>/reviews/<repo>/<target>/`. `<repo>` is the repository that holds the pull request, taken from the pull request's URL on GitHub and the export's `url` elsewhere with the part that names the pull request left off, `/pull/12` for one, written as `host/path` and kept as nested directories: no scheme, user name, password, port or `.git`; `git@host:path` and `ssh://` forms give the same `host/path`; `ssh.dev.azure.com:v3/<org>/<project>/<repo>` gives `dev.azure.com/<org>/<project>/_git/<repo>`. `<target>` is the forge's id of the pull request. A pair keeps its shared summary in the record whose path sorts first.

@@ -25,7 +25,7 @@ The request is the words that came with the invocation, such as "reimagine revie
 
 An export is JSON, or markdown with frontmatter, holding `id`, `url`, `title`, `body`, `head` and `base` as full shas, `exported_by` and `exported_at`, and for a follow-up `threads`, each with `id`, `path`, `line`, `status` and `comments`, each comment with `id` and `body`. A missing key stops the run with one sentence that says what an export holds and that this section shows its form.
 
-Scripts. `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs the script writes that absolute path, shown here as `<scripts>`.
+Scripts. The session's shell has no plugin-root variable. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs the script writes that absolute path, shown here as `<scripts>`.
 
 ## The reading block
 
@@ -57,6 +57,10 @@ Approved by this request: reads of the repository and the forge, a fetch of the 
 2. The user's instruction files win: an ask-first rule there still prompts.
 3. A denial is final, never retried and never done another way. A refused read or call is reported in the run's notes and its last message, as each agent reports its own.
 
+## Compaction recovery
+
+After a compaction, or whenever you cannot account for your state, stop. Before any other action read `SKILL.md` again, since the host keeps only the first part of it across a compaction. Then read the round's `reading.md`, for each approval and its answer, and `posted.md` where the round has one. The mode is `post` where the request says post or the round holds an `outbox/`, else the one `reading.md` gives; read that mode's file. With no `reading.md` yet, start again at The reading block.
+
 ## Record and workspace
 
 `<data>` is `${CLAUDE_PLUGIN_DATA}`, the plugin's data directory, which is not a shell variable; where the text still shows it unexpanded, it is `plugins/data/review-reimagine-engine`, or `plugins/data/review-inline` for a plugin loaded from a directory, under `$CLAUDE_CONFIG_DIR`, else under `~/.claude`. The record of a target is `<record>` = `<data>/reviews/<repo>/<target>/`. `<repo>` is the repository that holds the pull request, taken from the pull request's URL on GitHub and the export's `url` elsewhere with the part that names the pull request left off, `/pull/12` for one, written as `host/path` and kept as nested directories: no scheme, user name, password, port or `.git`; `git@host:path` and `ssh://` forms give the same `host/path`; `ssh.dev.azure.com:v3/<org>/<project>/<repo>` gives `dev.azure.com/<org>/<project>/_git/<repo>`. `<target>` is the forge's id of the pull request. A pair keeps its shared summary in the record whose path sorts first.
@@ -75,7 +79,7 @@ Each brief to an agent gives the worktree's path, the conventions, and these rul
 
 ## Conventions and dispositions
 
-The team's conventions and precedent override a generic checklist. They come from the reviewed repository's instruction and contribution files read at the base commit (`git <c> show <base sha>:<path>`, never from the head), from the files the request names, and from what the session's context holds, and each brief carries them, by path or in full. A sample of the team's review comments sets the register of the drafts.
+The team's conventions and precedent override a generic checklist. They come from the reviewed repository's instruction and contribution files read at the base commit (`git <c> show <base sha>:<path>`, never from the head), `REVIEW.md` and `CLAUDE.md` at the root and in the parent directories of each changed file among them, from the files the request names, and from what the session's context holds, and each brief carries them, by path or in full. A sample of the team's review comments sets the register of the drafts.
 
 Every point ends with a disposition and its reason: `post`, `note` (kept in `notes.md`) or `drop`. Severity comes from what breaks and for whom, never from how many readers raised the point.
 

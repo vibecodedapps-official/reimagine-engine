@@ -2,6 +2,13 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## review 0.1.6 - 2026-11-28
+
+- The skill has a compaction recovery section: stop, read `SKILL.md` again, then the round's `reading.md` and `posted.md`, and the file of the run's mode. The host keeps only the first part of a skill's text across a compaction and attaches no mode file again, so a posting step could go on without the end of the skill and without `post.md`.
+- The conventions name `REVIEW.md` and the `CLAUDE.md` files at the root and in the parent directories of each changed file, read at the base commit. The skill named no file, so a run could post a point that a team's `REVIEW.md` rules out.
+- The posting step reads the base branch's `pull_request` rules, whether a classic rule is on and whether the user can push, and states a draft's effect on the merge gate only where those reads settle it, else `not determined`. It stated the effect and read nothing that tells it.
+- The Scripts paragraph names no variable. The host fills in the plugin root variable in a skill's text, so the paragraph told a session that a path was empty in its shell.
+
 ## gate 0.1.25 - 2026-11-28
 
 - The skill pre-approves a run of each of its four scripts. Every script call met the session's permission mode, and an allow rule that names a script's path stops matching at each release, since the path holds the plugin's version. The `git diff` piped into `split.mjs` and the commands of a target outside the session's folder still follow the permission mode, and the permission statement counts them.

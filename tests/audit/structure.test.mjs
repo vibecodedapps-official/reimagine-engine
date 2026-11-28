@@ -93,7 +93,7 @@ test('each agent that has a shell names the command list of common.md hard rule 
 test('compaction recovery sits early in SKILL.md and has the session read SKILL.md again', () => {
   const body = TEXT['skills/audit/SKILL.md'].replace(/^---\n[^]*?\n---\n/, '');
   const start = body.indexOf('\n### Compaction recovery\n');
-  const end = body.indexOf('\n#', start + 1);
+  const next = body.indexOf('\n#', start + 1), end = next < 0 ? body.length : next;
   assert.ok(start > 0, 'SKILL.md has no "Compaction recovery" section');
   assert.ok(end < 15000, `"Compaction recovery" ends ${end} characters into SKILL.md, past what a compaction is sure to keep`);
   assert.ok(body.slice(start, end).includes('/SKILL.md`'),'"Compaction recovery" does not name SKILL.md among what is read again');

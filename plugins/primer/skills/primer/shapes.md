@@ -127,6 +127,7 @@ Done when <one sentence>.
 - A root `CLAUDE.md` that is exactly `@AGENTS.md` plus at most one newline is kept and followed.
 - When a root `CLAUDE.local.md` exists, the host does not read `AGENTS.md`. The plan proposes the one-line `CLAUDE.md` and writes it on the yes.
 - A nested `AGENTS.md` stays where it is and is listed. Never move it. Where a root `CLAUDE.md` exists or the plan writes one, the hub or the one-line file, the host does not read a nested `AGENTS.md`: the plan says so and proposes, beside each one whose directory has no `CLAUDE.md`, a `CLAUDE.md` holding exactly `@AGENTS.md`. That file takes none of the Nested CLAUDE.md shape.
+- A one-line file reaches only a session started in its directory or above it: below it, the host follows the import only once the user approves a dialog, and a session without a terminal never does. A nested `CLAUDE.md` under an `AGENTS.md` hub takes the hub from a session started in its subtree. Where the plan writes or keeps either, it says so and names the host's Project instructions setting, `claude-md-and-agents-md` in `/config`, which reads both files and which each user sets for themselves. Never write it.
 - Rules and skills are Claude-only files. A repository shared with other tools keeps its shared facts in `AGENTS.md`.
 
 ## Imports, prose and history

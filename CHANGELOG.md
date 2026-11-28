@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## gate 0.1.25 - 2026-11-28
+
+- The skill pre-approves a run of each of its four scripts. Every script call met the session's permission mode, and an allow rule that names a script's path stops matching at each release, since the path holds the plugin's version. The `git diff` piped into `split.mjs` and the commands of a target outside the session's folder still follow the permission mode, and the permission statement counts them.
+- The Scripts paragraph names no variable. The host fills in the plugin root variable in a skill's text, so the paragraph told a session that a path was empty in its shell.
+
 ## primer 0.1.36 - 2026-11-28
 
 - The plan proposes a `CLAUDE.md` holding exactly `@AGENTS.md` beside each nested `AGENTS.md` that a root `CLAUDE.md` hides, and says that the host does not read the file without it. A hub written into a repository that keeps nested `AGENTS.md` files stopped the host reading them while the plan listed them as kept.

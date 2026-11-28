@@ -62,6 +62,7 @@ const EXECUTABLES = [
   'plugins/review/scripts/posts.mjs',
 ];
 const GUARD_RUNS = ['status', 'list', 'plan', 'denials'].map((verb) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs" ${verb} *)`);
+const GATE_RUNS = ['split', 'findings', 'next', 'resume'].map((name) => `Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/${name}.mjs" *)`);
 const EXECUTABLE_EXTENSIONS = ['.sh', '.mjs', '.js', '.cjs', '.py', '.ps1', '.bat', '.cmd', '.exe'];
 const PLUGIN_TOP = ['.claude-plugin', 'skills', 'commands', 'agents', 'hooks', 'scripts', 'output-styles', 'rules', 'chat', 'README.md', 'LICENSE'];
 const GITATTRIBUTES = ['* text=auto eol=lf', '*.sh text eol=lf', '*.mjs text eol=lf', '*.md text eol=lf'];
@@ -432,7 +433,7 @@ function skillFailures(ctx) {
     out.push(`${GATE_SKILL}: description does not name "reimagine gate"`);
   }
   for (const entry of listEntries(gateFm.get('allowed-tools'))) {
-    if (!PRE_APPROVED.test(entry)) out.push(`${GATE_SKILL}: allowed-tools entry ${entry} is not a pre-approved read`);
+    if (!PRE_APPROVED.test(entry) && !GATE_RUNS.includes(entry)) out.push(`${GATE_SKILL}: allowed-tools entry ${entry} is not a pre-approved read or a run of one of the four scripts`);
   }
 
   const review = ctx.text(REVIEW_SKILL);

@@ -26,11 +26,15 @@ allowed-tools:
   - Bash(gh pr checks *)
   - Bash(gh run list *)
   - Bash(gh run view *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/split.mjs" *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/findings.mjs" *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/next.mjs" *)
+  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/resume.mjs" *)
 ---
 
 # gate
 
-You orchestrate one run over one pull request, several, or a loop manifest. A pass is one `code-review` of the whole change from the merge-base, a triage of what it found, a fix round by implementers and a decision on what comes next. Four scripts decide what must be exact: `split.mjs` the reviews of a pass, `findings.mjs` the identity of a finding across passes, `next.mjs` the next level or the stop, `resume.mjs` where a run on a record that holds passes starts. The allowed-tools list pre-approves only date, sleep and read-only git and gh in their plain forms; every write, push, script and child session stays under the session's permission mode. In a command the skill shows, a placeholder for a path, such as `<root>` or `<record>`, stands for the absolute path in double quotes.
+You orchestrate one run over one pull request, several, or a loop manifest. A pass is one `code-review` of the whole change from the merge-base, a triage of what it found, a fix round by implementers and a decision on what comes next. Four scripts decide what must be exact: `split.mjs` the reviews of a pass, `findings.mjs` the identity of a finding across passes, `next.mjs` the next level or the stop, `resume.mjs` where a run on a record that holds passes starts. Only date, sleep, read-only git and gh in their plain forms and the four scripts are pre-approved; all else follows the session's permission mode. In a command the skill shows, a placeholder for a path, such as `<root>` or `<record>`, stands for the absolute path in double quotes.
 
 ## The request
 
@@ -53,7 +57,7 @@ Base. A pull request's base is its `baseRefName`, and "base <branch>" naming ano
 
 Checks. The run's checks come from the first source that gives any: the request, else the bundle's `checks` array, else `.reimagine.json` `checks`. The one list feeds the fix round, the child session's allowed tools, the permission statement and the report, which names the source. With no source no check runs, and the report says so.
 
-Scripts. `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs a script writes that absolute path, shown here as `<scripts>`, never the variable.
+Scripts. The session's shell has no plugin-root variable. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs a script writes that absolute path, shown here as `<scripts>`, never the variable.
 
 ## The reading block
 

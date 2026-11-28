@@ -100,6 +100,20 @@ function frontOf(text) {
   return out;
 }
 
+// A glob with no backslash before [, ], * or ?: git on Windows reads a backslash as a separator, so outside a bracket expression the
+// escaped character becomes one of its own, and inside one, where [, * and ? are literal, the backslash goes.
+function plain(p) {
+  let out = '', open = -1;
+  for (let i = 0; i < p.length; i++) {
+    const c = p[i], n = p[i + 1] ?? '';
+    if (c === '\\' && n) { out += open < 0 && '[]*?'.includes(n) ? `[${n}]` : open >= 0 && '[*?'.includes(n) ? n : c + n; i++; continue; }
+    if (open < 0 && c === '[') open = i;
+    else if (open >= 0 && c === ']' && i > open + 1 && !(i === open + 2 && '!^'.includes(p[open + 1]))) open = -1;
+    out += c;
+  }
+  return out;
+}
+
 // Each brace expansion of a glob, with **/ before a pattern that has no /.
 function expand(s, out = []) {
   for (let i = 0; i < s.length; i++) {
@@ -115,7 +129,7 @@ function expand(s, out = []) {
     }
     return out;
   }
-  out.push(s.includes('/') ? s : `**/${s}`);
+  out.push(plain(s.includes('/') ? s : `**/${s}`));
   return out;
 }
 

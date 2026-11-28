@@ -578,6 +578,22 @@ describe('primer drift hook', () => {
       const dir = await make('paths-slashless-gone', { '.claude/rules/area/pick.md': pickWith('paths:\n  - "[xy].ts"') });
       assert.equal(await run('git commit -m x', dir), deny('.claude/rules/area/pick.md paths glob [xy].ts matches no tracked file'));
     });
+    test('an escaped bracket in a glob matches a directory named with brackets', async () => {
+      const dir = await make('paths-bracket-escaped', { 'app/[slug]/page.ts': 'export const p = 1;\n', '.claude/rules/area/pick.md': pickWith("paths:\n  - 'app/\\[slug\\]/**'") });
+      assert.equal(await run('git commit -m x', dir), '');
+    });
+    test('a bare bracket in a glob does not name a directory with brackets', async () => {
+      const dir = await make('paths-bracket-bare', { 'app/[slug]/page.ts': 'export const p = 1;\n', '.claude/rules/area/pick.md': pickWith('paths:\n  - "app/[slug]/**"') });
+      assert.equal(await run('git commit -m x', dir), deny('.claude/rules/area/pick.md paths glob app/[slug]/** matches no tracked file'));
+    });
+    test('an escaped bracket inside a bracket expression is that bracket', async () => {
+      const dir = await make('paths-bracket-inside', { '.claude/rules/area/pick.md': pickWith("paths:\n  - 'src/[\\[a].ts'") });
+      assert.equal(await run('git commit -m x', dir), '');
+    });
+    test('an escaped star in a glob is a star in a name and no wildcard', async () => {
+      const dir = await make('paths-star-escaped', { '.claude/rules/area/pick.md': pickWith("paths:\n  - 'src/\\*.ts'") });
+      assert.equal(await run('git commit -m x', dir), deny('.claude/rules/area/pick.md paths glob src/\\\\*.ts matches no tracked file'));
+    });
     test('a skill paths glob that matches nothing is denied', async () => {
       const dir = await make('paths-skill-gone', { '.claude/skills/release/SKILL.md': skillText.replace('paths: scripts/**', 'paths: gone/**') });
       assert.equal(await run('git commit -m x', dir), deny('.claude/skills/release/SKILL.md paths glob gone/** matches no tracked file'));

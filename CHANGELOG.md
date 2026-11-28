@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.35 - 2026-11-27
+
+- The drift hook reads a backslash escape in a `paths` glob on every platform. On git for Windows it denied `'app/\[slug\]/**'` as matching no tracked file, so a rule for a directory named with brackets passed the hook there in no form.
+- `shapes.md` says that a `[` in a `paths` glob starts a bracket expression and gives the escaped form. A rule for a directory named `[slug]`, written as the name stands, was denied by the drift hook, or passed for a sibling directory of one letter.
+
 ## rules 0.1.55 - 2026-11-27
 
 - The offer of the outbound list and the README say that the starter lines deny a commit or a pull request body that carries the host's default attribution, and name the `attribution` setting the host documents for hiding it. A user who took the starter lines with attribution at its default had each such commit denied, and nothing said to expect it.

@@ -79,7 +79,7 @@ Each brief to an agent gives the worktree's path, the conventions, and these rul
 
 ## Conventions and dispositions
 
-The team's conventions and precedent override a generic checklist. They come from the reviewed repository's instruction and contribution files read at the base commit (`git <c> show <base sha>:<path>`, never from the head), from the files the request names, and from what the session's context holds, and each brief carries them, by path or in full. A sample of the team's review comments sets the register of the drafts.
+The team's conventions and precedent override a generic checklist. They come from the reviewed repository's instruction and contribution files read at the base commit (`git <c> show <base sha>:<path>`, never from the head), `REVIEW.md` and `CLAUDE.md` at the root and in the parent directories of each changed file among them, from the files the request names, and from what the session's context holds, and each brief carries them, by path or in full. A sample of the team's review comments sets the register of the drafts.
 
 Every point ends with a disposition and its reason: `post`, `note` (kept in `notes.md`) or `drop`. Severity comes from what breaks and for whom, never from how many readers raised the point.
 

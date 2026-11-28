@@ -25,7 +25,7 @@ The request is the words that came with the invocation, such as "reimagine revie
 
 An export is JSON, or markdown with frontmatter, holding `id`, `url`, `title`, `body`, `head` and `base` as full shas, `exported_by` and `exported_at`, and for a follow-up `threads`, each with `id`, `path`, `line`, `status` and `comments`, each comment with `id` and `body`. A missing key stops the run with one sentence that says what an export holds and that this section shows its form.
 
-Scripts. `${CLAUDE_PLUGIN_ROOT}` is empty in the session's shell. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs the script writes that absolute path, shown here as `<scripts>`.
+Scripts. The session's shell has no plugin-root variable. Resolve the scripts directory with no tool call, from the skill's base directory that the Skill tool printed when it loaded this skill: two levels above it, then `scripts`. Every command that runs the script writes that absolute path, shown here as `<scripts>`.
 
 ## The reading block
 

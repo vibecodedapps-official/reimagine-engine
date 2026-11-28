@@ -405,17 +405,17 @@ describe('the git limit', () => {
     const dir = join(base, 'slow-plain'), data = join(base, 'data-plain');
     mkdirSync(dir);
     const cfg = config(local({ roots: [slash(base)] }), { group: GROUP });
-    const from = (extra) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    const from = (extra, limit) => main(['session-start', 'all', data], { env: { ...extra, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit });
     assert.deepEqual(from(env), []);
     const line = `primer: no context layer is loaded at this start: git gave no answer within 1 s, so whether ${slash(dir)} has layers is unknown`;
-    assert.deepEqual(from(slowGit()), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line }, systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
+    assert.deepEqual(from(slowGit(), 1000), [JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: line }, systemMessage: `primer: the context of ${slash(dir)} is unknown, since git gave no answer within 1 s` })]);
   });
 
   test('a start removes the files of repo/ under the data directory named by 16 hexadecimal characters, and then the empty directory', () => {
     const dir = repo('kept-gone', 'https://example.invalid/team/app.git'), data = join(base, 'data-gone');
     const cfg = config(local(), { group: GROUP });
     write(data, 'repo/0123456789abcdef', JSON.stringify({ root: slash(dir), top: slash(dir), remotes: ['example.invalid/team/app'], names: ['origin'], urls: ['https://example.invalid/team/app.git'] }));
-    const out = main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    const out = main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }) });
     assert.equal(JSON.parse(out[0]).hookSpecificOutput.additionalContext, part('group', join(cfg.store, 'groups', 'app.md'), GROUP.trim(), '5ee2174e'));
     assert.equal(existsSync(join(data, 'repo')), false);
   });
@@ -424,7 +424,7 @@ describe('the git limit', () => {
     const dir = repo('kept-other', 'https://example.invalid/team/other.git'), data = join(base, 'data-other');
     const cfg = config(local(), { group: GROUP });
     write(data, 'repo/0123456789abcdef', JSON.stringify({ root: slash(dir), top: slash(dir), remotes: ['example.invalid/team/other'], names: ['origin'], urls: ['https://example.invalid/team/other.git'] }));
-    const out = main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    const out = main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }) });
     assert.deepEqual(out, []);
     assert.equal(existsSync(join(data, 'repo')), false);
   });
@@ -433,7 +433,7 @@ describe('the git limit', () => {
     const dir = repo('kept-some', 'https://example.invalid/team/app.git'), data = join(base, 'data-some');
     const cfg = config(local(), { group: GROUP });
     for (const name of ['0123456789abcdef', 'notes.txt', '0123456789abcde', 'fedcba9876543210/inner']) write(data, `repo/${name}`, 'x');
-    main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }), limit: 1000 });
+    main(['session-start', 'all', data], { env: { ...env, CLAUDE_CONFIG_DIR: cfg.dir }, home: join(base, 'home'), cwd: base, stdin: () => JSON.stringify({ cwd: dir }) });
     assert.deepEqual(readdirSync(join(data, 'repo')).sort(), ['0123456789abcde', 'fedcba9876543210', 'notes.txt']);
     assert.equal(existsSync(join(data, 'repo', 'fedcba9876543210', 'inner')), true);
   });

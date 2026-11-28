@@ -6,6 +6,7 @@ One changelog for the suite. Each plugin releases on its own line; a release get
 
 - The plan proposes a `CLAUDE.md` holding exactly `@AGENTS.md` beside each nested `AGENTS.md` that a root `CLAUDE.md` hides, and says that the host does not read the file without it. A hub written into a repository that keeps nested `AGENTS.md` files stopped the host reading them while the plan listed them as kept.
 - The reach notice names a root `AGENTS.md` only where the host reads it. It listed one beside a root `CLAUDE.local.md` or `.claude/CLAUDE.md`, where a session started in that repository does not hold it.
+- The plan says which sessions a one-line `@AGENTS.md` file or a nested `CLAUDE.md` leaves without an `AGENTS.md` hub, and names the host's Project instructions setting that reads both files. A session started below a one-line file, or under a nested `CLAUDE.md` in a repository whose hub is `AGENTS.md`, did not hold the hub.
 
 ## primer 0.1.35 - 2026-11-27
 

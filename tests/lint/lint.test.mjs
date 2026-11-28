@@ -512,10 +512,13 @@ describe('lint', { concurrency: Math.max(1, availableParallelism() - 1) }, () =>
     edit(dir, gateSkill, '"reimagine gate"', '"reimagine-gate"');
     bump(dir, 'gate');
   }, 1, [`${gateSkill}: description does not name "reimagine gate"`]);
-  negative('R219: <file>: allowed-tools entry <entry> is not a pre-approved read (gate)', (dir) => {
-    edit(dir, gateSkill, '  - Bash(date)\n', '  - Bash(date)\n  - Bash(git push *)\n');
+  negative('R219: <file>: allowed-tools entry <entry> is not a pre-approved read or a run of one of the four scripts', (dir) => {
+    edit(dir, gateSkill, '  - Bash(date)\n', '  - Bash(date)\n  - Bash(git push *)\n  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/other.mjs" *)\n');
     bump(dir, 'gate');
-  }, 1, [`${gateSkill}: allowed-tools entry Bash(git push *) is not a pre-approved read`]);
+  }, 2, [
+    `${gateSkill}: allowed-tools entry Bash(git push *) is not a pre-approved read or a run of one of the four scripts`,
+    `${gateSkill}: allowed-tools entry Bash(node "\${CLAUDE_PLUGIN_ROOT}/scripts/other.mjs" *) is not a pre-approved read or a run of one of the four scripts`,
+  ]);
   negative('R356: <file>: pre-approves <entry>, which is not a known read or a run of the plugin\'s own script', (dir) => {
     edit(dir, 'plugins/primer/skills/primer/SKILL.md', '  - Bash(git status *)\n',
       '  - Bash(git status *)\n  - Bash(git diff *)\n  - Bash(git diff:*)\n  - Bash(git --no-pager diff *)\n  - Bash(git *)\n  - Bash\n');

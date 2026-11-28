@@ -83,6 +83,16 @@ test('R288: the frontmatter names the skill gate, has no paths key and names the
   assert.ok(!description.includes('<') && !description.includes('>'), 'the host shows < and > in a description escaped');
 });
 
+test('R318: the frontmatter pre-approves a run of each of the four scripts by its quoted plugin-root path', () => {
+  const lines = frontmatter(SKILL);
+  for (const entry of [
+    '  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/split.mjs" *)',
+    '  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/findings.mjs" *)',
+    '  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/next.mjs" *)',
+    '  - Bash(node "${CLAUDE_PLUGIN_ROOT}/scripts/resume.mjs" *)',
+  ]) assert.ok(lines.includes(entry), `no entry ${entry.trim()}`);
+});
+
 test('R313: the configuration block is the same in SKILL.md and the README and holds the defaults', () => {
   const skill = jsonBlock(SKILL);
   const readme = jsonBlock(README);

@@ -2,6 +2,11 @@
 
 One changelog for the suite. Each plugin releases on its own line; a release gets a heading `## <plugin> <version> - <date>`, newest first, with one bullet per change saying what changed and why.
 
+## primer 0.1.36 - 2026-11-27
+
+- The plan proposes a `CLAUDE.md` holding exactly `@AGENTS.md` beside each nested `AGENTS.md` that a root `CLAUDE.md` hides, and says that the host does not read the file without it. A hub written into a repository that keeps nested `AGENTS.md` files stopped the host reading them while the plan listed them as kept.
+- The reach notice names a root `AGENTS.md` only where the host reads it. It listed one beside a root `CLAUDE.local.md` or `.claude/CLAUDE.md`, where a session started in that repository does not hold it.
+
 ## primer 0.1.35 - 2026-11-27
 
 - The drift hook reads a backslash escape in a `paths` glob on every platform. On git for Windows it denied `'app/\[slug\]/**'` as matching no tracked file, so a rule for a directory named with brackets passed the hook there in no form.
